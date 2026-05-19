@@ -1,0 +1,12 @@
+---
+description: When the user wants to turn current conversation context into a PRD. Do not re-interview — synthesize what is already known from the conversation and any existing design.md.
+alwaysApply: false
+---
+
+Synthesize the current context and codebase into `./docs/<feature-slug>/prd.md`. Do not interview — use what's already established.
+
+1. Explore the codebase to verify claims. Use canonical vocabulary from `design.md`.
+2. Sketch major modules to build or modify; identify deep module opportunities. Determine which need tests based on complexity and criticality.
+3. Write `prd.md`: Problem Statement, Solution, User Stories (numbered, extensive), Implementation Decisions (modules/interfaces/contracts — no file paths), Testing Decisions, Out of Scope, Further Notes.
+
+When prd.md is written, commit `docs(<slug>): PRD` and automatically proceed to TDD.
