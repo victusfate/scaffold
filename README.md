@@ -93,6 +93,10 @@ Project-level skills override global ones when names match.
 | `READ_ONCE_DIFF` | `0` | Set to `1` to show only diffs on changed files |
 | `READ_ONCE_DISABLED` | `0` | Set to `1` to disable entirely |
 
+## Credits
+
+The `grill-with-docs`, `to-prd`, and `tdd` skills are adapted from [Matt Pocock's skills repo](https://github.com/mattpocock/skills/tree/main/skills/engineering). The core workflow — careful design Q&A → PRD → vertical-slice TDD — is his.
+
 ## License
 
 MIT
