@@ -3,7 +3,7 @@ description: Review implementation for structural quality — file size, spaghet
 alwaysApply: false
 ---
 
-**Mode:** If triggered automatically from feature-chain or tdd, apply fixes to source files directly and continue. If invoked standalone by the user, present findings as annotated diffs and wait for approval before changing anything.
+**Mode:** If triggered automatically from feature-chain or tdd, apply fixes to source files directly, re-run the full test suite to confirm nothing broke, then continue. If invoked standalone by the user, present findings as annotated diffs and wait for approval before changing anything.
 
 **Checklist:**
 1. **File size** — Files at or approaching 1,000 lines require decomposition, not growth.

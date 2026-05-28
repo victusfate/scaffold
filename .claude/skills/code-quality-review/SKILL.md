@@ -4,7 +4,7 @@ description: Review implementation for structural quality — file size, spaghet
 
 ## Mode
 
-**Auto-fix** (called from the chain): Apply fixes to source files directly, then continue to the completion summary without pausing.
+**Auto-fix** (called from the chain): Apply fixes to source files directly, re-run the full test suite to confirm nothing broke, then continue to the completion summary without pausing.
 
 **Review** (called standalone): Present findings as annotated diffs. Wait for user approval before making any changes.
 
