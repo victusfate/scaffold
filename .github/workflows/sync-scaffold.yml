@@ -1,0 +1,44 @@
+name: Sync agent guidance from scaffold
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1'  # Mondays 9am UTC
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Sync from scaffold
+        id: sync
+        run: |
+          bash bin/sync-from-scaffold.sh
+          if git diff --quiet && git diff --staged --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open PR
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -b chore/sync-scaffold-guidance
+          git add -A
+          git commit -m "chore: sync agent guidance from scaffold"
+          git push -u origin chore/sync-scaffold-guidance
+          gh pr create \
+            --title "chore: sync agent guidance from scaffold" \
+            --body "Automated sync from [victusfate/scaffold](https://github.com/victusfate/scaffold). Review the diff before merging — any conflicts have markers and need manual resolution." \
+            --label dependencies \
+            || echo "PR already open"

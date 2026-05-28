@@ -1,0 +1,14 @@
+AGENTS.md
+bin/sync-from-scaffold.sh
+.claude/skills/design-review/SKILL.md
+.claude/skills/code-quality-review/SKILL.md
+.claude/skills/feature-chain/SKILL.md
+.claude/skills/grill-with-docs/SKILL.md
+.claude/skills/tdd/SKILL.md
+.claude/skills/to-prd/SKILL.md
+.cursor/rules/agents.mdc
+.cursor/rules/code-quality-review.mdc
+.cursor/rules/design-review.mdc
+.cursor/rules/grill-with-docs.mdc
+.cursor/rules/tdd.mdc
+.cursor/rules/to-prd.mdc
