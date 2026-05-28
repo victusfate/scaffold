@@ -2,6 +2,10 @@
 description: Review implementation for structural quality — file size, spaghetti, abstraction discipline, type precision, canonical reuse. Auto-fixes when called from the chain; shows diffs for approval when called standalone.
 ---
 
+## Philosophy
+
+Seek **ambitious structural simplification** — not just the absence of bad patterns. Actively hunt for *code judo moves*: reorganizations that preserve behavior while dramatically reducing complexity. Working code is not enough; push for designs that feel inevitable in hindsight. Missed simplification opportunities are failures, not oversights.
+
 ## Mode
 
 **Auto-fix** (called from the chain): Apply fixes to source files directly, re-run the full test suite to confirm nothing broke, then continue to the completion summary without pausing.
