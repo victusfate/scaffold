@@ -1,5 +1,6 @@
 AGENTS.md
 bin/sync-from-scaffold.sh
+.github/workflows/sync-scaffold.yml
 .claude/skills/design-review/SKILL.md
 .claude/skills/code-quality-review/SKILL.md
 .claude/skills/feature-chain/SKILL.md
