@@ -1,0 +1,20 @@
+---
+description: Review design.md for structural quality — abstraction discipline, vocabulary precision, bounded logic, simplicity. Auto-fixes when called from the chain; shows findings for approval when called standalone.
+alwaysApply: false
+---
+
+**Mode:** If triggered automatically from feature-chain or grill-with-docs, apply fixes to `design.md` directly and continue. If invoked standalone by the user, present findings as annotated comments and wait for approval before changing anything.
+
+**Checklist:**
+1. **Abstractions** — Flag thin wrappers and indirection that adds no clarity.
+2. **Canonical vocabulary** — Flag overloaded terms, synonyms, and concepts without a vocabulary entry.
+3. **Bounded logic** — Flag a concern split across unrelated layers.
+4. **Type discipline** — Flag loose contracts and unnecessary optionality in proposed interfaces.
+5. **Simplicity** — Flag over-engineering and unnecessary structure.
+
+**Blockers** (resolve before PRD):
+- Modules that only wrap or delegate
+- Terms used inconsistently or undefined
+- Concern split across layers without justification
+- Loose contracts where explicit types would work
+- Visible simpler design left on the table

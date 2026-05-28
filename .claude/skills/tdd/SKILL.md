@@ -34,12 +34,11 @@ Tests written in bulk verify imagined behavior and become insensitive to real ch
 
 **Incremental loop:**
 ```
-RED:   Write next test → confirm it fails
-GREEN: Write minimal code to pass → confirm it passes
+RED:      Write next test → confirm it fails
+GREEN:    Write minimal code to pass → confirm it passes
+REFACTOR: Extract duplication, deepen modules — only after GREEN, never while RED
 ```
 Rules: one test at a time, only enough code to pass, don't anticipate future tests.
-
-**Refactor** (only after GREEN): extract duplication, deepen modules, apply SOLID where natural. Never refactor while RED.
 
 **Per-cycle checklist:**
 - Test describes behavior, not implementation
@@ -66,7 +65,7 @@ Append to `./docs/<feature-slug>/tdd-log.md`:
 
 ### When all slices pass
 
-When the full test suite is green, present a summary and stop for review:
+When the full test suite is green, run `/code-quality-review` in auto-fix mode — it will patch source files directly and resolve any blockers. Then present a summary and stop for review:
 
 ```
 ## Feature complete: <feature-slug>
