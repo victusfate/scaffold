@@ -2,8 +2,6 @@ name: Sync agent guidance from scaffold
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 9 * * 1'  # Mondays 9am UTC
 
 jobs:
   sync:
