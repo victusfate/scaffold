@@ -12,7 +12,7 @@ Per slice:
 - GREEN: Write minimal code to pass → confirm it passes
 - REFACTOR: Extract duplication, deepen modules — only after GREEN, never while RED
 
-When all slices pass, run `/thermo-nuclear-quality-review` on the implementation — resolve any blockers before presenting the completion summary.
+When all slices pass, run `/code-quality-review` in auto-fix mode — it will patch source files directly and resolve any blockers before the completion summary.
 
 Tests verify behavior through public interfaces only. A good test survives internal refactors.
 

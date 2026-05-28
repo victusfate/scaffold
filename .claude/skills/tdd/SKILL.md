@@ -65,7 +65,7 @@ Append to `./docs/<feature-slug>/tdd-log.md`:
 
 ### When all slices pass
 
-When the full test suite is green, run `/thermo-nuclear-quality-review` on the implementation — resolve any blockers before presenting the summary. Then present a summary and stop for review:
+When the full test suite is green, run `/code-quality-review` in auto-fix mode — it will patch source files directly and resolve any blockers. Then present a summary and stop for review:
 
 ```
 ## Feature complete: <feature-slug>

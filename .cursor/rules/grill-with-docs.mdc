@@ -14,4 +14,4 @@ Capture resolved decisions immediately in `./docs/<feature-slug>/design.md` (can
 
 As domain relationships, flows, and states become clear during Q&A, add Mermaid diagrams (or ASCII for simple structures) to a Visualizations section in design.md — don't wait until the end. Use `erDiagram` for entities, `sequenceDiagram` for request flows, `stateDiagram-v2` for state machines, `graph TD` for component boundaries. Skip a diagram if it would just restate the vocabulary table.
 
-When design is complete, summarize decisions. Run `/thermo-nuclear-quality-review` on the design — resolve any structural blockers before proceeding. Then automatically proceed to the PRD phase (to-prd).
+When design is complete, summarize decisions. Run `/design-review` in auto-fix mode — it will patch `design.md` directly and resolve any blockers. Then automatically proceed to the PRD phase (to-prd).

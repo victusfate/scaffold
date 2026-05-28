@@ -25,7 +25,7 @@ Interview the user relentlessly about every aspect of the plan until the design 
 
 State the slug before writing so the user can correct it.
 
-**When design.md is written and decisions are resolved:** commit `docs(<slug>): design Q&A and vocabulary`. Run `/thermo-nuclear-quality-review` on the design — resolve any structural blockers before proceeding. Then proceed immediately to Phase 2.
+**When design.md is written and decisions are resolved:** commit `docs(<slug>): design Q&A and vocabulary`. Run `/design-review` in auto-fix mode — it will patch `design.md` and resolve any blockers. Then proceed immediately to Phase 2.
 
 ---
 
@@ -85,7 +85,7 @@ refactor(<slug>): slice N — <what changed>
 
 Update `./docs/<feature-slug>/tdd-log.md` with per-slice status after each commit.
 
-**When all slices are complete and the full test suite passes:** run `/thermo-nuclear-quality-review` on the implementation — resolve any blockers before proceeding. Then proceed to Phase 4.
+**When all slices are complete and the full test suite passes:** run `/code-quality-review` in auto-fix mode — it will patch source files and resolve any blockers. Then proceed to Phase 4.
 
 ---
 

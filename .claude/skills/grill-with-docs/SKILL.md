@@ -78,4 +78,4 @@ Only offer an ADR when all three are true: hard to reverse, surprising without c
 
 ### When design is complete
 
-Summarize the resolved decisions and canonical vocabulary. Run `/thermo-nuclear-quality-review` on the design — resolve any structural blockers before proceeding. Then automatically proceed to `/to-prd` without waiting for permission.
+Summarize the resolved decisions and canonical vocabulary. Run `/design-review` in auto-fix mode — it will patch `design.md` directly and resolve any blockers. Then automatically proceed to `/to-prd` without waiting for permission.

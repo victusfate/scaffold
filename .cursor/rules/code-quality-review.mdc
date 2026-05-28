@@ -1,0 +1,20 @@
+---
+description: Review implementation for structural quality — file size, spaghetti, abstraction discipline, type precision, canonical reuse. Auto-fixes when called from the chain; shows diffs for approval when called standalone.
+alwaysApply: false
+---
+
+**Mode:** If triggered automatically from feature-chain or tdd, apply fixes to source files directly and continue. If invoked standalone by the user, present findings as annotated diffs and wait for approval before changing anything.
+
+**Checklist:**
+1. **File size** — Files at or approaching 1,000 lines require decomposition, not growth.
+2. **Spaghetti** — Reject ad-hoc conditionals and one-off branches in unrelated flows.
+3. **Abstractions** — Reject thin wrappers and identity layers. Every layer must earn its place.
+4. **Types** — Prefer explicit typed models; flag unnecessary optionality, casts, loose shapes.
+5. **Canonical reuse** — Logic in one place; flag duplicates and feature logic in shared code.
+
+**Blockers** (resolve before completion summary):
+- Visible simpler restructuring left on the table
+- File pushed past 1,000 lines
+- Ad-hoc branching added to existing flows
+- Thin wrappers or cast-heavy contracts introduced
+- Feature checks scattered across shared code
