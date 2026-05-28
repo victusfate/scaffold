@@ -6,6 +6,10 @@ description: Review implementation for structural quality — file size, spaghet
 
 Seek **ambitious structural simplification** — not just the absence of bad patterns. Actively hunt for *code judo moves*: reorganizations that preserve behavior while dramatically reducing complexity. Working code is not enough; push for designs that feel inevitable in hindsight. Missed simplification opportunities are failures, not oversights.
 
+## Scope — diff first, files only when necessary
+
+Work from the feature diff (`git diff main...HEAD`), not the full codebase. Read a complete file only when the diff alone is insufficient to judge a criterion (e.g. to check if a helper already exists elsewhere, or to count total file length). Never read files not touched by the diff unless a cross-file criterion specifically requires it. One pass — do not re-read to verify; apply all five criteria in a single sweep.
+
 ## Mode
 
 **Auto-fix** (called from the chain): Apply fixes to source files directly, re-run the full test suite to confirm nothing broke, then continue to the completion summary without pausing.

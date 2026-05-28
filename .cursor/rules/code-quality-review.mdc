@@ -3,6 +3,8 @@ description: Review implementation for structural quality — file size, spaghet
 alwaysApply: false
 ---
 
+**Scope:** Work from `git diff main...HEAD`. Read a full file only when the diff alone can't answer a criterion. One pass — apply all five criteria in a single sweep, no re-reads.
+
 **Mode:** If triggered automatically from feature-chain or tdd, apply fixes to source files directly, re-run the full test suite to confirm nothing broke, then continue. If invoked standalone by the user, present findings as annotated diffs and wait for approval before changing anything.
 
 **Checklist:**
