@@ -34,11 +34,9 @@ Tests written in bulk verify imagined behavior and become insensitive to real ch
 
 **Incremental loop:**
 ```
-RED:            Write next test → confirm it fails
-DESIGN GATE:    Run /thermo-nuclear-quality-review on the proposed approach → block on any blocker
-GREEN:          Write minimal code to pass → confirm it passes
-REFACTOR:       Extract duplication, deepen modules — only after GREEN, never while RED
-CODE GATE:      Run /thermo-nuclear-quality-review on the resulting code → block on any blocker
+RED:      Write next test → confirm it fails
+GREEN:    Write minimal code to pass → confirm it passes
+REFACTOR: Extract duplication, deepen modules — only after GREEN, never while RED
 ```
 Rules: one test at a time, only enough code to pass, don't anticipate future tests.
 
@@ -48,8 +46,6 @@ Rules: one test at a time, only enough code to pass, don't anticipate future tes
 - Test would survive an internal refactor
 - Code is minimal for this test
 - No speculative features added
-- Design gate passed (before GREEN)
-- Code gate passed (after GREEN/REFACTOR)
 
 ### Commits and log
 
@@ -69,7 +65,7 @@ Append to `./docs/<feature-slug>/tdd-log.md`:
 
 ### When all slices pass
 
-When the full test suite is green, present a summary and stop for review:
+When the full test suite is green, run `/thermo-nuclear-quality-review` on the implementation — resolve any blockers before presenting the summary. Then present a summary and stop for review:
 
 ```
 ## Feature complete: <feature-slug>

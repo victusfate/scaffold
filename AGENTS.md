@@ -28,7 +28,8 @@ Run `/feature-chain` to execute all phases automatically. Or invoke individually
 
 1. **Design** — `/grill-with-docs`. Interview one question at a time until
    the design tree is resolved. Produces `design.md` with Q&A, decisions, and
-   a **canonical vocabulary**. Auto-advances to PRD when complete.
+   a **canonical vocabulary**. Run `/thermo-nuclear-quality-review` on the
+   design before advancing. Auto-advances to PRD when complete.
 
 2. **PRD** — `/to-prd`. Synthesize context and codebase into `prd.md` without
    re-interviewing. Auto-advances to TDD when complete.
@@ -38,10 +39,9 @@ Run `/feature-chain` to execute all phases automatically. Or invoke individually
    once before coding.
 
 4. **TDD** — `/tdd`. Execute `plan.md` one slice at a time: RED → GREEN →
-   REFACTOR. Run `/thermo-nuclear-quality-review` as a **design gate** (after
-   RED, before writing code) and a **code gate** (after GREEN/REFACTOR).
-   Block on any approval blocker before continuing. Maintain `tdd-log.md`
-   with per-slice status.
+   REFACTOR. When all slices pass, run `/thermo-nuclear-quality-review` on
+   the implementation and resolve any blockers before advancing. Maintain
+   `tdd-log.md` with per-slice status.
 
 **Stop** the chain at any point by saying "stop", "pause", or "just answer".
 
