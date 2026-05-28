@@ -43,12 +43,17 @@ Skills can also be invoked individually: `/grill-with-docs`, `/to-prd`, `/tdd`.
 AGENTS.md                        # agent instructions — single source of truth
 CLAUDE.md                        # imports AGENTS.md (@AGENTS.md)
 GEMINI.md                        # references AGENTS.md
+bin/
+  bootstrap.sh                   # one-time setup for downstream repos
+  sync-from-scaffold.sh          # pull scaffold updates into a downstream repo
 .claude/
   skills/
     feature-chain/SKILL.md       # full auto-chain: design → PRD → TDD → review
     grill-with-docs/SKILL.md     # design Q&A + visualizations → design.md
     to-prd/SKILL.md              # PRD synthesis → prd.md
     tdd/SKILL.md                 # vertical-slice TDD → plan.md + tdd-log.md
+    design-review/SKILL.md       # structural review of design.md (auto-fix in chain)
+    code-quality-review/SKILL.md # structural review of implementation (auto-fix in chain)
   read-once/
     hook.sh                      # PreToolUse hook: skips redundant file reads
     compact.sh                   # PostCompact hook: clears read cache after compaction
@@ -59,6 +64,12 @@ GEMINI.md                        # references AGENTS.md
     grill-with-docs.mdc          # mirrors grill-with-docs skill for Cursor
     to-prd.mdc                   # mirrors to-prd skill for Cursor
     tdd.mdc                      # mirrors tdd skill for Cursor
+    design-review.mdc            # mirrors design-review skill for Cursor
+    code-quality-review.mdc      # mirrors code-quality-review skill for Cursor
+.github/
+  scaffold-files.txt             # manifest of files managed by scaffold
+  workflows/
+    sync-scaffold.yml            # manual workflow to sync updates via PR
 .claudeignore                    # excludes build artifacts from Claude's context
 ```
 
@@ -82,6 +93,22 @@ Each feature gets its own folder under `./docs/`:
   plan.md        # vertical slices
   tdd-log.md     # per-slice TDD status
 ```
+
+## Syncing updates to downstream repos
+
+**Bootstrap** (one-time per repo — adds the sync script and does the initial sync):
+```bash
+curl -fsSL https://raw.githubusercontent.com/victusfate/scaffold/main/bin/bootstrap.sh | bash
+```
+
+**Update** (run whenever you want to pull in scaffold changes, like a dependency bump):
+```bash
+bash bin/sync-from-scaffold.sh
+```
+
+The sync script uses git (no curl after bootstrap), compares blob SHAs, and three-way merges files that both you and scaffold have changed. Files with uncommitted local edits are skipped with a warning. The last-synced SHA is stored in `.github/scaffold-sync-sha` so future merges have a proper base.
+
+A GitHub Actions workflow is also installed at `.github/workflows/sync-scaffold.yml` — trigger it manually from the Actions tab for a PR-based update flow.
 
 ## Global installation
 
