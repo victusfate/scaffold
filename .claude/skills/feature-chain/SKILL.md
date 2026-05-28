@@ -65,9 +65,11 @@ Write `./docs/<feature-slug>/prd.md`:
 **Execute one slice at a time:**
 
 ```
-RED:   Write one test for one behavior → confirm it fails
-GREEN: Write minimal code to pass → confirm it passes
-REFACTOR: Extract duplication, deepen modules (only after GREEN)
+RED:          Write one test for one behavior → confirm it fails
+DESIGN GATE:  /thermo-nuclear-quality-review on proposed approach → block on any blocker
+GREEN:        Write minimal code to pass → confirm it passes
+REFACTOR:     Extract duplication, deepen modules (only after GREEN)
+CODE GATE:    /thermo-nuclear-quality-review on resulting code → block on any blocker
 ```
 
 Rules:

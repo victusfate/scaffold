@@ -9,8 +9,10 @@ Execute `./docs/<feature-slug>/plan.md` one vertical slice at a time. If plan.md
 
 Per slice:
 - RED: Write one test for one behavior → confirm it fails
+- DESIGN GATE: Run `/thermo-nuclear-quality-review` on the proposed approach → block on any blocker
 - GREEN: Write minimal code to pass → confirm it passes
 - REFACTOR: Extract duplication, deepen modules — only after GREEN, never while RED
+- CODE GATE: Run `/thermo-nuclear-quality-review` on the resulting code → block on any blocker
 
 Tests verify behavior through public interfaces only. A good test survives internal refactors.
 

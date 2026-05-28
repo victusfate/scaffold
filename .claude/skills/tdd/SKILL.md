@@ -34,12 +34,13 @@ Tests written in bulk verify imagined behavior and become insensitive to real ch
 
 **Incremental loop:**
 ```
-RED:   Write next test → confirm it fails
-GREEN: Write minimal code to pass → confirm it passes
+RED:            Write next test → confirm it fails
+DESIGN GATE:    Run /thermo-nuclear-quality-review on the proposed approach → block on any blocker
+GREEN:          Write minimal code to pass → confirm it passes
+REFACTOR:       Extract duplication, deepen modules — only after GREEN, never while RED
+CODE GATE:      Run /thermo-nuclear-quality-review on the resulting code → block on any blocker
 ```
 Rules: one test at a time, only enough code to pass, don't anticipate future tests.
-
-**Refactor** (only after GREEN): extract duplication, deepen modules, apply SOLID where natural. Never refactor while RED.
 
 **Per-cycle checklist:**
 - Test describes behavior, not implementation
@@ -47,6 +48,8 @@ Rules: one test at a time, only enough code to pass, don't anticipate future tes
 - Test would survive an internal refactor
 - Code is minimal for this test
 - No speculative features added
+- Design gate passed (before GREEN)
+- Code gate passed (after GREEN/REFACTOR)
 
 ### Commits and log
 

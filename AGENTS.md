@@ -38,7 +38,10 @@ Run `/feature-chain` to execute all phases automatically. Or invoke individually
    once before coding.
 
 4. **TDD** — `/tdd`. Execute `plan.md` one slice at a time: RED → GREEN →
-   REFACTOR. Maintain `tdd-log.md` with per-slice status.
+   REFACTOR. Run `/thermo-nuclear-quality-review` as a **design gate** (after
+   RED, before writing code) and a **code gate** (after GREEN/REFACTOR).
+   Block on any approval blocker before continuing. Maintain `tdd-log.md`
+   with per-slice status.
 
 **Stop** the chain at any point by saying "stop", "pause", or "just answer".
 
