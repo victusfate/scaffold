@@ -17,6 +17,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR = join(ROOT, '.claude', 'skills');
 const RESOLVER = join(SKILLS_DIR, 'RESOLVER.md');
 const MANIFEST = join(ROOT, '.github', 'scaffold-files.txt');
+const CURSOR_RULES = join(ROOT, '.cursor', 'rules');
 
 const argv = new Set(process.argv.slice(2));
 const STRICT = argv.has('--strict');
@@ -50,6 +51,18 @@ function jaccard(a, b) {
   const union = new Set([...a, ...b]).size;
   return union === 0 ? 0 : inter / union;
 }
+
+let _manifest = null;
+function manifestSet() {
+  if (_manifest) return _manifest;
+  _manifest = new Set(
+    existsSync(MANIFEST)
+      ? readFileSync(MANIFEST, 'utf8').split('\n').map((l) => l.trim()).filter(Boolean)
+      : []
+  );
+  return _manifest;
+}
+const listedInManifest = (p) => manifestSet().has(p);
 
 // Split a markdown table row on unescaped pipes only, then trim cells.
 function splitRow(row) {
@@ -214,23 +227,33 @@ function phaseMece(rows) {
   }
 }
 
-// Phase 5 — Scaffold-sync: every registered skill must propagate upstream.
+// Phase 5 — Cursor parity: every skill must have a Cursor mirror so it's
+// available to Cursor, not just Claude. Codex/Gemini read through AGENTS.md.
+function phaseCursorParity(rows) {
+  for (const r of rows) {
+    const mirror = join(CURSOR_RULES, `${r.skill}.mdc`);
+    if (!existsSync(mirror)) {
+      fail('Cursor', `'${r.skill}' has no Cursor mirror at ${rel(mirror)}`);
+    } else if (!listedInManifest(`.cursor/rules/${r.skill}.mdc`)) {
+      warn('Cursor', `.cursor/rules/${r.skill}.mdc not in scaffold manifest — won't sync downstream`);
+    }
+  }
+}
+
+// Phase 6 — Scaffold-sync: every registered skill must propagate upstream.
 function phaseScaffold(rows) {
   if (!existsSync(MANIFEST)) {
     fail('Scaffold', `manifest not found at ${rel(MANIFEST)}`);
     return;
   }
-  const listed = new Set(
-    readFileSync(MANIFEST, 'utf8').split('\n').map((l) => l.trim()).filter(Boolean)
-  );
   for (const r of rows) {
-    if (!listed.has(r.path)) {
+    if (!listedInManifest(r.path)) {
       fail('Scaffold', `'${r.skill}' path ${r.path} not in scaffold manifest — won't sync downstream`);
     }
   }
   // RESOLVER + this script should also propagate; warn rather than block.
   for (const p of ['.claude/skills/RESOLVER.md', 'scripts/check-resolvable.mjs']) {
-    if (!listed.has(p)) warn('Scaffold', `${p} not in scaffold manifest — consider adding it`);
+    if (!listedInManifest(p)) warn('Scaffold', `${p} not in scaffold manifest — consider adding it`);
   }
 }
 
@@ -242,6 +265,7 @@ if (rows.length) {
   phaseAmbiguity(rows);
   phaseDry(rows);
   phaseMece(rows);
+  phaseCursorParity(rows);
   phaseScaffold(rows);
 }
 

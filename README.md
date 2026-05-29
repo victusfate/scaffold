@@ -69,7 +69,7 @@ bin/
     design-review.mdc            # mirrors design-review skill for Cursor
     code-quality-review.mdc      # mirrors code-quality-review skill for Cursor
 scripts/
-  check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/sync)
+  check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/cursor/sync)
 .githooks/
   pre-commit                     # runs the linter — enable via core.hooksPath
 .github/
@@ -127,11 +127,13 @@ node scripts/check-resolvable.mjs          # errors block, DRY duplication warns
 node scripts/check-resolvable.mjs --strict # DRY duplication also blocks
 ```
 
-It enforces five phases: **Reachability** (no skill orphaned from the table),
+It enforces six phases: **Reachability** (no skill orphaned from the table),
 **Ambiguity** (no two skills share a slash-command route), **DRY** (duplicated
 prose blocks should move to `lib/`), **MECE** (no two skills with overlapping
-purpose — merge via args), and **Scaffold-sync** (every skill is registered in
-`.github/scaffold-files.txt` so it propagates downstream).
+purpose — merge via args), **Cursor parity** (every skill has a
+`.cursor/rules/<slug>.mdc` mirror so it's available to Cursor, not just Claude),
+and **Scaffold-sync** (every skill is registered in `.github/scaffold-files.txt`
+so it propagates downstream).
 
 Enable it as a pre-commit gate:
 

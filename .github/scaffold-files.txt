@@ -13,6 +13,7 @@ scripts/check-resolvable.mjs
 .cursor/rules/agents.mdc
 .cursor/rules/code-quality-review.mdc
 .cursor/rules/design-review.mdc
+.cursor/rules/feature-chain.mdc
 .cursor/rules/grill-with-docs.mdc
 .cursor/rules/skillify.mdc
 .cursor/rules/tdd.mdc
