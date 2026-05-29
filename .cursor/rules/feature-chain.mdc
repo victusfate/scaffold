@@ -3,14 +3,4 @@ description: When the user wants to build a new feature, implement a new capabil
 alwaysApply: false
 ---
 
-Run the full feature chain end-to-end. Do not pause for permission between phases — only pause within Phase 1 for Q&A answers, and at the end for user review.
-
-**Phase 1 — Design (grill-with-docs):** Interview one question at a time with a recommended answer until the design tree resolves; explore the codebase instead of asking when facts can be verified. Sharpen fuzzy language, challenge prior `design.md` decisions, stress-test edge cases. Capture canonical vocabulary, decisions with rationale, and Q&A in `./docs/<slug>/design.md` as they resolve. State the slug first. When resolved, commit `docs(<slug>): design Q&A and vocabulary`, run `/design-review` (auto-fix), then advance.
-
-**Phase 2 — PRD (to-prd):** Synthesize conversation + codebase into `./docs/<slug>/prd.md` — do not re-interview. Sections: Problem Statement, Solution, User Stories (numbered, extensive), Implementation Decisions (modules/interfaces/contracts — no file paths), Testing Decisions, Out of Scope, Further Notes. Commit `docs(<slug>): PRD` and advance.
-
-**Phase 3 — Plan + TDD (tdd):** If `plan.md` is missing, break `prd.md` into vertical slices (data → logic → UI → tests). Execute one slice at a time: RED (one failing test) → GREEN (minimal code) → REFACTOR (only after GREEN). One test at a time; behavior through public interfaces; never refactor while RED. Commit per phase per slice and update `./docs/<slug>/tdd-log.md`. When all slices pass, run `/code-quality-review` (auto-fix), then advance.
-
-**Phase 4 — Review:** Present a summary (what was built, tests passing, deviations) and prompt: "All tests pass. Please review the generated source before merging." Wait — do not proceed until the user confirms.
-
-Stop the chain immediately on "stop", "pause", or "just answer". Resume any phase via `/grill-with-docs`, `/to-prd`, `/tdd`.
+@../../skills/feature-chain.md

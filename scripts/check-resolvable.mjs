@@ -5,9 +5,9 @@
 //   node scripts/check-resolvable.mjs --strict   # promote DRY warnings to errors
 //   node scripts/check-resolvable.mjs --quiet     # errors only
 //
-// Reads .claude/skills/RESOLVER.md and every .claude/skills/<slug>/SKILL.md and
-// enforces: Reachability, Ambiguity, DRY, MECE, and Scaffold-sync. Exits non-zero
-// on any error so it can gate a pre-commit hook.
+// Reads .claude/skills/RESOLVER.md and skills/<slug>.md canonical files and
+// enforces: Reachability, Ambiguity, DRY, MECE, Cursor parity, Wrapper integrity,
+// and Scaffold-sync. Exits non-zero on any error so it can gate a pre-commit hook.
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -138,20 +138,28 @@ function skillDirsOnDisk() {
 
 // ---------------------------------------------------------------- phases
 
-// Phase 1 — Reachability: disk ↔ resolver, both directions.
+// Phase 1 — Reachability: canonical files ↔ resolver, both directions.
 function phaseReachability(rows) {
   const registered = new Set(rows.map((r) => r.skill));
+  // Every skill dir on disk must appear in RESOLVER
   for (const slug of skillDirsOnDisk()) {
     if (!registered.has(slug)) {
       fail('Reachability', `orphaned skill '${slug}' on disk but missing from RESOLVER.md`);
     }
   }
   for (const r of rows) {
+    // Canonical file must exist
     if (!existsSync(join(ROOT, r.path))) {
-      fail('Reachability', `'${r.skill}' registered with dangling path ${r.path}`);
+      fail('Reachability', `'${r.skill}' canonical path ${r.path} not found`);
     }
+    // Regex anchor must match slug
     if (anchorSlug(r.regexCell) !== r.skill) {
       fail('Reachability', `'${r.skill}' regex anchor '^/${anchorSlug(r.regexCell)}' must match its slug`);
+    }
+    // Claude wrapper must exist
+    const claudeWrapper = join(SKILLS_DIR, r.skill, 'SKILL.md');
+    if (!existsSync(claudeWrapper)) {
+      fail('Reachability', `'${r.skill}' missing Claude wrapper at ${rel(claudeWrapper)}`);
     }
   }
 }
@@ -193,6 +201,7 @@ function phaseDry(rows) {
   const fileLines = rows
     .filter((r) => existsSync(join(ROOT, r.path)))
     .map((r) => ({ skill: r.skill, lines: readFileSync(join(ROOT, r.path), 'utf8').split('\n').map(norm) }));
+  // DRY checks canonical files only — wrappers are intentionally minimal
 
   const blockOwners = new Map(); // block text → Set(skill)
   for (const { skill, lines } of fileLines) {
@@ -227,7 +236,29 @@ function phaseMece(rows) {
   }
 }
 
-// Phase 5 — Cursor parity: every skill must have a Cursor mirror so it's
+// Phase 5 — Wrapper integrity: harness wrappers must @-include the canonical.
+function phaseWrapperIntegrity(rows) {
+  for (const r of rows) {
+    const expectedCanonical = `skills/${r.skill}.md`;
+    const claudeWrapper = join(SKILLS_DIR, r.skill, 'SKILL.md');
+    const cursorWrapper = join(CURSOR_RULES, `${r.skill}.mdc`);
+
+    if (existsSync(claudeWrapper)) {
+      const src = readFileSync(claudeWrapper, 'utf8');
+      if (!src.includes(`@../../../${expectedCanonical}`)) {
+        fail('Wrapper', `Claude wrapper for '${r.skill}' must contain '@../../../${expectedCanonical}' — edit skills/${r.skill}.md, not the wrapper`);
+      }
+    }
+    if (existsSync(cursorWrapper)) {
+      const src = readFileSync(cursorWrapper, 'utf8');
+      if (!src.includes(`@../../${expectedCanonical}`)) {
+        fail('Wrapper', `Cursor wrapper for '${r.skill}' must contain '@../../${expectedCanonical}' — edit skills/${r.skill}.md, not the wrapper`);
+      }
+    }
+  }
+}
+
+// Phase 6 — Cursor parity: every skill must have a Cursor mirror so it's
 // available to Cursor, not just Claude. Codex/Gemini read through AGENTS.md.
 function phaseCursorParity(rows) {
   for (const r of rows) {
@@ -265,6 +296,7 @@ if (rows.length) {
   phaseAmbiguity(rows);
   phaseDry(rows);
   phaseMece(rows);
+  phaseWrapperIntegrity(rows);
   phaseCursorParity(rows);
   phaseScaffold(rows);
 }

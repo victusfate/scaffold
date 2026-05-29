@@ -3,14 +3,4 @@ description: Capture a completed session as a reusable, registered skill. Run wh
 alwaysApply: false
 ---
 
-Turn finished work into a durable, registered skill. One skill per run. Slug is kebab-case, ≤30 chars — state it before writing.
-
-**Phase 0 — Context Reconstruction:** rebuild intent from recent conversation, project manifests (`package.json`/`Cargo.toml`/`pyproject.toml`), and `git diff --stat`. Confirm in one line.
-
-**Phase 1 — Interview (4 rounds, one question at a time, recommend an answer):** intent → inputs → steps → edge cases. Skip what Phase 0 already settled.
-
-**Phase 2 — Generation:** write `.claude/skills/<slug>/SKILL.md` (frontmatter `name` + trigger-rich `description`, hard rules from edge cases, numbered pipeline; factor shared routines into `lib/`). Mirror as `.cursor/rules/<slug>.mdc`.
-
-**Phase 3 — Review, Save, PR:** register in `.claude/skills/RESOLVER.md` (unique `^/<slug>` anchor) and `.github/scaffold-files.txt`; add tests; run `node scripts/check-resolvable.mjs` and fix all errors; open a PR to `victusfate/scaffold` (`feat(skill): <slug>`) so downstream repos inherit it. Do not merge — stop for review.
-
-Before generating, scan RESOLVER for an overlapping skill — extend it with a parameterized arg rather than adding a near-duplicate (MECE).
+@../../skills/skillify.md
