@@ -1,6 +1,9 @@
 AGENTS.md
 bin/sync-from-scaffold.sh
 .github/workflows/sync-scaffold.yml
+scripts/check-resolvable.mjs
+.claude/skills/RESOLVER.md
+.claude/skills/skillify/SKILL.md
 .claude/skills/design-review/SKILL.md
 .claude/skills/code-quality-review/SKILL.md
 .claude/skills/feature-chain/SKILL.md
@@ -11,5 +14,7 @@ bin/sync-from-scaffold.sh
 .cursor/rules/code-quality-review.mdc
 .cursor/rules/design-review.mdc
 .cursor/rules/grill-with-docs.mdc
+.cursor/rules/skillify.mdc
 .cursor/rules/tdd.mdc
 .cursor/rules/to-prd.mdc
+.githooks/pre-commit
