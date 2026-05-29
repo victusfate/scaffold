@@ -48,12 +48,14 @@ bin/
   sync-from-scaffold.sh          # pull scaffold updates into a downstream repo
 .claude/
   skills/
+    RESOLVER.md                  # central routing table — skill → regex → path
     feature-chain/SKILL.md       # full auto-chain: design → PRD → TDD → review
     grill-with-docs/SKILL.md     # design Q&A + visualizations → design.md
     to-prd/SKILL.md              # PRD synthesis → prd.md
     tdd/SKILL.md                 # vertical-slice TDD → plan.md + tdd-log.md
     design-review/SKILL.md       # structural review of design.md (auto-fix in chain)
     code-quality-review/SKILL.md # structural review of implementation (auto-fix in chain)
+    skillify/SKILL.md            # capture a session as a new registered skill + PR
   read-once/
     hook.sh                      # PreToolUse hook: skips redundant file reads
     compact.sh                   # PostCompact hook: clears read cache after compaction
@@ -66,6 +68,10 @@ bin/
     tdd.mdc                      # mirrors tdd skill for Cursor
     design-review.mdc            # mirrors design-review skill for Cursor
     code-quality-review.mdc      # mirrors code-quality-review skill for Cursor
+scripts/
+  check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/cursor/sync)
+.githooks/
+  pre-commit                     # runs the linter — enable via core.hooksPath
 .github/
   scaffold-files.txt             # manifest of files managed by scaffold
   workflows/
@@ -109,6 +115,35 @@ bash bin/sync-from-scaffold.sh
 The sync script uses git (no curl after bootstrap), compares blob SHAs, and three-way merges files that both you and scaffold have changed. Files with uncommitted local edits are skipped with a warning. The last-synced SHA is stored in `.github/scaffold-sync-sha` so future merges have a proper base.
 
 A GitHub Actions workflow is also installed at `.github/workflows/sync-scaffold.yml` — trigger it manually from the Actions tab for a PR-based update flow.
+
+## Skill engine
+
+Skills are indexed in a central routing table, `.claude/skills/RESOLVER.md`,
+which maps each skill to its invocation regex and path. A linter keeps the
+table and the skills on disk in sync:
+
+```bash
+node scripts/check-resolvable.mjs          # errors block, DRY duplication warns
+node scripts/check-resolvable.mjs --strict # DRY duplication also blocks
+```
+
+It enforces six phases: **Reachability** (no skill orphaned from the table),
+**Ambiguity** (no two skills share a slash-command route), **DRY** (duplicated
+prose blocks should move to `lib/`), **MECE** (no two skills with overlapping
+purpose — merge via args), **Cursor parity** (every skill has a
+`.cursor/rules/<slug>.mdc` mirror so it's available to Cursor, not just Claude),
+and **Scaffold-sync** (every skill is registered in `.github/scaffold-files.txt`
+so it propagates downstream).
+
+Enable it as a pre-commit gate:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+New skills are created with **`/skillify`**, which reconstructs the session,
+interviews briefly, generates a `SKILL.md` + Cursor mirror, registers it in
+RESOLVER, validates, and opens a PR back to scaffold so all repos inherit it.
 
 ## Global installation
 

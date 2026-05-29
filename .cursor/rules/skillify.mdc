@@ -1,0 +1,6 @@
+---
+description: Capture a completed session as a reusable, registered skill. Run when the user wants to turn the current session into a skill, extract a repeatable workflow, or create a new skill from work just finished.
+alwaysApply: false
+---
+
+@../../skills/skillify.md

@@ -3,20 +3,4 @@ description: Review implementation for structural quality — file size, spaghet
 alwaysApply: false
 ---
 
-**Scope:** Use `git diff main...HEAD --name-only` to identify changed files. Read each fully — structural issues need full context. Single pass per file, all five criteria together. No subagents. Only read files outside the changed set if a cross-file criterion specifically requires it.
-
-**Mode:** If triggered automatically from feature-chain or tdd, apply fixes to source files directly, re-run the full test suite to confirm nothing broke, then continue. If invoked standalone by the user, present findings as annotated diffs and wait for approval before changing anything.
-
-**Checklist:**
-1. **File size** — Files at or approaching 1,000 lines require decomposition, not growth.
-2. **Spaghetti** — Reject ad-hoc conditionals and one-off branches in unrelated flows.
-3. **Abstractions** — Reject thin wrappers and identity layers. Every layer must earn its place.
-4. **Types** — Prefer explicit typed models; flag unnecessary optionality, casts, loose shapes.
-5. **Canonical reuse** — Logic in one place; flag duplicates and feature logic in shared code.
-
-**Blockers** (resolve before completion summary):
-- Visible simpler restructuring left on the table
-- File pushed past 1,000 lines
-- Ad-hoc branching added to existing flows
-- Thin wrappers or cast-heavy contracts introduced
-- Feature checks scattered across shared code
+@../../skills/code-quality-review.md

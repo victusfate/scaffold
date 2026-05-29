@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+# Skill-engine routing gate. Enable with:  git config core.hooksPath .githooks
+# Blocks the commit on architectural errors (orphans, routing collisions,
+# MECE violations, unsynced skills). DRY duplication is a warning here; run
+# `node scripts/check-resolvable.mjs --strict` in CI to make it block too.
+node scripts/check-resolvable.mjs
