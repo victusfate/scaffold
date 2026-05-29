@@ -32,6 +32,8 @@ while IFS= read -r line; do
 done < <(git show scaffold/main:.github/scaffold-files.txt)
 
 updated=(); skipped=(); conflicts=()
+ours=''; base=''; theirs=''
+trap 'rm -f "${ours:-}" "${base:-}" "${theirs:-}"' EXIT
 
 for file in "${files[@]}"; do
   git cat-file -e "scaffold/main:${file}" 2>/dev/null || continue
@@ -50,8 +52,8 @@ for file in "${files[@]}"; do
   local_blob=$(git hash-object "$file")
   [ "$local_blob" = "$remote_blob" ] && continue
 
-  # Uncommitted local edits — don't touch
-  if ! git diff --quiet -- "$file"; then
+  # Uncommitted local edits (working tree or index) — don't touch
+  if ! git diff --quiet -- "$file" || ! git diff --cached --quiet -- "$file"; then
     skipped+=("$file")
     continue
   fi
@@ -70,6 +72,7 @@ for file in "${files[@]}"; do
       conflicts+=("$file")
     fi
     rm -f "$ours" "$base" "$theirs"
+    ours=''; base=''; theirs=''
   else
     # No base available — overwrite
     git show "scaffold/main:${file}" > "$file"
