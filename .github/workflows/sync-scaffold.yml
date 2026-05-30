@@ -18,7 +18,7 @@ jobs:
         id: sync
         run: |
           bash bin/sync-from-scaffold.sh
-          if git diff --quiet && git diff --staged --quiet; then
+          if git diff --quiet && git diff --staged --quiet && [ -z "$(git ls-files --others --exclude-standard)" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
@@ -35,8 +35,12 @@ jobs:
           git add -A
           git commit -m "chore: sync agent guidance from scaffold"
           git push -u origin chore/sync-scaffold-guidance
-          gh pr create \
-            --title "chore: sync agent guidance from scaffold" \
-            --body "Automated sync from [victusfate/scaffold](https://github.com/victusfate/scaffold). Review the diff before merging — any conflicts have markers and need manual resolution." \
-            --label dependencies \
-            || echo "PR already open"
+          existing=$(gh pr list --head "chore/sync-scaffold-guidance" --state open --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$existing" ]; then
+            echo "PR already open (#$existing)"
+          else
+            gh pr create \
+              --title "chore: sync agent guidance from scaffold" \
+              --body "Automated sync from [victusfate/scaffold](https://github.com/victusfate/scaffold). Review the diff before merging — any conflicts have markers and need manual resolution." \
+              --label dependencies
+          fi
