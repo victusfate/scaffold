@@ -237,7 +237,10 @@ function phaseMece(rows) {
   }
 }
 
-// Phase 5 — Wrapper integrity: harness wrappers must @-include the canonical.
+// Phase 5 — Wrapper integrity: harness wrappers must reference the canonical.
+// Claude and Cursor use @-include syntax (resolved by their respective parsers).
+// Antigravity bodies are literal Markdown — no include resolution — so they use
+// a standard Markdown link with an explicit read instruction instead.
 function phaseWrapperIntegrity(rows) {
   for (const r of rows) {
     const expectedCanonical = `skills/${r.skill}.md`;
@@ -256,18 +259,19 @@ function phaseWrapperIntegrity(rows) {
         fail('Wrapper', `Cursor wrapper for '${r.skill}' must contain '@../../${expectedCanonical}' — edit skills/${r.skill}.md, not the wrapper`);
       }
     }
+    // Antigravity: body is literal Markdown; check for a Markdown link to the canonical path.
     const antigravitySkill = join(ANTIGRAVITY_SKILLS, r.skill, 'SKILL.md');
     if (existsSync(antigravitySkill)) {
       const src = readFileSync(antigravitySkill, 'utf8');
-      if (!src.includes(`@../../../${expectedCanonical}`)) {
-        fail('Wrapper', `Antigravity skill for '${r.skill}' must contain '@../../../${expectedCanonical}' — edit skills/${r.skill}.md, not the wrapper`);
+      if (!src.includes(`../../../${expectedCanonical}`)) {
+        fail('Wrapper', `Antigravity skill for '${r.skill}' must contain a Markdown link to '../../../${expectedCanonical}' — edit skills/${r.skill}.md, not the wrapper`);
       }
     }
     const antigravityWorkflow = join(ANTIGRAVITY_WORKFLOWS, `${r.skill}.md`);
     if (existsSync(antigravityWorkflow)) {
       const src = readFileSync(antigravityWorkflow, 'utf8');
-      if (!src.includes(`@../../${expectedCanonical}`)) {
-        fail('Wrapper', `Antigravity workflow for '${r.skill}' must contain '@../../${expectedCanonical}' — edit skills/${r.skill}.md, not the wrapper`);
+      if (!src.includes(`../../${expectedCanonical}`)) {
+        fail('Wrapper', `Antigravity workflow for '${r.skill}' must contain a Markdown link to '../../${expectedCanonical}' — edit skills/${r.skill}.md, not the wrapper`);
       }
     }
   }

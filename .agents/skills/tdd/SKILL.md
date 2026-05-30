@@ -8,4 +8,4 @@ metadata:
   version: "1.0"
 ---
 
-@../../../skills/tdd.md
+Read and follow the complete skill instructions in [`skills/tdd.md`](../../../skills/tdd.md).

@@ -8,4 +8,4 @@ metadata:
   version: "1.0"
 ---
 
-@../../../skills/grill-with-docs.md
+Read and follow the complete skill instructions in [`skills/grill-with-docs.md`](../../../skills/grill-with-docs.md).

@@ -8,4 +8,4 @@ metadata:
   version: "1.0"
 ---
 
-@../../../skills/to-prd.md
+Read and follow the complete skill instructions in [`skills/to-prd.md`](../../../skills/to-prd.md).
