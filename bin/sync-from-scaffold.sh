@@ -83,15 +83,30 @@ sync_file() {
   fi
 }
 
+# Self-update first: if scaffold has a newer version of this script and the
+# working tree is clean, overwrite it and re-exec so the rest of the sync
+# runs with the latest logic. exec replaces this process entirely — no bash
+# buffering issue, and the re-exec'd process finds local==remote and skips
+# the self-check. Falls through to sync_file below only when $SELF has local
+# edits (treated as skipped, same as any other locally-modified file).
+if git cat-file -e "scaffold/main:${SELF}" 2>/dev/null; then
+  _remote=$(git rev-parse "scaffold/main:${SELF}")
+  _local=$(git hash-object "$SELF")
+  if [ "$_local" != "$_remote" ] \
+     && git diff --quiet -- "$SELF" \
+     && git diff --cached --quiet -- "$SELF"; then
+    git show "scaffold/main:${SELF}" > "$SELF"
+    exec bash "$SELF" "$@"
+  fi
+fi
+
 for file in "${files[@]}"; do
-  [ "$file" = "$SELF" ] && continue  # deferred — see below
+  [ "$file" = "$SELF" ] && continue  # handled above; local-edit case handled below
   sync_file "$file"
 done
 
-# Self-update last: bash reads scripts in buffered chunks, so overwriting
-# this file mid-loop shifts bash's read offset and causes spurious syntax
-# errors. Deferring it ensures the rest of the script runs from its
-# original on-disk content before the file is replaced.
+# Local-edit fallback: if re-exec didn't fire (local edits on $SELF), run
+# sync_file so it lands in skipped like any other locally-modified file.
 sync_file "$SELF"
 
 # Save SHA only when there are no unresolved conflicts
