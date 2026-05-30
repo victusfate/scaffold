@@ -8,7 +8,10 @@ On your first response in a new session:
    the current branch is behind. If you see that warning, rebase before
    starting new feature work (`git rebase origin/main`) or pull if on `main`
    (`git pull origin main`).
-2. **Artifacts check** — Check `./docs/` for existing feature artifacts
+2. **PR watch** — Subscribe to any open PRs with `subscribe_pr_activity` so
+   review comments and merge events are delivered automatically. No need to
+   ask first.
+3. **Artifacts check** — Check `./docs/` for existing feature artifacts
    (`design.md`, `prd.md`, `plan.md`).
 
 - **Artifacts exist:** acknowledge them and ask how to continue.
@@ -105,6 +108,7 @@ Skip the chain for:
 3. Do the work, verify with build/tests
 4. Commit, push: `git push -u origin <branch>`
 5. Create PR
-6. After merge, pull main again
+6. **Immediately** subscribe to the PR with `subscribe_pr_activity` — do not ask first.
+7. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
 
 Never commit directly to main for feature work. Never reuse an old branch for a new PR.
