@@ -1,8 +1,12 @@
 AGENTS.md
+CLAUDE.md
+GEMINI.md
+.claudeignore
 .claude/settings.json
 .claude/session-start/hook.sh
 .claude/read-once/hook.sh
 .claude/read-once/compact.sh
+bin/bootstrap.sh
 bin/sync-from-scaffold.sh
 .github/workflows/sync-scaffold.yml
 scripts/check-resolvable.mjs
