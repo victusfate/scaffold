@@ -68,8 +68,28 @@ bin/
     tdd.mdc                      # mirrors tdd skill for Cursor
     design-review.mdc            # mirrors design-review skill for Cursor
     code-quality-review.mdc      # mirrors code-quality-review skill for Cursor
+.agents/
+  skills/
+    feature-chain/SKILL.md       # Antigravity lazy-loaded skill wrapper
+    grill-with-docs/SKILL.md
+    to-prd/SKILL.md
+    tdd/SKILL.md
+    design-review/SKILL.md
+    code-quality-review/SKILL.md
+    skillify/SKILL.md
+.agent/
+  rules/
+    agents.md                    # thin pointer to AGENTS.md (always-on)
+  workflows/
+    feature-chain.md             # Antigravity /slash-command trigger
+    grill-with-docs.md
+    to-prd.md
+    tdd.md
+    design-review.md
+    code-quality-review.md
+    skillify.md
 scripts/
-  check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/cursor/sync)
+  check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/cursor/antigravity/sync)
 .githooks/
   pre-commit                     # runs the linter — enable via core.hooksPath
 .github/
@@ -85,6 +105,7 @@ scripts/
 |---|---|
 | Claude Code | `CLAUDE.md` → imports `AGENTS.md`; `/skill-name` invokes skills |
 | Cursor | `.cursor/rules/*.mdc` — description-driven activation |
+| Google Antigravity | `GEMINI.md` + `AGENTS.md`; `.agents/skills/` (lazy-loaded) + `.agent/workflows/` (slash commands) |
 | Gemini CLI | `GEMINI.md` → references `AGENTS.md` |
 | OpenAI Codex | `AGENTS.md` directly |
 
@@ -127,13 +148,14 @@ node scripts/check-resolvable.mjs          # errors block, DRY duplication warns
 node scripts/check-resolvable.mjs --strict # DRY duplication also blocks
 ```
 
-It enforces six phases: **Reachability** (no skill orphaned from the table),
+It enforces seven phases: **Reachability** (no skill orphaned from the table),
 **Ambiguity** (no two skills share a slash-command route), **DRY** (duplicated
 prose blocks should move to `lib/`), **MECE** (no two skills with overlapping
 purpose — merge via args), **Cursor parity** (every skill has a
-`.cursor/rules/<slug>.mdc` mirror so it's available to Cursor, not just Claude),
-and **Scaffold-sync** (every skill is registered in `.github/scaffold-files.txt`
-so it propagates downstream).
+`.cursor/rules/<slug>.mdc` mirror), **Antigravity parity** (every skill has a
+`.agents/skills/<slug>/SKILL.md` + `.agent/workflows/<slug>.md` pair for Google
+Antigravity), and **Scaffold-sync** (every skill is registered in
+`.github/scaffold-files.txt` so it propagates downstream).
 
 Enable it as a pre-commit gate:
 
@@ -142,8 +164,9 @@ git config core.hooksPath .githooks
 ```
 
 New skills are created with **`/skillify`**, which reconstructs the session,
-interviews briefly, generates a `SKILL.md` + Cursor mirror, registers it in
-RESOLVER, validates, and opens a PR back to scaffold so all repos inherit it.
+interviews briefly, generates a `SKILL.md`, Cursor mirror, and Antigravity
+wrappers, registers it in RESOLVER, validates, and opens a PR back to scaffold
+so all repos inherit it.
 
 ## Global installation
 

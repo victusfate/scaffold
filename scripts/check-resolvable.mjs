@@ -6,8 +6,8 @@
 //   node scripts/check-resolvable.mjs --quiet     # errors only
 //
 // Reads .claude/skills/RESOLVER.md and skills/<slug>.md canonical files and
-// enforces: Reachability, Ambiguity, DRY, MECE, Cursor parity, Wrapper integrity,
-// and Scaffold-sync. Exits non-zero on any error so it can gate a pre-commit hook.
+// enforces: Reachability, Ambiguity, DRY, MECE, Cursor parity, Antigravity parity,
+// Wrapper integrity, and Scaffold-sync. Exits non-zero on any error so it can gate a pre-commit hook.
 
 import { readFileSync, existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -18,6 +18,8 @@ const SKILLS_DIR = join(ROOT, '.claude', 'skills');
 const RESOLVER = join(SKILLS_DIR, 'RESOLVER.md');
 const MANIFEST = join(ROOT, '.github', 'scaffold-files.txt');
 const CURSOR_RULES = join(ROOT, '.cursor', 'rules');
+const ANTIGRAVITY_SKILLS = join(ROOT, '.agents', 'skills');
+const ANTIGRAVITY_WORKFLOWS = join(ROOT, '.agent', 'workflows');
 
 const argv = new Set(process.argv.slice(2));
 const STRICT = argv.has('--strict');
@@ -254,6 +256,20 @@ function phaseWrapperIntegrity(rows) {
         fail('Wrapper', `Cursor wrapper for '${r.skill}' must contain '@../../${expectedCanonical}' — edit skills/${r.skill}.md, not the wrapper`);
       }
     }
+    const antigravitySkill = join(ANTIGRAVITY_SKILLS, r.skill, 'SKILL.md');
+    if (existsSync(antigravitySkill)) {
+      const src = readFileSync(antigravitySkill, 'utf8');
+      if (!src.includes(`@../../../${expectedCanonical}`)) {
+        fail('Wrapper', `Antigravity skill for '${r.skill}' must contain '@../../../${expectedCanonical}' — edit skills/${r.skill}.md, not the wrapper`);
+      }
+    }
+    const antigravityWorkflow = join(ANTIGRAVITY_WORKFLOWS, `${r.skill}.md`);
+    if (existsSync(antigravityWorkflow)) {
+      const src = readFileSync(antigravityWorkflow, 'utf8');
+      if (!src.includes(`@../../${expectedCanonical}`)) {
+        fail('Wrapper', `Antigravity workflow for '${r.skill}' must contain '@../../${expectedCanonical}' — edit skills/${r.skill}.md, not the wrapper`);
+      }
+    }
   }
 }
 
@@ -266,6 +282,25 @@ function phaseCursorParity(rows) {
       fail('Cursor', `'${r.skill}' has no Cursor mirror at ${rel(mirror)}`);
     } else if (!listedInManifest(`.cursor/rules/${r.skill}.mdc`)) {
       warn('Cursor', `.cursor/rules/${r.skill}.mdc not in scaffold manifest — won't sync downstream`);
+    }
+  }
+}
+
+// Phase 7b — Antigravity parity: every skill must have both an Antigravity skill
+// wrapper and a workflow file so it's available in Google Antigravity.
+function phaseAntigravityParity(rows) {
+  for (const r of rows) {
+    const skillFile = join(ANTIGRAVITY_SKILLS, r.skill, 'SKILL.md');
+    if (!existsSync(skillFile)) {
+      fail('Antigravity', `'${r.skill}' has no Antigravity skill at ${rel(skillFile)}`);
+    } else if (!listedInManifest(`.agents/skills/${r.skill}/SKILL.md`)) {
+      warn('Antigravity', `.agents/skills/${r.skill}/SKILL.md not in scaffold manifest — won't sync downstream`);
+    }
+    const workflowFile = join(ANTIGRAVITY_WORKFLOWS, `${r.skill}.md`);
+    if (!existsSync(workflowFile)) {
+      fail('Antigravity', `'${r.skill}' has no Antigravity workflow at ${rel(workflowFile)}`);
+    } else if (!listedInManifest(`.agent/workflows/${r.skill}.md`)) {
+      warn('Antigravity', `.agent/workflows/${r.skill}.md not in scaffold manifest — won't sync downstream`);
     }
   }
 }
@@ -297,6 +332,7 @@ if (rows.length) {
   phaseMece(rows);
   phaseWrapperIntegrity(rows);
   phaseCursorParity(rows);
+  phaseAntigravityParity(rows);
   phaseScaffold(rows);
 }
 

@@ -25,7 +25,8 @@ the first match.
   routing key the validator checks for collisions.
 - **Path** — the canonical `skills/<slug>.md`. MUST exist on disk and MUST be
   listed in `.github/scaffold-files.txt`. Harness-specific wrappers
-  (`.claude/skills/<slug>/SKILL.md`, `.cursor/rules/<slug>.mdc`) `@`-include
+  (`.claude/skills/<slug>/SKILL.md`, `.cursor/rules/<slug>.mdc`,
+  `.agents/skills/<slug>/SKILL.md`, `.agent/workflows/<slug>.md`) `@`-include
   this file — edit here, not in the wrappers.
 - **Purpose** — one operational sentence. Two skills with near-identical
   purpose fail the MECE check and must be merged via parameterized args.
