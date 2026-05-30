@@ -8,9 +8,9 @@ On your first response in a new session:
    the current branch is behind. If you see that warning, rebase before
    starting new feature work (`git rebase origin/main`) or pull if on `main`
    (`git pull origin main`).
-2. **PR watch** — Subscribe to any open PRs with `subscribe_pr_activity` so
-   review comments and merge events are delivered automatically. No need to
-   ask first.
+2. **PR watch** — If the current branch has an open PR, subscribe to it with
+   `subscribe_pr_activity`. Only watch the PR for this session's branch — not
+   PRs from other branches.
 3. **Artifacts check** — Check `./docs/` for existing feature artifacts
    (`design.md`, `prd.md`, `plan.md`).
 
