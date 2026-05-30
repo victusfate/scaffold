@@ -112,6 +112,5 @@ Skip the chain for:
 7. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
 
 Never commit directly to main for feature work.
-Only switch branches after the current feature branch is merged or the user explicitly asks.
-A session spans the full lifetime of a branch — from creation until it is merged or discarded. Keep committing to the current branch for the duration of that session; don't branch off main while the branch is still open.
+A session spans the full lifetime of a branch — from creation until it is merged or discarded. Only switch branches after the current feature branch is merged or the user explicitly asks; keep committing to the current branch until then.
 A new session always starts from a fresh branch off main.
