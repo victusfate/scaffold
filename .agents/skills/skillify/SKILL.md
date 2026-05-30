@@ -8,4 +8,4 @@ metadata:
   version: "1.0"
 ---
 
-@../../../skills/skillify.md
+Read and follow the complete skill instructions in [`skills/skillify.md`](../../../skills/skillify.md).

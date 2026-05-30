@@ -8,4 +8,4 @@ metadata:
   version: "1.0"
 ---
 
-@../../../skills/code-quality-review.md
+Read and follow the complete skill instructions in [`skills/code-quality-review.md`](../../../skills/code-quality-review.md).

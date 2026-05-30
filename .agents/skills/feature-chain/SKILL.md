@@ -8,4 +8,4 @@ metadata:
   version: "1.0"
 ---
 
-@../../../skills/feature-chain.md
+Read and follow the complete skill instructions in [`skills/feature-chain.md`](../../../skills/feature-chain.md).
