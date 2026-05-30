@@ -1,4 +1,6 @@
 AGENTS.md
+.claude/settings.json
+.claude/session-start/hook.sh
 bin/sync-from-scaffold.sh
 .github/workflows/sync-scaffold.yml
 scripts/check-resolvable.mjs
