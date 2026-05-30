@@ -2,8 +2,14 @@
 
 ## Session Start
 
-On your first response in a new session, check `./docs/` for existing feature
-artifacts (`design.md`, `prd.md`, `plan.md`).
+On your first response in a new session:
+
+1. **Sync check** — A `SessionStart` hook fetches `origin/main` and warns if
+   the current branch is behind. If you see that warning, rebase before
+   starting new feature work (`git rebase origin/main`) or pull if on `main`
+   (`git pull origin main`).
+2. **Artifacts check** — Check `./docs/` for existing feature artifacts
+   (`design.md`, `prd.md`, `plan.md`).
 
 - **Artifacts exist:** acknowledge them and ask how to continue.
 - **No artifacts + user describes a feature to build:** automatically start

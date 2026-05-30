@@ -56,10 +56,12 @@ bin/
     design-review/SKILL.md       # structural review of design.md (auto-fix in chain)
     code-quality-review/SKILL.md # structural review of implementation (auto-fix in chain)
     skillify/SKILL.md            # capture a session as a new registered skill + PR
+  session-start/
+    hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
   read-once/
     hook.sh                      # PreToolUse hook: skips redundant file reads
     compact.sh                   # PostCompact hook: clears read cache after compaction
-  settings.json                  # hook wiring
+  settings.json                  # hook wiring (SessionStart, PreToolUse, PostCompact)
 .cursor/
   rules/
     agents.mdc                   # thin pointer to AGENTS.md
@@ -178,6 +180,10 @@ cp -r .claude/skills/* ~/.claude/skills/
 ```
 
 Project-level skills override global ones when names match.
+
+## session-start hook
+
+`.claude/session-start/hook.sh` runs at every session start. It fetches `origin/main` silently and warns Claude if the current branch is behind — prompting a rebase or pull before new feature work begins. Always exits 0 so a network failure never blocks a session.
 
 ## read-once hooks
 
