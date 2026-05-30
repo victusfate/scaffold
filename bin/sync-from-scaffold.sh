@@ -6,6 +6,7 @@ set -euo pipefail
 
 SCAFFOLD_URL="${SCAFFOLD_URL:-https://github.com/victusfate/scaffold.git}"
 SHA_FILE=".github/scaffold-sync-sha"
+SELF="bin/sync-from-scaffold.sh"
 
 # Ensure scaffold remote exists
 if ! git remote get-url scaffold &>/dev/null; then
@@ -35,8 +36,9 @@ updated=(); skipped=(); conflicts=()
 ours=''; base=''; theirs=''
 trap 'rm -f "${ours:-}" "${base:-}" "${theirs:-}"' EXIT
 
-for file in "${files[@]}"; do
-  git cat-file -e "scaffold/main:${file}" 2>/dev/null || continue
+sync_file() {
+  local file="$1"
+  git cat-file -e "scaffold/main:${file}" 2>/dev/null || return 0
 
   mkdir -p "$(dirname "$file")"
 
@@ -44,18 +46,19 @@ for file in "${files[@]}"; do
   if [ ! -f "$file" ]; then
     git show "scaffold/main:${file}" > "$file"
     updated+=("+ $file")
-    continue
+    return 0
   fi
 
   # Identical (compare blob SHAs) — nothing to do
+  local remote_blob local_blob
   remote_blob=$(git rev-parse "scaffold/main:${file}")
   local_blob=$(git hash-object "$file")
-  [ "$local_blob" = "$remote_blob" ] && continue
+  [ "$local_blob" = "$remote_blob" ] && return 0
 
   # Uncommitted local edits (working tree or index) — don't touch
   if ! git diff --quiet -- "$file" || ! git diff --cached --quiet -- "$file"; then
     skipped+=("$file")
-    continue
+    return 0
   fi
 
   # Three-way merge using last synced SHA as base
@@ -78,7 +81,18 @@ for file in "${files[@]}"; do
     git show "scaffold/main:${file}" > "$file"
     updated+=("~ $file (no base, overwritten)")
   fi
+}
+
+for file in "${files[@]}"; do
+  [ "$file" = "$SELF" ] && continue  # deferred — see below
+  sync_file "$file"
 done
+
+# Self-update last: bash reads scripts in buffered chunks, so overwriting
+# this file mid-loop shifts bash's read offset and causes spurious syntax
+# errors. Deferring it ensures the rest of the script runs from its
+# original on-disk content before the file is replaced.
+sync_file "$SELF"
 
 # Save SHA only when there are no unresolved conflicts
 [ ${#conflicts[@]} -eq 0 ] && echo "$current_sha" > "$SHA_FILE"
