@@ -111,5 +111,6 @@ Skip the chain for:
 6. **Immediately** subscribe to the PR with `subscribe_pr_activity` — do not ask first.
 7. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
 
-Never commit directly to main for feature work. Never reuse an old branch for a new PR.
-If the current branch has an open unmerged PR from this session, continue committing to it rather than branching off main again — same session means same branch.
+Never commit directly to main for feature work.
+Within a session: if the current branch has an open unmerged PR, keep committing to it — don't branch off main again for related work.
+Across sessions: always start from a fresh branch off main. Never reuse a branch from a previous session or a merged branch.
