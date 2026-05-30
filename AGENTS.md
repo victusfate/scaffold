@@ -108,6 +108,8 @@ Skip the chain for:
 3. Do the work, verify with build/tests
 4. Commit, push: `git push -u origin <branch>`
 5. Create PR
-6. After merge, pull main again
+6. **Immediately** subscribe to the PR with `subscribe_pr_activity` — do not ask first.
+7. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
 
 Never commit directly to main for feature work. Never reuse an old branch for a new PR.
+If the current branch has an open unmerged PR from this session, continue committing to it rather than branching off main again — same session means same branch.
