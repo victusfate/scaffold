@@ -107,9 +107,8 @@ Skip the chain for:
 2. Create a clean branch: `git checkout -b <prefix>/<short-descriptive-name>`
 3. Do the work, verify with build/tests
 4. Commit, push: `git push -u origin <branch>`
-5. Create PR
-6. **Immediately** subscribe to the PR with `subscribe_pr_activity` — do not ask first.
-7. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
+5. When changes are ready for review, run `/create-pr` — it creates the PR and subscribes to activity atomically. Do not split these steps.
+6. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
 
 Never commit directly to main for feature work.
 A session spans the full lifetime of a branch — from creation until it is merged or discarded. Only switch branches after the current feature branch is merged or the user explicitly asks; keep committing to the current branch until then. The one permitted exception is checking out main solely to pull and immediately create a new feature branch.

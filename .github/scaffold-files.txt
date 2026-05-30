@@ -19,6 +19,8 @@ skills/tdd.md
 skills/design-review.md
 skills/code-quality-review.md
 skills/skillify.md
+skills/sync-scaffold.md
+skills/create-pr.md
 .claude/skills/feature-chain/SKILL.md
 .claude/skills/grill-with-docs/SKILL.md
 .claude/skills/to-prd/SKILL.md
@@ -26,6 +28,8 @@ skills/skillify.md
 .claude/skills/design-review/SKILL.md
 .claude/skills/code-quality-review/SKILL.md
 .claude/skills/skillify/SKILL.md
+.claude/skills/sync-scaffold/SKILL.md
+.claude/skills/create-pr/SKILL.md
 .cursor/rules/agents.mdc
 .cursor/rules/code-quality-review.mdc
 .cursor/rules/design-review.mdc
@@ -34,6 +38,8 @@ skills/skillify.md
 .cursor/rules/skillify.mdc
 .cursor/rules/tdd.mdc
 .cursor/rules/to-prd.mdc
+.cursor/rules/sync-scaffold.mdc
+.cursor/rules/create-pr.mdc
 .agents/skills/feature-chain/SKILL.md
 .agents/skills/grill-with-docs/SKILL.md
 .agents/skills/to-prd/SKILL.md
@@ -41,6 +47,8 @@ skills/skillify.md
 .agents/skills/design-review/SKILL.md
 .agents/skills/code-quality-review/SKILL.md
 .agents/skills/skillify/SKILL.md
+.agents/skills/sync-scaffold/SKILL.md
+.agents/skills/create-pr/SKILL.md
 .agent/workflows/feature-chain.md
 .agent/workflows/grill-with-docs.md
 .agent/workflows/to-prd.md
@@ -48,5 +56,7 @@ skills/skillify.md
 .agent/workflows/design-review.md
 .agent/workflows/code-quality-review.md
 .agent/workflows/skillify.md
+.agent/workflows/sync-scaffold.md
+.agent/workflows/create-pr.md
 .agent/rules/agents.md
 .githooks/pre-commit

@@ -14,6 +14,8 @@ the first match.
 | design-review | `/(?:^\/design-review\b)\|review\s+(?:the\s+)?design(?:\.md)?/i` | `skills/design-review.md` | Structural review of design.md |
 | code-quality-review | `/(?:^\/code-quality-review\b)\|review\s+(?:the\s+)?(?:code\|implementation)\s+quality/i` | `skills/code-quality-review.md` | Structural review of implementation |
 | skillify | `/(?:^\/skillify\b)\|(?:turn\s+(?:this\|the)\s+session\s+into\|extract)\s+(?:a\s+)?(?:new\s+)?skill/i` | `skills/skillify.md` | Capture a completed session as a reusable skill + PR to scaffold |
+| sync-scaffold | `/(?:^\/sync-scaffold\b)\|(?:sync\|bootstrap)\s+(?:from\s+)?(?:the\s+)?scaffold/i` | `skills/sync-scaffold.md` | Bootstrap scaffold into a repo or sync an existing one from upstream |
+| create-pr | `/(?:^\/create-pr\b)\|(?:open\|create\|submit\|make)\s+(?:a\s+)?(?:pull\s+request\|PR)/i` | `skills/create-pr.md` | Create a PR for the current branch and immediately subscribe to its activity |
 
 ## Column contract
 

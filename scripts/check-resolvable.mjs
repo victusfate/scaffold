@@ -285,7 +285,7 @@ function phaseCursorParity(rows) {
     if (!existsSync(mirror)) {
       fail('Cursor', `'${r.skill}' has no Cursor mirror at ${rel(mirror)}`);
     } else if (!listedInManifest(`.cursor/rules/${r.skill}.mdc`)) {
-      warn('Cursor', `.cursor/rules/${r.skill}.mdc not in scaffold manifest — won't sync downstream`);
+      fail('Cursor', `.cursor/rules/${r.skill}.mdc not in scaffold manifest — won't sync downstream`);
     }
   }
 }
@@ -298,13 +298,13 @@ function phaseAntigravityParity(rows) {
     if (!existsSync(skillFile)) {
       fail('Antigravity', `'${r.skill}' has no Antigravity skill at ${rel(skillFile)}`);
     } else if (!listedInManifest(`.agents/skills/${r.skill}/SKILL.md`)) {
-      warn('Antigravity', `.agents/skills/${r.skill}/SKILL.md not in scaffold manifest — won't sync downstream`);
+      fail('Antigravity', `.agents/skills/${r.skill}/SKILL.md not in scaffold manifest — won't sync downstream`);
     }
     const workflowFile = join(ANTIGRAVITY_WORKFLOWS, `${r.skill}.md`);
     if (!existsSync(workflowFile)) {
       fail('Antigravity', `'${r.skill}' has no Antigravity workflow at ${rel(workflowFile)}`);
     } else if (!listedInManifest(`.agent/workflows/${r.skill}.md`)) {
-      warn('Antigravity', `.agent/workflows/${r.skill}.md not in scaffold manifest — won't sync downstream`);
+      fail('Antigravity', `.agent/workflows/${r.skill}.md not in scaffold manifest — won't sync downstream`);
     }
   }
 }
