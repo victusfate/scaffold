@@ -35,7 +35,7 @@ grill-with-docs → to-prd → tdd → review
 3. **tdd** — Derives `plan.md` from the PRD, then executes RED → GREEN → REFACTOR one vertical slice at a time. Commits per slice.
 4. **Review** — Chain stops and presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
 
-Skills can also be invoked individually: `/grill-with-docs`, `/to-prd`, `/tdd`.
+Skills can also be invoked individually: `/grill-with-docs`, `/to-prd`, `/tdd`, `/create-pr`, `/sync-scaffold`.
 
 ## Structure
 
@@ -56,6 +56,8 @@ bin/
     design-review/SKILL.md       # structural review of design.md (auto-fix in chain)
     code-quality-review/SKILL.md # structural review of implementation (auto-fix in chain)
     skillify/SKILL.md            # capture a session as a new registered skill + PR
+    create-pr/SKILL.md           # create PR + subscribe to activity atomically
+    sync-scaffold/SKILL.md       # bootstrap or sync this repo from upstream scaffold
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
   read-once/
@@ -70,6 +72,8 @@ bin/
     tdd.mdc                      # mirrors tdd skill for Cursor
     design-review.mdc            # mirrors design-review skill for Cursor
     code-quality-review.mdc      # mirrors code-quality-review skill for Cursor
+    create-pr.mdc                # mirrors create-pr skill for Cursor
+    sync-scaffold.mdc            # mirrors sync-scaffold skill for Cursor
 .agents/
   skills/
     feature-chain/SKILL.md       # Antigravity lazy-loaded skill wrapper
@@ -79,6 +83,8 @@ bin/
     design-review/SKILL.md
     code-quality-review/SKILL.md
     skillify/SKILL.md
+    create-pr/SKILL.md
+    sync-scaffold/SKILL.md
 .agent/
   rules/
     agents.md                    # thin pointer to AGENTS.md (always-on)
@@ -90,6 +96,8 @@ bin/
     design-review.md
     code-quality-review.md
     skillify.md
+    create-pr.md
+    sync-scaffold.md
 scripts/
   check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/cursor/antigravity/sync)
 .githooks/
@@ -134,6 +142,8 @@ curl -fsSL https://raw.githubusercontent.com/victusfate/scaffold/main/bin/bootst
 ```bash
 bash bin/sync-from-scaffold.sh
 ```
+
+Or ask the agent — `/sync-scaffold` detects which path is needed (bootstrap vs sync) and runs it automatically.
 
 The sync script uses git (no curl after bootstrap), compares blob SHAs, and three-way merges files that both you and scaffold have changed. Files with uncommitted local edits are skipped with a warning. The last-synced SHA is stored in `.github/scaffold-sync-sha` so future merges have a proper base.
 
