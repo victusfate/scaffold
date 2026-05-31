@@ -61,12 +61,30 @@ const manifestSet = new Set(
 );
 const listedInManifest = (p) => manifestSet.has(p);
 
-// Split a markdown table row on unescaped pipes only, then trim cells.
+// Split a markdown table row into cells, treating pipe characters inside
+// backtick spans as content (not separators). This lets regex cells like
+// `/(?:foo|bar)/i` use raw `|` for alternation without escaping.
+// Outside backtick spans, all `|` are cell separators.
+// `\|` inside a backtick cell is still unescaped to `|` by compileCell,
+// so existing escaped patterns remain valid.
 function splitRow(row) {
-  return row
-    .split(/(?<!\\)\|/)
-    .map((c) => c.trim())
-    .filter((c, i, arr) => !(i === 0 && c === '') && !(i === arr.length - 1 && c === ''));
+  const cells = [];
+  let current = '';
+  let inBacktick = false;
+  for (let i = 0; i < row.length; i++) {
+    const ch = row[i];
+    if (ch === '`') {
+      inBacktick = !inBacktick;
+      current += ch;
+    } else if (ch === '|' && !inBacktick) {
+      cells.push(current.trim());
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  if (current.trim()) cells.push(current.trim());
+  return cells.filter((c, i, arr) => !(i === 0 && c === '') && !(i === arr.length - 1 && c === ''));
 }
 
 // ---------------------------------------------------------------- parse RESOLVER
