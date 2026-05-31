@@ -18,7 +18,7 @@ the first match.
 | create-pr | `/(?:^\/create-pr\b)\|(?:open\|create\|submit\|make)\s+(?:a\s+)?(?:pull\s+request\|PR)/i` | `skills/create-pr.md` | Create a PR for the current branch and immediately subscribe to its activity |
 | code-review | `/(?:^\/code-review\b)\|(?:review\|check)\s+(?:the\s+)?(?:diff\|pr)\s*(?:for\s+bugs)?/i` | `skills/code-review.md` | Review current diff for correctness bugs and quality issues at a configurable effort level |
 | simplify | `/(?:^\/simplify\b)\|simplify\s+(?:the\s+)?(?:code\|changed\s+files)/i` | `skills/simplify.md` | Apply reuse, simplification, efficiency, and altitude cleanups to changed code |
-| thermo-nuclear-quality | `/(?:^\/thermo-nuclear-quality\b)\|(?:nuclear\s+quality\|full\s+quality\s+rework\|thermo.nuclear)/i` | `skills/thermo-nuclear-quality.md` | Run all quality review skills and funnel findings into design→PRD→TDD→PR |
+| prune | `/(?:^\/prune\b)\|(?:deep\s+clean\|full\s+quality\s+rework)\s+(?:the\s+)?codebase/i` | `skills/prune.md` | Run all quality review skills and funnel findings into design→PRD→TDD→PR |
 
 ## Column contract
 
