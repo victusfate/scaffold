@@ -2,6 +2,8 @@
 
 Sync this repo from the upstream scaffold, or bootstrap scaffold support from scratch if it isn't set up yet.
 
+**Always run on the current working branch.** Do not switch to main or any other branch before or after syncing. All file changes and commits stay on whatever branch is active when this skill is invoked.
+
 ### Step 1 — detect state
 
 Check whether `bin/sync-from-scaffold.sh` exists in the current working directory.
