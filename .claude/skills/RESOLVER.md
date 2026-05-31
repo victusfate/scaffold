@@ -16,15 +16,20 @@ the first match.
 | skillify | `/(?:^\/skillify\b)\|(?:turn\s+(?:this\|the)\s+session\s+into\|extract)\s+(?:a\s+)?(?:new\s+)?skill/i` | `skills/skillify.md` | Capture a completed session as a reusable skill + PR to scaffold |
 | sync-scaffold | `/(?:^\/sync-scaffold\b)\|(?:sync\|bootstrap)\s+(?:from\s+)?(?:the\s+)?scaffold/i` | `skills/sync-scaffold.md` | Bootstrap scaffold into a repo or sync an existing one from upstream |
 | create-pr | `/(?:^\/create-pr\b)\|(?:open\|create\|submit\|make)\s+(?:a\s+)?(?:pull\s+request\|PR)/i` | `skills/create-pr.md` | Create a PR for the current branch and immediately subscribe to its activity |
+| code-review | `/(?:^\/code-review\b)\|(?:review\|check)\s+(?:the\s+)?(?:diff\|pr)\s*(?:for\s+bugs)?/i` | `skills/code-review.md` | Review current diff for correctness bugs and quality issues at a configurable effort level |
+| simplify | `/(?:^\/simplify\b)\|simplify\s+(?:the\s+)?(?:code\|changed\s+files)/i` | `skills/simplify.md` | Apply reuse, simplification, efficiency, and altitude cleanups to changed code |
+| prune | `/(?:^\/prune\b)|(?:deep\s+clean|full\s+quality\s+rework)\s+(?:the\s+)?codebase/i` | `skills/prune.md` | Run all quality review skills and funnel findings into design→PRD→TDD→PR |
 
 ## Column contract
 
 - **Skill** — slug; MUST equal the directory name under `.claude/skills/` and
   the file name under `skills/`.
-- **Invocation Regex** — primary trigger. Pipes are escaped (`\|`) so the table
-  renders; the validator unescapes before compiling. Each regex MUST begin with
-  a unique `^\/<slug>` slash-command anchor — that anchor is the deterministic
-  routing key the validator checks for collisions.
+- **Invocation Regex** — primary trigger wrapped in backticks. Pipe characters
+  inside the backtick span are treated as regex alternation, not column
+  separators — write `|` freely. The legacy `\|` escape still compiles
+  correctly for backwards compatibility. Each regex MUST begin with a unique
+  `^\/<slug>` slash-command anchor — that anchor is the deterministic routing
+  key the validator checks for collisions.
 - **Path** — the canonical `skills/<slug>.md`. MUST exist on disk and MUST be
   listed in `.github/scaffold-files.txt`. Harness-specific wrappers
   (`.claude/skills/<slug>/SKILL.md`, `.cursor/rules/<slug>.mdc`,
