@@ -75,3 +75,13 @@ skills/prune.md
 .agent/workflows/prune.md
 .agent/rules/agents.md
 .githooks/pre-commit
+skills/pause.md
+skills/resume.md
+.claude/skills/pause/SKILL.md
+.claude/skills/resume/SKILL.md
+.cursor/rules/pause.mdc
+.cursor/rules/resume.mdc
+.agents/skills/pause/SKILL.md
+.agents/skills/resume/SKILL.md
+.agent/workflows/pause.md
+.agent/workflows/resume.md
