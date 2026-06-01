@@ -1,0 +1,6 @@
+---
+description: Checkpoint the session into git so it survives a close and resumes from any device. Writes a handoff, commits work in flight, and pushes.
+alwaysApply: false
+---
+
+@../../skills/pause.md

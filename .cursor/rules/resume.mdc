@@ -1,0 +1,6 @@
+---
+description: Resume a checkpointed session from the pushed handoff and continue where it left off. Pulls, reads .pause/handoff.md, and keeps going — cold or cross-device.
+alwaysApply: false
+---
+
+@../../skills/resume.md

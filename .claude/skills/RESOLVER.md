@@ -19,6 +19,8 @@ the first match.
 | code-review | `/(?:^\/code-review\b)\|(?:review\|check)\s+(?:the\s+)?(?:diff\|pr)\s*(?:for\s+bugs)?/i` | `skills/code-review.md` | Review current diff for correctness bugs and quality issues at a configurable effort level |
 | simplify | `/(?:^\/simplify\b)\|simplify\s+(?:the\s+)?(?:code\|changed\s+files)/i` | `skills/simplify.md` | Apply reuse, simplification, efficiency, and altitude cleanups to changed code |
 | prune | `/(?:^\/prune\b)|(?:deep\s+clean|full\s+quality\s+rework)\s+(?:the\s+)?codebase/i` | `skills/prune.md` | Run all quality review skills and funnel findings into design→PRD→TDD→PR |
+| pause | `/(?:^\/pause\b)|(?:pause|checkpoint)\s+(?:the\s+)?(?:session|work)|cache\s+(?:this\s+)?session|save\s+my\s+place|stepping\s+away/i` | `skills/pause.md` | Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume |
+| resume | `/(?:^\/resume\b)|resume\s+(?:the\s+)?(?:session|work)|pick\s+up\s+where|continue\s+from\s+(?:the\s+)?handoff|load\s+(?:the\s+)?handoff/i` | `skills/resume.md` | Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device |
 
 ## Column contract
 
