@@ -44,12 +44,13 @@ for arg in "$@"; do
 done
 
 # Skills that should NOT go into a global, non-project dir by default:
-#   sync-scaffold        — orchestrates an in-repo git sync; needs a project repo
-#   code-review, simplify — collide with Claude Code's built-in skills of the
-#                          same name (installing here would shadow the built-ins)
-SKIP=(sync-scaffold code-review simplify)
+#   sync-scaffold, skillify — orchestrate in-repo git work; need a project repo
+#   code-review, simplify   — collide with Claude Code's built-in skills of the
+#                            same name (installing here would shadow the built-ins)
+# (globalize-skill.sh guards the same set; this list is the bulk-mode authority.)
+SKIP=(sync-scaffold skillify code-review simplify)
 
-command -v rsync >/dev/null || { echo "rsync is required" >&2; exit 1; }
+[ -x "$SCRIPT_DIR/globalize-skill.sh" ] || { echo "missing $SCRIPT_DIR/globalize-skill.sh" >&2; exit 1; }
 [ -d "$SRC" ] || { echo "no skills dir at $SRC" >&2; exit 1; }
 
 if [ "$PULL" -eq 1 ]; then
@@ -65,7 +66,7 @@ is_skipped() {
 }
 
 [ "$DRY" -eq 1 ] || mkdir -p "$TARGET"
-installed=(); skipped=()
+installed=(); skipped=(); failed=()
 
 for path in "$SRC"/*/; do
   name="$(basename "$path")"
@@ -76,12 +77,22 @@ for path in "$SRC"/*/; do
     installed+=("$name"); continue
   fi
   if [ "$LINK" -eq 1 ]; then
+    # Symlink: the stub's @import resolves through the real scaffold path, so
+    # it stays live (and breaks if the scaffold checkout moves — see header).
     rm -rf "$TARGET/$name"
     ln -s "${path%/}" "$TARGET/$name"
+    installed+=("$name")
   else
-    rsync -a --delete "$path" "$TARGET/$name/"
+    # Copy via globalize-skill so the @import is inlined into a self-contained
+    # SKILL.md. A flat rsync of the stub would leave a dangling
+    # @../../../skills/<name>.md and the skill would be broken on arrival.
+    # --force: bulk SKIP above is the authority on what's excluded here.
+    if bash "$SCRIPT_DIR/globalize-skill.sh" "$name" --from "$ROOT" --target "$TARGET" --force >/dev/null; then
+      installed+=("$name")
+    else
+      failed+=("$name")
+    fi
   fi
-  installed+=("$name")
 done
 
 echo ""
@@ -90,4 +101,6 @@ echo "scaffold @ $SHA  →  $TARGET$mode"
 [ "$DRY" -eq 1 ] && echo "(dry run — nothing written)"
 [ ${#installed[@]} -gt 0 ] && { echo "Installed (${#installed[@]}):"; printf '  + %s\n' "${installed[@]}"; }
 [ ${#skipped[@]}   -gt 0 ] && { echo "Skipped (pass --all to include):"; printf '  - %s\n' "${skipped[@]}"; }
+[ ${#failed[@]}    -gt 0 ] && { echo "Failed (import unresolved — see errors above):"; printf '  ! %s\n' "${failed[@]}"; }
+[ ${#failed[@]} -gt 0 ] && exit 1
 exit 0
