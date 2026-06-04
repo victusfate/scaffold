@@ -44,6 +44,20 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 
 Keep bullets factual: what changed and why, not how you built it.
 
+**Callable-unit gate:** if the diff adds a tool, script, skill, or bin command, append this section to the body. An unchecked box blocks merge.
+
+```
+## Callable-unit checklist
+- [ ] Lives in the correct home (docs/agent-authoring-requirements.md §1)
+- [ ] Self-describing: tool.yaml / header comment / skill frontmatter+triggers present
+- [ ] Typed inputs; structured output; correct exit codes
+- [ ] Owns/guarded file guard honored in code
+- [ ] Isolated test or documented acceptance check run and passing
+- [ ] Registered in the index (or tools/README.md)
+- [ ] Skill wraps a script/tool/bin — does not reimplement
+- [ ] No git add -A; explicit paths staged
+```
+
 ### Step 4 — create the PR
 
 Use the available GitHub tool (`mcp__github__create_pull_request` or `gh pr create`) to open the PR against the repo's default base branch (usually `main`).

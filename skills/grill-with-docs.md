@@ -68,6 +68,15 @@ Diagram when it adds clarity over prose:
 
 Prefer one clear diagram over several partial ones. If a diagram would just restate the vocabulary table, skip it.
 
+### Callable units — decide at design time
+
+When the feature adds a tool, script, skill, or bin command, resolve during the Q&A:
+
+- **Where does it go?** Pick the home from `docs/agent-authoring-requirements.md` §1 — `scripts/`, `tools/`, `bin/`, or `.claude/skills/`. Ask if it is unclear.
+- **What is its contract?** Name, inputs/outputs, exit codes, idempotency, test approach. For a skill: triggers, what it calls, what it does NOT reimplement.
+
+Capture the decision in `design.md` under a "Callable unit" section. Do not leave this to the coding phase.
+
 ### ADRs — offer sparingly
 
 Only offer an ADR when all three are true: hard to reverse, surprising without context, result of a real trade-off. Otherwise capture in `design.md`. ADRs go in `./docs/adr/NNNN-<slug>.md`.

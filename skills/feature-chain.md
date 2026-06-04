@@ -21,6 +21,8 @@ Interview the user relentlessly about every aspect of the plan until the design 
 
 State the slug before writing so the user can correct it.
 
+**Callable units — decide at design time.** If the feature adds a tool, script, skill, or bin command, the design MUST resolve during Q&A: which home it belongs in (see `docs/agent-authoring-requirements.md` §1) and what its descriptor contract is. This is a design question, not a coding afterthought.
+
 **When design.md is written and decisions are resolved:** commit `docs(<slug>): design Q&A and vocabulary`. Run `/design-review` in auto-fix mode — it will patch `design.md` and resolve any blockers. Then proceed immediately to Phase 2.
 
 ---
