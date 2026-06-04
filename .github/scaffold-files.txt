@@ -12,6 +12,7 @@ bin/sync-from-scaffold.sh
 .github/scaffold-files.txt
 .github/workflows/sync-scaffold.yml
 scripts/check-resolvable.mjs
+scripts/update-readme-skills.mjs
 .claude/skills/RESOLVER.md
 skills/feature-chain.md
 skills/grill-with-docs.md

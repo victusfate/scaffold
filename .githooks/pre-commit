@@ -4,3 +4,4 @@
 # MECE violations, unsynced skills). DRY duplication is a warning here; run
 # `node scripts/check-resolvable.mjs --strict` in CI to make it block too.
 node scripts/check-resolvable.mjs
+node scripts/update-readme-skills.mjs --check
