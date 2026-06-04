@@ -105,7 +105,10 @@ MCP-callable units).
   `#!/usr/bin/env bash` and `set -euo pipefail`. Node scripts MUST use
   `#!/usr/bin/env node` and fail fast (non-zero) on error, no swallowed
   exceptions.
-- **MUST** resolve its own root. Bash: `ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"`. Node: `import { fileURLToPath } from 'url'; const ROOT = path.resolve(fileURLToPath(import.meta.url), '../..')`.
+- **MUST** resolve its own root. Bash: `ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"`.
+  Node: `import path from 'path'; import { fileURLToPath } from 'url';`
+  then `const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');`
+  (for a script at `scripts/<name>.mjs`; add another `'..'` per extra level).
 - **MUST** carry a header comment: what it does, why it exists, usage.
 - **MUST** be safe to re-run (idempotent) and report what changed vs was skipped.
 - **MUST NOT** `git add -A` (untracked sibling project dirs and caches exist);
@@ -125,6 +128,12 @@ author the per-harness forms by hand.
   - `.claude/skills/<name>/SKILL.md` → `@../../../skills/<name>.md`
   - `.cursor/rules/<name>.mdc` → `@../../skills/<name>.md`
   - `.agents/skills/<name>/SKILL.md`, `.agent/workflows/<name>.md`
+
+  > Until the canonical->harness generator ships (capability-sync Phase B), the
+  > per-harness forms are created once from the canonical body (frontmatter + an
+  > `@` include) and their frontmatter is kept in sync by hand; `check-resolvable.mjs`
+  > enforces registration. Once the generator ships, regenerate instead of editing.
+
 - **Frontmatter (MUST):** every emitted form carries a `description` with explicit
   triggers. (Target state: the description lives once on the canonical body as
   frontmatter and the forms are generated from it; until then keep the emitted
@@ -144,10 +153,12 @@ author the per-harness forms by hand.
 
 ### Generated artifacts (never hand-edit)
 
-- Files in generated dirs (`.claude/skills/`, `.cursor/rules/`, `.agents/`,
-  `.agent/`) are emitted from a canonical source (`skills/<name>.md`, or a tool
-  descriptor). **MUST NOT** be hand-edited. Edit the canonical source and
-  regenerate.
+- Files under the **per-harness skill form** paths are emitted from a canonical
+  source (`skills/<name>.md`, or a tool descriptor) and **MUST NOT** be
+  hand-edited: `.claude/skills/<name>/SKILL.md`, `.cursor/rules/<name>.mdc`,
+  `.agents/skills/<name>/SKILL.md`, `.agent/workflows/<name>.md`. This does **not**
+  cover other files under `.claude/` — `RESOLVER.md`, `settings.json`, and hooks
+  (`session-start/`, `read-once/`) are canonical and are hand-edited.
 - A change that touches only a generated file without its canonical source is a
   defect and should fail review (and, once wired, CI).
 - Adding a harness is adding a generated column; adding a capability is adding a
@@ -168,6 +179,8 @@ author the per-harness forms by hand.
 - [ ] Skill: canonical `skills/<name>.md` exists; per-harness forms are generated
       (not hand-written) and registered in `RESOLVER.md`; `check-resolvable.mjs`
       passes.
-- [ ] No generated file (`.claude/`, `.cursor/`, `.agents/`, `.agent/`) was
-      hand-edited without its canonical source.
+- [ ] No generated per-harness form (`.claude/skills/<name>/`, `.cursor/rules/`,
+      `.agents/`, `.agent/`) was hand-edited without its canonical source.
+      (`RESOLVER.md`, `settings.json`, and hooks are canonical — editing them is
+      expected.)
 - [ ] `bin/` entrypoints are clobber-safe and run from any CWD.

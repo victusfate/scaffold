@@ -35,10 +35,13 @@ grill-with-docs → to-prd → tdd → review
 3. **tdd** — Derives `plan.md` from the PRD, then executes RED → GREEN → REFACTOR one vertical slice at a time. Commits per slice.
 4. **Review** — Chain stops and presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
 
-Skills can also be invoked individually: `/grill-with-docs`, `/to-prd`, `/tdd`, `/create-pr`, `/sync-scaffold`.
+<!-- BEGIN_SKILLS_INVOCATION -->
+Skills can also be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`.
+<!-- END_SKILLS_INVOCATION -->
 
 ## Structure
 
+<!-- BEGIN_SKILLS_STRUCTURE -->
 ```
 AGENTS.md                        # agent instructions — single source of truth
 CLAUDE.md                        # imports AGENTS.md (@AGENTS.md)
@@ -48,16 +51,21 @@ bin/
   sync-from-scaffold.sh          # pull scaffold updates into a downstream repo
 .claude/
   skills/
-    RESOLVER.md                  # central routing table — skill → regex → path
-    feature-chain/SKILL.md       # full auto-chain: design → PRD → TDD → review
-    grill-with-docs/SKILL.md     # design Q&A + visualizations → design.md
-    to-prd/SKILL.md              # PRD synthesis → prd.md
-    tdd/SKILL.md                 # vertical-slice TDD → plan.md + tdd-log.md
-    design-review/SKILL.md       # structural review of design.md (auto-fix in chain)
-    code-quality-review/SKILL.md # structural review of implementation (auto-fix in chain)
-    skillify/SKILL.md            # capture a session as a new registered skill + PR
-    create-pr/SKILL.md           # create PR + subscribe to activity atomically
-    sync-scaffold/SKILL.md       # bootstrap or sync this repo from upstream scaffold
+    RESOLVER.md                   # central routing table — skill → regex → path
+    feature-chain/SKILL.md        # Orchestrate design → PRD → TDD → review end to end
+    grill-with-docs/SKILL.md      # Design Q&A → design.md + canonical vocabulary
+    to-prd/SKILL.md               # Synthesize context + codebase → prd.md
+    tdd/SKILL.md                  # Vertical-slice TDD → plan.md + tdd-log.md
+    design-review/SKILL.md        # Structural review of design.md
+    code-quality-review/SKILL.md  # Structural review of implementation
+    skillify/SKILL.md             # Capture a completed session as a reusable skill + PR to scaffold
+    sync-scaffold/SKILL.md        # Bootstrap scaffold into a repo or sync an existing one from upstream
+    create-pr/SKILL.md            # Create a PR for the current branch and immediately subscribe to its activity
+    code-review/SKILL.md          # Review current diff for correctness bugs and quality issues at a configurable effort level
+    simplify/SKILL.md             # Apply reuse, simplification, efficiency, and altitude cleanups to changed code
+    prune/SKILL.md                # Run all quality review skills and funnel findings into design→PRD→TDD→PR
+    pause/SKILL.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
+    resume/SKILL.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
   read-once/
@@ -66,48 +74,67 @@ bin/
   settings.json                  # hook wiring (SessionStart, PreToolUse, PostCompact)
 .cursor/
   rules/
-    agents.mdc                   # thin pointer to AGENTS.md
-    grill-with-docs.mdc          # mirrors grill-with-docs skill for Cursor
-    to-prd.mdc                   # mirrors to-prd skill for Cursor
-    tdd.mdc                      # mirrors tdd skill for Cursor
-    design-review.mdc            # mirrors design-review skill for Cursor
-    code-quality-review.mdc      # mirrors code-quality-review skill for Cursor
-    create-pr.mdc                # mirrors create-pr skill for Cursor
-    sync-scaffold.mdc            # mirrors sync-scaffold skill for Cursor
+    agents.mdc               # thin pointer to AGENTS.md
+    feature-chain.mdc        # mirrors feature-chain for Cursor
+    grill-with-docs.mdc      # mirrors grill-with-docs for Cursor
+    to-prd.mdc               # mirrors to-prd for Cursor
+    tdd.mdc                  # mirrors tdd for Cursor
+    design-review.mdc        # mirrors design-review for Cursor
+    code-quality-review.mdc  # mirrors code-quality-review for Cursor
+    skillify.mdc             # mirrors skillify for Cursor
+    sync-scaffold.mdc        # mirrors sync-scaffold for Cursor
+    create-pr.mdc            # mirrors create-pr for Cursor
+    code-review.mdc          # mirrors code-review for Cursor
+    simplify.mdc             # mirrors simplify for Cursor
+    prune.mdc                # mirrors prune for Cursor
+    pause.mdc                # mirrors pause for Cursor
+    resume.mdc               # mirrors resume for Cursor
 .agents/
   skills/
-    feature-chain/SKILL.md       # Antigravity lazy-loaded skill wrapper
-    grill-with-docs/SKILL.md
-    to-prd/SKILL.md
-    tdd/SKILL.md
-    design-review/SKILL.md
-    code-quality-review/SKILL.md
-    skillify/SKILL.md
-    create-pr/SKILL.md
-    sync-scaffold/SKILL.md
+    feature-chain/SKILL.md        # Orchestrate design → PRD → TDD → review end to end
+    grill-with-docs/SKILL.md      # Design Q&A → design.md + canonical vocabulary
+    to-prd/SKILL.md               # Synthesize context + codebase → prd.md
+    tdd/SKILL.md                  # Vertical-slice TDD → plan.md + tdd-log.md
+    design-review/SKILL.md        # Structural review of design.md
+    code-quality-review/SKILL.md  # Structural review of implementation
+    skillify/SKILL.md             # Capture a completed session as a reusable skill + PR to scaffold
+    sync-scaffold/SKILL.md        # Bootstrap scaffold into a repo or sync an existing one from upstream
+    create-pr/SKILL.md            # Create a PR for the current branch and immediately subscribe to its activity
+    code-review/SKILL.md          # Review current diff for correctness bugs and quality issues at a configurable effort level
+    simplify/SKILL.md             # Apply reuse, simplification, efficiency, and altitude cleanups to changed code
+    prune/SKILL.md                # Run all quality review skills and funnel findings into design→PRD→TDD→PR
+    pause/SKILL.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
+    resume/SKILL.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
 .agent/
   rules/
-    agents.md                    # thin pointer to AGENTS.md (always-on)
+    agents.md               # thin pointer to AGENTS.md (always-on)
   workflows/
-    feature-chain.md             # Antigravity /slash-command trigger
-    grill-with-docs.md
-    to-prd.md
-    tdd.md
-    design-review.md
-    code-quality-review.md
-    skillify.md
-    create-pr.md
-    sync-scaffold.md
+    feature-chain.md        # Orchestrate design → PRD → TDD → review end to end
+    grill-with-docs.md      # Design Q&A → design.md + canonical vocabulary
+    to-prd.md               # Synthesize context + codebase → prd.md
+    tdd.md                  # Vertical-slice TDD → plan.md + tdd-log.md
+    design-review.md        # Structural review of design.md
+    code-quality-review.md  # Structural review of implementation
+    skillify.md             # Capture a completed session as a reusable skill + PR to scaffold
+    sync-scaffold.md        # Bootstrap scaffold into a repo or sync an existing one from upstream
+    create-pr.md            # Create a PR for the current branch and immediately subscribe to its activity
+    code-review.md          # Review current diff for correctness bugs and quality issues at a configurable effort level
+    simplify.md             # Apply reuse, simplification, efficiency, and altitude cleanups to changed code
+    prune.md                # Run all quality review skills and funnel findings into design→PRD→TDD→PR
+    pause.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
+    resume.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
 scripts/
   check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/cursor/antigravity/sync)
+  update-readme-skills.mjs       # regenerate README.md skill sections from RESOLVER.md
 .githooks/
-  pre-commit                     # runs the linter — enable via core.hooksPath
+  pre-commit                     # runs the linter and README freshness check — enable via core.hooksPath
 .github/
   scaffold-files.txt             # manifest of files managed by scaffold
   workflows/
     sync-scaffold.yml            # manual workflow to sync updates via PR
 .claudeignore                    # excludes build artifacts from Claude's context
 ```
+<!-- END_SKILLS_STRUCTURE -->
 
 ## Harness support
 
