@@ -17,6 +17,11 @@ tools/capability-export/tool.yaml
 tools/capability-export/run
 tools/capability-export/test
 tools/capability-export/README.md
+skills/skill-export.md
+.claude/skills/skill-export/SKILL.md
+.cursor/rules/skill-export.mdc
+.agents/skills/skill-export/SKILL.md
+.agent/workflows/skill-export.md
 .claude/skills/RESOLVER.md
 skills/feature-chain.md
 skills/grill-with-docs.md

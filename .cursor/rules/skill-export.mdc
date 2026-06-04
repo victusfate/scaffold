@@ -1,0 +1,6 @@
+---
+description: Export scaffold skills into another repo in the target harness format.
+alwaysApply: false
+---
+
+@../../skills/skill-export.md
