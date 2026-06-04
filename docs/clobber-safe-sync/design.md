@@ -20,12 +20,13 @@ with a committed `CLAUDE.md` that runs `bootstrap.sh` loses it without warning.
 
 ## Decisions
 
-### D1 — Remove `CLAUDE.md` from the push manifest
+### D1 — Keep `CLAUDE.md` in the manifest as a template starting point
 
-`CLAUDE.md` is the most likely file to carry consumer-specific wiring (`@MIND.md`,
-personal context). scaffold ships `AGENTS.md` and `GEMINI.md` as its harness
-entry points. Push-based consumers should never have `CLAUDE.md` forced on them.
-Pull-based consumers can opt in through their own guard.
+scaffold is a GitHub template repo; new consumers need a `CLAUDE.md` to start
+from. With C2's no-base sidecar in place, a consumer who has already customized
+their `CLAUDE.md` won't have it silently overwritten on first sync — the sidecar
+protects them. Consumers who want permanent protection can add `CLAUDE.md` to
+`.scaffold-keep`.
 
 ### D2 — No silent first-sync overwrite
 

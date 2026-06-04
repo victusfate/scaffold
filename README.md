@@ -161,7 +161,7 @@ The sync script uses git (no curl after bootstrap), compares blob SHAs, and thre
 
 - **No silent first-sync overwrite.** When no base SHA exists and a target file already exists and differs, the incoming version is written to `<file>.scaffold-new` for deliberate review. The original is left untouched. Diff and merge when ready; re-run the sync to save the SHA once resolved.
 - **`.scaffold-keep`.** Add an optional `.scaffold-keep` file at your repo root (one path or glob per line; `#` comments and blank lines ignored). Any matching path is always skipped — even on first sync — and reported as "Kept (consumer-owned)". Use this to protect any file you own locally from being overwritten.
-- **`CLAUDE.md` is consumer-owned.** scaffold does not push `CLAUDE.md`. Each consumer owns its own entry point. scaffold ships `AGENTS.md` and `GEMINI.md` as its harness entry points.
+- **`CLAUDE.md` is shipped as a starting point.** On first sync into a repo that has no `CLAUDE.md`, scaffold writes one. If you have already customized yours, add `CLAUDE.md` to `.scaffold-keep` — the sidecar or keep-list will protect it from then on.
 
 **Pinning to a release tag** (recommended for reproducible pulls):
 ```bash
