@@ -25,6 +25,9 @@ Review the current diff for correctness bugs and reuse/simplification/efficiency
    - Inefficient constructs with obvious alternatives
    - Altitude mismatches (domain logic in infrastructure layers, etc.)
 
+   **Pass 3 — Callable-unit checklist** (when the diff adds a tool, script, skill, or bin command):
+   Check each item in `docs/agent-authoring-requirements.md` §6. A missing descriptor, test, guard, or index entry is a finding even at `low` effort.
+
    At `high`/`max`: expand to lower-confidence findings; tag these `[uncertain]`.
 
 4. Deduplicate and rank by confidence then severity.

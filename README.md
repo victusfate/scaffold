@@ -133,10 +133,20 @@ Each feature gets its own folder under `./docs/`:
 
 ## Syncing updates to downstream repos
 
-**Bootstrap** (one-time per repo — adds the sync script and does the initial sync):
+**Bootstrap** (one-time per repo — installs the sync script, prints next steps):
 ```bash
 curl -fsSL https://raw.githubusercontent.com/victusfate/scaffold/main/bin/bootstrap.sh | bash
 ```
+
+Bootstrap does not run the sync automatically and does not change any tracked files.
+Run the first sync yourself when ready:
+```bash
+bash bin/sync-from-scaffold.sh
+```
+
+Flags:
+- `--run` — also run the sync immediately after install (old behavior).
+- `--with-workflow` — also install `.github/workflows/sync-scaffold.yml`.
 
 **Update** (run whenever you want to pull in scaffold changes, like a dependency bump):
 ```bash
@@ -147,7 +157,19 @@ Or ask the agent — `/sync-scaffold` detects which path is needed (bootstrap vs
 
 The sync script uses git (no curl after bootstrap), compares blob SHAs, and three-way merges files that both you and scaffold have changed. Files with uncommitted local edits are skipped with a warning. The last-synced SHA is stored in `.github/scaffold-sync-sha` so future merges have a proper base.
 
-A GitHub Actions workflow is also installed at `.github/workflows/sync-scaffold.yml` — trigger it manually from the Actions tab for a PR-based update flow.
+**Clobber-safe behaviors:**
+
+- **No silent first-sync overwrite.** When no base SHA exists and a target file already exists and differs, the incoming version is written to `<file>.scaffold-new` for deliberate review. The original is left untouched. Diff and merge when ready; re-run the sync to save the SHA once resolved.
+- **`.scaffold-keep`.** Add an optional `.scaffold-keep` file at your repo root (one path or glob per line; `#` comments and blank lines ignored). Any matching path is always skipped — even on first sync — and reported as "Kept (consumer-owned)". Use this to protect any file you own locally from being overwritten.
+- **`CLAUDE.md` is shipped as a starting point.** On first sync into a repo that has no `CLAUDE.md`, scaffold writes one. If you have already customized yours, add `CLAUDE.md` to `.scaffold-keep` — the sidecar or keep-list will protect it from then on.
+
+**Pinning to a release tag** (recommended for reproducible pulls):
+```bash
+# Pin SCAFFOLD_REF in your update script or set the remote to a tag
+git fetch scaffold refs/tags/v1.0:refs/tags/scaffold-v1.0
+```
+
+A GitHub Actions workflow can be installed at `.github/workflows/sync-scaffold.yml` — trigger it manually from the Actions tab for a PR-based update flow. Install it with `--with-workflow` during bootstrap, or copy it manually.
 
 ## Skill engine
 

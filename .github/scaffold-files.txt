@@ -1,6 +1,7 @@
 AGENTS.md
 CLAUDE.md
 GEMINI.md
+docs/agent-authoring-requirements.md
 .claudeignore
 .claude/settings.json
 .claude/session-start/hook.sh
