@@ -198,6 +198,41 @@ git fetch scaffold refs/tags/v1.0:refs/tags/scaffold-v1.0
 
 A GitHub Actions workflow can be installed at `.github/workflows/sync-scaffold.yml` — trigger it manually from the Actions tab for a PR-based update flow. Install it with `--with-workflow` during bootstrap, or copy it manually.
 
+## Using scaffold skills as a dependency
+
+The sync flow above is bulk — it pulls every file in the manifest. If you only want specific skills in a specific harness, use `capability-export` instead. scaffold owns the emit so consumers do not need to know the internal canonical+generated layout.
+
+**Emit specific skills into a repo:**
+```bash
+# From inside a scaffold clone, target another repo
+node tools/capability-export/run \
+  --names feature-chain,grill-with-docs,tdd \
+  --harness claude \
+  --into ../my-project
+```
+
+**Emit everything for all harnesses:**
+```bash
+node tools/capability-export/run --names all --harness all --into ../my-project
+```
+
+**List available capabilities:**
+```bash
+node tools/capability-export/run --list
+```
+
+**What gets written per harness:**
+
+| Harness | Files written |
+|---|---|
+| `claude` | `skills/<name>.md` + `.claude/skills/<name>/SKILL.md` |
+| `cursor` | `skills/<name>.md` + `.cursor/rules/<name>.mdc` |
+| `antigravity` | `skills/<name>.md` + `.agents/skills/<name>/SKILL.md` + `.agent/workflows/<name>.md` |
+
+The same clobber-safe contract applies as with the sync script: `.scaffold-keep` paths are never touched, differing files become `<file>.scaffold-new` sidecars, and `--force` overrides that.
+
+The tool emits a JSON manifest on stdout listing every file written, skipped, or sidecarred — pipe it to `jq` or capture it for CI.
+
 ## Skill engine
 
 Skills are indexed in a central routing table, `.claude/skills/RESOLVER.md`,

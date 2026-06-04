@@ -1,0 +1,30 @@
+kind: tool
+name: capability-export
+description: Emit scaffold capabilities into a consumer repo in the target harness format.
+inputs:
+  names:
+    type: list
+    description: Capability names to emit, or "all" for every registered capability.
+  harness:
+    type: string
+    default: claude
+    enum: [claude, cursor, antigravity, all]
+    description: Target harness. "all" writes every harness.
+  into:
+    type: string
+    default: "."
+    description: Destination repo root path.
+  force:
+    type: boolean
+    default: false
+    description: Overwrite differing destination files instead of writing *.scaffold-new sidecars.
+  list:
+    type: boolean
+    default: false
+    description: Print available capabilities and harnesses as JSON and exit.
+run:
+  command: node ./run
+emits:
+  - claude
+  - cursor
+  - antigravity

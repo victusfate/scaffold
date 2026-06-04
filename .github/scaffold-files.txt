@@ -13,6 +13,10 @@ bin/sync-from-scaffold.sh
 .github/workflows/sync-scaffold.yml
 scripts/check-resolvable.mjs
 scripts/update-readme-skills.mjs
+tools/capability-export/tool.yaml
+tools/capability-export/run
+tools/capability-export/test
+tools/capability-export/README.md
 .claude/skills/RESOLVER.md
 skills/feature-chain.md
 skills/grill-with-docs.md
