@@ -35,7 +35,7 @@ grill-with-docs → to-prd → tdd → review
 3. **tdd** — Derives `plan.md` from the PRD, then executes RED → GREEN → REFACTOR one vertical slice at a time. Commits per slice.
 4. **Review** — Chain stops and presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
 
-Skills can also be invoked individually: `/grill-with-docs`, `/to-prd`, `/tdd`, `/create-pr`, `/sync-scaffold`.
+Skills can also be invoked individually: `/grill-with-docs`, `/to-prd`, `/tdd`, `/create-pr`, `/sync-scaffold`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`.
 
 ## Structure
 
@@ -55,6 +55,11 @@ bin/
     tdd/SKILL.md                 # vertical-slice TDD → plan.md + tdd-log.md
     design-review/SKILL.md       # structural review of design.md (auto-fix in chain)
     code-quality-review/SKILL.md # structural review of implementation (auto-fix in chain)
+    code-review/SKILL.md         # correctness + quality review of current diff
+    simplify/SKILL.md            # reuse/simplification/efficiency cleanups
+    prune/SKILL.md               # aggregate review findings → full feature chain fix
+    pause/SKILL.md               # checkpoint session to git for resume on any device
+    resume/SKILL.md              # resume from a checkpointed session handoff
     skillify/SKILL.md            # capture a session as a new registered skill + PR
     create-pr/SKILL.md           # create PR + subscribe to activity atomically
     sync-scaffold/SKILL.md       # bootstrap or sync this repo from upstream scaffold
@@ -72,6 +77,11 @@ bin/
     tdd.mdc                      # mirrors tdd skill for Cursor
     design-review.mdc            # mirrors design-review skill for Cursor
     code-quality-review.mdc      # mirrors code-quality-review skill for Cursor
+    code-review.mdc              # mirrors code-review skill for Cursor
+    simplify.mdc                 # mirrors simplify skill for Cursor
+    prune.mdc                    # mirrors prune skill for Cursor
+    pause.mdc                    # mirrors pause skill for Cursor
+    resume.mdc                   # mirrors resume skill for Cursor
     create-pr.mdc                # mirrors create-pr skill for Cursor
     sync-scaffold.mdc            # mirrors sync-scaffold skill for Cursor
 .agents/
@@ -82,6 +92,11 @@ bin/
     tdd/SKILL.md
     design-review/SKILL.md
     code-quality-review/SKILL.md
+    code-review/SKILL.md
+    simplify/SKILL.md
+    prune/SKILL.md
+    pause/SKILL.md
+    resume/SKILL.md
     skillify/SKILL.md
     create-pr/SKILL.md
     sync-scaffold/SKILL.md
@@ -95,6 +110,11 @@ bin/
     tdd.md
     design-review.md
     code-quality-review.md
+    code-review.md
+    simplify.md
+    prune.md
+    pause.md
+    resume.md
     skillify.md
     create-pr.md
     sync-scaffold.md
