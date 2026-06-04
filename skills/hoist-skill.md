@@ -1,6 +1,6 @@
 ## Instructions
 
-Export one or more scaffold skills into a target repo in the requested harness format. Wraps `tools/capability-export/run` — do not reimplement its logic here.
+Export one or more scaffold skills into a target repo in the requested harness format. Wraps `tools/hoist-skill/run` — do not reimplement its logic here.
 
 ### Step 1 — resolve arguments
 
@@ -18,7 +18,7 @@ If any required arg is missing, ask for it once. Do not proceed until you have `
 If the user is unsure what to export or asks to see options:
 
 ```bash
-node tools/capability-export/run --list
+node tools/hoist-skill/run --list
 ```
 
 Present the capability names and purposes in a readable list. Then ask which ones they want.
@@ -26,7 +26,7 @@ Present the capability names and purposes in a readable list. Then ask which one
 ### Step 3 — run the export
 
 ```bash
-node tools/capability-export/run \
+node tools/hoist-skill/run \
   --names <names> \
   --harness <harness> \
   --into <destination> \
