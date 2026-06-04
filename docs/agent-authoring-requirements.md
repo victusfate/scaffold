@@ -20,16 +20,35 @@
 
 | You want... | Home | Calling surface |
 |---|---|---|
-| repo-local shell plumbing, run by a human or a skill | `scripts/<name>.sh` | `bash scripts/<name>.sh` |
+| repo-local shell plumbing, run by a human or a skill | `scripts/<name>.{sh,mjs}` | `bash scripts/<name>.sh` / `node scripts/<name>.mjs` |
 | a unit agents/MCP/other harnesses call with typed args | `tools/<name>/` | tool descriptor + `run` |
 | a distributable engine (npx-runnable, multi-command) | `bin/` | CLI / npx |
-| a conversational front door that wraps the above | `.claude/skills/<name>/SKILL.md` | the model, via triggers |
+| a conversational front door that wraps the above | `skills/<name>.md` (canonical) | the model, via triggers |
 
 - Do **not** rename or merge these homes. They are separated by calling surface.
 - Do **not** create an empty home speculatively. Add the unit and its home
   together.
 - A skill MUST NOT reimplement logic that belongs in a script/tool/bin. It calls
   it.
+
+### 1a. Repository layout (what each directory holds)
+
+| Directory | Holds | Canonical or generated | Hand-edit? |
+|---|---|---|---|
+| `skills/<name>.md` | the **canonical** skill/workflow body (the real instructions) | canonical | yes |
+| `.claude/skills/<name>/SKILL.md` | Claude form: frontmatter + `@../../../skills/<name>.md` | generated | no |
+| `.cursor/rules/<name>.mdc` | Cursor form: frontmatter + `@../../skills/<name>.md` | generated | no |
+| `.agents/skills/<name>/SKILL.md`, `.agent/workflows/<name>.md` | other-harness forms | generated | no |
+| `.claude/skills/RESOLVER.md` | routing table; every skill MUST be registered | canonical | yes |
+| `tools/<name>/` | self-describing, agent/MCP-callable tool (`tool.yaml` + `run`) | canonical | yes |
+| `scripts/<name>.{sh,mjs}` | repo-local plumbing, run by a human or a skill | canonical | yes |
+| `bin/` | distributable entrypoints (e.g. bootstrap, sync) | canonical | yes |
+| `docs/<feature-slug>/` | feature artifacts (`design.md`, `prd.md`, `plan.md`, `tdd-log.md`) | canonical | yes |
+| `.claude/session-start/`, `.claude/read-once/`, `.githooks/` | hooks | canonical | yes |
+
+- **Canonical** dirs are the source of truth; you edit them.
+- **Generated** dirs are emitted from a canonical source; never hand-edit them
+  (see "Generated artifacts" below). Editing a generated file is a defect.
 
 ## 2. Tool requirements (`tools/<name>/`)
 
@@ -61,10 +80,32 @@ A tool is the agent/MCP-callable form. It MUST be self-describing.
 - **Registration (MUST):** add the tool to the capability index (until one
   exists, list it in `tools/README.md`).
 
-## 3. Script requirements (`scripts/<name>.sh`)
+### 2a. Engine requirements (`bin/`)
 
-- **MUST** start with `#!/usr/bin/env bash` and `set -euo pipefail`.
-- **MUST** resolve its own root: `ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"`.
+`bin/` holds distributable entrypoints (the bootstrap, the sync, later a packaged
+CLI). Distinct from `scripts/` (repo-local plumbing) and `tools/` (typed,
+MCP-callable units).
+
+- **MUST** be executable with a correct shebang and run from any CWD (resolve the
+  repo root, do not assume `.`).
+- **MUST** be safe to run headless (CI, `curl | bash` for a bootstrap) and
+  idempotent; re-running MUST NOT corrupt a repo.
+- **MUST NOT** silently overwrite consumer-owned files; honor `.scaffold-keep`
+  and write `*.scaffold-new` sidecars instead of clobbering (the clobber-safe
+  contract).
+- **MUST** print what it changed vs skipped, and exit non-zero on real failure.
+- **SHOULD** keep flags explicit and opt-in for destructive or workflow-installing
+  behavior (e.g. `--run`, `--with-workflow`).
+- If published (npx-runnable), the package name and entry MUST be documented in
+  `README.md`.
+
+## 3. Script requirements (`scripts/<name>.{sh,mjs}`)
+
+- **MUST** carry a shebang for its interpreter. Bash scripts MUST use
+  `#!/usr/bin/env bash` and `set -euo pipefail`. Node scripts MUST use
+  `#!/usr/bin/env node` and fail fast (non-zero) on error, no swallowed
+  exceptions.
+- **MUST** resolve its own root. Bash: `ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"`. Node: `import { fileURLToPath } from 'url'; const ROOT = path.resolve(fileURLToPath(import.meta.url), '../..')`.
 - **MUST** carry a header comment: what it does, why it exists, usage.
 - **MUST** be safe to re-run (idempotent) and report what changed vs was skipped.
 - **MUST NOT** `git add -A` (untracked sibling project dirs and caches exist);
@@ -73,21 +114,44 @@ A tool is the agent/MCP-callable form. It MUST be self-describing.
   not a comment.
 - **SHOULD** pass `bash -n` and, where reasonable, ship an isolated test.
 
-## 4. Skill requirements (`.claude/skills/<name>/SKILL.md`)
+## 4. Skill requirements (canonical `skills/<name>.md` + generated forms)
 
-- **MUST** have frontmatter: `name` and a `description` with explicit triggers.
-- **MUST** be a thin front door: interpret intent, call the script/tool/bin,
-  report output. It MUST NOT duplicate the unit's invariants.
-- **MUST** state the critical rules it enforces (e.g. stay on branch, stage
-  explicit paths) and defer the hard guarantees to the called code.
-- SHOULD have a unique name that does not collide with built-ins or upstream
-  skills.
+A skill has one **canonical body** and N **generated per-harness forms**. Do not
+author the per-harness forms by hand.
+
+- **Canonical body (MUST):** `skills/<name>.md` holds the real instructions.
+- **Per-harness forms (generated, MUST NOT hand-edit):** each form is frontmatter
+  plus an `@` include of the canonical body:
+  - `.claude/skills/<name>/SKILL.md` → `@../../../skills/<name>.md`
+  - `.cursor/rules/<name>.mdc` → `@../../skills/<name>.md`
+  - `.agents/skills/<name>/SKILL.md`, `.agent/workflows/<name>.md`
+- **Frontmatter (MUST):** every emitted form carries a `description` with explicit
+  triggers. (Target state: the description lives once on the canonical body as
+  frontmatter and the forms are generated from it; until then keep the emitted
+  descriptions in sync.)
+- **Registration (MUST):** add the skill to `.claude/skills/RESOLVER.md` with its
+  invocation regex, canonical path, and purpose. `scripts/check-resolvable.mjs`
+  enforces that every skill on disk is registered; it MUST pass.
+- **Thin front door (MUST):** a skill interprets intent and calls a
+  script/tool/bin. It MUST NOT reimplement the called unit's invariants.
+- **Naming:** kebab-case, unique, no collision with built-ins or upstream skills.
 
 ## 5. Discoverability
 
 - Names are kebab-case and unique within their home.
 - Every callable unit is findable from one index (the capability index / lock),
   not only by reading the tree.
+
+### Generated artifacts (never hand-edit)
+
+- Files in generated dirs (`.claude/skills/`, `.cursor/rules/`, `.agents/`,
+  `.agent/`) are emitted from a canonical source (`skills/<name>.md`, or a tool
+  descriptor). **MUST NOT** be hand-edited. Edit the canonical source and
+  regenerate.
+- A change that touches only a generated file without its canonical source is a
+  defect and should fail review (and, once wired, CI).
+- Adding a harness is adding a generated column; adding a capability is adding a
+  canonical row. The two are orthogonal.
 
 ## 6. PR checklist (a unit is "done" only if all are true)
 
@@ -101,3 +165,9 @@ A tool is the agent/MCP-callable form. It MUST be self-describing.
 - [ ] Registered in the index (or `tools/README.md` pre-Phase-1).
 - [ ] A skill, if added, wraps and does not reimplement.
 - [ ] No `git add -A`; explicit paths staged.
+- [ ] Skill: canonical `skills/<name>.md` exists; per-harness forms are generated
+      (not hand-written) and registered in `RESOLVER.md`; `check-resolvable.mjs`
+      passes.
+- [ ] No generated file (`.claude/`, `.cursor/`, `.agents/`, `.agent/`) was
+      hand-edited without its canonical source.
+- [ ] `bin/` entrypoints are clobber-safe and run from any CWD.
