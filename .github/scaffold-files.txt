@@ -1,5 +1,4 @@
 AGENTS.md
-CLAUDE.md
 GEMINI.md
 .claudeignore
 .claude/settings.json
