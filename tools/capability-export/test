@@ -1,0 +1,109 @@
+#!/usr/bin/env node
+// Isolated acceptance check for capability-export.
+// Runs in a temp dir. Exits non-zero on any failure.
+
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const RUN  = join(dirname(fileURLToPath(import.meta.url)), 'run');
+
+let passed = 0, failed = 0;
+
+function assert(label, cond, detail = '') {
+  if (cond) { console.log(`  ✓ ${label}`); passed++; }
+  else       { console.error(`  ✗ ${label}${detail ? ': ' + detail : ''}`); failed++; }
+}
+
+function run(args, dest) {
+  return spawnSync('node', [RUN, ...args], { encoding: 'utf8' });
+}
+
+// ---------------------------------------------------------------- case 1: claude emit
+
+console.log('\nCase 1: emit feature-chain --harness claude');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const r = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest]);
+  assert('exits 0', r.status === 0, r.stderr);
+  assert('canonical body written', existsSync(join(dest, 'skills/feature-chain.md')));
+  assert('claude wrapper written', existsSync(join(dest, '.claude/skills/feature-chain/SKILL.md')));
+
+  const wrapper = readFileSync(join(dest, '.claude/skills/feature-chain/SKILL.md'), 'utf8');
+  assert('wrapper @-includes canonical at correct depth',
+    wrapper.includes('@../../../skills/feature-chain.md'));
+
+  const out = JSON.parse(r.stdout);
+  assert('JSON output has results array', Array.isArray(out.results));
+}
+
+// ---------------------------------------------------------------- case 2: .scaffold-keep is honored
+
+console.log('\nCase 2: .scaffold-keep blocks a path');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  writeFileSync(join(dest, '.scaffold-keep'), 'skills/feature-chain.md\n');
+  const r = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest]);
+  assert('exits 0', r.status === 0, r.stderr);
+  assert('canonical body NOT written (kept)', !existsSync(join(dest, 'skills/feature-chain.md')));
+
+  const out = JSON.parse(r.stdout);
+  const kept = out.results.find(x => x.path === 'skills/feature-chain.md');
+  assert('result status is kept', kept?.status === 'kept');
+}
+
+// ---------------------------------------------------------------- case 3: differing file -> *.scaffold-new
+
+console.log('\nCase 3: differing existing file becomes *.scaffold-new');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  mkdirSync(join(dest, 'skills'), { recursive: true });
+  writeFileSync(join(dest, 'skills/feature-chain.md'), 'consumer-owned content\n');
+  const r = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest]);
+  assert('exits 0', r.status === 0, r.stderr);
+  assert('original file untouched',
+    readFileSync(join(dest, 'skills/feature-chain.md'), 'utf8') === 'consumer-owned content\n');
+  assert('sidecar written',
+    existsSync(join(dest, 'skills/feature-chain.md.scaffold-new')));
+}
+
+// ---------------------------------------------------------------- case 4: unknown capability exits non-zero
+
+console.log('\nCase 4: unknown capability exits non-zero');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const r = run(['--names', 'no-such-skill', '--harness', 'claude', '--into', dest]);
+  assert('exits non-zero', r.status !== 0);
+}
+
+// ---------------------------------------------------------------- case 5: --list prints JSON
+
+console.log('\nCase 5: --list prints valid JSON');
+{
+  const r = run(['--list']);
+  assert('exits 0', r.status === 0, r.stderr);
+  let parsed;
+  try { parsed = JSON.parse(r.stdout); } catch { parsed = null; }
+  assert('stdout is valid JSON', parsed !== null);
+  assert('JSON has capabilities array', Array.isArray(parsed?.capabilities));
+  assert('JSON has harnesses array', Array.isArray(parsed?.harnesses));
+}
+
+// ---------------------------------------------------------------- case 6: antigravity writes both files
+
+console.log('\nCase 6: emit feature-chain --harness antigravity');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const r = run(['--names', 'feature-chain', '--harness', 'antigravity', '--into', dest]);
+  assert('exits 0', r.status === 0, r.stderr);
+  assert('.agents skill written', existsSync(join(dest, '.agents/skills/feature-chain/SKILL.md')));
+  assert('.agent workflow written', existsSync(join(dest, '.agent/workflows/feature-chain.md')));
+}
+
+// ---------------------------------------------------------------- summary
+
+console.log(`\n${passed} passed, ${failed} failed.`);
+process.exit(failed > 0 ? 1 : 0);

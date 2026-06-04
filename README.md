@@ -36,7 +36,7 @@ grill-with-docs → to-prd → tdd → review
 4. **Review** — Chain stops and presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can also be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`.
+Skills can also be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/skill-export`.
 <!-- END_SKILLS_INVOCATION -->
 
 ## Structure
@@ -66,6 +66,7 @@ bin/
     prune/SKILL.md                # Run all quality review skills and funnel findings into design→PRD→TDD→PR
     pause/SKILL.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume/SKILL.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
+    skill-export/SKILL.md         # Export scaffold capabilities into a consumer repo in the target harness format
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
   read-once/
@@ -89,6 +90,7 @@ bin/
     prune.mdc                # mirrors prune for Cursor
     pause.mdc                # mirrors pause for Cursor
     resume.mdc               # mirrors resume for Cursor
+    skill-export.mdc         # mirrors skill-export for Cursor
 .agents/
   skills/
     feature-chain/SKILL.md        # Orchestrate design → PRD → TDD → review end to end
@@ -105,6 +107,7 @@ bin/
     prune/SKILL.md                # Run all quality review skills and funnel findings into design→PRD→TDD→PR
     pause/SKILL.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume/SKILL.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
+    skill-export/SKILL.md         # Export scaffold capabilities into a consumer repo in the target harness format
 .agent/
   rules/
     agents.md               # thin pointer to AGENTS.md (always-on)
@@ -123,6 +126,7 @@ bin/
     prune.md                # Run all quality review skills and funnel findings into design→PRD→TDD→PR
     pause.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
+    skill-export.md         # Export scaffold capabilities into a consumer repo in the target harness format
 scripts/
   check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/cursor/antigravity/sync)
   update-readme-skills.mjs       # regenerate README.md skill sections from RESOLVER.md
@@ -197,6 +201,41 @@ git fetch scaffold refs/tags/v1.0:refs/tags/scaffold-v1.0
 ```
 
 A GitHub Actions workflow can be installed at `.github/workflows/sync-scaffold.yml` — trigger it manually from the Actions tab for a PR-based update flow. Install it with `--with-workflow` during bootstrap, or copy it manually.
+
+## Using scaffold skills as a dependency
+
+The sync flow above is bulk — it pulls every file in the manifest. If you only want specific skills in a specific harness, use `capability-export` instead. scaffold owns the emit so consumers do not need to know the internal canonical+generated layout.
+
+**Emit specific skills into a repo:**
+```bash
+# From inside a scaffold clone, target another repo
+node tools/capability-export/run \
+  --names feature-chain,grill-with-docs,tdd \
+  --harness claude \
+  --into ../my-project
+```
+
+**Emit everything for all harnesses:**
+```bash
+node tools/capability-export/run --names all --harness all --into ../my-project
+```
+
+**List available capabilities:**
+```bash
+node tools/capability-export/run --list
+```
+
+**What gets written per harness:**
+
+| Harness | Files written |
+|---|---|
+| `claude` | `skills/<name>.md` + `.claude/skills/<name>/SKILL.md` |
+| `cursor` | `skills/<name>.md` + `.cursor/rules/<name>.mdc` |
+| `antigravity` | `skills/<name>.md` + `.agents/skills/<name>/SKILL.md` + `.agent/workflows/<name>.md` |
+
+The same clobber-safe contract applies as with the sync script: `.scaffold-keep` paths are never touched, differing files become `<file>.scaffold-new` sidecars, and `--force` overrides that.
+
+The tool emits a JSON manifest on stdout listing every file written, skipped, or sidecarred — pipe it to `jq` or capture it for CI.
 
 ## Skill engine
 
