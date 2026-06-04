@@ -14,7 +14,7 @@
 #   --with-workflow   Also install .github/workflows/sync-scaffold.yml.
 set -euo pipefail
 
-SCAFFOLD_URL="https://github.com/victusfate/scaffold.git"
+SCAFFOLD_URL="${SCAFFOLD_URL:-https://github.com/victusfate/scaffold.git}"
 RUN_SYNC=0
 WITH_WORKFLOW=0
 

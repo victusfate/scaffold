@@ -135,7 +135,10 @@ done
 sync_file "$SELF"
 
 # Save SHA only when there are no unresolved conflicts or pending reviews
-[ ${#conflicts[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ] && echo "$current_sha" > "$SHA_FILE"
+if [ ${#conflicts[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ]; then
+  mkdir -p "$(dirname "$SHA_FILE")"
+  echo "$current_sha" > "$SHA_FILE"
+fi
 
 echo ""
 [ ${#updated[@]}   -gt 0 ] && echo "Updated:"                                                              && printf '  %s\n' "${updated[@]}"
