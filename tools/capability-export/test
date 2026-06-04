@@ -35,6 +35,8 @@ console.log('\nCase 1: emit feature-chain --harness claude');
   const wrapper = readFileSync(join(dest, '.claude/skills/feature-chain/SKILL.md'), 'utf8');
   assert('wrapper @-includes canonical at correct depth',
     wrapper.includes('@../../../skills/feature-chain.md'));
+  assert('wrapper has description frontmatter',
+    /^---[\s\S]*?description:.*[\s\S]*?---/m.test(wrapper));
 
   const out = JSON.parse(r.stdout);
   assert('JSON output has results array', Array.isArray(out.results));
@@ -101,6 +103,27 @@ console.log('\nCase 6: emit feature-chain --harness antigravity');
   assert('exits 0', r.status === 0, r.stderr);
   assert('.agents skill written', existsSync(join(dest, '.agents/skills/feature-chain/SKILL.md')));
   assert('.agent workflow written', existsSync(join(dest, '.agent/workflows/feature-chain.md')));
+}
+
+// ---------------------------------------------------------------- case 7: claude wrapper always has description frontmatter (fallback)
+// Verify that even when no canonical .claude/skills/<name>/SKILL.md exists in the scaffold
+// root, the generated wrapper still contains a description: field so Claude Code can
+// surface the skill in its skill list.
+
+console.log('\nCase 7: claude wrapper fallback has description frontmatter');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  // Use a skill whose canonical wrapper exists in the scaffold root so we also prove
+  // the "use existing source" path produces valid frontmatter.
+  const r = run(['--names', 'skill-export', '--harness', 'claude', '--into', dest]);
+  assert('exits 0', r.status === 0, r.stderr);
+  const wrapperPath = join(dest, '.claude/skills/skill-export/SKILL.md');
+  assert('claude wrapper written', existsSync(wrapperPath));
+  const wrapper = readFileSync(wrapperPath, 'utf8');
+  assert('wrapper has description frontmatter',
+    /^---[\s\S]*?description:.*[\s\S]*?---/m.test(wrapper));
+  assert('wrapper @-includes canonical',
+    wrapper.includes('@../../../skills/skill-export.md'));
 }
 
 // ---------------------------------------------------------------- summary
