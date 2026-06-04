@@ -1,11 +1,11 @@
-# capability-export
+# hoist-skill
 
 Emit scaffold capabilities (skills) into a consumer repo in the target harness format. scaffold owns the emit — consumers ask for capabilities by name and do not need to know the internal layout.
 
 ## Usage
 
 ```bash
-node tools/capability-export/run --names <name[,name]|all> [--harness <claude|cursor|antigravity|all>] [--into <dest>] [--force]
+node tools/hoist-skill/run --names <name[,name]|all> [--harness <claude|cursor|antigravity|all>] [--into <dest>] [--force]
 ```
 
 **Options**
@@ -22,13 +22,13 @@ node tools/capability-export/run --names <name[,name]|all> [--harness <claude|cu
 
 ```bash
 # Emit feature-chain and tdd for Claude Code into the current directory
-node tools/capability-export/run --names feature-chain,tdd --harness claude
+node tools/hoist-skill/run --names feature-chain,tdd --harness claude
 
 # Emit all capabilities for all harnesses into another repo
-node tools/capability-export/run --names all --harness all --into ../my-project
+node tools/hoist-skill/run --names all --harness all --into ../my-project
 
 # List what is available
-node tools/capability-export/run --list
+node tools/hoist-skill/run --list
 ```
 
 ## What it writes
@@ -67,5 +67,5 @@ Status values: `written`, `unchanged`, `sidecar`, `kept`.
 ## Running the tests
 
 ```bash
-node tools/capability-export/test
+node tools/hoist-skill/test
 ```

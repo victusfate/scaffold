@@ -3,4 +3,4 @@ description: Export scaffold skills into another repo in the target harness form
 alwaysApply: false
 ---
 
-@../../skills/skill-export.md
+@../../skills/hoist-skill.md

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// capability-export — emit scaffold capabilities into a consumer repo.
+// hoist-skill — emit scaffold capabilities into a consumer repo.
 // Usage: node run [--names <n1,n2|all>] [--harness <claude|cursor|antigravity|all>]
 //                [--into <path>] [--force] [--list]
 

@@ -1,5 +1,5 @@
 kind: tool
-name: capability-export
+name: hoist-skill
 description: Emit scaffold capabilities into a consumer repo in the target harness format.
 inputs:
   names:
