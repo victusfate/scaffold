@@ -4,6 +4,8 @@
 
 | Term | Definition |
 |------|-----------|
+| template consumer | A repo created from scaffold as a template. Scaffold files are baked in at instantiation; no ongoing sync tooling needed. |
+| external consumer | A repo that exists independently and pulls from scaffold explicitly (e.g. `victusama`). This is the target audience for the sync tool. |
 | consumer | A downstream repo that pulls from scaffold (e.g. `victusama`). Owns no sync logic — only data (policy + manifest). |
 | policy file | `.sync/policy.yaml` — consumer-owned, hand-authored config declaring which scaffold files may be copied, guarded, or protected. |
 | skill manifest | `.sync/hoisted` — tab-separated file written by `hoist-skill`, listing emitted skill entries. Tool-written, not hand-authored. |
@@ -21,6 +23,14 @@
 ---
 
 ## Decisions
+
+### D0 — Target audience: external consumers only
+
+**Decision:** The sync tool targets **external consumers** — repos like `victusama` that exist independently and pull from scaffold explicitly. Template consumers (repos created from scaffold as a template) have scaffold files baked in at instantiation and do not need this tool.
+
+**Rationale:** Template consumers already have scaffold's setup; building a sync UX for them is out of scope. External consumers are the ones who currently maintain `scripts/update-scaffold.sh` and want to eliminate it.
+
+---
 
 ### D1 — Guarded-file semantics are consumer-declared, not hardcoded
 
