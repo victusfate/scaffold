@@ -43,6 +43,11 @@ Rules: one test at a time, only enough code to pass, don't anticipate future tes
 - Code is minimal for this test
 - No speculative features added
 
+**Test-quality self-audit (run at REFACTOR, before committing):**
+- Do any assertions use the default value for the field they verify? Replace with a sentinel (non-default) value — a bug that silently resets to the default will hide behind matching data.
+- For every new flag or optional argument: is each form covered? (absent / default / explicit value / combined with each flag it interacts with)
+- Is there at least one test written from the *caller's* perspective — an end-to-end path against a real empty destination, not the implementer's internal view? If not, flag it for the integration test suite.
+
 ### Commits and log
 
 After each slice:
@@ -58,6 +63,28 @@ Append to `./docs/<feature-slug>/tdd-log.md`:
 - Status: done
 - Notes: …
 ```
+
+### Integration tests (optional, not always run)
+
+Unit and acceptance tests (`tools/<tool>/test`, `scripts/*.test.*`) cover behavior through public interfaces and run on every commit. Integration tests cover end-to-end consumer flows and live in a separate file:
+
+```
+tools/<tool>/test-integration   # or scripts/<script>.integration.test.*
+```
+
+They are not required for every feature, but write one when:
+- The feature crosses a system boundary (writes files a downstream consumer reads, curls a remote, spawns a subprocess)
+- The acceptance test cannot simulate a realistic caller without becoming unwieldy
+- A reviewer or post-merge bug revealed a gap in the acceptance suite
+
+**Convention:**
+- Gate on an env var so CI can run them selectively: `if (!process.env.RUN_INTEGRATION) { console.log('skip — set RUN_INTEGRATION=1'); process.exit(0); }`
+- Use a real empty temp directory as the destination — not the scaffold root
+- Simulate the caller's full workflow (hoist → read manifest → replay), not individual functions
+- Keep them independent and repeatable (no shared state, no network unless the feature requires it)
+- Report pass/fail in the same format as the acceptance test so output is uniform
+
+Add a `test-integration` entry to `tool.yaml` when one exists. The pre-commit hook runs only `test`; integration tests run manually or in a dedicated CI job.
 
 ### When all slices pass
 

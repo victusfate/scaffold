@@ -4,6 +4,35 @@ Run the full feature chain end-to-end. **Do not pause for permission between pha
 
 ---
 
+## Entry-point detection (run before any phase)
+
+Check `./docs/<feature-slug>/` for existing artifacts and detect whether a document was supplied externally (uploaded file, pasted content, or a path the user named).
+
+| State | Entry point |
+|---|---|
+| External doc supplied (any format) | Place as `design.md` → start at Phase 2 |
+| `plan.md` exists | Resume Phase 3 at first incomplete slice |
+| `prd.md` exists, no `plan.md` | Skip Phases 1–2 → start at Phase 3 |
+| `design.md` exists, no `prd.md` | Skip Phase 1 → start at Phase 2 |
+| Nothing / intent unclear | Start at Phase 1 — grill resolves what to build |
+
+State the slug before writing the first file so the user can correct it. Infer it from the document title if obvious; ask once if not.
+
+**Accepting an external document (any format):**
+
+Always treat a pasted or uploaded document as a design doc — regardless of whether it looks like a PRD, spec, or proposal.
+
+Rationale: Phase 2 (`to-prd`) adds genuine value even when the input is already a complete PRD. It cross-references the codebase, catches conflicts with existing code, identifies modules already in place, and derives testing decisions the external doc cannot know. The output `prd.md` is always codebase-aware.
+
+1. Infer the feature slug from the document title. Ask once if it is not obvious.
+2. Write the content to `./docs/<feature-slug>/design.md` verbatim. Reformat into the standard design-doc structure only if it aids legibility — preserve every decision, requirement, and vocabulary term.
+3. Run `/design-review` in auto-fix mode to patch structural gaps.
+4. Commit `docs(<slug>): design Q&A and vocabulary (external)`.
+5. **Grill on ambiguity** — read `design.md` and assess whether any decisions are unresolved, vocabulary is fuzzy, or edge cases are missing. If so, run Phase 1 (grill) targeting only the open questions — do not re-ask settled decisions. If the doc is complete and unambiguous, skip Phase 1 and proceed directly to Phase 2.
+6. Proceed to Phase 2 (PRD synthesis).
+
+---
+
 ## Phase 1: Design (grill-with-docs)
 
 Interview the user relentlessly about every aspect of the plan until the design tree is resolved. Ask one question at a time with your recommended answer. Explore the codebase instead of asking when facts can be verified.

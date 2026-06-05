@@ -1,0 +1,112 @@
+#!/usr/bin/env node
+// End-to-end integration test for hoist-skill — simulates a real consumer workflow.
+// Runs against a real empty temp directory (not the scaffold root).
+// Gate: set RUN_INTEGRATION=1 to run.
+
+if (!process.env.RUN_INTEGRATION) {
+  console.log('skip — set RUN_INTEGRATION=1 to run integration tests');
+  process.exit(0);
+}
+
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+
+const RUN = join(dirname(fileURLToPath(import.meta.url)), 'run');
+
+let passed = 0, failed = 0;
+
+function assert(label, cond, detail = '') {
+  if (cond) { console.log(`  ✓ ${label}`); passed++; }
+  else       { console.error(`  ✗ ${label}${detail ? ': ' + detail : ''}`); failed++; }
+}
+
+function run(args) {
+  return spawnSync('node', [RUN, ...args], { encoding: 'utf8' });
+}
+
+// ----------------------------------------------------------------
+// Scenario: full consumer lifecycle
+//   1. hoist two skills with a pinned ref
+//   2. commit the manifest (represented by keeping the file)
+//   3. scaffold updates; consumer runs --plan --from-manifest to get sources
+//   4. consumer wipes emitted files (simulates fresh clone)
+//   5. consumer re-emits via --from-manifest — all files return; refs unchanged
+
+console.log('\nScenario: full consumer lifecycle (hoist → register → plan → replay)');
+{
+  const repo = mkdtempSync(join(tmpdir(), 'consumer-'));
+
+  // Step 1: hoist
+  const r1 = run(['--names', 'feature-chain,tdd', '--harness', 'claude',
+                  '--into', repo, '--ref', 'v1.0.0']);
+  assert('hoist exits 0', r1.status === 0, r1.stderr);
+  assert('feature-chain body emitted', existsSync(join(repo, 'skills/feature-chain.md')));
+  assert('tdd body emitted',           existsSync(join(repo, 'skills/tdd.md')));
+
+  const manifest = join(repo, '.sync', 'hoisted');
+  assert('manifest created', existsSync(manifest));
+  const lines = readFileSync(manifest, 'utf8')
+    .split('\n').filter(l => l.trim() && !l.startsWith('#'));
+  assert('two entries in manifest', lines.length === 2, `got: ${JSON.stringify(lines)}`);
+  assert('feature-chain pinned to v1.0.0', lines[0] === 'feature-chain\tclaude\tv1.0.0', lines[0]);
+  assert('tdd pinned to v1.0.0',           lines[1] === 'tdd\tclaude\tv1.0.0',           lines[1]);
+
+  // Step 3: plan — get source list for curl
+  const r3 = run(['--plan', '--from-manifest', '--into', repo]);
+  assert('plan exits 0', r3.status === 0, r3.stderr);
+  let plan;
+  try { plan = JSON.parse(r3.stdout); } catch { plan = null; }
+  assert('plan is valid JSON', plan !== null);
+  assert('plan lists tool path',    plan?.sources.includes('tools/hoist-skill/run'));
+  assert('plan lists RESOLVER',     plan?.sources.includes('.claude/skills/RESOLVER.md'));
+  assert('plan lists both bodies',  plan?.sources.includes('skills/feature-chain.md') &&
+                                    plan?.sources.includes('skills/tdd.md'));
+
+  // Step 4: simulate fresh clone — wipe emitted files, keep manifest
+  rmSync(join(repo, 'skills'),  { recursive: true, force: true });
+  rmSync(join(repo, '.claude'), { recursive: true, force: true });
+  assert('files wiped', !existsSync(join(repo, 'skills/tdd.md')));
+
+  // Step 5: replay
+  const r5 = run(['--from-manifest', '--into', repo]);
+  assert('replay exits 0', r5.status === 0, r5.stderr);
+  assert('feature-chain restored', existsSync(join(repo, 'skills/feature-chain.md')));
+  assert('tdd restored',           existsSync(join(repo, 'skills/tdd.md')));
+  assert('claude wrappers restored',
+    existsSync(join(repo, '.claude/skills/feature-chain/SKILL.md')) &&
+    existsSync(join(repo, '.claude/skills/tdd/SKILL.md')));
+
+  // Pins must be unchanged after plain replay
+  const lines2 = readFileSync(manifest, 'utf8')
+    .split('\n').filter(l => l.trim() && !l.startsWith('#'));
+  assert('replay preserves feature-chain pin', lines2[0] === 'feature-chain\tclaude\tv1.0.0', lines2[0]);
+  assert('replay preserves tdd pin',           lines2[1] === 'tdd\tclaude\tv1.0.0',           lines2[1]);
+}
+
+// ----------------------------------------------------------------
+// Scenario: re-pin on next scaffold release
+//   consumer runs --from-manifest --ref v2.0.0 to bump all pins
+
+console.log('\nScenario: re-pin all skills to a new scaffold release');
+{
+  const repo = mkdtempSync(join(tmpdir(), 'consumer-'));
+  mkdirSync(join(repo, '.sync'), { recursive: true });
+  writeFileSync(join(repo, '.sync', 'hoisted'),
+    '# manifest\nfeature-chain\tclaude\tv1.0.0\ntdd\tclaude\tv1.0.0\n');
+
+  const r = run(['--from-manifest', '--into', repo, '--ref', 'v2.0.0']);
+  assert('re-pin exits 0', r.status === 0, r.stderr);
+
+  const lines = readFileSync(join(repo, '.sync', 'hoisted'), 'utf8')
+    .split('\n').filter(l => l.trim() && !l.startsWith('#'));
+  assert('feature-chain bumped to v2.0.0', lines[0] === 'feature-chain\tclaude\tv2.0.0', lines[0]);
+  assert('tdd bumped to v2.0.0',           lines[1] === 'tdd\tclaude\tv2.0.0',           lines[1]);
+}
+
+// ----------------------------------------------------------------
+
+console.log(`\n${passed} passed, ${failed} failed.`);
+process.exit(failed > 0 ? 1 : 0);
