@@ -24,10 +24,12 @@ function run(args = [], opts = {}) {
 
 // ---------------------------------------------------------------- slice 1
 
-// Case 1: bin/sync exists and exits 0 with no args (stub)
+// Case 1: bin/sync exists and exits 1 with no policy file present
 {
-  const r = run([]);
-  assert('case 1: bin/sync exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  const dst = makeTmp();
+  const r = run(['--into', dst]);
+  assert('case 1: bin/sync exits 1 with no policy', r.code === 1, `exit ${r.code}`);
+  rmSync(dst, { recursive: true });
 }
 
 // ---------------------------------------------------------------- slice 2: policy parser
@@ -249,6 +251,83 @@ import { hoist } from '../hoist-skill/run';
   } catch (e) { errMsg = e.message; }
   assert('case 18: hoist() throws on unknown manifest entry', errMsg.includes('Unknown capabilities'));
   rmSync(dst, { recursive: true });
+}
+
+// ---------------------------------------------------------------- slice 5: sync orchestrator
+
+// Case 19: missing policy file → exit 1 with clear message
+{
+  const dst = makeTmp();
+  const r = run(['--into', dst]);
+  assert('case 19: missing policy exits 1', r.code === 1);
+  assert('case 19: missing policy message', r.stderr.includes('policy') || r.stdout.includes('policy'),
+    `stderr: ${r.stderr}\nstdout: ${r.stdout}`);
+  rmSync(dst, { recursive: true });
+}
+
+// Case 20: provenance line printed before writes
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'content');
+
+  const policyYaml = [
+    'ref: test-ref',
+    'files:',
+    '  copy:',
+    '    - AGENTS.md',
+    'skills:',
+    '  manifest: .sync/hoisted',
+  ].join('\n');
+  writeFile(dst, '.sync/policy.yaml', policyYaml);
+
+  const r = run(['--into', dst, '--ref', 'test-ref', '--check', `--scaffold-root=${src}`]);
+  assert('case 20: provenance ref in output', r.stdout.includes('test-ref') || r.stderr.includes('test-ref'),
+    `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 21: --check prints summary, exits 0
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'new content');
+  writeFile(dst, 'AGENTS.md', 'old content');
+
+  const policyYaml = [
+    'files:',
+    '  copy:',
+    '    - AGENTS.md',
+    'skills:',
+    '  manifest: .sync/hoisted',
+  ].join('\n');
+  writeFile(dst, '.sync/policy.yaml', policyYaml);
+
+  const r = run(['--into', dst, '--check', `--scaffold-root=${src}`]);
+  assert('case 21: --check exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  const content21 = existsSync(join(dst, 'AGENTS.md')) ? readFileSync(join(dst, 'AGENTS.md'), 'utf8') : '(missing)';
+  assert('case 21: --check does not write', content21 === 'old content', `got: ${content21}`);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 22: skills section absent from policy → hoist not called, sync succeeds
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'agents content');
+
+  const policyYaml = [
+    'files:',
+    '  copy:',
+    '    - AGENTS.md',
+    'skills:',
+    '  manifest: .sync/hoisted',
+  ].join('\n');
+  writeFile(dst, '.sync/policy.yaml', policyYaml);
+  // No .sync/hoisted manifest — hoist should be skipped
+
+  const r = run(['--into', dst, `--scaffold-root=${src}`]);
+  assert('case 22: sync without manifest exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  const content22 = existsSync(join(dst, 'AGENTS.md')) ? readFileSync(join(dst, 'AGENTS.md'), 'utf8') : '(missing)';
+  assert('case 22: copy file written', content22 === 'agents content', `got: ${content22}`);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
 console.error(`\n${passed} passed, ${failed} failed`);
