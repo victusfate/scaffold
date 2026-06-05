@@ -1,0 +1,121 @@
+#!/usr/bin/env node
+// End-to-end integration test for sync — simulates a real consumer workflow.
+// Runs against a real empty temp directory.
+// Gate: set RUN_INTEGRATION=1 to run.
+
+if (!process.env.RUN_INTEGRATION) {
+  console.log('skip — set RUN_INTEGRATION=1 to run integration tests');
+  process.exit(0);
+}
+
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { createServer } from 'node:http';
+
+const SCAFFOLD_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const BIN_SYNC      = join(SCAFFOLD_ROOT, 'bin/sync');
+
+let passed = 0, failed = 0;
+
+function assert(label, cond, detail = '') {
+  if (cond) { console.log(`  ✓ ${label}`); passed++; }
+  else       { console.error(`  ✗ ${label}${detail ? ': ' + detail : ''}`); failed++; }
+}
+
+function run(args, opts = {}) {
+  try {
+    const out = execFileSync(process.execPath, [BIN_SYNC, ...args], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts,
+    });
+    return { code: 0, stdout: out, stderr: '' };
+  } catch (e) {
+    return { code: e.status ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
+  }
+}
+
+function writeF(dir, rel, content) {
+  const abs = join(dir, rel);
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, content, 'utf8');
+}
+
+// ----------------------------------------------------------------
+// Scenario: full consumer lifecycle
+//   1. consumer has a policy.yaml with copy, guarded, protected entries
+//   2. scaffold source has all listed files
+//   3. sync runs — copy written, guarded written (marker present), protected untouched
+//   4. sync runs again with changed copy file — copy updated, guarded skipped (marker removed)
+//   5. --check run — no writes, summary shows would-write
+
+console.log('\nScenario: full consumer lifecycle (policy → file promotion → skills)');
+{
+  const scaffoldSrc = mkdtempSync(join(tmpdir(), 'scaffold-src-'));
+  const consumer    = mkdtempSync(join(tmpdir(), 'consumer-'));
+
+  // Scaffold source files
+  writeF(scaffoldSrc, 'AGENTS.md',     'agents content v1');
+  writeF(scaffoldSrc, 'CLAUDE.md',     '@MIND.md\nscaffold claude content');
+  writeF(scaffoldSrc, 'MIND.md',       'scaffold mind — should never win');
+  writeF(scaffoldSrc, 'docs/guide.md', 'guide content');
+
+  // Consumer starting state
+  writeF(consumer, 'CLAUDE.md', 'consumer claude with @MIND.md reference');
+  writeF(consumer, 'MIND.md',   'precious consumer mind file');
+
+  // Consumer policy
+  const policy = [
+    'ref: main',
+    'files:',
+    '  copy:',
+    '    - AGENTS.md',
+    '    - docs/guide.md',
+    '  guarded:',
+    '    - path: CLAUDE.md',
+    '      keep_marker: "@MIND.md"',
+    '  protected:',
+    '    - MIND.md',
+    'skills:',
+    '  manifest: .sync/hoisted',
+  ].join('\n');
+  writeF(consumer, '.sync/policy.yaml', policy);
+
+  // Step 1: initial sync
+  const r1 = run(['--into', consumer, `--scaffold-root=${scaffoldSrc}`]);
+  assert('step 1: sync exits 0', r1.code === 0, `exit ${r1.code}\n${r1.stderr}\n${r1.stdout}`);
+  assert('step 1: provenance in output', r1.stdout.includes('ref='), r1.stdout);
+  assert('step 1: AGENTS.md written',   readFileSync(join(consumer, 'AGENTS.md'), 'utf8') === 'agents content v1');
+  assert('step 1: docs/guide.md written', readFileSync(join(consumer, 'docs/guide.md'), 'utf8') === 'guide content');
+  assert('step 1: CLAUDE.md written (marker present)',
+    readFileSync(join(consumer, 'CLAUDE.md'), 'utf8') === '@MIND.md\nscaffold claude content');
+  assert('step 1: MIND.md untouched (protected)',
+    readFileSync(join(consumer, 'MIND.md'), 'utf8') === 'precious consumer mind file');
+
+  // Step 2: scaffold removes @MIND.md from CLAUDE.md — guarded must skip
+  writeF(scaffoldSrc, 'AGENTS.md', 'agents content v2');
+  writeF(scaffoldSrc, 'CLAUDE.md', 'scaffold claude — no longer imports MIND');
+
+  const r2 = run(['--into', consumer, `--scaffold-root=${scaffoldSrc}`]);
+  assert('step 2: sync exits 0', r2.code === 0, r2.stderr);
+  assert('step 2: AGENTS.md updated', readFileSync(join(consumer, 'AGENTS.md'), 'utf8') === 'agents content v2');
+  assert('step 2: CLAUDE.md unchanged (guarded-skip, marker absent)',
+    readFileSync(join(consumer, 'CLAUDE.md'), 'utf8') === '@MIND.md\nscaffold claude content');
+  assert('step 2: guarded-skip warning in output', r2.stdout.includes('guarded-skip') || r2.stdout.includes('warning'));
+  assert('step 2: MIND.md still untouched', readFileSync(join(consumer, 'MIND.md'), 'utf8') === 'precious consumer mind file');
+
+  // Step 3: --check run — verify no writes, summary present
+  writeF(scaffoldSrc, 'AGENTS.md', 'agents content v3');
+  const r3 = run(['--into', consumer, '--check', `--scaffold-root=${scaffoldSrc}`]);
+  assert('step 3: --check exits 0', r3.code === 0, r3.stderr);
+  assert('step 3: --check AGENTS.md not updated',
+    readFileSync(join(consumer, 'AGENTS.md'), 'utf8') === 'agents content v2');
+  assert('step 3: --check output mentions dry run', r3.stdout.includes('dry run') || r3.stdout.includes('--check'));
+
+  rmSync(scaffoldSrc, { recursive: true });
+  rmSync(consumer,    { recursive: true });
+}
+
+console.log(`\n${passed} passed, ${failed} failed`);
+process.exit(failed ? 1 : 0);
