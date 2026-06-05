@@ -23,44 +23,6 @@ process.on('exit', () => {
   if (_fetchTempDir) try { rmSync(_fetchTempDir, { recursive: true, force: true }); } catch { /* best-effort */ }
 });
 
-// ---------------------------------------------------------------- args
-
-const args = process.argv.slice(2);
-const get  = (flag) => { const i = args.indexOf(flag); return i !== -1 ? args[i + 1] : null; };
-const has  = (flag) => args.includes(flag);
-
-const rawNames    = get('--names')   ?? 'all';
-const rawHarness  = get('--harness') ?? 'claude';
-const intoRaw     = get('--into')    ?? '.';
-const force       = has('--force');
-const listMode    = has('--list');
-const ref         = get('--ref')     ?? 'main';
-const refExplicit = args.includes('--ref');
-const noRecord    = has('--no-record');
-const planMode    = has('--plan');
-const fetchMode   = has('--fetch');
-
-const fromManifestFlag = has('--from-manifest');
-const fromManifestRaw  = (() => {
-  const i = args.indexOf('--from-manifest');
-  if (i === -1) return null;
-  const next = args[i + 1];
-  return (next && !next.startsWith('--')) ? next : null;
-})();
-
-const INTO = resolve(intoRaw);
-const manifestReadPath  = fromManifestFlag
-  ? (fromManifestRaw ? resolve(fromManifestRaw) : join(INTO, '.sync', 'hoisted'))
-  : null;
-const manifestWritePath = join(INTO, '.sync', 'hoisted');
-
-// ---------------------------------------------------------------- validation
-
-if (has('--names') && fromManifestFlag) {
-  console.error('--names and --from-manifest are mutually exclusive');
-  process.exit(1);
-}
-
 // ---------------------------------------------------------------- RESOLVER parse
 
 function splitRow(row) {
@@ -146,7 +108,7 @@ function loadKeep(dest) {
 
 // ---------------------------------------------------------------- clobber-safe write
 
-function safeWrite(dest, relPath, content, kept, results) {
+function safeWrite(dest, relPath, content, kept, results, force) {
   if (kept(relPath)) {
     results.push({ path: relPath, status: 'kept' });
     console.error(`  kept   ${relPath}`);
@@ -191,52 +153,52 @@ function capSourcePaths(cap, harness) {
 
 // ---------------------------------------------------------------- per-harness emitters
 
-function emitClaude(cap, dest, kept, results, srcRoot) {
+function emitClaude(cap, dest, kept, results, srcRoot, force) {
   const bodyAbs = join(srcRoot, cap.path);
-  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results);
+  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
   const wrapperRel = `.claude/skills/${cap.name}/SKILL.md`;
   const src = join(srcRoot, '.claude', 'skills', cap.name, 'SKILL.md');
   const content = existsSync(src)
     ? readFileSync(src, 'utf8')
     : `---\ndescription: ${cap.purpose}\n---\n\n@../../../${cap.path}\n`;
-  safeWrite(dest, wrapperRel, content, kept, results);
+  safeWrite(dest, wrapperRel, content, kept, results, force);
 }
 
-function emitCursor(cap, dest, kept, results, srcRoot) {
+function emitCursor(cap, dest, kept, results, srcRoot, force) {
   const bodyAbs = join(srcRoot, cap.path);
-  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results);
+  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
   const cursorRel = `.cursor/rules/${cap.name}.mdc`;
   const src = join(srcRoot, '.cursor', 'rules', `${cap.name}.mdc`);
   const content = existsSync(src)
     ? readFileSync(src, 'utf8')
     : `---\ndescription: ${cap.purpose}\n---\n\n@../../${cap.path}\n`;
-  safeWrite(dest, cursorRel, content, kept, results);
+  safeWrite(dest, cursorRel, content, kept, results, force);
 }
 
-function emitAntigravity(cap, dest, kept, results, srcRoot) {
+function emitAntigravity(cap, dest, kept, results, srcRoot, force) {
   const bodyAbs = join(srcRoot, cap.path);
-  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results);
+  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
 
   const agentSkillRel = `.agents/skills/${cap.name}/SKILL.md`;
   const agentSkillSrc = join(srcRoot, '.agents', 'skills', cap.name, 'SKILL.md');
   const agentSkillContent = existsSync(agentSkillSrc)
     ? readFileSync(agentSkillSrc, 'utf8')
     : `---\nname: ${cap.name}\ndescription: |\n  ${cap.purpose}\nlicense: MIT\nmetadata:\n  version: "1.0"\n---\n\nRead and follow the complete skill instructions in [\`${cap.path}\`](../../../${cap.path}).\n`;
-  safeWrite(dest, agentSkillRel, agentSkillContent, kept, results);
+  safeWrite(dest, agentSkillRel, agentSkillContent, kept, results, force);
 
   const workflowRel = `.agent/workflows/${cap.name}.md`;
   const workflowSrc = join(srcRoot, '.agent', 'workflows', `${cap.name}.md`);
   const workflowContent = existsSync(workflowSrc)
     ? readFileSync(workflowSrc, 'utf8')
     : `---\ndescription: ${cap.purpose}\n---\n\nRead and follow the complete skill instructions in [\`${cap.path}\`](../../${cap.path}).\n`;
-  safeWrite(dest, workflowRel, workflowContent, kept, results);
+  safeWrite(dest, workflowRel, workflowContent, kept, results, force);
 }
 
-function makeEmitters(srcRoot) {
+function makeEmitters(srcRoot, force) {
   return {
-    claude:      (cap, dest, kept, results) => emitClaude(cap, dest, kept, results, srcRoot),
-    cursor:      (cap, dest, kept, results) => emitCursor(cap, dest, kept, results, srcRoot),
-    antigravity: (cap, dest, kept, results) => emitAntigravity(cap, dest, kept, results, srcRoot),
+    claude:      (cap, dest, kept, results) => emitClaude(cap, dest, kept, results, srcRoot, force),
+    cursor:      (cap, dest, kept, results) => emitCursor(cap, dest, kept, results, srcRoot, force),
+    antigravity: (cap, dest, kept, results) => emitAntigravity(cap, dest, kept, results, srcRoot, force),
   };
 }
 
@@ -251,13 +213,13 @@ async function fetchRaw(url, required = true) {
   return res.text();
 }
 
-async function populateFetchRoot(tempDir, pairs, registry) {
+async function populateFetchRoot(tempDir, pairs, registry, ref) {
   const written = new Set();
   for (const { name, harness, ref: pairRef } of pairs) {
     const cap = registry.find(r => r.name === name);
     for (const { path: p, required } of capSourcePaths(cap, harness)) {
       if (written.has(p)) continue;
-      const content = await fetchRaw(`${RAW_BASE}/${pairRef}/${p}`, required);
+      const content = await fetchRaw(`${RAW_BASE}/${pairRef ?? ref}/${p}`, required);
       if (content === null) continue;
       const dest = join(tempDir, p);
       mkdirSync(dirname(dest), { recursive: true });
@@ -269,27 +231,51 @@ async function populateFetchRoot(tempDir, pairs, registry) {
 
 // ---------------------------------------------------------------- pre-check sources (pure-emit mode)
 
-function checkLocalSources(pairs, srcRoot, registry) {
+function checkLocalSources(pairs, srcRoot, registry, ref) {
   for (const { name } of pairs) {
     const cap = registry.find(r => r.name === name);
     const bodyAbs = join(srcRoot, cap.path);
     if (!existsSync(bodyAbs)) {
-      console.error(`hoist-skill: missing source ${cap.path}`);
-      console.error(`  (mirror it from ${RAW_BASE}/${ref}/${cap.path}, or run with --fetch)`);
-      process.exit(1);
+      throw new Error(
+        `hoist-skill: missing source ${cap.path}\n` +
+        `  (mirror it from ${RAW_BASE}/${ref}/${cap.path}, or run with --fetch)`
+      );
     }
   }
 }
 
-// ---------------------------------------------------------------- main
+// ---------------------------------------------------------------- hoist API
 
-async function main() {
+/**
+ * Hoist scaffold capabilities into a consumer repo.
+ * Returns the result object (same shape as the JSON previously printed to stdout).
+ * Throws on fatal errors instead of calling process.exit().
+ */
+export async function hoist(opts = {}) {
+  const {
+    names: rawNames     = 'all',
+    harness: rawHarness = 'claude',
+    into: intoRaw       = '.',
+    force               = false,
+    list: listMode      = false,
+    ref                 = 'main',
+    refExplicit         = false,
+    noRecord            = false,
+    plan: planMode      = false,
+    fetch: fetchMode    = false,
+    fromManifest        = null,   // path string or null (falsy = not using manifest)
+  } = opts;
+
+  const INTO              = resolve(intoRaw);
+  const manifestReadPath  = fromManifest ? resolve(fromManifest) : join(INTO, '.sync', 'hoisted');
+  const manifestWritePath = join(INTO, '.sync', 'hoisted');
+  const fromManifestFlag  = Boolean(fromManifest);
+
   let srcRoot = SCAFFOLD_ROOT;
 
   if (fetchMode) {
     if (Number(process.versions.node.split('.')[0]) < 18) {
-      console.error(`hoist-skill: --fetch requires Node 18+ (current: ${process.version})`);
-      process.exit(1);
+      throw new Error(`hoist-skill: --fetch requires Node 18+ (current: ${process.version})`);
     }
     _fetchTempDir = mkdtempSync(join(tmpdir(), 'hoist-skill-'));
     srcRoot = _fetchTempDir;
@@ -300,20 +286,20 @@ async function main() {
   } else {
     const localResolver = join(srcRoot, RESOLVER_REL);
     if (!existsSync(localResolver)) {
-      console.error(`hoist-skill: missing source ${RESOLVER_REL}`);
-      console.error(`  (mirror it from ${RAW_BASE}/${ref}/${RESOLVER_REL}, or run with --fetch)`);
-      process.exit(1);
+      throw new Error(
+        `hoist-skill: missing source ${RESOLVER_REL}\n` +
+        `  (mirror it from ${RAW_BASE}/${ref}/${RESOLVER_REL}, or run with --fetch)`
+      );
     }
   }
 
   const registry = parseResolver(join(srcRoot, RESOLVER_REL));
 
   if (listMode) {
-    console.log(JSON.stringify({
+    return {
       capabilities: registry.map(r => ({ name: r.name, purpose: r.purpose })),
       harnesses: HARNESSES,
-    }, null, 2));
-    process.exit(0);
+    };
   }
 
   // Build emit pairs: [{ name, harness }]
@@ -322,36 +308,27 @@ async function main() {
   if (fromManifestFlag) {
     const entries = readManifest(manifestReadPath);
     if (!entries.length) {
-      console.error(`No entries found in manifest: ${manifestReadPath}`);
-      process.exit(1);
+      throw new Error(`No entries found in manifest: ${manifestReadPath}`);
     }
     const unknownNames     = entries.filter(e => !registry.find(r => r.name === e.name)).map(e => e.name);
     const unknownHarnesses = entries.filter(e => !HARNESSES.includes(e.harness)).map(e => e.harness);
     if (unknownNames.length) {
-      console.error(`Unknown capabilities in manifest: ${unknownNames.join(', ')}`);
-      console.error(`Available: ${registry.map(r => r.name).join(', ')}`);
-      process.exit(1);
+      throw new Error(`Unknown capabilities in manifest: ${unknownNames.join(', ')}\nAvailable: ${registry.map(r => r.name).join(', ')}`);
     }
     if (unknownHarnesses.length) {
-      console.error(`Unknown harnesses in manifest: ${unknownHarnesses.join(', ')}`);
-      console.error(`Available: ${HARNESSES.join(', ')}`);
-      process.exit(1);
+      throw new Error(`Unknown harnesses in manifest: ${unknownHarnesses.join(', ')}\nAvailable: ${HARNESSES.join(', ')}`);
     }
     emitPairs = entries.map(e => ({ name: e.name, harness: e.harness, ref: e.ref }));
   } else {
     const requestedNames = rawNames === 'all' ? registry.map(r => r.name) : rawNames.split(',').map(s => s.trim());
     const unknown = requestedNames.filter(n => !registry.find(r => r.name === n));
     if (unknown.length) {
-      console.error(`Unknown capabilities: ${unknown.join(', ')}`);
-      console.error(`Available: ${registry.map(r => r.name).join(', ')}`);
-      process.exit(1);
+      throw new Error(`Unknown capabilities: ${unknown.join(', ')}\nAvailable: ${registry.map(r => r.name).join(', ')}`);
     }
     const requestedHarnesses = rawHarness === 'all' ? HARNESSES : [rawHarness];
     const badHarnesses = requestedHarnesses.filter(h => !HARNESSES.includes(h));
     if (badHarnesses.length) {
-      console.error(`Unknown harnesses: ${badHarnesses.join(', ')}`);
-      console.error(`Available: ${HARNESSES.join(', ')}`);
-      process.exit(1);
+      throw new Error(`Unknown harnesses: ${badHarnesses.join(', ')}\nAvailable: ${HARNESSES.join(', ')}`);
     }
     emitPairs = [];
     for (const name of requestedNames)
@@ -379,20 +356,18 @@ async function main() {
     if (uniqueHarnesses.length === 1) out.harness = uniqueHarnesses[0];
     else out.harnesses = uniqueHarnesses;
     out.sources = sources;
-
-    console.log(JSON.stringify(out, null, 2));
-    process.exit(0);
+    return out;
   }
 
   // Fetch or pre-check required sources
   if (fetchMode) {
-    await populateFetchRoot(srcRoot, emitPairs, registry);
+    await populateFetchRoot(srcRoot, emitPairs, registry, ref);
   } else {
-    checkLocalSources(emitPairs, srcRoot, registry);
+    checkLocalSources(emitPairs, srcRoot, registry, ref);
   }
 
   // Emit
-  const EMITTERS = makeEmitters(srcRoot);
+  const EMITTERS = makeEmitters(srcRoot, force);
   const kept     = loadKeep(INTO);
   const results  = [];
 
@@ -412,7 +387,54 @@ async function main() {
   }
 
   const usedHarnesses = [...new Set(emitPairs.map(p => p.harness))];
-  console.log(JSON.stringify({ into: INTO, harnesses: usedHarnesses, results }, null, 2));
+  return { into: INTO, harnesses: usedHarnesses, results };
 }
 
-main().catch(e => { console.error(e.message); process.exit(1); });
+// ---------------------------------------------------------------- CLI entry point
+
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+if (isMain) {
+  const args = process.argv.slice(2);
+  const get  = (flag) => { const i = args.indexOf(flag); return i !== -1 ? args[i + 1] : null; };
+  const has  = (flag) => args.includes(flag);
+
+  const fromManifestFlag = has('--from-manifest');
+  const fromManifestRaw  = (() => {
+    const i = args.indexOf('--from-manifest');
+    if (i === -1) return null;
+    const next = args[i + 1];
+    return (next && !next.startsWith('--')) ? next : null;
+  })();
+
+  const ref         = get('--ref') ?? 'main';
+  const intoRaw     = get('--into') ?? '.';
+  const INTO        = resolve(intoRaw);
+
+  const opts = {
+    names:       get('--names')   ?? 'all',
+    harness:     get('--harness') ?? 'claude',
+    into:        intoRaw,
+    force:       has('--force'),
+    list:        has('--list'),
+    ref,
+    refExplicit: args.includes('--ref'),
+    noRecord:    has('--no-record'),
+    plan:        has('--plan'),
+    fetch:       has('--fetch'),
+    fromManifest: fromManifestFlag
+      ? (fromManifestRaw ?? join(INTO, '.sync', 'hoisted'))
+      : null,
+  };
+
+  if (has('--names') && fromManifestFlag) {
+    console.error('--names and --from-manifest are mutually exclusive');
+    process.exit(1);
+  }
+
+  hoist(opts).then(result => {
+    console.log(JSON.stringify(result, null, 2));
+  }).catch(e => {
+    console.error(e.message);
+    process.exit(1);
+  });
+}

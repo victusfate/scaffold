@@ -1,0 +1,334 @@
+#!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
+let passed = 0, failed = 0;
+
+function assert(label, cond, detail = '') {
+  if (cond) { console.error(`  pass  ${label}`); passed++; }
+  else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
+}
+
+function run(args = [], opts = {}) {
+  try {
+    const out = execFileSync(process.execPath, [join(ROOT, 'bin/sync'), ...args], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts,
+    });
+    return { code: 0, stdout: out, stderr: '' };
+  } catch (e) {
+    return { code: e.status ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
+  }
+}
+
+// ---------------------------------------------------------------- slice 1
+
+// Case 1: bin/sync exists and exits 1 with no policy file present
+{
+  const dst = makeTmp();
+  const r = run(['--into', dst]);
+  assert('case 1: bin/sync exits 1 with no policy', r.code === 1, `exit ${r.code}`);
+  rmSync(dst, { recursive: true });
+}
+
+// ---------------------------------------------------------------- slice 2: policy parser
+
+import { parsePolicy } from './policy.mjs';
+
+const VALID_YAML = `
+ref: v1.2
+files:
+  copy:
+    - AGENTS.md
+    - docs/guide.md
+  guarded:
+    - path: CLAUDE.md
+      keep_marker: "@MIND.md"
+  protected:
+    - MIND.md
+skills:
+  manifest: .sync/hoisted
+`.trim();
+
+// Case 2: valid policy parses correctly
+{
+  const p = parsePolicy(VALID_YAML);
+  assert('case 2: ref parsed', p.ref === 'v1.2');
+  assert('case 2: copy list', JSON.stringify(p.files.copy) === JSON.stringify(['AGENTS.md', 'docs/guide.md']));
+  assert('case 2: guarded path', p.files.guarded[0].path === 'CLAUDE.md');
+  assert('case 2: guarded keep_marker', p.files.guarded[0].keep_marker === '@MIND.md');
+  assert('case 2: protected list', JSON.stringify(p.files.protected) === JSON.stringify(['MIND.md']));
+  assert('case 2: skills.manifest', p.skills.manifest === '.sync/hoisted');
+}
+
+// Case 3: ref defaults to main when absent
+{
+  const p = parsePolicy(`files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted`);
+  assert('case 3: ref defaults to main', p.ref === 'main');
+}
+
+// Case 4: empty sections are allowed (copy/guarded/protected may be absent)
+{
+  const p = parsePolicy(`files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted`);
+  assert('case 4: guarded defaults to []', Array.isArray(p.files.guarded) && p.files.guarded.length === 0);
+  assert('case 4: protected defaults to []', Array.isArray(p.files.protected) && p.files.protected.length === 0);
+}
+
+// Case 5: missing files key throws
+{
+  let threw = false;
+  try { parsePolicy(`skills:\n  manifest: .sync/hoisted`); } catch { threw = true; }
+  assert('case 5: missing files key throws', threw);
+}
+
+// Case 6: missing skills.manifest key throws
+{
+  let threw = false;
+  try { parsePolicy(`files:\n  copy:\n    - AGENTS.md`); } catch { threw = true; }
+  assert('case 6: missing skills.manifest throws', threw);
+}
+
+// Case 7: guarded entry missing keep_marker throws
+{
+  let threw = false;
+  try { parsePolicy(`files:\n  guarded:\n    - path: CLAUDE.md\nskills:\n  manifest: .sync/hoisted`); } catch { threw = true; }
+  assert('case 7: guarded entry missing keep_marker throws', threw);
+}
+
+// Case 8: guarded entry missing path throws
+{
+  let threw = false;
+  try { parsePolicy(`files:\n  guarded:\n    - keep_marker: "@MIND.md"\nskills:\n  manifest: .sync/hoisted`); } catch { threw = true; }
+  assert('case 8: guarded entry missing path throws', threw);
+}
+
+// ---------------------------------------------------------------- slice 3: file promotion
+
+import { promoteFiles } from './promote.mjs';
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
+function makeTmp() {
+  return mkdtempSync(join(tmpdir(), 'sync-test-'));
+}
+
+function writeFile(dir, rel, content) {
+  const abs = join(dir, rel);
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, content, 'utf8');
+}
+
+const POLICY_BASE = {
+  ref: 'main',
+  files: {
+    copy: ['AGENTS.md'],
+    guarded: [{ path: 'CLAUDE.md', keep_marker: '@MIND.md' }],
+    protected: ['MIND.md'],
+  },
+  skills: { manifest: '.sync/hoisted' },
+};
+
+// Case 9: copy — free overwrite (incoming differs from existing)
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'new content');
+  writeFile(dst, 'AGENTS.md', 'old content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 9: copy overwrites freely', r?.status === 'written');
+  assert('case 9: copy file content updated', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'new content');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 10: copy — unchanged when identical
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'same');
+  writeFile(dst, 'AGENTS.md', 'same');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 10: copy unchanged when identical', r?.status === 'unchanged');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 11: guarded — writes when marker present in incoming
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'CLAUDE.md', '@MIND.md\nsome content');
+  writeFile(dst, 'CLAUDE.md', 'old');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'CLAUDE.md');
+  assert('case 11: guarded writes when marker present', r?.status === 'written');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 12: guarded — skips when marker absent from incoming
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'CLAUDE.md', 'no marker here');
+  writeFile(dst, 'CLAUDE.md', 'local content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'CLAUDE.md');
+  assert('case 12: guarded skips when marker absent', r?.status === 'guarded-skip');
+  assert('case 12: local file untouched', readFileSync(join(dst, 'CLAUDE.md'), 'utf8') === 'local content');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 13: protected — never written even with --force
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'MIND.md', 'from scaffold');
+  writeFile(dst, 'MIND.md', 'my content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, { force: true });
+  const r = results.find(r => r.path === 'MIND.md');
+  assert('case 13: protected never written', r?.status === 'protected');
+  assert('case 13: protected file untouched', readFileSync(join(dst, 'MIND.md'), 'utf8') === 'my content');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 14: default deny — unlisted path not written
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'agents');
+  writeFile(src, 'UNLISTED.md', 'should not copy');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  assert('case 14: unlisted path not in results', !results.find(r => r.path === 'UNLISTED.md'));
+  assert('case 14: unlisted file not written', !existsSync(join(dst, 'UNLISTED.md')));
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 15: --check mode — no files written, actions reported
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'new');
+  writeFile(dst, 'AGENTS.md', 'old');
+  writeFile(src, 'CLAUDE.md', '@MIND.md content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, { check: true });
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 15: check mode reports action', r?.status === 'would-write');
+  assert('case 15: check mode writes nothing', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'old');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 16: source file missing — skipped gracefully
+{
+  const src = makeTmp(), dst = makeTmp();
+  // AGENTS.md is in policy.copy but not in src
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 16: missing src file reported as skipped', r?.status === 'src-missing');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// ---------------------------------------------------------------- slice 4: hoist-skill API export
+
+import { hoist } from '../hoist-skill/run';
+
+// Case 17: hoist() is importable and list mode returns capabilities JSON
+{
+  let result;
+  try {
+    result = await hoist({ list: true, into: makeTmp() });
+  } catch (e) {
+    assert('case 17: hoist() importable', false, e.message);
+  }
+  if (result !== undefined) {
+    assert('case 17: hoist list returns capabilities', Array.isArray(result?.capabilities) && result.capabilities.length > 0,
+      JSON.stringify(result));
+  }
+}
+
+// Case 18: hoist() throws on unknown capability in manifest (no network needed)
+{
+  const dst = makeTmp();
+  const manifestPath = join(dst, '.sync', 'hoisted');
+  mkdirSync(join(dst, '.sync'), { recursive: true });
+  writeFileSync(manifestPath, '# header\nno-such-skill\tclaude\tmain\n', 'utf8');
+  let errMsg = '';
+  try {
+    await hoist({ fromManifest: manifestPath, into: dst });
+  } catch (e) { errMsg = e.message; }
+  assert('case 18: hoist() throws on unknown manifest entry', errMsg.includes('Unknown capabilities'));
+  rmSync(dst, { recursive: true });
+}
+
+// ---------------------------------------------------------------- slice 5: sync orchestrator
+
+// Case 19: missing policy file → exit 1 with clear message
+{
+  const dst = makeTmp();
+  const r = run(['--into', dst]);
+  assert('case 19: missing policy exits 1', r.code === 1);
+  assert('case 19: missing policy message', r.stderr.includes('policy') || r.stdout.includes('policy'),
+    `stderr: ${r.stderr}\nstdout: ${r.stdout}`);
+  rmSync(dst, { recursive: true });
+}
+
+// Case 20: provenance line printed before writes
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'content');
+
+  const policyYaml = [
+    'ref: test-ref',
+    'files:',
+    '  copy:',
+    '    - AGENTS.md',
+    'skills:',
+    '  manifest: .sync/hoisted',
+  ].join('\n');
+  writeFile(dst, '.sync/policy.yaml', policyYaml);
+
+  const r = run(['--into', dst, '--ref', 'test-ref', '--check', `--scaffold-root=${src}`]);
+  assert('case 20: provenance ref in output', r.stdout.includes('test-ref') || r.stderr.includes('test-ref'),
+    `stdout: ${r.stdout}\nstderr: ${r.stderr}`);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 21: --check prints summary, exits 0
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'new content');
+  writeFile(dst, 'AGENTS.md', 'old content');
+
+  const policyYaml = [
+    'files:',
+    '  copy:',
+    '    - AGENTS.md',
+    'skills:',
+    '  manifest: .sync/hoisted',
+  ].join('\n');
+  writeFile(dst, '.sync/policy.yaml', policyYaml);
+
+  const r = run(['--into', dst, '--check', `--scaffold-root=${src}`]);
+  assert('case 21: --check exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  const content21 = existsSync(join(dst, 'AGENTS.md')) ? readFileSync(join(dst, 'AGENTS.md'), 'utf8') : '(missing)';
+  assert('case 21: --check does not write', content21 === 'old content', `got: ${content21}`);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 22: skills section absent from policy → hoist not called, sync succeeds
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'agents content');
+
+  const policyYaml = [
+    'files:',
+    '  copy:',
+    '    - AGENTS.md',
+    'skills:',
+    '  manifest: .sync/hoisted',
+  ].join('\n');
+  writeFile(dst, '.sync/policy.yaml', policyYaml);
+  // No .sync/hoisted manifest — hoist should be skipped
+
+  const r = run(['--into', dst, `--scaffold-root=${src}`]);
+  assert('case 22: sync without manifest exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  const content22 = existsSync(join(dst, 'AGENTS.md')) ? readFileSync(join(dst, 'AGENTS.md'), 'utf8') : '(missing)';
+  assert('case 22: copy file written', content22 === 'agents content', `got: ${content22}`);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+console.error(`\n${passed} passed, ${failed} failed`);
+process.exit(failed ? 1 : 0);
