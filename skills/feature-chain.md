@@ -10,50 +10,25 @@ Check `./docs/<feature-slug>/` for existing artifacts and detect whether a docum
 
 | State | Entry point |
 |---|---|
-| External design doc supplied | Place as `design.md` → start at Phase 2 |
-| External PRD supplied | Place as `prd.md` → start at Phase 3 |
-| External plan supplied | Place as `plan.md` → start at Phase 3 (TDD only) |
+| External doc supplied (any format) | Place as `design.md` → start at Phase 2 |
 | `plan.md` exists | Resume Phase 3 at first incomplete slice |
-| `prd.md` exists | Skip Phases 1–2 → start at Phase 3 |
+| `prd.md` exists, no `plan.md` | Skip Phases 1–2 → start at Phase 3 |
 | `design.md` exists, no `prd.md` | Skip Phase 1 → start at Phase 2 |
 | Nothing | Start at Phase 1 |
 
-**Classifying a pasted or uploaded document:**
-
-Read the document and classify it by looking for these signals, in order:
-
-1. **Explicit label wins** — if the title or first heading contains "Design", "PRD", "Product Requirements", or "Plan / Implementation Plan", use that type directly.
-
-2. **Plan signals** — numbered vertical slices; RED / GREEN / REFACTOR language; "Slice N" headings; task-level granularity with no user stories or vocabulary table → **plan**.
-
-3. **PRD signals** — "Problem Statement", "User Stories", "Out of Scope", "Implementation Decisions", or numbered functional requirements → **PRD**.
-
-4. **Design signals** — Q&A pairs, "Decisions" with rationale and alternatives, a vocabulary / glossary table, edge-case scenarios; no user stories and no slice structure → **design doc**.
-
-5. **Ambiguous (spec, proposal, or mix)** — contains both decisions/rationale AND implementation details but fits none of the above cleanly → treat as **PRD**. A PRD is the safest container: it preserves all requirements, and the chain can still run design-review or re-plan from it.
-
-6. **Still unclear after reading** — ask the user one question: *"Is this a design doc (decisions + vocabulary), a PRD (requirements + user stories), or an implementation plan (vertical slices)?"*
-
 State the slug before writing the first file so the user can correct it. Infer it from the document title if obvious; ask once if not.
 
-**Accepting an external design doc:**
-A design doc contains Q&A, decisions, and a canonical vocabulary — but no user stories or implementation decisions (those belong in the PRD).
-1. Write to `./docs/<feature-slug>/design.md`, preserving all decisions and vocabulary verbatim. Reformat into the standard structure only if needed.
-2. Run `/design-review` in auto-fix mode to patch any gaps.
-3. Commit `docs(<slug>): design Q&A and vocabulary (external)`.
-4. Proceed immediately to Phase 2 (PRD synthesis). Do not re-interview.
+**Accepting an external document (any format):**
 
-**Accepting an external PRD:**
-A PRD contains problem statement, user stories, and implementation decisions — enough to plan from directly.
-1. Write to `./docs/<feature-slug>/prd.md`, preserving all requirements verbatim. Reformat into the standard structure only if needed.
-2. Commit `docs(<slug>): PRD (external)`.
-3. Proceed immediately to Phase 3. Do not re-interview.
+Always treat a pasted or uploaded document as a design doc — regardless of whether it looks like a PRD, spec, or proposal. Do not classify; do not ask.
 
-**Accepting an external plan:**
-A plan contains vertical slices ready for TDD execution — no design or PRD synthesis needed.
-1. Write to `./docs/<feature-slug>/plan.md` verbatim.
-2. Commit `docs(<slug>): implementation plan (external)`.
-3. Proceed immediately to Phase 3 TDD execution at slice 1. Do not synthesize a PRD.
+Rationale: Phase 2 (`to-prd`) adds genuine value even when the input is already a complete PRD. It cross-references the codebase, catches conflicts with existing code, identifies modules already in place, and derives testing decisions the external doc cannot know. The output `prd.md` is always codebase-aware.
+
+1. Infer the feature slug from the document title. Ask once if it is not obvious.
+2. Write the content to `./docs/<feature-slug>/design.md` verbatim. Reformat into the standard design-doc structure only if it aids legibility — preserve every decision, requirement, and vocabulary term.
+3. Run `/design-review` in auto-fix mode to patch structural gaps.
+4. Commit `docs(<slug>): design Q&A and vocabulary (external)`.
+5. Proceed immediately to Phase 2 (PRD synthesis). Do not re-interview.
 
 ---
 
