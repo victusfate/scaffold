@@ -115,11 +115,12 @@ skills:
 ## Proposed Invocation
 
 ```bash
-# No npm publish required (installs from GitHub directly):
-npx github:victusfate/scaffold sync --into . --ref v1.2
+# Primary form — no npm publish required:
+npx github:victusfate/scaffold#v1.2 sync --into . --ref v1.2
 
-# Named package form (version-pinnable, smaller download):
-npx @victusfate/scaffold-sync@1.2 sync --into . --ref v1.2
+# Consumer package.json scripts entry (recommended pattern):
+# "sync": "npx github:victusfate/scaffold#v1.2 sync --into ."
+# then: npm run sync
 ```
 
 ---
@@ -144,7 +145,9 @@ npx @victusfate/scaffold-sync@1.2 sync --into . --ref v1.2
 
 **Idempotency:** Yes — rerunning produces the same result given the same ref and policy.
 
-**Depends on:** `tools/hoist-skill/run` (invoked as subprocess or imported as module — TBD).
+**Implementation language:** Node.js ESM, same pattern as `tools/hoist-skill/run`.
+
+**Depends on:** `tools/hoist-skill/run` — imported as a module (not subprocess). `hoist-skill/run` will be refactored to export its API; the existing CLI entry point becomes a thin wrapper.
 
 ---
 
@@ -179,11 +182,11 @@ flowchart TD
 
 **OQ2:** Does `sync` expose per-section selectors (`sync files` / `sync skills`) or is it always both?
 
-**OQ3:** Implementation language for `bin/sync` — Node.js ESM (consistent with `tools/hoist-skill/run`) or Bash (consistent with existing `bin/*.sh`)?
+**OQ3 — resolved:** Node.js ESM.
 
-**OQ4:** How does `bin/sync` invoke `hoist-skill` — subprocess call to `tools/hoist-skill/run`, or import as a shared module?
+**OQ4 — resolved:** Module import. `hoist-skill/run` is refactored to export its API; `bin/sync` imports it directly. The existing `hoist-skill` CLI entry point becomes a thin wrapper.
 
-**OQ5:** Relationship to existing `bin/sync-from-scaffold.sh` — supersede, coexist, or call into it?
+**OQ5 — resolved:** Coexist. `bin/sync-from-scaffold.sh` serves template consumers (push-installed into the repo at instantiation). `bin/sync` (the npx tool) serves external consumers like `victusama`. Different audiences, no overlap.
 
 ---
 
@@ -194,7 +197,7 @@ flowchart TD
 - **`protected` path present in policy and `--force` is passed:** ignore `--force` for that path, print a notice, continue.
 - **Network failure fetching a file:** exit 1 with the URL that failed.
 - **`--check` mode:** no files written, no hoist-skill invoked; prints a table of would-be actions and exits 0.
-- **`hoist-skill` subprocess fails:** propagate exit code 1, print stderr from subprocess.
+- **`hoist-skill` module throws:** catch, print error message, exit 1.
 - **`ref` not found on GitHub:** hoist-skill already handles this; propagate the error.
 
 ## Q&A Summary
