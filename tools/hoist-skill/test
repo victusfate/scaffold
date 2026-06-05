@@ -167,7 +167,7 @@ console.log('\nCase 10: --from-manifest emits the recorded set');
   const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
   mkdirSync(join(dest, '.sync'), { recursive: true });
   writeFileSync(join(dest, '.sync', 'hoisted'),
-    '# .sync/hoisted\nfeature-chain\tclaude\tmain\n');
+    '# .sync/hoisted\nfeature-chain\tclaude\tv9.9.9\n');
 
   const r = run(['--from-manifest', '--into', dest]);
   assert('exits 0', r.status === 0, r.stderr);
@@ -225,6 +225,39 @@ console.log('\nCase 14: --plan echoes --ref');
   let plan;
   try { plan = JSON.parse(r.stdout); } catch { plan = null; }
   assert('ref in plan output', plan?.ref === 'v2.0.0');
+}
+
+// ---------------------------------------------------------------- case 15: replay preserves pinned ref when --ref not passed
+
+console.log('\nCase 15: replay preserves pinned ref (no --ref passed)');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  mkdirSync(join(dest, '.sync'), { recursive: true });
+  writeFileSync(join(dest, '.sync', 'hoisted'),
+    '# header\nfeature-chain\tclaude\tv1.2.3\n');
+
+  run(['--from-manifest', '--into', dest]);
+
+  const line = readFileSync(join(dest, '.sync', 'hoisted'), 'utf8')
+    .split('\n').find(l => l.trim() && !l.startsWith('#'));
+  assert('pinned ref preserved', line === 'feature-chain\tclaude\tv1.2.3', `got: ${line}`);
+}
+
+// ---------------------------------------------------------------- case 16: --from-manifest --ref re-records with new ref to same path
+
+console.log('\nCase 16: --from-manifest --ref re-records with new ref in place');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  mkdirSync(join(dest, '.sync'), { recursive: true });
+  writeFileSync(join(dest, '.sync', 'hoisted'),
+    'feature-chain\tclaude\tv1.2.3\n');
+
+  run(['--from-manifest', '--into', dest, '--ref', 'v2.0.0']);
+
+  const line = readFileSync(join(dest, '.sync', 'hoisted'), 'utf8')
+    .split('\n').find(l => l.trim() && !l.startsWith('#'));
+  assert('ref updated to new pin', line === 'feature-chain\tclaude\tv2.0.0', `got: ${line}`);
+  // No second manifest at manifestWritePath if custom path was used
 }
 
 // ---------------------------------------------------------------- summary

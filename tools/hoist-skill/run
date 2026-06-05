@@ -26,6 +26,7 @@ const intoRaw    = get('--into')    ?? '.';
 const force      = has('--force');
 const listMode   = has('--list');
 const ref        = get('--ref')    ?? 'main';
+const refExplicit = args.includes('--ref');
 const noRecord   = has('--no-record');
 const planMode   = has('--plan');
 
@@ -256,7 +257,7 @@ if (fromManifestFlag) {
     console.error(`Available: ${HARNESSES.join(', ')}`);
     process.exit(1);
   }
-  emitPairs = entries.map(e => ({ name: e.name, harness: e.harness }));
+  emitPairs = entries.map(e => ({ name: e.name, harness: e.harness, ref: e.ref }));
 } else {
   const requestedNames = rawNames === 'all' ? registry.map(r => r.name) : rawNames.split(',').map(s => s.trim());
   const unknown = requestedNames.filter(n => !registry.find(r => r.name === n));
@@ -275,7 +276,7 @@ if (fromManifestFlag) {
   emitPairs = [];
   for (const name of requestedNames)
     for (const harness of requestedHarnesses)
-      emitPairs.push({ name, harness });
+      emitPairs.push({ name, harness, ref });
 }
 
 // Plan mode: output sources list, no emit
@@ -310,10 +311,13 @@ for (const { name, harness } of emitPairs) {
   EMITTERS[harness](cap, INTO, kept, results);
 }
 
-// Record manifest (after emit, skip on --no-record)
-if (!noRecord) {
-  const entries = emitPairs.map(({ name, harness }) => ({ name, harness, ref }));
-  upsertManifest(manifestWritePath, entries);
+// Record manifest — skip if replaying without an explicit --ref (nothing changed)
+if (!noRecord && (!fromManifestFlag || refExplicit)) {
+  const writePath = fromManifestFlag ? manifestReadPath : manifestWritePath;
+  const entries = emitPairs.map(({ name, harness, ref: r }) => ({
+    name, harness, ref: refExplicit ? ref : (r ?? 'main'),
+  }));
+  upsertManifest(writePath, entries);
 }
 
 const usedHarnesses = [...new Set(emitPairs.map(p => p.harness))];
