@@ -4,7 +4,7 @@
 //                [--into <path>] [--force] [--list]
 //                [--ref <ref>] [--no-record] [--from-manifest [path]] [--plan] [--fetch]
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -16,6 +16,12 @@ const TOOL_REL      = 'tools/hoist-skill/run';
 const RESOLVER_REL  = '.claude/skills/RESOLVER.md';
 const RAW_BASE      = process.env.HOIST_RAW_BASE
   ?? 'https://raw.githubusercontent.com/victusfate/scaffold';
+
+// Temp dir created in --fetch mode; cleaned up on any exit path.
+let _fetchTempDir = null;
+process.on('exit', () => {
+  if (_fetchTempDir) try { rmSync(_fetchTempDir, { recursive: true, force: true }); } catch { /* best-effort */ }
+});
 
 // ---------------------------------------------------------------- args
 
@@ -245,20 +251,19 @@ async function fetchRaw(url, required = true) {
   return res.text();
 }
 
-async function populateFetchRoot(tempDir, pairs, registry, fetchRef) {
-  const toFetch = new Map();
-  for (const { name, harness } of pairs) {
+async function populateFetchRoot(tempDir, pairs, registry) {
+  const written = new Set();
+  for (const { name, harness, ref: pairRef } of pairs) {
     const cap = registry.find(r => r.name === name);
     for (const { path: p, required } of capSourcePaths(cap, harness)) {
-      if (!toFetch.has(p) || required) toFetch.set(p, required);
+      if (written.has(p)) continue;
+      const content = await fetchRaw(`${RAW_BASE}/${pairRef}/${p}`, required);
+      if (content === null) continue;
+      const dest = join(tempDir, p);
+      mkdirSync(dirname(dest), { recursive: true });
+      writeFileSync(dest, content, 'utf8');
+      written.add(p);
     }
-  }
-  for (const [p, required] of toFetch) {
-    const content = await fetchRaw(`${RAW_BASE}/${fetchRef}/${p}`, required);
-    if (content === null) continue;
-    const dest = join(tempDir, p);
-    mkdirSync(dirname(dest), { recursive: true });
-    writeFileSync(dest, content, 'utf8');
   }
 }
 
@@ -282,7 +287,12 @@ async function main() {
   let srcRoot = SCAFFOLD_ROOT;
 
   if (fetchMode) {
-    srcRoot = join(tmpdir(), `hoist-skill-${Date.now()}`);
+    if (Number(process.versions.node.split('.')[0]) < 18) {
+      console.error(`hoist-skill: --fetch requires Node 18+ (current: ${process.version})`);
+      process.exit(1);
+    }
+    _fetchTempDir = mkdtempSync(join(tmpdir(), 'hoist-skill-'));
+    srcRoot = _fetchTempDir;
     const resolverContent = await fetchRaw(`${RAW_BASE}/${ref}/${RESOLVER_REL}`, true);
     const resolverDest = join(srcRoot, RESOLVER_REL);
     mkdirSync(dirname(resolverDest), { recursive: true });
@@ -376,7 +386,7 @@ async function main() {
 
   // Fetch or pre-check required sources
   if (fetchMode) {
-    await populateFetchRoot(srcRoot, emitPairs, registry, ref);
+    await populateFetchRoot(srcRoot, emitPairs, registry);
   } else {
     checkLocalSources(emitPairs, srcRoot, registry);
   }
