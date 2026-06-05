@@ -32,4 +32,14 @@
 
 ## Slice 4 — integration test coverage
 
-**Status: PENDING**
+**Status: DONE**
+
+- Updated integration test Step 3 (`--plan` output shape) from `sources.includes(string)` to `sources.map(s => s.path).includes(string)`.
+- All scenarios pass: 22/22 integration, 65/65 unit.
+
+## Code Quality Review
+
+- No auto-fixes applied.
+- Noted: `populateFetchRoot` is not called in `--plan --fetch` mode (plan exits first), but RESOLVER.md is fetched in `main()`. Minor wasted request; not a correctness issue.
+- Pre-existing emitter structure preserved (shared first-two-lines pattern).
+- `checkLocalSources` `process.exit` pattern is consistent with existing validation code.
