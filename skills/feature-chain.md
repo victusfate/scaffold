@@ -18,6 +18,22 @@ Check `./docs/<feature-slug>/` for existing artifacts and detect whether a docum
 | `design.md` exists, no `prd.md` | Skip Phase 1 → start at Phase 2 |
 | Nothing | Start at Phase 1 |
 
+**Classifying a pasted or uploaded document:**
+
+Read the document and classify it by looking for these signals, in order:
+
+1. **Explicit label wins** — if the title or first heading contains "Design", "PRD", "Product Requirements", or "Plan / Implementation Plan", use that type directly.
+
+2. **Plan signals** — numbered vertical slices; RED / GREEN / REFACTOR language; "Slice N" headings; task-level granularity with no user stories or vocabulary table → **plan**.
+
+3. **PRD signals** — "Problem Statement", "User Stories", "Out of Scope", "Implementation Decisions", or numbered functional requirements → **PRD**.
+
+4. **Design signals** — Q&A pairs, "Decisions" with rationale and alternatives, a vocabulary / glossary table, edge-case scenarios; no user stories and no slice structure → **design doc**.
+
+5. **Ambiguous (spec, proposal, or mix)** — contains both decisions/rationale AND implementation details but fits none of the above cleanly → treat as **PRD**. A PRD is the safest container: it preserves all requirements, and the chain can still run design-review or re-plan from it.
+
+6. **Still unclear after reading** — ask the user one question: *"Is this a design doc (decisions + vocabulary), a PRD (requirements + user stories), or an implementation plan (vertical slices)?"*
+
 State the slug before writing the first file so the user can correct it. Infer it from the document title if obvious; ask once if not.
 
 **Accepting an external design doc:**
