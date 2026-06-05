@@ -12,7 +12,11 @@
 
 ## Slice 2 — pre-check error in pure-emit mode (P3)
 
-**Status: IN PROGRESS**
+**Status: DONE**
+
+- RED: Added Case 17 using `HOIST_SCAFFOLD_ROOT` env override to point the tool at a partial mirror missing `skills/tdd.md`. Asserted exit non-zero, message contains "missing source", "--fetch", and the raw GitHub URL.
+- GREEN: Added `HOIST_SCAFFOLD_ROOT` env-var override for `SCAFFOLD_ROOT`. Added RESOLVER existence check before `parseResolver()` with actionable message. Added `checkLocalSources(pairs)` that pre-checks each skill body before the emit loop.
+- Tests: 60 passed, 0 failed.
 
 ---
 
