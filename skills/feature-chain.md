@@ -14,7 +14,7 @@ Check `./docs/<feature-slug>/` for existing artifacts and detect whether a docum
 | `plan.md` exists | Resume Phase 3 at first incomplete slice |
 | `prd.md` exists, no `plan.md` | Skip Phases 1–2 → start at Phase 3 |
 | `design.md` exists, no `prd.md` | Skip Phase 1 → start at Phase 2 |
-| Nothing | Start at Phase 1 |
+| Nothing / intent unclear | Start at Phase 1 — grill resolves what to build |
 
 State the slug before writing the first file so the user can correct it. Infer it from the document title if obvious; ask once if not.
 

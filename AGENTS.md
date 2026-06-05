@@ -15,11 +15,9 @@ On your first response in a new session:
    (`design.md`, `prd.md`, `plan.md`).
 
 - **Artifacts exist:** acknowledge them and ask how to continue.
-- **No artifacts + user describes a feature to build:** automatically start
-  `/feature-chain` — no permission needed.
-- **No artifacts + intent unclear:** ask once: "What are we building today?"
-
-Don't ask again in the same session.
+- **No artifacts:** start `/feature-chain` — no permission needed. If the user's
+  intent is vague or unstated, the grill (Phase 1) resolves it through Q&A.
+  Do not ask a pre-question first.
 
 ## Minimum Viable Diff
 
