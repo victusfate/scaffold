@@ -6,23 +6,38 @@ Run the full feature chain end-to-end. **Do not pause for permission between pha
 
 ## Entry-point detection (run before any phase)
 
-Check `./docs/<feature-slug>/` for existing artifacts and detect whether a PRD was supplied externally (uploaded file, pasted content, or a path the user named).
+Check `./docs/<feature-slug>/` for existing artifacts and detect whether a document was supplied externally (uploaded file, pasted content, or a path the user named).
 
 | State | Entry point |
 |---|---|
-| `prd.md` exists (or external PRD supplied) | Skip Phases 1–2 → start at Phase 3 |
+| External design doc supplied | Place as `design.md` → start at Phase 2 |
+| External PRD supplied | Place as `prd.md` → start at Phase 3 |
+| External plan supplied | Place as `plan.md` → start at Phase 3 (TDD only) |
+| `plan.md` exists | Resume Phase 3 at first incomplete slice |
+| `prd.md` exists | Skip Phases 1–2 → start at Phase 3 |
 | `design.md` exists, no `prd.md` | Skip Phase 1 → start at Phase 2 |
-| `plan.md` exists | Skip Phases 1–2 → start at Phase 3 at the first incomplete slice |
-| Nothing exists, no external PRD | Start at Phase 1 |
+| Nothing | Start at Phase 1 |
+
+State the slug before writing the first file so the user can correct it. Infer it from the document title if obvious; ask once if not.
+
+**Accepting an external design doc:**
+A design doc contains Q&A, decisions, and a canonical vocabulary — but no user stories or implementation decisions (those belong in the PRD).
+1. Write to `./docs/<feature-slug>/design.md`, preserving all decisions and vocabulary verbatim. Reformat into the standard structure only if needed.
+2. Run `/design-review` in auto-fix mode to patch any gaps.
+3. Commit `docs(<slug>): design Q&A and vocabulary (external)`.
+4. Proceed immediately to Phase 2 (PRD synthesis). Do not re-interview.
 
 **Accepting an external PRD:**
-If the user supplies a PRD from outside the chain (uploaded file, spec document, or pasted markdown), treat it as the authoritative PRD. Do not re-interview.
-1. Determine the feature slug (ask once if unclear, infer from the document title if obvious).
-2. Write the content to `./docs/<feature-slug>/prd.md` verbatim, or reformat it into the standard PRD structure if it does not follow that template — preserving all decisions and requirements.
-3. Commit `docs(<slug>): PRD (external)`.
-4. Proceed immediately to Phase 3.
+A PRD contains problem statement, user stories, and implementation decisions — enough to plan from directly.
+1. Write to `./docs/<feature-slug>/prd.md`, preserving all requirements verbatim. Reformat into the standard structure only if needed.
+2. Commit `docs(<slug>): PRD (external)`.
+3. Proceed immediately to Phase 3. Do not re-interview.
 
-State the slug before writing the first file so the user can correct it.
+**Accepting an external plan:**
+A plan contains vertical slices ready for TDD execution — no design or PRD synthesis needed.
+1. Write to `./docs/<feature-slug>/plan.md` verbatim.
+2. Commit `docs(<slug>): implementation plan (external)`.
+3. Proceed immediately to Phase 3 TDD execution at slice 1. Do not synthesize a PRD.
 
 ---
 
