@@ -20,7 +20,7 @@ State the slug before writing the first file so the user can correct it. Infer i
 
 **Accepting an external document (any format):**
 
-Always treat a pasted or uploaded document as a design doc — regardless of whether it looks like a PRD, spec, or proposal. Do not classify; do not ask.
+Always treat a pasted or uploaded document as a design doc — regardless of whether it looks like a PRD, spec, or proposal.
 
 Rationale: Phase 2 (`to-prd`) adds genuine value even when the input is already a complete PRD. It cross-references the codebase, catches conflicts with existing code, identifies modules already in place, and derives testing decisions the external doc cannot know. The output `prd.md` is always codebase-aware.
 
@@ -28,7 +28,8 @@ Rationale: Phase 2 (`to-prd`) adds genuine value even when the input is already 
 2. Write the content to `./docs/<feature-slug>/design.md` verbatim. Reformat into the standard design-doc structure only if it aids legibility — preserve every decision, requirement, and vocabulary term.
 3. Run `/design-review` in auto-fix mode to patch structural gaps.
 4. Commit `docs(<slug>): design Q&A and vocabulary (external)`.
-5. Proceed immediately to Phase 2 (PRD synthesis). Do not re-interview.
+5. **Grill on ambiguity** — read `design.md` and assess whether any decisions are unresolved, vocabulary is fuzzy, or edge cases are missing. If so, run Phase 1 (grill) targeting only the open questions — do not re-ask settled decisions. If the doc is complete and unambiguous, skip Phase 1 and proceed directly to Phase 2.
+6. Proceed to Phase 2 (PRD synthesis).
 
 ---
 
