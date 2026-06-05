@@ -180,7 +180,7 @@ console.log('\nCase 10: --from-manifest emits the recorded set');
 
 // ---------------------------------------------------------------- case 11: --plan outputs sources
 
-console.log('\nCase 11: --plan outputs source list');
+console.log('\nCase 11: --plan outputs annotated source list');
 {
   const r = run(['--names', 'tdd', '--harness', 'claude', '--plan']);
   assert('exits 0', r.status === 0, r.stderr);
@@ -190,10 +190,16 @@ console.log('\nCase 11: --plan outputs source list');
   assert('has ref', plan?.ref === 'main');
   assert('has harness', plan?.harness === 'claude');
   assert('sources is array', Array.isArray(plan?.sources));
-  assert('includes tool path', plan?.sources.includes('tools/hoist-skill/run'));
-  assert('includes RESOLVER',  plan?.sources.includes('.claude/skills/RESOLVER.md'));
-  assert('includes skill body', plan?.sources.includes('skills/tdd.md'));
-  assert('includes claude wrapper', plan?.sources.includes('.claude/skills/tdd/SKILL.md'));
+  const paths = plan?.sources.map(s => s.path);
+  assert('includes tool path', paths?.includes('tools/hoist-skill/run'));
+  assert('includes RESOLVER',  paths?.includes('.claude/skills/RESOLVER.md'));
+  assert('includes skill body', paths?.includes('skills/tdd.md'));
+  assert('includes claude wrapper', paths?.includes('.claude/skills/tdd/SKILL.md'));
+  const byPath = Object.fromEntries((plan?.sources ?? []).map(s => [s.path, s]));
+  assert('tool path required:true',    byPath['tools/hoist-skill/run']?.required === true);
+  assert('RESOLVER required:true',     byPath['.claude/skills/RESOLVER.md']?.required === true);
+  assert('skill body required:true',   byPath['skills/tdd.md']?.required === true);
+  assert('claude wrapper required:false', byPath['.claude/skills/tdd/SKILL.md']?.required === false);
 }
 
 // ---------------------------------------------------------------- case 12: --names and --from-manifest are mutually exclusive
