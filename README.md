@@ -215,6 +215,8 @@ node tools/hoist-skill/run \
   --into ../my-project
 ```
 
+After a successful emit, the tool automatically writes (or updates) `../my-project/.sync/hoisted` — a tab-separated registration manifest recording each `(name, harness, ref)` triple. Commit this file so the selection survives across sessions and devices.
+
 **Emit everything for all harnesses:**
 ```bash
 node tools/hoist-skill/run --names all --harness all --into ../my-project
@@ -236,6 +238,56 @@ node tools/hoist-skill/run --list
 The same clobber-safe contract applies as with the sync script: `.scaffold-keep` paths are never touched, differing files become `<file>.scaffold-new` sidecars, and `--force` overrides that.
 
 The tool emits a JSON manifest on stdout listing every file written, skipped, or sidecarred — pipe it to `jq` or capture it for CI.
+
+**Refresh registered skills (replay on sync):**
+
+Once `.sync/hoisted` exists, re-emit all registered skills from scaffold's current ref in one call — no need to retype the names list:
+
+```bash
+node tools/hoist-skill/run --from-manifest --into ../my-project
+```
+
+This is the call a consumer's `/pull-scaffold` makes to keep hoisted skills up to date. Clobber-safe: locally edited files become sidecars; `.scaffold-keep` paths are skipped.
+
+**Pin to a specific ref:**
+
+```bash
+node tools/hoist-skill/run \
+  --names feature-chain,tdd \
+  --harness claude \
+  --into ../my-project \
+  --ref v1.2.0
+```
+
+The ref is stamped in `.sync/hoisted` per entry so replay is reproducible.
+
+**Plan mode (for curl-only consumers):**
+
+Pull-only consumers that have no scaffold clone can fetch just the files they need. `--plan` prints the exact repo-relative source paths to curl — without writing anything:
+
+```bash
+node tools/hoist-skill/run \
+  --names tdd,feature-chain \
+  --harness claude \
+  --plan
+```
+
+```json
+{
+  "ref": "main",
+  "harness": "claude",
+  "sources": [
+    "tools/hoist-skill/run",
+    ".claude/skills/RESOLVER.md",
+    "skills/tdd.md",
+    ".claude/skills/tdd/SKILL.md",
+    "skills/feature-chain.md",
+    ".claude/skills/feature-chain/SKILL.md"
+  ]
+}
+```
+
+Combine with `--from-manifest` to get the source list for all registered skills at once. Use `--no-record` to suppress manifest writes when testing or doing dry-run checks.
 
 ## Skill engine
 
