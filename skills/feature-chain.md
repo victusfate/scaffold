@@ -4,6 +4,28 @@ Run the full feature chain end-to-end. **Do not pause for permission between pha
 
 ---
 
+## Entry-point detection (run before any phase)
+
+Check `./docs/<feature-slug>/` for existing artifacts and detect whether a PRD was supplied externally (uploaded file, pasted content, or a path the user named).
+
+| State | Entry point |
+|---|---|
+| `prd.md` exists (or external PRD supplied) | Skip Phases 1–2 → start at Phase 3 |
+| `design.md` exists, no `prd.md` | Skip Phase 1 → start at Phase 2 |
+| `plan.md` exists | Skip Phases 1–2 → start at Phase 3 at the first incomplete slice |
+| Nothing exists, no external PRD | Start at Phase 1 |
+
+**Accepting an external PRD:**
+If the user supplies a PRD from outside the chain (uploaded file, spec document, or pasted markdown), treat it as the authoritative PRD. Do not re-interview.
+1. Determine the feature slug (ask once if unclear, infer from the document title if obvious).
+2. Write the content to `./docs/<feature-slug>/prd.md` verbatim, or reformat it into the standard PRD structure if it does not follow that template — preserving all decisions and requirements.
+3. Commit `docs(<slug>): PRD (external)`.
+4. Proceed immediately to Phase 3.
+
+State the slug before writing the first file so the user can correct it.
+
+---
+
 ## Phase 1: Design (grill-with-docs)
 
 Interview the user relentlessly about every aspect of the plan until the design tree is resolved. Ask one question at a time with your recommended answer. Explore the codebase instead of asking when facts can be verified.
