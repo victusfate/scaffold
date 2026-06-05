@@ -36,7 +36,11 @@ inputs:
   plan:
     type: boolean
     default: false
-    description: Print source paths for curl-only consumers without emitting any files.
+    description: Print annotated source paths ({ path, required }) without emitting any files. required:true sources must exist; required:false sources are generated when absent.
+  fetch:
+    type: boolean
+    default: false
+    description: Fetch all sources from GitHub raw URLs instead of reading from a local scaffold clone. Uses https://raw.githubusercontent.com/victusfate/scaffold/<ref>/<path>. Requires network access. Env HOIST_RAW_BASE overrides the base URL (useful for testing).
 run:
   command: node ./run
 test:
