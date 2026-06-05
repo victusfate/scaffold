@@ -14,7 +14,31 @@ If the branch has uncommitted changes, stop and tell the user to commit or stash
 
 If the branch has no commits ahead of main, stop — there is nothing to PR.
 
-### Step 2 — push if needed
+### Step 2 — run integration tests
+
+Find every `test-integration` file touched by this branch:
+
+```bash
+git diff main...HEAD --name-only | grep -E '(^|/)test-integration$'
+```
+
+Also discover any `test-integration` files in tools or scripts directories that exist in the repo:
+
+```bash
+find tools scripts -name test-integration 2>/dev/null
+```
+
+For each `test-integration` found, run it:
+
+```bash
+RUN_INTEGRATION=1 node <path/to/test-integration>
+```
+
+If any integration test fails, **stop**. Report which test failed and its output. Do not create the PR until all integration tests pass. Fix the failures, commit, and restart from Step 1.
+
+If no `test-integration` files exist in the repo, skip this step silently.
+
+### Step 3 — push if needed
 
 ```bash
 git push -u origin $(git branch --show-current)
@@ -58,17 +82,17 @@ Keep bullets factual: what changed and why, not how you built it.
 - [ ] No git add -A; explicit paths staged
 ```
 
-### Step 4 — create the PR
+### Step 5 — create the PR
 
 Use the available GitHub tool (`mcp__github__create_pull_request` or `gh pr create`) to open the PR against the repo's default base branch (usually `main`).
 
-### Step 5 — subscribe immediately
+### Step 6 — subscribe immediately
 
 Without pausing or asking, call `mcp__github__subscribe_pr_activity` (or equivalent) for the PR number just returned.
 
 **Never ask the user whether to subscribe. Always do it.**
 
-### Step 6 — report
+### Step 7 — report
 
 Return the PR URL and confirm subscription is active. One line each.
 
