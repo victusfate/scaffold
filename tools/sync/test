@@ -1,0 +1,32 @@
+#!/usr/bin/env node
+import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { join, dirname } from 'node:path';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
+let passed = 0, failed = 0;
+
+function assert(label, cond, detail = '') {
+  if (cond) { console.error(`  pass  ${label}`); passed++; }
+  else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
+}
+
+function run(args = [], opts = {}) {
+  try {
+    const out = execFileSync(process.execPath, [join(ROOT, 'bin/sync'), ...args], {
+      encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], ...opts,
+    });
+    return { code: 0, stdout: out, stderr: '' };
+  } catch (e) {
+    return { code: e.status ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
+  }
+}
+
+// Case 1: bin/sync exists and exits 0 with no args (stub)
+{
+  const r = run([]);
+  assert('case 1: bin/sync exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+}
+
+console.error(`\n${passed} passed, ${failed} failed`);
+process.exit(failed ? 1 : 0);
