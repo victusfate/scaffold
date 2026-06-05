@@ -219,5 +219,37 @@ const POLICY_BASE = {
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
+// ---------------------------------------------------------------- slice 4: hoist-skill API export
+
+import { hoist } from '../hoist-skill/run';
+
+// Case 17: hoist() is importable and list mode returns capabilities JSON
+{
+  let result;
+  try {
+    result = await hoist({ list: true, into: makeTmp() });
+  } catch (e) {
+    assert('case 17: hoist() importable', false, e.message);
+  }
+  if (result !== undefined) {
+    assert('case 17: hoist list returns capabilities', Array.isArray(result?.capabilities) && result.capabilities.length > 0,
+      JSON.stringify(result));
+  }
+}
+
+// Case 18: hoist() throws on unknown capability in manifest (no network needed)
+{
+  const dst = makeTmp();
+  const manifestPath = join(dst, '.sync', 'hoisted');
+  mkdirSync(join(dst, '.sync'), { recursive: true });
+  writeFileSync(manifestPath, '# header\nno-such-skill\tclaude\tmain\n', 'utf8');
+  let errMsg = '';
+  try {
+    await hoist({ fromManifest: manifestPath, into: dst });
+  } catch (e) { errMsg = e.message; }
+  assert('case 18: hoist() throws on unknown manifest entry', errMsg.includes('Unknown capabilities'));
+  rmSync(dst, { recursive: true });
+}
+
 console.error(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
