@@ -8,9 +8,11 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const SCAFFOLD_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const SCAFFOLD_ROOT = process.env.HOIST_SCAFFOLD_ROOT
+  ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
 const RESOLVER      = join(SCAFFOLD_ROOT, '.claude', 'skills', 'RESOLVER.md');
 const HARNESSES     = ['claude', 'cursor', 'antigravity'];
+const RAW_BASE      = 'https://raw.githubusercontent.com/victusfate/scaffold';
 const TOOL_REL      = 'tools/hoist-skill/run';
 const RESOLVER_REL  = '.claude/skills/RESOLVER.md';
 
@@ -224,7 +226,27 @@ function emitAntigravity(cap, dest, kept, results) {
 
 const EMITTERS = { claude: emitClaude, cursor: emitCursor, antigravity: emitAntigravity };
 
+// ---------------------------------------------------------------- pre-check sources (pure-emit mode)
+
+function checkLocalSources(pairs) {
+  for (const { name } of pairs) {
+    const cap = registry.find(r => r.name === name);
+    const bodyAbs = join(SCAFFOLD_ROOT, cap.path);
+    if (!existsSync(bodyAbs)) {
+      console.error(`hoist-skill: missing source ${cap.path}`);
+      console.error(`  (mirror it from ${RAW_BASE}/${ref}/${cap.path}, or run with --fetch)`);
+      process.exit(1);
+    }
+  }
+}
+
 // ---------------------------------------------------------------- main
+
+if (!existsSync(RESOLVER)) {
+  console.error(`hoist-skill: missing source ${RESOLVER_REL}`);
+  console.error(`  (mirror it from ${RAW_BASE}/main/${RESOLVER_REL}, or run with --fetch)`);
+  process.exit(1);
+}
 
 const registry = parseResolver();
 
@@ -303,6 +325,9 @@ if (planMode) {
   console.log(JSON.stringify(out, null, 2));
   process.exit(0);
 }
+
+// Pre-check required sources exist in pure-emit mode
+checkLocalSources(emitPairs);
 
 // Emit
 const kept    = loadKeep(INTO);
