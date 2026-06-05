@@ -60,10 +60,11 @@ console.log('\nScenario: full consumer lifecycle (hoist → register → plan �
   let plan;
   try { plan = JSON.parse(r3.stdout); } catch { plan = null; }
   assert('plan is valid JSON', plan !== null);
-  assert('plan lists tool path',    plan?.sources.includes('tools/hoist-skill/run'));
-  assert('plan lists RESOLVER',     plan?.sources.includes('.claude/skills/RESOLVER.md'));
-  assert('plan lists both bodies',  plan?.sources.includes('skills/feature-chain.md') &&
-                                    plan?.sources.includes('skills/tdd.md'));
+  const planPaths = plan?.sources.map(s => s.path);
+  assert('plan lists tool path',    planPaths?.includes('tools/hoist-skill/run'));
+  assert('plan lists RESOLVER',     planPaths?.includes('.claude/skills/RESOLVER.md'));
+  assert('plan lists both bodies',  planPaths?.includes('skills/feature-chain.md') &&
+                                    planPaths?.includes('skills/tdd.md'));
 
   // Step 4: simulate fresh clone — wipe emitted files, keep manifest
   rmSync(join(repo, 'skills'),  { recursive: true, force: true });

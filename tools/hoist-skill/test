@@ -180,7 +180,7 @@ console.log('\nCase 10: --from-manifest emits the recorded set');
 
 // ---------------------------------------------------------------- case 11: --plan outputs sources
 
-console.log('\nCase 11: --plan outputs source list');
+console.log('\nCase 11: --plan outputs annotated source list');
 {
   const r = run(['--names', 'tdd', '--harness', 'claude', '--plan']);
   assert('exits 0', r.status === 0, r.stderr);
@@ -190,10 +190,16 @@ console.log('\nCase 11: --plan outputs source list');
   assert('has ref', plan?.ref === 'main');
   assert('has harness', plan?.harness === 'claude');
   assert('sources is array', Array.isArray(plan?.sources));
-  assert('includes tool path', plan?.sources.includes('tools/hoist-skill/run'));
-  assert('includes RESOLVER',  plan?.sources.includes('.claude/skills/RESOLVER.md'));
-  assert('includes skill body', plan?.sources.includes('skills/tdd.md'));
-  assert('includes claude wrapper', plan?.sources.includes('.claude/skills/tdd/SKILL.md'));
+  const paths = plan?.sources.map(s => s.path);
+  assert('includes tool path', paths?.includes('tools/hoist-skill/run'));
+  assert('includes RESOLVER',  paths?.includes('.claude/skills/RESOLVER.md'));
+  assert('includes skill body', paths?.includes('skills/tdd.md'));
+  assert('includes claude wrapper', paths?.includes('.claude/skills/tdd/SKILL.md'));
+  const byPath = Object.fromEntries((plan?.sources ?? []).map(s => [s.path, s]));
+  assert('tool path required:true',    byPath['tools/hoist-skill/run']?.required === true);
+  assert('RESOLVER required:true',     byPath['.claude/skills/RESOLVER.md']?.required === true);
+  assert('skill body required:true',   byPath['skills/tdd.md']?.required === true);
+  assert('claude wrapper required:false', byPath['.claude/skills/tdd/SKILL.md']?.required === false);
 }
 
 // ---------------------------------------------------------------- case 12: --names and --from-manifest are mutually exclusive
@@ -258,6 +264,84 @@ console.log('\nCase 16: --from-manifest --ref re-records with new ref in place')
     .split('\n').find(l => l.trim() && !l.startsWith('#'));
   assert('ref updated to new pin', line === 'feature-chain\tclaude\tv2.0.0', `got: ${line}`);
   // No second manifest at manifestWritePath if custom path was used
+}
+
+// ---------------------------------------------------------------- case 17: missing skill body gives actionable error
+
+console.log('\nCase 17: missing skill body gives actionable error (P3)');
+{
+  // Build a partial mirror: has RESOLVER.md but lacks skills/tdd.md
+  const fakeRoot = mkdtempSync(join(tmpdir(), 'hoist-fake-root-'));
+  mkdirSync(join(fakeRoot, '.claude', 'skills'), { recursive: true });
+  // Copy real RESOLVER.md so registry parsing works
+  const realResolver = readFileSync(join(ROOT, '.claude', 'skills', 'RESOLVER.md'), 'utf8');
+  writeFileSync(join(fakeRoot, '.claude', 'skills', 'RESOLVER.md'), realResolver, 'utf8');
+  // Deliberately omit skills/tdd.md
+
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const r = spawnSync('node', [RUN, '--names', 'tdd', '--harness', 'claude', '--into', dest], {
+    encoding: 'utf8',
+    env: { ...process.env, HOIST_SCAFFOLD_ROOT: fakeRoot },
+  });
+  assert('exits non-zero', r.status !== 0, `status: ${r.status}`);
+  assert('error mentions missing source', r.stderr.includes('missing source'), r.stderr);
+  assert('error includes --fetch hint', r.stderr.includes('--fetch'), r.stderr);
+  assert('error includes raw URL', r.stderr.includes('raw.githubusercontent.com'), r.stderr);
+}
+
+// ---------------------------------------------------------------- case 18: --fetch emits from a local HTTP server (P1)
+
+console.log('\nCase 18: --fetch emits skills from a local HTTP file server');
+{
+  // The sandbox blocks fetch() in spawnSync children when the server lives in the
+  // parent process. Workaround: start the server as a peer process via IPC so the
+  // spawned tool can connect to it.
+  const { spawn } = await import('node:child_process');
+
+  const serverScript = `
+    import { createServer } from 'node:http';
+    import { readFile } from 'node:fs/promises';
+    import { join } from 'node:path';
+    const ROOT = ${JSON.stringify(ROOT)};
+    createServer(async (req, res) => {
+      const relPath = req.url.replace(/^\\/[^\\/]+\\//, '');
+      try { const d = await readFile(join(ROOT, relPath)); res.writeHead(200); res.end(d); }
+      catch { res.writeHead(404); res.end('not found'); }
+    }).listen(0, '127.0.0.1', function() {
+      process.send('ready:' + this.address().port);
+    });
+  `;
+
+  const srv = spawn('node', ['--input-type=module'], {
+    stdio: ['pipe', 'ignore', 'ignore', 'ipc'],
+  });
+  srv.stdin.end(serverScript);
+
+  const serverPort = await new Promise(resolve => {
+    srv.on('message', m => {
+      if (String(m).startsWith('ready:')) resolve(Number(String(m).split(':')[1]));
+    });
+  });
+
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const r = spawnSync('node', [RUN, '--fetch', '--names', 'tdd', '--harness', 'claude', '--into', dest], {
+    encoding: 'utf8',
+    timeout: 15000,
+    env: { ...process.env, HOIST_RAW_BASE: `http://127.0.0.1:${serverPort}` },
+  });
+
+  srv.kill();
+
+  assert('--fetch exits 0', r.status === 0, r.stderr?.slice(0, 300));
+  assert('--fetch: skill body written', existsSync(join(dest, 'skills/tdd.md')));
+  assert('--fetch: claude wrapper written', existsSync(join(dest, '.claude/skills/tdd/SKILL.md')));
+
+  let fetchOut;
+  try { fetchOut = JSON.parse(r.stdout); } catch { fetchOut = null; }
+  assert('--fetch: results array present', Array.isArray(fetchOut?.results));
+
+  const manifestPath = join(dest, '.sync', 'hoisted');
+  assert('--fetch: manifest recorded', existsSync(manifestPath));
 }
 
 // ---------------------------------------------------------------- summary
