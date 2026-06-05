@@ -22,7 +22,11 @@
 
 ## Slice 3 — `--fetch` network mode (P1)
 
-**Status: PENDING**
+**Status: DONE**
+
+- RED: Added Case 18 using a peer-process HTTP server (IPC-based, avoids sandbox parent-child network restriction) serving scaffold files. Passes `HOIST_RAW_BASE` env override. Asserted exit 0, skill body written, claude wrapper written, results array, manifest recorded.
+- GREEN: Added `--fetch` flag (`fetchMode`), `HOIST_RAW_BASE` env override for `RAW_BASE`, `import { tmpdir }`, `fetchRaw(url, required)`, `populateFetchRoot(tempDir, pairs, registry, ref)`. Refactored emitters to accept `srcRoot` param; added `makeEmitters(srcRoot)` factory. `parseResolver(resolverPath)` now accepts explicit path. Wrapped main body in `async function main()` with `main().catch()`. Sync RESOLVER check now inside `main()` guarded by `!fetchMode`.
+- Tests: 65 passed, 0 failed.
 
 ---
 
