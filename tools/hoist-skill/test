@@ -289,6 +289,61 @@ console.log('\nCase 17: missing skill body gives actionable error (P3)');
   assert('error includes raw URL', r.stderr.includes('raw.githubusercontent.com'), r.stderr);
 }
 
+// ---------------------------------------------------------------- case 18: --fetch emits from a local HTTP server (P1)
+
+console.log('\nCase 18: --fetch emits skills from a local HTTP file server');
+{
+  // The sandbox blocks fetch() in spawnSync children when the server lives in the
+  // parent process. Workaround: start the server as a peer process via IPC so the
+  // spawned tool can connect to it.
+  const { spawn } = await import('node:child_process');
+
+  const serverScript = `
+    import { createServer } from 'node:http';
+    import { readFile } from 'node:fs/promises';
+    import { join } from 'node:path';
+    const ROOT = ${JSON.stringify(ROOT)};
+    createServer(async (req, res) => {
+      const relPath = req.url.replace(/^\\/[^\\/]+\\//, '');
+      try { const d = await readFile(join(ROOT, relPath)); res.writeHead(200); res.end(d); }
+      catch { res.writeHead(404); res.end('not found'); }
+    }).listen(0, '127.0.0.1', function() {
+      process.send('ready:' + this.address().port);
+    });
+  `;
+
+  const srv = spawn('node', ['--input-type=module'], {
+    stdio: ['pipe', 'ignore', 'ignore', 'ipc'],
+  });
+  srv.stdin.end(serverScript);
+
+  const serverPort = await new Promise(resolve => {
+    srv.on('message', m => {
+      if (String(m).startsWith('ready:')) resolve(Number(String(m).split(':')[1]));
+    });
+  });
+
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const r = spawnSync('node', [RUN, '--fetch', '--names', 'tdd', '--harness', 'claude', '--into', dest], {
+    encoding: 'utf8',
+    timeout: 15000,
+    env: { ...process.env, HOIST_RAW_BASE: `http://127.0.0.1:${serverPort}` },
+  });
+
+  srv.kill();
+
+  assert('--fetch exits 0', r.status === 0, r.stderr?.slice(0, 300));
+  assert('--fetch: skill body written', existsSync(join(dest, 'skills/tdd.md')));
+  assert('--fetch: claude wrapper written', existsSync(join(dest, '.claude/skills/tdd/SKILL.md')));
+
+  let fetchOut;
+  try { fetchOut = JSON.parse(r.stdout); } catch { fetchOut = null; }
+  assert('--fetch: results array present', Array.isArray(fetchOut?.results));
+
+  const manifestPath = join(dest, '.sync', 'hoisted');
+  assert('--fetch: manifest recorded', existsSync(manifestPath));
+}
+
 // ---------------------------------------------------------------- summary
 
 console.log(`\n${passed} passed, ${failed} failed.`);
