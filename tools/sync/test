@@ -22,10 +22,83 @@ function run(args = [], opts = {}) {
   }
 }
 
+// ---------------------------------------------------------------- slice 1
+
 // Case 1: bin/sync exists and exits 0 with no args (stub)
 {
   const r = run([]);
   assert('case 1: bin/sync exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+}
+
+// ---------------------------------------------------------------- slice 2: policy parser
+
+import { parsePolicy } from './policy.mjs';
+
+const VALID_YAML = `
+ref: v1.2
+files:
+  copy:
+    - AGENTS.md
+    - docs/guide.md
+  guarded:
+    - path: CLAUDE.md
+      keep_marker: "@MIND.md"
+  protected:
+    - MIND.md
+skills:
+  manifest: .sync/hoisted
+`.trim();
+
+// Case 2: valid policy parses correctly
+{
+  const p = parsePolicy(VALID_YAML);
+  assert('case 2: ref parsed', p.ref === 'v1.2');
+  assert('case 2: copy list', JSON.stringify(p.files.copy) === JSON.stringify(['AGENTS.md', 'docs/guide.md']));
+  assert('case 2: guarded path', p.files.guarded[0].path === 'CLAUDE.md');
+  assert('case 2: guarded keep_marker', p.files.guarded[0].keep_marker === '@MIND.md');
+  assert('case 2: protected list', JSON.stringify(p.files.protected) === JSON.stringify(['MIND.md']));
+  assert('case 2: skills.manifest', p.skills.manifest === '.sync/hoisted');
+}
+
+// Case 3: ref defaults to main when absent
+{
+  const p = parsePolicy(`files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted`);
+  assert('case 3: ref defaults to main', p.ref === 'main');
+}
+
+// Case 4: empty sections are allowed (copy/guarded/protected may be absent)
+{
+  const p = parsePolicy(`files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted`);
+  assert('case 4: guarded defaults to []', Array.isArray(p.files.guarded) && p.files.guarded.length === 0);
+  assert('case 4: protected defaults to []', Array.isArray(p.files.protected) && p.files.protected.length === 0);
+}
+
+// Case 5: missing files key throws
+{
+  let threw = false;
+  try { parsePolicy(`skills:\n  manifest: .sync/hoisted`); } catch { threw = true; }
+  assert('case 5: missing files key throws', threw);
+}
+
+// Case 6: missing skills.manifest key throws
+{
+  let threw = false;
+  try { parsePolicy(`files:\n  copy:\n    - AGENTS.md`); } catch { threw = true; }
+  assert('case 6: missing skills.manifest throws', threw);
+}
+
+// Case 7: guarded entry missing keep_marker throws
+{
+  let threw = false;
+  try { parsePolicy(`files:\n  guarded:\n    - path: CLAUDE.md\nskills:\n  manifest: .sync/hoisted`); } catch { threw = true; }
+  assert('case 7: guarded entry missing keep_marker throws', threw);
+}
+
+// Case 8: guarded entry missing path throws
+{
+  let threw = false;
+  try { parsePolicy(`files:\n  guarded:\n    - keep_marker: "@MIND.md"\nskills:\n  manifest: .sync/hoisted`); } catch { threw = true; }
+  assert('case 8: guarded entry missing path throws', threw);
 }
 
 console.error(`\n${passed} passed, ${failed} failed`);
