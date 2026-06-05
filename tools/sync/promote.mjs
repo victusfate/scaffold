@@ -9,7 +9,7 @@ import { join, dirname } from 'node:path';
  *
  * Statuses: written | unchanged | guarded-skip | protected | src-missing | would-write | would-guarded-skip | would-protected
  */
-export async function promoteFiles(policy, srcRoot, destRoot, opts = {}) {
+export function promoteFiles(policy, srcRoot, destRoot, opts = {}) {
   const { check = false, force = false } = opts;
   const results = [];
 
