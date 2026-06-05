@@ -101,5 +101,123 @@ skills:
   assert('case 8: guarded entry missing path throws', threw);
 }
 
+// ---------------------------------------------------------------- slice 3: file promotion
+
+import { promoteFiles } from './promote.mjs';
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+
+function makeTmp() {
+  return mkdtempSync(join(tmpdir(), 'sync-test-'));
+}
+
+function writeFile(dir, rel, content) {
+  const abs = join(dir, rel);
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, content, 'utf8');
+}
+
+const POLICY_BASE = {
+  ref: 'main',
+  files: {
+    copy: ['AGENTS.md'],
+    guarded: [{ path: 'CLAUDE.md', keep_marker: '@MIND.md' }],
+    protected: ['MIND.md'],
+  },
+  skills: { manifest: '.sync/hoisted' },
+};
+
+// Case 9: copy — free overwrite (incoming differs from existing)
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'new content');
+  writeFile(dst, 'AGENTS.md', 'old content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 9: copy overwrites freely', r?.status === 'written');
+  assert('case 9: copy file content updated', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'new content');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 10: copy — unchanged when identical
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'same');
+  writeFile(dst, 'AGENTS.md', 'same');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 10: copy unchanged when identical', r?.status === 'unchanged');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 11: guarded — writes when marker present in incoming
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'CLAUDE.md', '@MIND.md\nsome content');
+  writeFile(dst, 'CLAUDE.md', 'old');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'CLAUDE.md');
+  assert('case 11: guarded writes when marker present', r?.status === 'written');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 12: guarded — skips when marker absent from incoming
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'CLAUDE.md', 'no marker here');
+  writeFile(dst, 'CLAUDE.md', 'local content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'CLAUDE.md');
+  assert('case 12: guarded skips when marker absent', r?.status === 'guarded-skip');
+  assert('case 12: local file untouched', readFileSync(join(dst, 'CLAUDE.md'), 'utf8') === 'local content');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 13: protected — never written even with --force
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'MIND.md', 'from scaffold');
+  writeFile(dst, 'MIND.md', 'my content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, { force: true });
+  const r = results.find(r => r.path === 'MIND.md');
+  assert('case 13: protected never written', r?.status === 'protected');
+  assert('case 13: protected file untouched', readFileSync(join(dst, 'MIND.md'), 'utf8') === 'my content');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 14: default deny — unlisted path not written
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'agents');
+  writeFile(src, 'UNLISTED.md', 'should not copy');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  assert('case 14: unlisted path not in results', !results.find(r => r.path === 'UNLISTED.md'));
+  assert('case 14: unlisted file not written', !existsSync(join(dst, 'UNLISTED.md')));
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 15: --check mode — no files written, actions reported
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'new');
+  writeFile(dst, 'AGENTS.md', 'old');
+  writeFile(src, 'CLAUDE.md', '@MIND.md content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, { check: true });
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 15: check mode reports action', r?.status === 'would-write');
+  assert('case 15: check mode writes nothing', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'old');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 16: source file missing — skipped gracefully
+{
+  const src = makeTmp(), dst = makeTmp();
+  // AGENTS.md is in policy.copy but not in src
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 16: missing src file reported as skipped', r?.status === 'src-missing');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
 console.error(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
