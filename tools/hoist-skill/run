@@ -287,6 +287,10 @@ async function main() {
   let srcRoot = SCAFFOLD_ROOT;
 
   if (fetchMode) {
+    if (Number(process.versions.node.split('.')[0]) < 18) {
+      console.error(`hoist-skill: --fetch requires Node 18+ (current: ${process.version})`);
+      process.exit(1);
+    }
     _fetchTempDir = mkdtempSync(join(tmpdir(), 'hoist-skill-'));
     srcRoot = _fetchTempDir;
     const resolverContent = await fetchRaw(`${RAW_BASE}/${ref}/${RESOLVER_REL}`, true);
