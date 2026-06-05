@@ -126,6 +126,107 @@ console.log('\nCase 7: claude wrapper fallback has description frontmatter');
     wrapper.includes('@../../../skills/hoist-skill.md'));
 }
 
+// ---------------------------------------------------------------- case 8: emit writes .sync/hoisted; re-emit does not duplicate
+
+console.log('\nCase 8: emit writes manifest; re-emit does not duplicate');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const r1 = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest]);
+  assert('exits 0', r1.status === 0, r1.stderr);
+
+  const manifestPath = join(dest, '.sync', 'hoisted');
+  assert('manifest written', existsSync(manifestPath));
+
+  const lines1 = readFileSync(manifestPath, 'utf8')
+    .split('\n').filter(l => l.trim() && !l.startsWith('#'));
+  assert('one entry', lines1.length === 1, `got: ${JSON.stringify(lines1)}`);
+  assert('correct entry', lines1[0] === 'feature-chain\tclaude\tmain', `got: ${lines1[0]}`);
+
+  // Re-emit — must not duplicate
+  const r2 = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest]);
+  assert('re-emit exits 0', r2.status === 0, r2.stderr);
+  const lines2 = readFileSync(manifestPath, 'utf8')
+    .split('\n').filter(l => l.trim() && !l.startsWith('#'));
+  assert('still one entry (no duplicate)', lines2.length === 1, `got: ${JSON.stringify(lines2)}`);
+}
+
+// ---------------------------------------------------------------- case 9: --no-record leaves no manifest
+
+console.log('\nCase 9: --no-record leaves no manifest');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const r = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest, '--no-record']);
+  assert('exits 0', r.status === 0, r.stderr);
+  assert('no manifest written', !existsSync(join(dest, '.sync', 'hoisted')));
+}
+
+// ---------------------------------------------------------------- case 10: --from-manifest emits recorded set
+
+console.log('\nCase 10: --from-manifest emits the recorded set');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  mkdirSync(join(dest, '.sync'), { recursive: true });
+  writeFileSync(join(dest, '.sync', 'hoisted'),
+    '# .sync/hoisted\nfeature-chain\tclaude\tmain\n');
+
+  const r = run(['--from-manifest', '--into', dest]);
+  assert('exits 0', r.status === 0, r.stderr);
+  assert('canonical body written', existsSync(join(dest, 'skills/feature-chain.md')));
+  assert('claude wrapper written', existsSync(join(dest, '.claude/skills/feature-chain/SKILL.md')));
+
+  const out = JSON.parse(r.stdout);
+  assert('results array present', Array.isArray(out.results));
+}
+
+// ---------------------------------------------------------------- case 11: --plan outputs sources
+
+console.log('\nCase 11: --plan outputs source list');
+{
+  const r = run(['--names', 'tdd', '--harness', 'claude', '--plan']);
+  assert('exits 0', r.status === 0, r.stderr);
+  let plan;
+  try { plan = JSON.parse(r.stdout); } catch { plan = null; }
+  assert('stdout is valid JSON', plan !== null, r.stdout.slice(0, 200));
+  assert('has ref', plan?.ref === 'main');
+  assert('has harness', plan?.harness === 'claude');
+  assert('sources is array', Array.isArray(plan?.sources));
+  assert('includes tool path', plan?.sources.includes('tools/hoist-skill/run'));
+  assert('includes RESOLVER',  plan?.sources.includes('.claude/skills/RESOLVER.md'));
+  assert('includes skill body', plan?.sources.includes('skills/tdd.md'));
+  assert('includes claude wrapper', plan?.sources.includes('.claude/skills/tdd/SKILL.md'));
+}
+
+// ---------------------------------------------------------------- case 12: --names and --from-manifest are mutually exclusive
+
+console.log('\nCase 12: --names and --from-manifest are mutually exclusive');
+{
+  const r = run(['--names', 'tdd', '--from-manifest']);
+  assert('exits non-zero', r.status !== 0);
+}
+
+// ---------------------------------------------------------------- case 13: --ref is recorded in manifest
+
+console.log('\nCase 13: --ref is recorded in manifest');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const r = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest, '--ref', 'v1.2.3']);
+  assert('exits 0', r.status === 0, r.stderr);
+  const lines = readFileSync(join(dest, '.sync', 'hoisted'), 'utf8')
+    .split('\n').filter(l => l.trim() && !l.startsWith('#'));
+  assert('ref recorded', lines[0] === 'feature-chain\tclaude\tv1.2.3', `got: ${lines[0]}`);
+}
+
+// ---------------------------------------------------------------- case 14: --plan echoes --ref
+
+console.log('\nCase 14: --plan echoes --ref');
+{
+  const r = run(['--names', 'tdd', '--harness', 'claude', '--plan', '--ref', 'v2.0.0']);
+  assert('exits 0', r.status === 0, r.stderr);
+  let plan;
+  try { plan = JSON.parse(r.stdout); } catch { plan = null; }
+  assert('ref in plan output', plan?.ref === 'v2.0.0');
+}
+
 // ---------------------------------------------------------------- summary
 
 console.log(`\n${passed} passed, ${failed} failed.`);

@@ -2,14 +2,17 @@
 // hoist-skill — emit scaffold capabilities into a consumer repo.
 // Usage: node run [--names <n1,n2|all>] [--harness <claude|cursor|antigravity|all>]
 //                [--into <path>] [--force] [--list]
+//                [--ref <ref>] [--no-record] [--from-manifest [path]] [--plan]
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SCAFFOLD_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const RESOLVER      = join(SCAFFOLD_ROOT, '.claude', 'skills', 'RESOLVER.md');
 const HARNESSES     = ['claude', 'cursor', 'antigravity'];
+const TOOL_REL      = 'tools/hoist-skill/run';
+const RESOLVER_REL  = '.claude/skills/RESOLVER.md';
 
 // ---------------------------------------------------------------- args
 
@@ -22,8 +25,30 @@ const rawHarness = get('--harness') ?? 'claude';
 const intoRaw    = get('--into')    ?? '.';
 const force      = has('--force');
 const listMode   = has('--list');
+const ref        = get('--ref')    ?? 'main';
+const noRecord   = has('--no-record');
+const planMode   = has('--plan');
+
+const fromManifestFlag = has('--from-manifest');
+const fromManifestRaw  = (() => {
+  const i = args.indexOf('--from-manifest');
+  if (i === -1) return null;
+  const next = args[i + 1];
+  return (next && !next.startsWith('--')) ? next : null;
+})();
 
 const INTO = resolve(intoRaw);
+const manifestReadPath  = fromManifestFlag
+  ? (fromManifestRaw ? resolve(fromManifestRaw) : join(INTO, '.sync', 'hoisted'))
+  : null;
+const manifestWritePath = join(INTO, '.sync', 'hoisted');
+
+// ---------------------------------------------------------------- validation
+
+if (has('--names') && fromManifestFlag) {
+  console.error('--names and --from-manifest are mutually exclusive');
+  process.exit(1);
+}
 
 // ---------------------------------------------------------------- RESOLVER parse
 
@@ -57,6 +82,37 @@ function parseResolver() {
     });
   }
   return rows;
+}
+
+// ---------------------------------------------------------------- manifest
+
+function readManifest(path) {
+  if (!existsSync(path)) return [];
+  return readFileSync(path, 'utf8')
+    .split('\n')
+    .filter(l => l.trim() && !l.startsWith('#'))
+    .map(l => {
+      const parts = l.split('\t');
+      return { name: (parts[0] || '').trim(), harness: (parts[1] || '').trim(), ref: (parts[2] || 'main').trim() };
+    })
+    .filter(e => e.name && e.harness);
+}
+
+function upsertManifest(path, newEntries) {
+  mkdirSync(dirname(path), { recursive: true });
+  const existing = readManifest(path);
+  let header = '# .sync/hoisted — skills hoisted from scaffold; replayed by /pull-scaffold.\n# <name>\t<harness>\t<ref>\n';
+  if (existsSync(path)) {
+    const commentLines = readFileSync(path, 'utf8').split('\n').filter(l => l.startsWith('#'));
+    if (commentLines.length) header = commentLines.join('\n') + '\n';
+  }
+  const merged = [...existing];
+  for (const entry of newEntries) {
+    const idx = merged.findIndex(e => e.name === entry.name && e.harness === entry.harness);
+    if (idx >= 0) merged[idx] = entry;
+    else merged.push(entry);
+  }
+  writeFileSync(path, header + merged.map(e => `${e.name}\t${e.harness}\t${e.ref}`).join('\n') + '\n', 'utf8');
 }
 
 // ---------------------------------------------------------------- scaffold-keep
@@ -105,6 +161,21 @@ function safeWrite(dest, relPath, content, kept, results) {
   writeFileSync(abs, content, 'utf8');
   results.push({ path: relPath, status: 'written' });
   console.error(`  written    ${relPath}`);
+}
+
+// ---------------------------------------------------------------- source paths (for --plan)
+
+function capSourcePaths(cap, harness) {
+  const paths = [cap.path];
+  if (harness === 'claude') {
+    paths.push(`.claude/skills/${cap.name}/SKILL.md`);
+  } else if (harness === 'cursor') {
+    paths.push(`.cursor/rules/${cap.name}.mdc`);
+  } else if (harness === 'antigravity') {
+    paths.push(`.agents/skills/${cap.name}/SKILL.md`);
+    paths.push(`.agent/workflows/${cap.name}.md`);
+  }
+  return paths;
 }
 
 // ---------------------------------------------------------------- per-harness emitters
@@ -164,33 +235,86 @@ if (listMode) {
   process.exit(0);
 }
 
-// Resolve capability names
-const requestedNames = rawNames === 'all' ? registry.map(r => r.name) : rawNames.split(',').map(s => s.trim());
-const unknown = requestedNames.filter(n => !registry.find(r => r.name === n));
-if (unknown.length) {
-  console.error(`Unknown capabilities: ${unknown.join(', ')}`);
-  console.error(`Available: ${registry.map(r => r.name).join(', ')}`);
-  process.exit(1);
+// Build emit pairs: [{ name, harness }]
+let emitPairs;
+
+if (fromManifestFlag) {
+  const entries = readManifest(manifestReadPath);
+  if (!entries.length) {
+    console.error(`No entries found in manifest: ${manifestReadPath}`);
+    process.exit(1);
+  }
+  const unknownNames     = entries.filter(e => !registry.find(r => r.name === e.name)).map(e => e.name);
+  const unknownHarnesses = entries.filter(e => !HARNESSES.includes(e.harness)).map(e => e.harness);
+  if (unknownNames.length) {
+    console.error(`Unknown capabilities in manifest: ${unknownNames.join(', ')}`);
+    console.error(`Available: ${registry.map(r => r.name).join(', ')}`);
+    process.exit(1);
+  }
+  if (unknownHarnesses.length) {
+    console.error(`Unknown harnesses in manifest: ${unknownHarnesses.join(', ')}`);
+    console.error(`Available: ${HARNESSES.join(', ')}`);
+    process.exit(1);
+  }
+  emitPairs = entries.map(e => ({ name: e.name, harness: e.harness }));
+} else {
+  const requestedNames = rawNames === 'all' ? registry.map(r => r.name) : rawNames.split(',').map(s => s.trim());
+  const unknown = requestedNames.filter(n => !registry.find(r => r.name === n));
+  if (unknown.length) {
+    console.error(`Unknown capabilities: ${unknown.join(', ')}`);
+    console.error(`Available: ${registry.map(r => r.name).join(', ')}`);
+    process.exit(1);
+  }
+  const requestedHarnesses = rawHarness === 'all' ? HARNESSES : [rawHarness];
+  const badHarnesses = requestedHarnesses.filter(h => !HARNESSES.includes(h));
+  if (badHarnesses.length) {
+    console.error(`Unknown harnesses: ${badHarnesses.join(', ')}`);
+    console.error(`Available: ${HARNESSES.join(', ')}`);
+    process.exit(1);
+  }
+  emitPairs = [];
+  for (const name of requestedNames)
+    for (const harness of requestedHarnesses)
+      emitPairs.push({ name, harness });
 }
 
-// Resolve harnesses
-const requestedHarnesses = rawHarness === 'all' ? HARNESSES : [rawHarness];
-const badHarnesses = requestedHarnesses.filter(h => !HARNESSES.includes(h));
-if (badHarnesses.length) {
-  console.error(`Unknown harnesses: ${badHarnesses.join(', ')}`);
-  console.error(`Available: ${HARNESSES.join(', ')}`);
-  process.exit(1);
+// Plan mode: output sources list, no emit
+if (planMode) {
+  const seen    = new Set([TOOL_REL, RESOLVER_REL]);
+  const sources = [TOOL_REL, RESOLVER_REL];
+  const uniqueHarnesses = [...new Set(emitPairs.map(p => p.harness))];
+
+  for (const { name, harness } of emitPairs) {
+    const cap = registry.find(r => r.name === name);
+    for (const s of capSourcePaths(cap, harness)) {
+      if (!seen.has(s)) { seen.add(s); sources.push(s); }
+    }
+  }
+
+  const out = { ref };
+  if (uniqueHarnesses.length === 1) out.harness = uniqueHarnesses[0];
+  else out.harnesses = uniqueHarnesses;
+  out.sources = sources;
+
+  console.log(JSON.stringify(out, null, 2));
+  process.exit(0);
 }
 
-const kept = loadKeep(INTO);
+// Emit
+const kept    = loadKeep(INTO);
 const results = [];
 
-for (const name of requestedNames) {
+for (const { name, harness } of emitPairs) {
   const cap = registry.find(r => r.name === name);
-  for (const harness of requestedHarnesses) {
-    console.error(`→ ${name} [${harness}]`);
-    EMITTERS[harness](cap, INTO, kept, results);
-  }
+  console.error(`→ ${name} [${harness}]`);
+  EMITTERS[harness](cap, INTO, kept, results);
 }
 
-console.log(JSON.stringify({ into: INTO, harnesses: requestedHarnesses, results }, null, 2));
+// Record manifest (after emit, skip on --no-record)
+if (!noRecord) {
+  const entries = emitPairs.map(({ name, harness }) => ({ name, harness, ref }));
+  upsertManifest(manifestWritePath, entries);
+}
+
+const usedHarnesses = [...new Set(emitPairs.map(p => p.harness))];
+console.log(JSON.stringify({ into: INTO, harnesses: usedHarnesses, results }, null, 2));
