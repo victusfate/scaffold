@@ -345,10 +345,11 @@ export async function hoist(opts = {}) {
     ];
     const uniqueHarnesses = [...new Set(emitPairs.map(p => p.harness))];
 
-    for (const { name, harness } of emitPairs) {
+    for (const { name, harness, ref: pairRef } of emitPairs) {
       const cap = registry.find(r => r.name === name);
+      const pRef = pairRef ?? ref;
       for (const s of capSourcePaths(cap, harness)) {
-        if (!seen.has(s.path)) { seen.add(s.path); sources.push(s); }
+        if (!seen.has(s.path)) { seen.add(s.path); sources.push({ ...s, ref: pRef }); }
       }
     }
 

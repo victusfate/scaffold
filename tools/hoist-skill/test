@@ -344,6 +344,29 @@ console.log('\nCase 18: --fetch emits skills from a local HTTP file server');
   assert('--fetch: manifest recorded', existsSync(manifestPath));
 }
 
+// ---------------------------------------------------------------- case 19: --plan --from-manifest preserves pinned refs in sources
+
+console.log('\nCase 19: --plan --from-manifest preserves pinned refs in sources');
+{
+  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  mkdirSync(join(dest, '.sync'), { recursive: true });
+  writeFileSync(join(dest, '.sync', 'hoisted'),
+    'feature-chain\tclaude\tv1.2.3\n');
+
+  const r = spawnSync('node', [RUN, '--plan', '--from-manifest', '--into', dest], {
+    encoding: 'utf8',
+  });
+  assert('exits 0', r.status === 0, r.stderr?.slice(0, 300));
+
+  let out;
+  try { out = JSON.parse(r.stdout); } catch { out = null; }
+  assert('stdout is valid JSON', out !== null);
+
+  const capSource = out?.sources?.find(s => s.path && !s.path.startsWith('.') && s.path !== 'tools/hoist-skill/run');
+  assert('capability source has ref field', capSource?.ref !== undefined, JSON.stringify(capSource));
+  assert('capability source ref matches manifest pin', capSource?.ref === 'v1.2.3', `got: ${capSource?.ref}`);
+}
+
 // ---------------------------------------------------------------- summary
 
 console.log(`\n${passed} passed, ${failed} failed.`);
