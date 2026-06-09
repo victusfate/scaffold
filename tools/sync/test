@@ -162,15 +162,44 @@ const POLICY_BASE = {
   skills: { manifest: '.sync/hoisted' },
 };
 
-// Case 9: copy — free overwrite (incoming differs from existing)
+// Case 9: copy — differing destination gets a sidecar by default (clobber-safe)
 {
   const src = makeTmp(), dst = makeTmp();
   writeFile(src, 'AGENTS.md', 'new content');
   writeFile(dst, 'AGENTS.md', 'old content');
   const results = await promoteFiles(POLICY_BASE, src, dst, {});
   const r = results.find(r => r.path === 'AGENTS.md');
-  assert('case 9: copy overwrites freely', r?.status === 'written');
-  assert('case 9: copy file content updated', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'new content');
+  assert('case 9: copy writes sidecar when dest differs', r?.status === 'sidecar', r?.status);
+  assert('case 9: dest untouched', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'old content');
+  assert('case 9: sidecar holds incoming', existsSync(join(dst, 'AGENTS.md.scaffold-new')) &&
+    readFileSync(join(dst, 'AGENTS.md.scaffold-new'), 'utf8') === 'new content');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 9b: copy — --force overwrites, no sidecar
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'new content');
+  writeFile(dst, 'AGENTS.md', 'old content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, { force: true });
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 9b: force overwrites', r?.status === 'written', r?.status);
+  assert('case 9b: content updated', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'new content');
+  assert('case 9b: no sidecar', !existsSync(join(dst, 'AGENTS.md.scaffold-new')));
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 9c: copy — .scaffold-keep entries are never written
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'new content');
+  writeFile(dst, 'AGENTS.md', 'mine');
+  writeFile(dst, '.scaffold-keep', 'AGENTS.md\n');
+  const results = await promoteFiles(POLICY_BASE, src, dst, { force: true });
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 9c: kept path reported', r?.status === 'kept', r?.status);
+  assert('case 9c: kept file untouched', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'mine');
+  assert('case 9c: no sidecar for kept', !existsSync(join(dst, 'AGENTS.md.scaffold-new')));
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
@@ -185,14 +214,25 @@ const POLICY_BASE = {
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
-// Case 11: guarded — writes when marker present in incoming
+// Case 11: guarded — marker present, fresh destination → written
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'CLAUDE.md', '@MIND.md\nsome content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'CLAUDE.md');
+  assert('case 11: guarded writes when marker present', r?.status === 'written', r?.status);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 11b: guarded — marker present but destination differs → sidecar (clobber-safe)
 {
   const src = makeTmp(), dst = makeTmp();
   writeFile(src, 'CLAUDE.md', '@MIND.md\nsome content');
   writeFile(dst, 'CLAUDE.md', 'old');
   const results = await promoteFiles(POLICY_BASE, src, dst, {});
   const r = results.find(r => r.path === 'CLAUDE.md');
-  assert('case 11: guarded writes when marker present', r?.status === 'written');
+  assert('case 11b: guarded sidecars when dest differs', r?.status === 'sidecar', r?.status);
+  assert('case 11b: dest untouched', readFileSync(join(dst, 'CLAUDE.md'), 'utf8') === 'old');
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
@@ -239,8 +279,11 @@ const POLICY_BASE = {
   writeFile(src, 'CLAUDE.md', '@MIND.md content');
   const results = await promoteFiles(POLICY_BASE, src, dst, { check: true });
   const r = results.find(r => r.path === 'AGENTS.md');
-  assert('case 15: check mode reports action', r?.status === 'would-write');
+  assert('case 15: check mode reports would-sidecar for differing dest', r?.status === 'would-sidecar', r?.status);
+  const rc = results.find(r => r.path === 'CLAUDE.md');
+  assert('case 15: check mode reports would-write for fresh dest', rc?.status === 'would-write', rc?.status);
   assert('case 15: check mode writes nothing', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'old');
+  assert('case 15: check mode writes no sidecar', !existsSync(join(dst, 'AGENTS.md.scaffold-new')));
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
