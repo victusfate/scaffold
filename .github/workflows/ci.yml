@@ -15,5 +15,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: "[ -f package-lock.json ] && npm ci || npm install"
-      - run: npm run --if-present typecheck && npm run --if-present test
+      - run: npm test
+
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm run test:integration

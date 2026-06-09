@@ -98,6 +98,29 @@ rc=0
 (cd "$C" && SCAFFOLD_URL="$SCAFFOLD" bash "$BOOTSTRAP" >/dev/null 2>&1) || rc=$?
 check "second run exit 0"  test "$rc" -eq 0
 
+# ── test 6: run from a subdirectory → installs at repo root ───────────────
+
+echo "6. Run from subdirectory → bin/ lands at repo root"
+C="$WORK/c6"
+make_consumer "$C"
+mkdir -p "$C/sub/dir"
+
+rc=0
+(cd "$C/sub/dir" && SCAFFOLD_URL="$SCAFFOLD" bash "$BOOTSTRAP" >/dev/null 2>&1) || rc=$?
+check "exit 0"                test "$rc" -eq 0
+check "sync script at root"   test -x "$C/bin/sync-from-scaffold.sh"
+check "bin NOT in subdir"     test ! -d "$C/sub/dir/bin"
+
+# ── test 7: unknown flag → rejected ───────────────────────────────────────
+
+echo "7. Unknown flag → error, exit non-zero"
+C="$WORK/c7"
+make_consumer "$C"
+
+rc=0
+(cd "$C" && SCAFFOLD_URL="$SCAFFOLD" bash "$BOOTSTRAP" --bogus >/dev/null 2>&1) || rc=$?
+check "unknown flag exits non-zero"  test "$rc" -ne 0
+
 # ── summary ───────────────────────────────────────────────────────────────
 
 echo ""

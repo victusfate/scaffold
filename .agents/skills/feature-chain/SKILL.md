@@ -1,7 +1,7 @@
 ---
 name: feature-chain
 description: |
-  Run the full feature-chain: design Q&A → PRD → TDD → review. Use when the user wants to build a new feature or implement a new capability from scratch.
+  Use when the user wants to build a new feature, implement a new capability, add functionality, or start a development task from scratch. Runs design Q&A → PRD → TDD → review automatically.
 license: MIT
 metadata:
   author: victusfate

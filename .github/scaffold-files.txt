@@ -16,6 +16,8 @@ scripts/check-resolvable.mjs
 scripts/update-readme-skills.mjs
 tools/hoist-skill/tool.yaml
 tools/hoist-skill/run
+tools/hoist-skill/hoist.mjs
+tools/lib/safe-write.mjs
 tools/hoist-skill/test
 tools/hoist-skill/README.md
 skills/hoist-skill.md

@@ -103,6 +103,39 @@ skills:
   assert('case 8: guarded entry missing path throws', threw);
 }
 
+// Case 8a: unknown files sub-key throws (misspelled section must not reclassify entries)
+{
+  let errMsg = '';
+  try {
+    parsePolicy(`files:\n  copy:\n    - A.md\n  protcted:\n    - MIND.md\nskills:\n  manifest: .sync/hoisted`);
+  } catch (e) { errMsg = e.message; }
+  assert('case 8a: unknown files sub-key throws', errMsg.includes('protcted'), errMsg || '(no throw)');
+}
+
+// Case 8b: unknown top-level key throws
+{
+  let errMsg = '';
+  try {
+    parsePolicy(`files:\n  copy:\n    - A.md\nbogus: true\nskills:\n  manifest: .sync/hoisted`);
+  } catch (e) { errMsg = e.message; }
+  assert('case 8b: unknown top-level key throws', errMsg.includes('bogus'), errMsg || '(no throw)');
+}
+
+// Case 8c: bare ref (no value) throws
+{
+  let errMsg = '';
+  try {
+    parsePolicy(`ref:\nfiles:\n  copy:\n    - A.md\nskills:\n  manifest: .sync/hoisted`);
+  } catch (e) { errMsg = e.message; }
+  assert('case 8c: bare ref throws', errMsg.includes('ref'), errMsg || '(no throw)');
+}
+
+// Case 8d: quoted ref value is unquoted
+{
+  const p = parsePolicy(`ref: "v1.2"\nfiles:\n  copy:\n    - A.md\nskills:\n  manifest: .sync/hoisted`);
+  assert('case 8d: quoted ref unquoted', p.ref === 'v1.2', JSON.stringify(p.ref));
+}
+
 // ---------------------------------------------------------------- slice 3: file promotion
 
 import { promoteFiles } from './promote.mjs';
@@ -129,15 +162,44 @@ const POLICY_BASE = {
   skills: { manifest: '.sync/hoisted' },
 };
 
-// Case 9: copy — free overwrite (incoming differs from existing)
+// Case 9: copy — differing destination gets a sidecar by default (clobber-safe)
 {
   const src = makeTmp(), dst = makeTmp();
   writeFile(src, 'AGENTS.md', 'new content');
   writeFile(dst, 'AGENTS.md', 'old content');
   const results = await promoteFiles(POLICY_BASE, src, dst, {});
   const r = results.find(r => r.path === 'AGENTS.md');
-  assert('case 9: copy overwrites freely', r?.status === 'written');
-  assert('case 9: copy file content updated', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'new content');
+  assert('case 9: copy writes sidecar when dest differs', r?.status === 'sidecar', r?.status);
+  assert('case 9: dest untouched', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'old content');
+  assert('case 9: sidecar holds incoming', existsSync(join(dst, 'AGENTS.md.scaffold-new')) &&
+    readFileSync(join(dst, 'AGENTS.md.scaffold-new'), 'utf8') === 'new content');
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 9b: copy — --force overwrites, no sidecar
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'new content');
+  writeFile(dst, 'AGENTS.md', 'old content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, { force: true });
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 9b: force overwrites', r?.status === 'written', r?.status);
+  assert('case 9b: content updated', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'new content');
+  assert('case 9b: no sidecar', !existsSync(join(dst, 'AGENTS.md.scaffold-new')));
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 9c: copy — .scaffold-keep entries are never written
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'new content');
+  writeFile(dst, 'AGENTS.md', 'mine');
+  writeFile(dst, '.scaffold-keep', 'AGENTS.md\n');
+  const results = await promoteFiles(POLICY_BASE, src, dst, { force: true });
+  const r = results.find(r => r.path === 'AGENTS.md');
+  assert('case 9c: kept path reported', r?.status === 'kept', r?.status);
+  assert('case 9c: kept file untouched', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'mine');
+  assert('case 9c: no sidecar for kept', !existsSync(join(dst, 'AGENTS.md.scaffold-new')));
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
@@ -152,14 +214,25 @@ const POLICY_BASE = {
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
-// Case 11: guarded — writes when marker present in incoming
+// Case 11: guarded — marker present, fresh destination → written
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'CLAUDE.md', '@MIND.md\nsome content');
+  const results = await promoteFiles(POLICY_BASE, src, dst, {});
+  const r = results.find(r => r.path === 'CLAUDE.md');
+  assert('case 11: guarded writes when marker present', r?.status === 'written', r?.status);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 11b: guarded — marker present but destination differs → sidecar (clobber-safe)
 {
   const src = makeTmp(), dst = makeTmp();
   writeFile(src, 'CLAUDE.md', '@MIND.md\nsome content');
   writeFile(dst, 'CLAUDE.md', 'old');
   const results = await promoteFiles(POLICY_BASE, src, dst, {});
   const r = results.find(r => r.path === 'CLAUDE.md');
-  assert('case 11: guarded writes when marker present', r?.status === 'written');
+  assert('case 11b: guarded sidecars when dest differs', r?.status === 'sidecar', r?.status);
+  assert('case 11b: dest untouched', readFileSync(join(dst, 'CLAUDE.md'), 'utf8') === 'old');
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
@@ -206,8 +279,11 @@ const POLICY_BASE = {
   writeFile(src, 'CLAUDE.md', '@MIND.md content');
   const results = await promoteFiles(POLICY_BASE, src, dst, { check: true });
   const r = results.find(r => r.path === 'AGENTS.md');
-  assert('case 15: check mode reports action', r?.status === 'would-write');
+  assert('case 15: check mode reports would-sidecar for differing dest', r?.status === 'would-sidecar', r?.status);
+  const rc = results.find(r => r.path === 'CLAUDE.md');
+  assert('case 15: check mode reports would-write for fresh dest', rc?.status === 'would-write', rc?.status);
   assert('case 15: check mode writes nothing', readFileSync(join(dst, 'AGENTS.md'), 'utf8') === 'old');
+  assert('case 15: check mode writes no sidecar', !existsSync(join(dst, 'AGENTS.md.scaffold-new')));
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
@@ -223,7 +299,15 @@ const POLICY_BASE = {
 
 // ---------------------------------------------------------------- slice 4: hoist-skill API export
 
-import { hoist } from '../hoist-skill/run';
+// Case 16a: hoist() is importable from the .mjs engine module (works on Node 18+,
+// unlike an extensionless ESM import)
+let hoist;
+{
+  try {
+    ({ hoist } = await import('../hoist-skill/hoist.mjs'));
+  } catch { /* fall through */ }
+  assert('case 16a: hoist.mjs exports hoist()', typeof hoist === 'function');
+}
 
 // Case 17: hoist() is importable and list mode returns capabilities JSON
 {
@@ -327,6 +411,65 @@ import { hoist } from '../hoist-skill/run';
   assert('case 22: sync without manifest exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
   const content22 = existsSync(join(dst, 'AGENTS.md')) ? readFileSync(join(dst, 'AGENTS.md'), 'utf8') : '(missing)';
   assert('case 22: copy file written', content22 === 'agents content', `got: ${content22}`);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// ---------------------------------------------------------------- slice: sync UX truthfulness
+
+// Case 23: provenance names the file source and the skills ref distinctly
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'content');
+  writeFile(dst, '.sync/policy.yaml', 'files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted');
+  const r = run(['--into', dst, '--ref', 'vX', '--check', `--scaffold-root=${src}`]);
+  assert('case 23: provenance has files= source', r.stdout.includes('files='), r.stdout);
+  assert('case 23: provenance has skills-ref=', r.stdout.includes('skills-ref=vX'), r.stdout);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 24: --check reports the skills step instead of pretending to hoist
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'content');
+  writeFile(dst, '.sync/policy.yaml', 'files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted');
+  writeFile(dst, '.sync/hoisted', '# header\ntdd\tclaude\tmain\nsimplify\tclaude\tmain\n');
+  const r = run(['--into', dst, '--check', `--scaffold-root=${src}`]);
+  assert('case 24: --check exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  assert('case 24: --check reports replay count', /would-replay\s+2 skill/.test(r.stdout), r.stdout);
+  assert('case 24: --check does not claim hoisting', !r.stdout.includes('hoisting skills'), r.stdout);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 25: local --scaffold-root hoists skills from that tree, no network
+{
+  const dst = makeTmp();
+  writeFile(dst, '.sync/policy.yaml', 'files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted');
+  writeFile(dst, '.sync/hoisted', 'tdd\tclaude\tmain\n');
+  const r = run(['--into', dst, `--scaffold-root=${ROOT}`],
+    { env: { ...process.env, HOIST_RAW_BASE: 'http://127.0.0.1:9' } });
+  assert('case 25: local-root sync exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  assert('case 25: skill body hoisted locally', existsSync(join(dst, 'skills/tdd.md')));
+  assert('case 25: claude wrapper hoisted locally', existsSync(join(dst, '.claude/skills/tdd/SKILL.md')));
+  rmSync(dst, { recursive: true });
+}
+
+// Case 26: ../ traversal path in copy list → traversal-blocked, legitimate path still written
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'agents');
+  const policy = parsePolicy([
+    'files:',
+    '  copy:',
+    '    - AGENTS.md',
+    '    - ../escape.txt',
+    'skills:',
+    '  manifest: .sync/hoisted',
+  ].join('\n'));
+  const results = promoteFiles(policy, src, dst);
+  const blocked = results.find(r => r.path === '../escape.txt');
+  assert('case 26: traversal path status is traversal-blocked', blocked?.status === 'traversal-blocked',
+    `status: ${blocked?.status}`);
+  assert('case 26: normal file still written', existsSync(join(dst, 'AGENTS.md')));
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 

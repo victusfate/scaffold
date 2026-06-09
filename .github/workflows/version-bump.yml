@@ -1,10 +1,14 @@
 name: Version Bump
 
+# Bumps package.json once per merge to main (not once per PR push) and tags
+# the release. The bump is derived from conventional commits since the last
+# version-change commit, via scripts/compute-bump.mjs (unit-tested).
+# Bot pushes use GITHUB_TOKEN, which does not retrigger workflows.
+
 on:
-  pull_request:
+  push:
     branches:
       - main
-    types: [opened, synchronize, reopened]
 
 jobs:
   bump:
@@ -15,65 +19,44 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          ref: ${{ github.head_ref }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Determine version bump
+      - name: Compute and apply version bump
         id: bump
         run: |
-          BASE=${{ github.event.pull_request.base.sha }}
-          HEAD=${{ github.event.pull_request.head.sha }}
-
-          COMMITS=$(git log "$BASE".."$HEAD" --pretty=format:"%s %b")
-
-          BUMP="none"
-          while IFS= read -r line; do
-            if echo "$line" | grep -qE '(BREAKING CHANGE|feat!:|fix!:)'; then
-              BUMP="major"
-              break
-            elif echo "$line" | grep -qE '^feat(\(.*\))?:'; then
-              [ "$BUMP" != "major" ] && BUMP="minor"
-            elif echo "$line" | grep -qE '^fix(\(.*\))?:'; then
-              [ "$BUMP" = "none" ] && BUMP="patch"
-            fi
-          done <<< "$COMMITS"
-
-          echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
-
-      - name: Apply version bump
-        if: steps.bump.outputs.bump != 'none'
-        run: |
-          BUMP=${{ steps.bump.outputs.bump }}
           CURRENT=$(node -p "require('./package.json').version")
 
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT"
+          # Range: commits since the last bump commit (or all history pre-first-bump)
+          LAST_BUMP=$(git log --grep='^chore: bump version' --pretty=%H -1 || true)
+          RANGE="${LAST_BUMP:+$LAST_BUMP..}HEAD"
 
-          case "$BUMP" in
-            major) MAJOR=$((MAJOR + 1)); MINOR=0; PATCH=0 ;;
-            minor) MINOR=$((MINOR + 1)); PATCH=0 ;;
-            patch) PATCH=$((PATCH + 1)) ;;
-          esac
+          NEXT=$(git log "$RANGE" --pretty='%s%n%b' | node scripts/compute-bump.mjs "$CURRENT")
+          echo "next=$NEXT" >> "$GITHUB_OUTPUT"
 
-          NEW="$MAJOR.$MINOR.$PATCH"
+          if [ "$NEXT" = "none" ]; then
+            echo "No release-worthy commits since last bump ($CURRENT)."
+            exit 0
+          fi
 
           node -e "
             const fs = require('fs');
             const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-            pkg.version = '$NEW';
+            pkg.version = '$NEXT';
             fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
+          echo "Bumped $CURRENT -> $NEXT"
 
-          echo "Bumped $CURRENT → $NEW ($BUMP)"
-
-      - name: Commit version bump
-        if: steps.bump.outputs.bump != 'none'
+      - name: Commit and tag
+        if: steps.bump.outputs.next != 'none'
         run: |
+          NEXT=${{ steps.bump.outputs.next }}
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add package.json
-          git diff --staged --quiet || git commit -m "chore: bump version [skip ci]"
-          git push
+          git diff --staged --quiet || git commit -m "chore: bump version to $NEXT"
+          git tag "v$NEXT"
+          git push --follow-tags

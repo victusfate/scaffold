@@ -13,7 +13,6 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { createServer } from 'node:http';
 
 const SCAFFOLD_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const BIN_SYNC      = join(SCAFFOLD_ROOT, 'bin/sync');
@@ -46,9 +45,11 @@ function writeF(dir, rel, content) {
 // Scenario: full consumer lifecycle
 //   1. consumer has a policy.yaml with copy, guarded, protected entries
 //   2. scaffold source has all listed files
-//   3. sync runs — copy written, guarded written (marker present), protected untouched
-//   4. sync runs again with changed copy file — copy updated, guarded skipped (marker removed)
-//   5. --check run — no writes, summary shows would-write
+//   3. sync runs — fresh copies written, pre-existing guarded file sidecarred
+//      (clobber-safe), protected untouched; --force adopts the guarded file
+//   4. sync --force runs with changed files — copy updated, guarded skipped
+//      (marker removed; force never bypasses the marker check)
+//   5. --check run — no writes, summary shows would-sidecar
 
 console.log('\nScenario: full consumer lifecycle (policy → file promotion → skills)');
 {
@@ -82,22 +83,32 @@ console.log('\nScenario: full consumer lifecycle (policy → file promotion → 
   ].join('\n');
   writeF(consumer, '.sync/policy.yaml', policy);
 
-  // Step 1: initial sync
+  // Step 1: initial sync — fresh files written; pre-existing CLAUDE.md sidecarred
   const r1 = run(['--into', consumer, `--scaffold-root=${scaffoldSrc}`]);
   assert('step 1: sync exits 0', r1.code === 0, `exit ${r1.code}\n${r1.stderr}\n${r1.stdout}`);
   assert('step 1: provenance in output', r1.stdout.includes('ref='), r1.stdout);
   assert('step 1: AGENTS.md written',   readFileSync(join(consumer, 'AGENTS.md'), 'utf8') === 'agents content v1');
   assert('step 1: docs/guide.md written', readFileSync(join(consumer, 'docs/guide.md'), 'utf8') === 'guide content');
-  assert('step 1: CLAUDE.md written (marker present)',
-    readFileSync(join(consumer, 'CLAUDE.md'), 'utf8') === '@MIND.md\nscaffold claude content');
+  assert('step 1: CLAUDE.md untouched (clobber-safe)',
+    readFileSync(join(consumer, 'CLAUDE.md'), 'utf8') === 'consumer claude with @MIND.md reference');
+  assert('step 1: CLAUDE.md sidecar holds incoming',
+    existsSync(join(consumer, 'CLAUDE.md.scaffold-new')) &&
+    readFileSync(join(consumer, 'CLAUDE.md.scaffold-new'), 'utf8') === '@MIND.md\nscaffold claude content');
   assert('step 1: MIND.md untouched (protected)',
     readFileSync(join(consumer, 'MIND.md'), 'utf8') === 'precious consumer mind file');
 
-  // Step 2: scaffold removes @MIND.md from CLAUDE.md — guarded must skip
+  // Step 1b: consumer adopts the scaffold version with --force
+  rmSync(join(consumer, 'CLAUDE.md.scaffold-new'));
+  const r1b = run(['--into', consumer, '--force', `--scaffold-root=${scaffoldSrc}`]);
+  assert('step 1b: --force exits 0', r1b.code === 0, r1b.stderr);
+  assert('step 1b: CLAUDE.md adopted (marker present)',
+    readFileSync(join(consumer, 'CLAUDE.md'), 'utf8') === '@MIND.md\nscaffold claude content');
+
+  // Step 2: scaffold removes @MIND.md from CLAUDE.md — guarded must skip even with --force
   writeF(scaffoldSrc, 'AGENTS.md', 'agents content v2');
   writeF(scaffoldSrc, 'CLAUDE.md', 'scaffold claude — no longer imports MIND');
 
-  const r2 = run(['--into', consumer, `--scaffold-root=${scaffoldSrc}`]);
+  const r2 = run(['--into', consumer, '--force', `--scaffold-root=${scaffoldSrc}`]);
   assert('step 2: sync exits 0', r2.code === 0, r2.stderr);
   assert('step 2: AGENTS.md updated', readFileSync(join(consumer, 'AGENTS.md'), 'utf8') === 'agents content v2');
   assert('step 2: CLAUDE.md unchanged (guarded-skip, marker absent)',

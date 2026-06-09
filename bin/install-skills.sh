@@ -43,12 +43,13 @@ for arg in "$@"; do
   esac
 done
 
-# Skills that should NOT go into a global, non-project dir by default:
-#   sync-scaffold, skillify — orchestrate in-repo git work; need a project repo
-#   code-review, simplify   — collide with Claude Code's built-in skills of the
-#                            same name (installing here would shadow the built-ins)
-# (globalize-skill.sh guards the same set; this list is the bulk-mode authority.)
-SKIP=(sync-scaffold skillify code-review simplify)
+# Skills that should NOT go into a global, non-project dir by default —
+# single-sourced from bin/repo-bound-skills.txt (shared with globalize-skill.sh)
+SKIP=()
+while IFS= read -r _s; do
+  [[ -z "$_s" || "$_s" == \#* ]] && continue
+  SKIP+=("$_s")
+done < "$SCRIPT_DIR/repo-bound-skills.txt"
 
 [ -x "$SCRIPT_DIR/globalize-skill.sh" ] || { echo "missing $SCRIPT_DIR/globalize-skill.sh" >&2; exit 1; }
 [ -d "$SRC" ] || { echo "no skills dir at $SRC" >&2; exit 1; }

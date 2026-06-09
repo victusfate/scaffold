@@ -165,6 +165,34 @@ check "consumer line preserved" grep -q "consumer line"       "$C/AGENTS.md"
 check "scaffold line merged in" grep -q "scaffold extra line" "$C/AGENTS.md"
 check "no sidecar"              test ! -f "$C/AGENTS.md.scaffold-new"
 
+# ── test 8: run from a subdirectory → operates on the repo root ───────────
+
+echo "8. Run from subdirectory → files land at repo root"
+S="$WORK/s8"; C="$WORK/c8"
+make_scaffold "$S" "AGENTS.md"
+make_consumer "$C"
+mkdir -p "$C/sub/dir"
+
+rc=0
+out=$(cd "$C/sub/dir" && SCAFFOLD_URL="$S" bash "$SYNC" 2>&1) || rc=$?
+check "exit 0"                 test "$rc" -eq 0
+check "file at repo root"      test -f "$C/AGENTS.md"
+check "file NOT in subdir"     test ! -f "$C/sub/dir/AGENTS.md"
+check "sha file at repo root"  test -f "$C/.github/scaffold-sync-sha"
+
+# ── test 9: manifest read failure → abort, SHA not saved ──────────────────
+
+echo "9. Manifest missing upstream → non-zero exit, SHA file not written"
+S="$WORK/s9"; C="$WORK/c9"
+make_scaffold "$S" "AGENTS.md"
+(cd "$S" && git rm -q .github/scaffold-files.txt && git commit -q -m "drop manifest")
+make_consumer "$C"
+
+out=""; rc=0; sync_into out "$C" "$S" || rc=$?
+check "exits non-zero"     test "$rc" -ne 0
+check "SHA file not saved" test ! -f "$C/.github/scaffold-sync-sha"
+check "error mentions manifest" test -n "$(echo "$out" | grep -i 'manifest')"
+
 # ── summary ────────────────────────────────────────────────────────────────
 
 echo ""

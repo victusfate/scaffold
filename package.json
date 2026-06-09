@@ -2,6 +2,13 @@
   "name": "scaffold",
   "version": "0.5.0",
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "tools/hoist-skill/test && tools/sync/test && node scripts/compute-bump.test.mjs && bash scripts/test-sync.sh && bash scripts/test-bootstrap.sh && node scripts/check-resolvable.mjs --strict && node scripts/update-readme-skills.mjs --check",
+    "test:integration": "RUN_INTEGRATION=1 tools/hoist-skill/test-integration && RUN_INTEGRATION=1 tools/sync/test-integration"
+  },
   "bin": {
     "scaffold": "./bin/sync"
   }
