@@ -13,7 +13,6 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { createServer } from 'node:http';
 
 const SCAFFOLD_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const BIN_SYNC      = join(SCAFFOLD_ROOT, 'bin/sync');

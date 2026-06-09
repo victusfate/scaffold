@@ -60,7 +60,7 @@ async function main() {
   console.log(`scaffold sync  files=${filesSrc}  skills-ref=${ref}  into=${INTO}${check ? '  (--check)' : ''}`);
 
   // File promotion
-  const results = await promoteFiles(policy, srcRoot, INTO, { check, force });
+  const results = promoteFiles(policy, srcRoot, INTO, { check, force });
 
   // Print promotion summary
   for (const r of results) {

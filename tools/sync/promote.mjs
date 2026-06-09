@@ -3,7 +3,7 @@
 // .scaffold-keep honored, sidecars for differing files unless force.
 
 import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve, normalize } from 'node:path';
 
 import { safeWrite, loadKeep } from '../lib/safe-write.mjs';
 
@@ -22,8 +22,18 @@ export function promoteFiles(policy, srcRoot, destRoot, opts = {}) {
 
   const { copy, guarded, protected: protected_ } = policy.files;
 
+  // Reject any relPath that would escape destRoot (path traversal guard)
+  const isSafe = (relPath) => {
+    const abs = resolve(destRoot, relPath);
+    return abs.startsWith(resolve(destRoot) + '/') || abs === resolve(destRoot);
+  };
+
   // copy entries
   for (const relPath of copy) {
+    if (!isSafe(relPath)) {
+      results.push({ path: relPath, status: 'traversal-blocked' });
+      continue;
+    }
     const srcAbs = join(srcRoot, relPath);
     if (!existsSync(srcAbs)) {
       results.push({ path: relPath, status: 'src-missing' });
@@ -35,6 +45,10 @@ export function promoteFiles(policy, srcRoot, destRoot, opts = {}) {
 
   // guarded entries
   for (const { path: relPath, keep_marker } of guarded) {
+    if (!isSafe(relPath)) {
+      results.push({ path: relPath, status: 'traversal-blocked' });
+      continue;
+    }
     const srcAbs = join(srcRoot, relPath);
     if (!existsSync(srcAbs)) {
       results.push({ path: relPath, status: 'src-missing' });

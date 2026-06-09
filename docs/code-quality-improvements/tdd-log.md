@@ -66,3 +66,21 @@
   ref} source shape; README structure tree regenerated to include tools/,
   all bin scripts, workflows, the spec doc; "How releases work" matches the
   new verify + post-merge bump reality.
+
+## Slice 9 — Hook hardening (M11, M12, M13, L1, L2)
+- Status: done
+- Notes: all JSON output via `jq -cn --arg`/`--argjson` — paths with quotes
+  produce valid JSON in cache, stats, and advisory output; warn mode no longer
+  records `tokens_saved` in stats.jsonl nor emits savings claims in advisory
+  message; stats.jsonl pruned to 4999 lines during hourly cleanup (one write
+  per run keeps total ≤5000); corrupted `.last-cleanup` coerced to 0 via
+  regex guard; shebangs changed to `#!/usr/bin/env bash`.
+
+## Slice 10 — Polish batch (M16, L7, L8, L10, L13)
+- Status: done
+- Notes: dead `createServer` import removed from `tools/sync/test-integration`;
+  unused `dest` param removed from `run()` in hoist test; temp-dir cleanup via
+  `_tmpDirs`/`process.on('exit')` pattern in hoist test; stray `await` removed
+  from `promoteFiles()` call in `run.mjs` (function is synchronous); `../`
+  traversal rejection added to `promote.mjs` — paths that resolve outside
+  destRoot receive status `traversal-blocked` and are never written.
