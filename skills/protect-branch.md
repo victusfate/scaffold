@@ -61,11 +61,13 @@ Go to **Settings → Rules → Rulesets**, edit (or create) the ruleset targetin
 | Require a pull request before merging | ✓ |
 | Required approvals | `1` |
 | Dismiss stale reviews when new commits are pushed | ✓ |
-| Require review from code owners | ✓ |
+| Require review from Code Owners | ✓ |
 
-> **Why required approvals?** Prevents agents from auto-merging — the GitHub API rejects merge calls with no human approval on record, regardless of what an agent is told in chat. **Dismiss stale reviews** closes the loophole of getting approval then pushing tampered code.
+> **Required approvals: 1** — the GitHub API rejects merge calls with no approval on record. Agents can't auto-merge without an explicit approval step.
 
-> **Why code owners?** `CODEOWNERS` in this repo requires `@<owner>` approval on any PR touching `.github/workflows/`. This means an agent can't weaken CI and then auto-merge — modifying the workflow files itself triggers the human gate.
+> **Dismiss stale reviews** — if new commits are pushed after an approval, the approval is dismissed and must be re-given. Closes the loophole of getting approval then pushing tampered code.
+
+> **Require review from Code Owners** — `CODEOWNERS` requires `@<owner>` approval on any PR touching `.github/workflows/`. An agent can't quietly weaken CI and then merge — workflow changes always need explicit human sign-off. Normal PRs just need 1 approval from any reviewer.
 
 **Require status checks:**
 

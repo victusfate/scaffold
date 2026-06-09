@@ -366,9 +366,9 @@ Go to **Settings → Rules → Rulesets**, edit (or create) the ruleset targetin
 
 **Require pull requests:**
 - Require a pull request before merging ✓
-- Required approvals: `1` ✓ — blocks agents from auto-merging; GitHub API rejects merge calls with no human approval
-- Dismiss stale reviews when new commits are pushed ✓ — closes the loophole of approving then pushing tampered code
-- Require review from code owners ✓ — any PR touching `.github/workflows/` needs explicit human sign-off (see `CODEOWNERS`)
+- Required approvals: `1` ✓ — GitHub API rejects merge calls with no approval on record
+- Dismiss stale reviews when new commits are pushed ✓ — forces re-approval after any new push; closes the approve-then-push loophole
+- Require review from Code Owners ✓ — any PR touching `.github/workflows/` requires `@<owner>` approval specifically (see `CODEOWNERS`); normal PRs need 1 approval from any reviewer
 
 **Require status checks:**
 1. Enable **Require status checks to pass**
