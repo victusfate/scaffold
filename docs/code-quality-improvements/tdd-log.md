@@ -45,3 +45,12 @@
   single-sourced in bin/repo-bound-skills.txt (read by install-skills.sh and
   globalize-skill.sh). Consumer manifest gains tools/hoist-skill/hoist.mjs and
   tools/lib/safe-write.mjs (run's new import chain).
+
+## Slice 7 — Descriptors + frontmatter parity (H4, M18, L15)
+- Status: done
+- Notes: new linter phase 8 enforces description parity between the Claude
+  wrapper and the cursor/agents/workflow forms (36 drifts found and fixed by
+  propagating the Claude descriptions; protect-branch's stale "restrict
+  updates" corrected to "restrict pushes" at the source first).
+  tools/sync gains tool.yaml + README.md; tools/README.md indexes both tools
+  and documents tools/lib/; hoist tool.yaml commands now repo-root-relative.

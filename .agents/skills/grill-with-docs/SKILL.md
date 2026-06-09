@@ -1,7 +1,7 @@
 ---
 name: grill-with-docs
 description: |
-  Stress-test a plan or feature idea, sharpen terminology, and resolve design decisions through Q&A before writing code.
+  Use when the user wants to stress-test a plan or feature idea, sharpen terminology, or resolve design decisions through Q&A before writing any code.
 license: MIT
 metadata:
   author: victusfate

@@ -42,11 +42,11 @@ inputs:
     default: false
     description: Fetch all sources from GitHub raw URLs instead of reading from a local scaffold clone. Uses https://raw.githubusercontent.com/victusfate/scaffold/<ref>/<path>. Requires network access. Env HOIST_RAW_BASE overrides the base URL (useful for testing).
 run:
-  command: node ./run
+  command: node tools/hoist-skill/run  # paths relative to the scaffold repo root
 test:
-  command: node ./test
+  command: node tools/hoist-skill/test
 test-integration:
-  command: RUN_INTEGRATION=1 node ./test-integration
+  command: RUN_INTEGRATION=1 node tools/hoist-skill/test-integration
 emits:
   - claude
   - cursor
