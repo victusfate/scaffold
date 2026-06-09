@@ -27,3 +27,12 @@
   `skills-ref=<ref>`; `--check` reports `would-replay N skill(s)` instead of a
   fake hoisting line; `--scaffold-root` now serves skill hoisting too
   (`hoist({srcRoot, fetch:false})` — no network).
+
+## Slice 5 — Real CI + one versioning mechanism (C3, H1, H2)
+- Status: done
+- Notes: `npm test` now runs both tool suites, compute-bump tests, both shell
+  suites, the strict linter, and the README freshness check; CI `verify` runs
+  it, plus a separate `integration` job. `release.yml` (structurally broken:
+  no lockfile, no semantic-release config) deleted. `version-bump.yml` moved
+  to push-on-main: bump derived by `scripts/compute-bump.mjs` from commits
+  since the last bump commit, then commit + `v<version>` tag.
