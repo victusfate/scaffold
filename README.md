@@ -356,27 +356,34 @@ Project-level skills override global ones when names match.
 
 One-time manual step required after the CI workflows are in place.
 
-**[→ Open Branch Protection Settings for `victusfate/scaffold`](https://github.com/victusfate/scaffold/settings/branches)**
+**[→ Open Ruleset Settings for `victusfate/scaffold`](https://github.com/victusfate/scaffold/settings/rules)**
 
-Go to **Settings → Branches → Add rule** (or Edit if a rule for `main` already exists) and apply these settings:
+Go to **Settings → Rules → Rulesets**, edit (or create) the ruleset targeting `main`, and enable:
 
-| Setting | Value |
-|---|---|
-| Branch name pattern | `main` |
-| Require a pull request before merging | ✓ |
-| Require status checks to pass before merging | ✓ |
-| Status check | `CI / verify` |
-| Require branches to be up to date before merging | ✓ |
-| Do not allow bypassing the above settings | ✓ (recommended) |
+**Restrict pushes:**
+- Block force pushes ✓
+- Restrict deletions ✓
 
-The status check name `CI / verify` comes from the workflow name (`CI`) and job id (`verify`) in `.github/workflows/ci.yml`. If you rename either, update the required check to match.
+**Require pull requests:**
+- Require a pull request before merging ✓
+
+**Require status checks:**
+1. Enable **Require status checks to pass**
+2. Enable **Require branches to be up to date before merging** (under additional settings)
+3. Click **+ Add checks** → type `verify` → select **verify — GitHub Actions**
+
+> **`verify` not in the dropdown?** It only registers after at least one PR has run `.github/workflows/ci.yml`. Open a draft PR, let CI run, close it, then add the check here.
+
+**Bypass list:** Add `Repository admin` → Always allow (for emergency hotfixes).
+
+Or just run `/protect-branch` in Claude Code — it opens this page and walks you through it.
 
 ### How releases work after setup
 
 No manual steps needed day-to-day:
 
 1. Developer opens PR with [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, etc.)
-2. `CI / verify` runs typecheck + tests — must pass before merge is allowed
+2. `verify` job runs typecheck + tests — must pass before merge is allowed
 3. `version-bump` workflow commits the next version to `package.json` on the branch
 4. PR merges to `main`
 5. `release` workflow runs semantic-release → creates git tag + GitHub Release
