@@ -103,6 +103,39 @@ skills:
   assert('case 8: guarded entry missing path throws', threw);
 }
 
+// Case 8a: unknown files sub-key throws (misspelled section must not reclassify entries)
+{
+  let errMsg = '';
+  try {
+    parsePolicy(`files:\n  copy:\n    - A.md\n  protcted:\n    - MIND.md\nskills:\n  manifest: .sync/hoisted`);
+  } catch (e) { errMsg = e.message; }
+  assert('case 8a: unknown files sub-key throws', errMsg.includes('protcted'), errMsg || '(no throw)');
+}
+
+// Case 8b: unknown top-level key throws
+{
+  let errMsg = '';
+  try {
+    parsePolicy(`files:\n  copy:\n    - A.md\nbogus: true\nskills:\n  manifest: .sync/hoisted`);
+  } catch (e) { errMsg = e.message; }
+  assert('case 8b: unknown top-level key throws', errMsg.includes('bogus'), errMsg || '(no throw)');
+}
+
+// Case 8c: bare ref (no value) throws
+{
+  let errMsg = '';
+  try {
+    parsePolicy(`ref:\nfiles:\n  copy:\n    - A.md\nskills:\n  manifest: .sync/hoisted`);
+  } catch (e) { errMsg = e.message; }
+  assert('case 8c: bare ref throws', errMsg.includes('ref'), errMsg || '(no throw)');
+}
+
+// Case 8d: quoted ref value is unquoted
+{
+  const p = parsePolicy(`ref: "v1.2"\nfiles:\n  copy:\n    - A.md\nskills:\n  manifest: .sync/hoisted`);
+  assert('case 8d: quoted ref unquoted', p.ref === 'v1.2', JSON.stringify(p.ref));
+}
+
 // ---------------------------------------------------------------- slice 3: file promotion
 
 import { promoteFiles } from './promote.mjs';
