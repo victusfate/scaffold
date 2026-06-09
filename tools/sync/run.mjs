@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import { parsePolicy } from './policy.mjs';
 import { promoteFiles } from './promote.mjs';
-import { hoist } from '../hoist-skill/hoist.mjs';
+import { hoist, readManifest } from '../hoist-skill/hoist.mjs';
 
 const SCAFFOLD_ROOT = process.env.SYNC_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -52,8 +52,12 @@ async function main() {
 
   const ref = refArg ?? policy.ref ?? 'main';
 
-  // Print provenance before any writes
-  console.log(`scaffold sync  ref=${ref}  into=${INTO}${check ? '  (--check)' : ''}`);
+  // Print provenance before any writes. Files always come from the local
+  // source tree (the npx package checkout, or --scaffold-root); only skill
+  // hoisting resolves --ref. Name both so mixed-version syncs are visible.
+  const pkgVersion = JSON.parse(readFileSync(join(SCAFFOLD_ROOT, 'package.json'), 'utf8')).version;
+  const filesSrc = srcRootArg ? srcRoot : `package@${pkgVersion}`;
+  console.log(`scaffold sync  files=${filesSrc}  skills-ref=${ref}  into=${INTO}${check ? '  (--check)' : ''}`);
 
   // File promotion
   const results = await promoteFiles(policy, srcRoot, INTO, { check, force });
@@ -66,10 +70,18 @@ async function main() {
   // Skills hoisting — skip if manifest doesn't exist and no skills section configured
   const manifestPath = join(INTO, policy.skills.manifest);
   if (existsSync(manifestPath)) {
-    console.log('  hoisting skills from manifest...');
-    if (!check) {
+    if (check) {
+      const entries = readManifest(manifestPath);
+      console.log(`  would-replay     ${entries.length} skill(s) from ${policy.skills.manifest}`);
+    } else {
+      console.log('  hoisting skills from manifest...');
       try {
-        await hoist({ fetch: true, fromManifest: manifestPath, ref, into: INTO, refExplicit: Boolean(refArg), force });
+        // A local --scaffold-root serves both file promotion and hoisting; no network.
+        await hoist({
+          fetch: !srcRootArg,
+          ...(srcRootArg ? { srcRoot } : {}),
+          fromManifest: manifestPath, ref, into: INTO, refExplicit: Boolean(refArg), force,
+        });
       } catch (e) {
         console.error(`sync: hoist failed — ${e.message}`);
         process.exit(1);

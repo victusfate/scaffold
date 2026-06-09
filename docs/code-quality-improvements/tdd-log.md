@@ -20,3 +20,10 @@
   to hoist). Integration scenario rewritten to the clobber-safe lifecycle:
   sidecar on first contact, adoption via `--force`, marker check never
   bypassed by force.
+
+## Slice 4 — Sync UX truthfulness (M2, M3, H7)
+- Status: done
+- Notes: provenance prints `files=package@<version>` (or the local root) plus
+  `skills-ref=<ref>`; `--check` reports `would-replay N skill(s)` instead of a
+  fake hoisting line; `--scaffold-root` now serves skill hoisting too
+  (`hoist({srcRoot, fetch:false})` — no network).

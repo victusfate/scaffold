@@ -58,7 +58,7 @@ function parseResolver(resolverPath) {
 
 // ---------------------------------------------------------------- manifest
 
-function readManifest(path) {
+export function readManifest(path) {
   if (!existsSync(path)) return [];
   return readFileSync(path, 'utf8')
     .split('\n')
@@ -222,6 +222,7 @@ export async function hoist(opts = {}) {
     plan: planMode      = false,
     fetch: fetchMode    = false,
     fromManifest        = null,   // path string or null (falsy = not using manifest)
+    srcRoot: srcRootOpt = null,   // local scaffold tree override (mutually exclusive with fetch)
   } = opts;
 
   const INTO              = resolve(intoRaw);
@@ -229,7 +230,7 @@ export async function hoist(opts = {}) {
   const manifestWritePath = join(INTO, '.sync', 'hoisted');
   const fromManifestFlag  = Boolean(fromManifest);
 
-  let srcRoot = SCAFFOLD_ROOT;
+  let srcRoot = srcRootOpt ? resolve(srcRootOpt) : SCAFFOLD_ROOT;
 
   if (fetchMode) {
     if (Number(process.versions.node.split('.')[0]) < 18) {
