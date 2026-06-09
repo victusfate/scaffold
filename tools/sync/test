@@ -453,5 +453,25 @@ let hoist;
   rmSync(dst, { recursive: true });
 }
 
+// Case 26: ../ traversal path in copy list → traversal-blocked, legitimate path still written
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'agents');
+  const policy = parsePolicy([
+    'files:',
+    '  copy:',
+    '    - AGENTS.md',
+    '    - ../escape.txt',
+    'skills:',
+    '  manifest: .sync/hoisted',
+  ].join('\n'));
+  const results = promoteFiles(policy, src, dst);
+  const blocked = results.find(r => r.path === '../escape.txt');
+  assert('case 26: traversal path status is traversal-blocked', blocked?.status === 'traversal-blocked',
+    `status: ${blocked?.status}`);
+  assert('case 26: normal file still written', existsSync(join(dst, 'AGENTS.md')));
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
 console.error(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
