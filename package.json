@@ -4,5 +4,5 @@
   "type": "module",
   "bin": {
     "scaffold": "./bin/sync"
-  },
+  }
 }
