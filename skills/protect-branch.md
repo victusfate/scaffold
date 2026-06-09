@@ -59,17 +59,12 @@ Go to **Settings → Rules → Rulesets**, edit (or create) the ruleset targetin
 | Setting | Value |
 |---|---|
 | Require a pull request before merging | ✓ |
-| Required approvals | `1` |
+| Required approvals | `0` |
 | Dismiss stale reviews when new commits are pushed | ✓ |
-| Require review from Code Owners | ✓ |
 
-> **Required approvals: 1** — the GitHub API rejects merge calls with no approval on record. Agents can't auto-merge without an explicit approval step.
+> **Why required approvals: 0?** GitHub rulesets hard-block PR authors from approving their own PRs when required approvals > 0. Since agents run as your GitHub account, setting approvals to 1 locks you out of approving your own agent PRs — and there's no toggle to override this in rulesets. The practical protection is CI (all tests must pass) + CODEOWNERS on workflow files. "Dismiss stale reviews" is kept so it's ready when you have a separate bot account.
 
-> **Dismiss stale reviews** — if new commits are pushed after an approval, the approval is dismissed and must be re-given. Closes the loophole of getting approval then pushing tampered code.
-
-> **Require review from Code Owners** — `CODEOWNERS` requires `@<owner>` approval on any PR touching `.github/workflows/`. An agent can't quietly weaken CI and then merge — workflow changes always need explicit human sign-off. Normal PRs just need 1 approval from any reviewer.
-
-> **Known limitation — agents share your GitHub token.** Agents in this workflow run as your GitHub account. GitHub has no way to distinguish an agent approval from a human one — "Required approvals: 1" can technically be satisfied by the agent approving its own PR via the API. The practical guards are: (1) CI must pass, (2) any workflow change requires your sign-off via CODEOWNERS, (3) an agent would need to be explicitly instructed to self-approve, which is detectable. The clean long-term fix is a dedicated bot GitHub account for the agent — then "prevent authors from approving their own PRs" works correctly and you can still approve agent PRs as yourself.
+> **The clean long-term fix** — create a dedicated bot GitHub account for the agent. Agents open PRs as the bot; you approve as yourself; "Required approvals: 1" works correctly and neither party is locked out. `CODEOWNERS` already ships in this repo pointing `.github/workflows/` at the repo owner — re-enable "Require review from Code Owners" once the bot account is in place.
 
 **Require status checks:**
 

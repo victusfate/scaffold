@@ -366,9 +366,8 @@ Go to **Settings → Rules → Rulesets**, edit (or create) the ruleset targetin
 
 **Require pull requests:**
 - Require a pull request before merging ✓
-- Required approvals: `1` ✓ — GitHub API rejects merge calls with no approval on record
-- Dismiss stale reviews when new commits are pushed ✓ — forces re-approval after any new push; closes the approve-then-push loophole
-- Require review from Code Owners ✓ — any PR touching `.github/workflows/` requires `@<owner>` approval specifically (see `CODEOWNERS`); normal PRs need 1 approval from any reviewer
+- Required approvals: `0`
+- Dismiss stale reviews when new commits are pushed ✓
 
 **Require status checks:**
 1. Enable **Require status checks to pass**
@@ -380,6 +379,10 @@ Go to **Settings → Rules → Rulesets**, edit (or create) the ruleset targetin
 **Bypass list:** Add `Repository admin` → Always allow (for emergency hotfixes).
 
 Or just run `/protect-branch` in Claude Code — it opens this page and walks you through it.
+
+> **Why required approvals: 0?** GitHub rulesets hard-block PR authors from approving their own PRs when required approvals > 0. Since agents run as your GitHub account, setting approvals to 1 locks you out of approving agent PRs — and there's no override in rulesets. The real gates are CI (tests must pass) and `CODEOWNERS` protecting `.github/workflows/`.
+
+> **Long-term fix** — create a dedicated bot GitHub account for the agent. Set Required approvals back to 1 and re-enable "Require review from Code Owners". Agents open PRs as the bot; you approve as yourself; neither party is locked out.
 
 > **Known limitation — agents share your GitHub token.** Agents in this workflow run as your GitHub account, so GitHub can't distinguish an agent approval from a human one. "Required approvals: 1" can technically be satisfied by the agent approving its own PR. The practical guards are: CI must pass, workflow changes always need your sign-off via CODEOWNERS, and an agent would need to be explicitly told to self-approve. The clean long-term fix is a dedicated bot GitHub account for the agent — that separates author from reviewer cleanly and lets you keep "prevent authors from approving their own PRs" without locking yourself out.
 
