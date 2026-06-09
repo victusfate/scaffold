@@ -348,6 +348,44 @@ Project-level skills override global ones when names match.
 | `READ_ONCE_DIFF` | `0` | Set to `1` to show only diffs on changed files |
 | `READ_ONCE_DISABLED` | `0` | Set to `1` to disable entirely |
 
+## Branch Protection Setup
+
+One-time manual step required after the CI workflows are in place.
+
+**[→ Open Branch Protection Settings for `victusfate/scaffold`](https://github.com/victusfate/scaffold/settings/branches)**
+
+Go to **Settings → Branches → Add rule** (or Edit if a rule for `main` already exists) and apply these settings:
+
+| Setting | Value |
+|---|---|
+| Branch name pattern | `main` |
+| Require a pull request before merging | ✓ |
+| Require status checks to pass before merging | ✓ |
+| Status check | `CI / verify` |
+| Require branches to be up to date before merging | ✓ |
+| Do not allow bypassing the above settings | ✓ (recommended) |
+
+The status check name `CI / verify` comes from the workflow name (`CI`) and job id (`verify`) in `.github/workflows/ci.yml`. If you rename either, update the required check to match.
+
+### How releases work after setup
+
+No manual steps needed day-to-day:
+
+1. Developer opens PR with [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, etc.)
+2. `CI / verify` runs typecheck + tests — must pass before merge is allowed
+3. `version-bump` workflow commits the next version to `package.json` on the branch
+4. PR merges to `main`
+5. `release` workflow runs semantic-release → creates git tag + GitHub Release
+
+### Commit → version mapping
+
+| Prefix | Bump |
+|---|---|
+| `fix:` | patch (`1.0.0 → 1.0.1`) |
+| `feat:` | minor (`1.0.0 → 1.1.0`) |
+| `feat!:` or `BREAKING CHANGE` in body | major (`1.0.0 → 2.0.0`) |
+| `chore:`, `docs:`, `refactor:`, etc. | no release |
+
 ## Credits
 
 The `grill-with-docs`, `to-prd`, and `tdd` skills are adapted from [Matt Pocock's skills repo](https://github.com/mattpocock/skills/tree/main/skills/engineering). The core workflow — careful design Q&A → PRD → vertical-slice TDD — is his.
