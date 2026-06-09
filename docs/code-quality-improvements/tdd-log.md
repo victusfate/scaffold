@@ -54,3 +54,15 @@
   updates" corrected to "restrict pushes" at the source first).
   tools/sync gains tool.yaml + README.md; tools/README.md indexes both tools
   and documents tools/lib/; hoist tool.yaml commands now repo-root-relative.
+
+## Slice 8 — Skill/doc drift (H6, M7, M8, M9, M10, M17)
+- Status: done
+- Notes: skillify now generates all five harness forms + five manifest paths;
+  feature-chain phases 1–3 are thin delegations to grill-with-docs/to-prd/tdd
+  (granularity + test-module confirmations owned by the siblings — the two
+  contradictions are gone); prune's audit phase uses modes that exist
+  (code-review default; quality/simplify criteria applied as read-only lenses);
+  hoist-skill.md + README plan-mode examples show the real {path, required,
+  ref} source shape; README structure tree regenerated to include tools/,
+  all bin scripts, workflows, the spec doc; "How releases work" matches the
+  new verify + post-merge bump reality.

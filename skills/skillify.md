@@ -47,7 +47,7 @@ Stop early if all four are already unambiguous from Phase 0.
 
 ### Phase 2 — Generation
 
-Write three files per skill:
+Write five files per skill (the validator requires every form):
 
 1. **`skills/<slug>.md`** — canonical instructions, no frontmatter. This is the
    single source of truth; all harnesses read from here via `@` includes.
@@ -71,15 +71,42 @@ Write three files per skill:
    @../../skills/<slug>.md
    ```
 
+4. **`.agents/skills/<slug>/SKILL.md`** — Antigravity skill (literal Markdown,
+   no include resolution — link + read instruction):
+   ```markdown
+   ---
+   name: <slug>
+   description: |
+     <same description>
+   license: MIT
+   metadata:
+     author: victusfate
+     version: "1.0"
+   ---
+
+   Read and follow the complete skill instructions in [`skills/<slug>.md`](../../../skills/<slug>.md).
+   ```
+
+5. **`.agent/workflows/<slug>.md`** — Antigravity workflow:
+   ```markdown
+   ---
+   description: <same description>
+   ---
+
+   Read and follow the complete skill instructions in [`skills/<slug>.md`](../../skills/<slug>.md).
+   ```
+
 Codex and Gemini read through `AGENTS.md` — no separate file needed.
 
 Keep `description:` trigger-rich (it's how non-Claude harnesses decide to activate
-the skill). Factor shared routines into `lib/` rather than repeating them.
+the skill) and **identical across all four wrapper forms** — the validator's
+parity phase rejects drift. Factor shared routines into `lib/` rather than
+repeating them.
 
 ### Phase 3 — Review, Save, and PR to scaffold
 
 1. **Register** — add a row to `.claude/skills/RESOLVER.md` (unique `^\/<slug>`
-   anchor, path pointing to `skills/<slug>.md`) and append all three new file
+   anchor, path pointing to `skills/<slug>.md`) and append all five new file
    paths to `.github/scaffold-files.txt`.
 2. **Tests** — the skill must survive `node scripts/check-resolvable.mjs`. Add a
    focused test for any logic the skill ships in a script.
