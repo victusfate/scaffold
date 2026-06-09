@@ -2,6 +2,9 @@
   "name": "scaffold",
   "version": "0.5.0",
   "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "bin": {
     "scaffold": "./bin/sync"
   }
