@@ -111,3 +111,7 @@ Skip the chain for:
 Never commit directly to main for feature work.
 A session spans the full lifetime of a branch — from creation until it is merged or discarded. Only switch branches after the current feature branch is merged or the user explicitly asks; keep committing to the current branch until then. The one permitted exception is checking out main solely to pull and immediately create a new feature branch.
 A new session always starts from a fresh branch off main.
+
+## File Delivery
+
+When the user asks to copy, download, or share a file (any type), always use the SendUserFile tool to deliver it — never print the contents inline.
