@@ -6,6 +6,8 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
+import { loadKeep, safeWrite as sharedSafeWrite } from '../lib/safe-write.mjs';
+
 const SCAFFOLD_ROOT = process.env.HOIST_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
 const HARNESSES     = ['claude', 'cursor', 'antigravity'];
@@ -85,52 +87,11 @@ function upsertManifest(path, newEntries) {
   writeFileSync(path, header + merged.map(e => `${e.name}\t${e.harness}\t${e.ref}`).join('\n') + '\n', 'utf8');
 }
 
-// ---------------------------------------------------------------- scaffold-keep
-
-function loadKeep(dest) {
-  const kf = join(dest, '.scaffold-keep');
-  if (!existsSync(kf)) return () => false;
-  const patterns = readFileSync(kf, 'utf8')
-    .split('\n')
-    .map(l => l.replace(/#.*/, '').trim())
-    .filter(Boolean);
-  return (rel) => patterns.some(p => {
-    if (p.includes('*')) {
-      const re = new RegExp('^' + p.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
-      return re.test(rel);
-    }
-    return rel === p || rel.startsWith(p + '/');
-  });
-}
-
 // ---------------------------------------------------------------- clobber-safe write
+// Shared engine (tools/lib/safe-write.mjs); hoist logs status lines to stderr.
 
 function safeWrite(dest, relPath, content, kept, results, force) {
-  if (kept(relPath)) {
-    results.push({ path: relPath, status: 'kept' });
-    console.error(`  kept   ${relPath}`);
-    return;
-  }
-  const abs = join(dest, relPath);
-  mkdirSync(dirname(abs), { recursive: true });
-  if (existsSync(abs)) {
-    const existing = readFileSync(abs, 'utf8');
-    if (existing === content) {
-      results.push({ path: relPath, status: 'unchanged' });
-      console.error(`  unchanged  ${relPath}`);
-      return;
-    }
-    if (!force) {
-      const sidecar = abs + '.scaffold-new';
-      writeFileSync(sidecar, content, 'utf8');
-      results.push({ path: relPath, status: 'sidecar', sidecar: relPath + '.scaffold-new' });
-      console.error(`  sidecar    ${relPath}.scaffold-new`);
-      return;
-    }
-  }
-  writeFileSync(abs, content, 'utf8');
-  results.push({ path: relPath, status: 'written' });
-  console.error(`  written    ${relPath}`);
+  sharedSafeWrite(dest, relPath, content, kept, results, force, { log: console.error });
 }
 
 // ---------------------------------------------------------------- source paths (for --plan and --fetch)

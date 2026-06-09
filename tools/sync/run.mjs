@@ -69,7 +69,7 @@ async function main() {
     console.log('  hoisting skills from manifest...');
     if (!check) {
       try {
-        await hoist({ fetch: true, fromManifest: manifestPath, ref, into: INTO, refExplicit: Boolean(refArg) });
+        await hoist({ fetch: true, fromManifest: manifestPath, ref, into: INTO, refExplicit: Boolean(refArg), force });
       } catch (e) {
         console.error(`sync: hoist failed — ${e.message}`);
         process.exit(1);
