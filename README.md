@@ -36,7 +36,7 @@ grill-with-docs → to-prd → tdd → review
 4. **Review** — Chain stops and presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can also be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`.
+Skills can also be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`.
 <!-- END_SKILLS_INVOCATION -->
 
 ## Structure
@@ -67,6 +67,7 @@ bin/
     pause/SKILL.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume/SKILL.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
     hoist-skill/SKILL.md          # Hoist scaffold capabilities into a consumer repo in the target harness format
+    protect-branch/SKILL.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
   read-once/
@@ -91,6 +92,7 @@ bin/
     pause.mdc                # mirrors pause for Cursor
     resume.mdc               # mirrors resume for Cursor
     hoist-skill.mdc          # mirrors hoist-skill for Cursor
+    protect-branch.mdc       # mirrors protect-branch for Cursor
 .agents/
   skills/
     feature-chain/SKILL.md        # Orchestrate design → PRD → TDD → review end to end
@@ -108,6 +110,7 @@ bin/
     pause/SKILL.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume/SKILL.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
     hoist-skill/SKILL.md          # Hoist scaffold capabilities into a consumer repo in the target harness format
+    protect-branch/SKILL.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
 .agent/
   rules/
     agents.md               # thin pointer to AGENTS.md (always-on)
@@ -127,6 +130,7 @@ bin/
     pause.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
     hoist-skill.md          # Hoist scaffold capabilities into a consumer repo in the target harness format
+    protect-branch.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
 scripts/
   check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/cursor/antigravity/sync)
   update-readme-skills.mjs       # regenerate README.md skill sections from RESOLVER.md
