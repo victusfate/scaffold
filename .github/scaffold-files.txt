@@ -1,5 +1,6 @@
 AGENTS.md
 CLAUDE.md
+CODEOWNERS
 GEMINI.md
 docs/agent-authoring-requirements.md
 .claudeignore

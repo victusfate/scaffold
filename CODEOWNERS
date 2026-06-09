@@ -1,0 +1,3 @@
+# Workflow files require human approval — prevents an agent from weakening
+# CI and auto-merging without review.
+.github/workflows/ @victusfate
