@@ -51,12 +51,11 @@ Go to **Settings → Rules → Rulesets** (or Settings → Branches for the clas
 
 Check or confirm each of the following — all are safe to enable even if already set:
 
-**Restrict who can push / update refs:**
+**Restrict who can push:**
 
 | Setting | Value |
 |---|---|
-| Restrict updates | ✓ — blocks direct pushes to `main` for non-admins |
-| Block force pushes | ✓ — prevents force-push even from admins |
+| Block force pushes | ✓ — prevents force-push to `main` |
 | Restrict deletions | ✓ — prevents accidental branch deletion |
 
 **Pull request requirements:**
@@ -68,7 +67,7 @@ Check or confirm each of the following — all are safe to enable even if alread
 | Required status check | `CI / verify` |
 | Require branches to be up to date before merging | ✓ |
 
-**Bypass list:** add `Repository admin` role with "Always allow" if you need to merge hotfixes directly in emergencies.
+**Bypass list:** add `Repository admin` role with "Always allow" so admins can still push hotfixes directly when needed. "Restrict updates" (hard block on all direct pushes) is NOT needed — the PR requirement + bypass list already handles this cleanly.
 
 ---
 
