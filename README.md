@@ -36,7 +36,7 @@ grill-with-docs → to-prd → tdd → review
 4. **Review** — Chain stops and presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can also be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`.
+Skills can also be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`.
 <!-- END_SKILLS_INVOCATION -->
 
 ## Structure
@@ -67,6 +67,7 @@ bin/
     pause/SKILL.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume/SKILL.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
     hoist-skill/SKILL.md          # Hoist scaffold capabilities into a consumer repo in the target harness format
+    protect-branch/SKILL.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
   read-once/
@@ -91,6 +92,7 @@ bin/
     pause.mdc                # mirrors pause for Cursor
     resume.mdc               # mirrors resume for Cursor
     hoist-skill.mdc          # mirrors hoist-skill for Cursor
+    protect-branch.mdc       # mirrors protect-branch for Cursor
 .agents/
   skills/
     feature-chain/SKILL.md        # Orchestrate design → PRD → TDD → review end to end
@@ -108,6 +110,7 @@ bin/
     pause/SKILL.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume/SKILL.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
     hoist-skill/SKILL.md          # Hoist scaffold capabilities into a consumer repo in the target harness format
+    protect-branch/SKILL.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
 .agent/
   rules/
     agents.md               # thin pointer to AGENTS.md (always-on)
@@ -127,6 +130,7 @@ bin/
     pause.md                # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume.md               # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
     hoist-skill.md          # Hoist scaffold capabilities into a consumer repo in the target harness format
+    protect-branch.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
 scripts/
   check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/cursor/antigravity/sync)
   update-readme-skills.mjs       # regenerate README.md skill sections from RESOLVER.md
@@ -347,6 +351,44 @@ Project-level skills override global ones when names match.
 | `READ_ONCE_TTL` | `1200` | Seconds before a cached read expires |
 | `READ_ONCE_DIFF` | `0` | Set to `1` to show only diffs on changed files |
 | `READ_ONCE_DISABLED` | `0` | Set to `1` to disable entirely |
+
+## Branch Protection Setup
+
+One-time manual step required after the CI workflows are in place.
+
+**[→ Open Branch Protection Settings for `victusfate/scaffold`](https://github.com/victusfate/scaffold/settings/branches)**
+
+Go to **Settings → Branches → Add rule** (or Edit if a rule for `main` already exists) and apply these settings:
+
+| Setting | Value |
+|---|---|
+| Branch name pattern | `main` |
+| Require a pull request before merging | ✓ |
+| Require status checks to pass before merging | ✓ |
+| Status check | `CI / verify` |
+| Require branches to be up to date before merging | ✓ |
+| Do not allow bypassing the above settings | ✓ (recommended) |
+
+The status check name `CI / verify` comes from the workflow name (`CI`) and job id (`verify`) in `.github/workflows/ci.yml`. If you rename either, update the required check to match.
+
+### How releases work after setup
+
+No manual steps needed day-to-day:
+
+1. Developer opens PR with [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, etc.)
+2. `CI / verify` runs typecheck + tests — must pass before merge is allowed
+3. `version-bump` workflow commits the next version to `package.json` on the branch
+4. PR merges to `main`
+5. `release` workflow runs semantic-release → creates git tag + GitHub Release
+
+### Commit → version mapping
+
+| Prefix | Bump |
+|---|---|
+| `fix:` | patch (`1.0.0 → 1.0.1`) |
+| `feat:` | minor (`1.0.0 → 1.1.0`) |
+| `feat!:` or `BREAKING CHANGE` in body | major (`1.0.0 → 2.0.0`) |
+| `chore:`, `docs:`, `refactor:`, etc. | no release |
 
 ## Credits
 

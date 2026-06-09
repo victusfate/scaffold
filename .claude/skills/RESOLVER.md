@@ -22,6 +22,7 @@ the first match.
 | pause | `/(?:^\/pause\b)|(?:pause|checkpoint)\s+(?:the\s+)?(?:session|work)|cache\s+(?:this\s+)?session|save\s+my\s+place|stepping\s+away/i` | `skills/pause.md` | Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume |
 | resume | `/(?:^\/resume\b)|resume\s+(?:the\s+)?(?:session|work)|pick\s+up\s+where|continue\s+from\s+(?:the\s+)?handoff|load\s+(?:the\s+)?handoff/i` | `skills/resume.md` | Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device |
 | hoist-skill | `/(?:^\/hoist-skill\b)\|(?:hoist\|export\|copy\|add)\s+(?:scaffold\s+)?skills?\s+(?:to\|into)\b/i` | `skills/hoist-skill.md` | Hoist scaffold capabilities into a consumer repo in the target harness format |
+| protect-branch | `/(?:^\/protect-branch\b)\|(?:set\s+up\|configure\|check)\s+(?:branch\s+protection\|protected\s+branch)/i` | `skills/protect-branch.md` | Open GitHub branch protection settings for the current repo and show a targeted configuration checklist |
 
 ## Column contract
 
