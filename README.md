@@ -381,6 +381,8 @@ Go to **Settings → Rules → Rulesets**, edit (or create) the ruleset targetin
 
 Or just run `/protect-branch` in Claude Code — it opens this page and walks you through it.
 
+> **Known limitation — agents share your GitHub token.** Agents in this workflow run as your GitHub account, so GitHub can't distinguish an agent approval from a human one. "Required approvals: 1" can technically be satisfied by the agent approving its own PR. The practical guards are: CI must pass, workflow changes always need your sign-off via CODEOWNERS, and an agent would need to be explicitly told to self-approve. The clean long-term fix is a dedicated bot GitHub account for the agent — that separates author from reviewer cleanly and lets you keep "prevent authors from approving their own PRs" without locking yourself out.
+
 ### How releases work after setup
 
 No manual steps needed day-to-day:

@@ -69,6 +69,8 @@ Go to **Settings → Rules → Rulesets**, edit (or create) the ruleset targetin
 
 > **Require review from Code Owners** — `CODEOWNERS` requires `@<owner>` approval on any PR touching `.github/workflows/`. An agent can't quietly weaken CI and then merge — workflow changes always need explicit human sign-off. Normal PRs just need 1 approval from any reviewer.
 
+> **Known limitation — agents share your GitHub token.** Agents in this workflow run as your GitHub account. GitHub has no way to distinguish an agent approval from a human one — "Required approvals: 1" can technically be satisfied by the agent approving its own PR via the API. The practical guards are: (1) CI must pass, (2) any workflow change requires your sign-off via CODEOWNERS, (3) an agent would need to be explicitly instructed to self-approve, which is detectable. The clean long-term fix is a dedicated bot GitHub account for the agent — then "prevent authors from approving their own PRs" works correctly and you can still approve agent PRs as yourself.
+
 **Require status checks:**
 
 1. Enable **Require status checks to pass**
