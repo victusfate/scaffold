@@ -414,5 +414,44 @@ let hoist;
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
+// ---------------------------------------------------------------- slice: sync UX truthfulness
+
+// Case 23: provenance names the file source and the skills ref distinctly
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'content');
+  writeFile(dst, '.sync/policy.yaml', 'files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted');
+  const r = run(['--into', dst, '--ref', 'vX', '--check', `--scaffold-root=${src}`]);
+  assert('case 23: provenance has files= source', r.stdout.includes('files='), r.stdout);
+  assert('case 23: provenance has skills-ref=', r.stdout.includes('skills-ref=vX'), r.stdout);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 24: --check reports the skills step instead of pretending to hoist
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'content');
+  writeFile(dst, '.sync/policy.yaml', 'files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted');
+  writeFile(dst, '.sync/hoisted', '# header\ntdd\tclaude\tmain\nsimplify\tclaude\tmain\n');
+  const r = run(['--into', dst, '--check', `--scaffold-root=${src}`]);
+  assert('case 24: --check exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  assert('case 24: --check reports replay count', /would-replay\s+2 skill/.test(r.stdout), r.stdout);
+  assert('case 24: --check does not claim hoisting', !r.stdout.includes('hoisting skills'), r.stdout);
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 25: local --scaffold-root hoists skills from that tree, no network
+{
+  const dst = makeTmp();
+  writeFile(dst, '.sync/policy.yaml', 'files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted');
+  writeFile(dst, '.sync/hoisted', 'tdd\tclaude\tmain\n');
+  const r = run(['--into', dst, `--scaffold-root=${ROOT}`],
+    { env: { ...process.env, HOIST_RAW_BASE: 'http://127.0.0.1:9' } });
+  assert('case 25: local-root sync exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  assert('case 25: skill body hoisted locally', existsSync(join(dst, 'skills/tdd.md')));
+  assert('case 25: claude wrapper hoisted locally', existsSync(join(dst, '.claude/skills/tdd/SKILL.md')));
+  rmSync(dst, { recursive: true });
+}
+
 console.error(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
