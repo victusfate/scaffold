@@ -5,7 +5,4 @@
   "bin": {
     "scaffold": "./bin/sync"
   },
-  "scripts": {
-    "test": "exit 1"
-  }
 }
