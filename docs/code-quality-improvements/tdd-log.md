@@ -36,3 +36,12 @@
   no lockfile, no semantic-release config) deleted. `version-bump.yml` moved
   to push-on-main: bump derived by `scripts/compute-bump.mjs` from commits
   since the last bump commit, then commit + `v<version>` tag.
+
+## Slice 6 — bin entrypoint compliance (H5, M14, M6, L3)
+- Status: done
+- Notes: bootstrap.sh and sync-from-scaffold.sh `cd` to the repo root (run
+  from any CWD per §2a); a failed manifest read aborts before the SHA file is
+  written; bootstrap rejects unknown flags. Repo-bound skill guard list
+  single-sourced in bin/repo-bound-skills.txt (read by install-skills.sh and
+  globalize-skill.sh). Consumer manifest gains tools/hoist-skill/hoist.mjs and
+  tools/lib/safe-write.mjs (run's new import chain).
