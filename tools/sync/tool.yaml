@@ -1,0 +1,35 @@
+kind: tool
+name: sync
+description: Zero-local-code consumer sync — promote scaffold files per .sync/policy.yaml and replay hoisted skills from the manifest.
+inputs:
+  into:
+    type: string
+    default: "."
+    description: Consumer repo root containing .sync/policy.yaml.
+  ref:
+    type: string
+    description: Scaffold ref for skill hoisting. Defaults to the policy's ref, then main. Files always come from the package checkout (or scaffold-root); the provenance line names both sources.
+  check:
+    type: boolean
+    default: false
+    description: Dry run — report would-write/would-sidecar/would-protected per file and the manifest replay count; write nothing.
+  force:
+    type: boolean
+    default: false
+    description: Overwrite differing destination files instead of writing *.scaffold-new sidecars. Never bypasses guarded keep_marker checks or protected entries.
+  scaffold-root:
+    type: string
+    description: Local scaffold tree to read files AND skills from (no network). Primarily for testing. Uses --scaffold-root=<path> form.
+run:
+  command: node tools/sync/run.mjs  # paths relative to the scaffold repo root
+test:
+  command: node tools/sync/test
+test-integration:
+  command: RUN_INTEGRATION=1 node tools/sync/test-integration
+owned: []
+guarded:
+  - "policy files.guarded entries — written only when the declared keep_marker survives in the incoming content"
+emits:
+  - claude
+  - cursor
+  - antigravity

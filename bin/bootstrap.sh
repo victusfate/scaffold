@@ -22,13 +22,15 @@ for arg in "$@"; do
   case "$arg" in
     --run)           RUN_SYNC=1 ;;
     --with-workflow) WITH_WORKFLOW=1 ;;
+    *)               echo "Unknown flag: $arg" >&2; exit 2 ;;
   esac
 done
 
-if ! git rev-parse --show-toplevel &>/dev/null; then
-  echo "error: run from the root of a git repository" >&2
+if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  echo "error: run inside a git repository" >&2
   exit 1
 fi
+cd "$REPO_ROOT"
 
 echo "Bootstrapping scaffold agent guidance..."
 

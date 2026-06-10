@@ -1,7 +1,7 @@
 ---
 name: design-review
 description: |
-  Review design.md for structural quality — abstraction discipline, vocabulary precision, bounded logic. Auto-fixes in chain mode.
+  Review design.md for structural quality — abstraction discipline, vocabulary precision, bounded logic, simplicity. Auto-fixes when called from the chain; shows findings for approval when called standalone.
 license: MIT
 metadata:
   author: victusfate

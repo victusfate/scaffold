@@ -18,11 +18,17 @@ Do not pause between phases. The only pause is at the end of Phase 4 (feature-ch
 
 ### Phase 1: Audit
 
-Run the three review skills in sequence. **Do not auto-fix — collect findings only.**
+Collect findings only — nothing is fixed until the chain's TDD phase.
 
-1. **`/code-review --effort max`** — correctness bugs and quality issues. Record as `FINDINGS_REVIEW`.
-2. **`/code-quality-review`** in review (standalone) mode — do not auto-fix. Record as `FINDINGS_QUALITY`.
-3. **`/simplify`** — list what would be changed without applying. Record as `FINDINGS_SIMPLIFY`.
+1. **`/code-review --effort max`** (no `--fix` flag — its default prints
+   findings and waits). Record as `FINDINGS_REVIEW`.
+2. **Structural-quality lens** — apply the `/code-quality-review` checklist
+   (file size, spaghetti, abstractions, types, canonical reuse) as a read-only
+   audit. Do not invoke the skill itself: invoked from this chain it would
+   auto-fix. Record as `FINDINGS_QUALITY`.
+3. **Simplification lens** — apply the `/simplify` dimensions (reuse,
+   simplification, efficiency, altitude) the same way; `/simplify` itself has
+   no list-only mode. Record as `FINDINGS_SIMPLIFY`.
 
 Produce a consolidated findings table with source tags: `[review]`, `[quality]`, `[simplify]`.
 

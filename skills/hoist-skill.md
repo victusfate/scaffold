@@ -96,15 +96,17 @@ Outputs a JSON source list to stdout without writing any files:
   "ref": "main",
   "harness": "claude",
   "sources": [
-    "tools/hoist-skill/run",
-    ".claude/skills/RESOLVER.md",
-    "skills/tdd.md",
-    ".claude/skills/tdd/SKILL.md"
+    { "path": "tools/hoist-skill/run", "required": true },
+    { "path": ".claude/skills/RESOLVER.md", "required": true },
+    { "path": "skills/tdd.md", "required": true, "ref": "main" },
+    { "path": ".claude/skills/tdd/SKILL.md", "required": false, "ref": "main" }
   ]
 }
 ```
 
-The consumer curls those paths at the same ref, then runs `--from-manifest --into .` to re-emit. Combine with `--from-manifest` to get the source list for all registered skills at once:
+`required: true` sources must exist at the consumer before emitting;
+`required: false` sources are generated when absent. The consumer curls each
+`path` at its `ref`, then runs `--from-manifest --into .` to re-emit. Combine with `--from-manifest` to get the source list for all registered skills at once:
 
 ```bash
 node tools/hoist-skill/run --from-manifest --plan

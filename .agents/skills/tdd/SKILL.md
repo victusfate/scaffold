@@ -1,7 +1,7 @@
 ---
 name: tdd
 description: |
-  Execute vertical-slice TDD (red → green → refactor). Use when the user asks for test-driven development or mentions red-green-refactor.
+  Use when the user wants to build a feature or fix a bug using test-driven development, or mentions red-green-refactor, TDD, or test-first development.
 license: MIT
 metadata:
   author: victusfate

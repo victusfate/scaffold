@@ -11,7 +11,8 @@ export function parsePolicy(text) {
   }
 
   function unquote(s) {
-    if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+    if (s.length >= 2 &&
+        ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))) {
       return s.slice(1, -1);
     }
     return s;
@@ -44,9 +45,11 @@ export function parsePolicy(text) {
       if (pendingGuarded) flushGuarded();
       if (trimmed === 'files:') { section = 'files'; sawFiles = true; continue; }
       if (trimmed === 'skills:') { section = 'skills'; continue; }
-      if (trimmed.startsWith('ref: ')) { ref = trimmed.slice(5).trim(); continue; }
-      section = null;
-      continue;
+      if (trimmed.startsWith('ref: ')) { ref = unquote(trimmed.slice(5).trim()); continue; }
+      if (trimmed === 'ref:' || trimmed.startsWith('ref:')) {
+        throw new Error(`policy: "ref" requires a value: ${trimmed}`);
+      }
+      throw new Error(`policy: unknown top-level key: ${trimmed}`);
     }
 
     // files sub-keys (indent 2)
@@ -56,7 +59,7 @@ export function parsePolicy(text) {
         if (trimmed === 'copy:') { section = 'files.copy'; continue; }
         if (trimmed === 'guarded:') { section = 'files.guarded'; continue; }
         if (trimmed === 'protected:') { section = 'files.protected'; continue; }
-        continue;
+        throw new Error(`policy: unknown files key: ${trimmed}`);
       }
 
       if (ind === 4 && trimmed.startsWith('- ')) {

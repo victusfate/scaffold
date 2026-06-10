@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # read-once: PostCompact hook — clears session cache after context compaction.
 # When Claude compacts the conversation, it loses file contents from context.
 # This hook resets the read-once cache so those files can be re-read immediately,

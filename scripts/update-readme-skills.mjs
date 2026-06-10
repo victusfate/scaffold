@@ -86,9 +86,22 @@ function generateStructure(rows) {
 AGENTS.md                        # agent instructions — single source of truth
 CLAUDE.md                        # imports AGENTS.md (@AGENTS.md)
 GEMINI.md                        # references AGENTS.md
+package.json                     # npm entry (bin/sync) — name, version, engines, test scripts
+docs/
+  agent-authoring-requirements.md  # normative spec for tools, scripts, skills, bin
 bin/
   bootstrap.sh                   # one-time setup for downstream repos
   sync-from-scaffold.sh          # pull scaffold updates into a downstream repo
+  sync                           # npx entrypoint → tools/sync/run.mjs
+  install-skills.sh              # copy skills into a global dir (e.g. ~/.claude/skills)
+  globalize-skill.sh             # promote one skill into a global dir, imports inlined
+  repo-bound-skills.txt          # shared guard list for the two installers
+tools/
+  README.md                      # capability index (spec §2 registration)
+  lib/
+    safe-write.mjs               # shared clobber-safe write engine (sidecars, .scaffold-keep)
+  hoist-skill/                   # tool: emit skills into a consumer repo (tool.yaml, run, hoist.mjs, test)
+  sync/                          # tool: npx consumer sync (tool.yaml, run.mjs, policy.mjs, promote.mjs, test)
 .claude/
   skills/
 ${pad('    RESOLVER.md', claudeCol)}# central routing table — skill → regex → path
@@ -112,13 +125,18 @@ ${pad('    agents.md', agentWCol)}# thin pointer to AGENTS.md (always-on)
   workflows/
 ${agentWorkflows}
 scripts/
-  check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/cursor/antigravity/sync)
+  check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-readme-skills.mjs       # regenerate README.md skill sections from RESOLVER.md
+  compute-bump.mjs               # conventional-commit version bump (used by version-bump.yml)
+  test-sync.sh                   # isolated tests for bin/sync-from-scaffold.sh
+  test-bootstrap.sh              # isolated tests for bin/bootstrap.sh
 .githooks/
   pre-commit                     # runs the linter and README freshness check — enable via core.hooksPath
 .github/
   scaffold-files.txt             # manifest of files managed by scaffold
   workflows/
+    ci.yml                       # verify (npm test) + integration jobs on PRs
+    version-bump.yml             # post-merge version bump + tag on main
     sync-scaffold.yml            # manual workflow to sync updates via PR
 .claudeignore                    # excludes build artifacts from Claude's context
 \`\`\``;

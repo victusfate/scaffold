@@ -50,10 +50,13 @@ SKILL_DIR="$REPO/.claude/skills/$NAME"
 SKILL_MD="$SKILL_DIR/SKILL.md"
 [ -f "$SKILL_MD" ] || { echo "no skill '$NAME' in $REPO/.claude/skills/" >&2; exit 1; }
 
-# Skills that don't belong in a global, non-project dir:
-#   skillify, sync-scaffold  — orchestrate in-repo git work; need a project repo
-#   code-review, simplify    — collide with Claude Code's built-in skills
-GUARDED=(skillify sync-scaffold code-review simplify)
+# Skills that don't belong in a global, non-project dir —
+# single-sourced from bin/repo-bound-skills.txt (shared with install-skills.sh)
+GUARDED=()
+while IFS= read -r _s; do
+  [[ -z "$_s" || "$_s" == \#* ]] && continue
+  GUARDED+=("$_s")
+done < "$SCRIPT_DIR/repo-bound-skills.txt"
 for g in "${GUARDED[@]}"; do
   if [ "$g" = "$NAME" ] && [ "$FORCE" -eq 0 ]; then
     echo "'$NAME' is repo-bound or collides with a built-in; refusing." >&2

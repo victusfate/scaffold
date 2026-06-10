@@ -327,6 +327,53 @@ function phaseAntigravityParity(rows) {
   }
 }
 
+// Phase 8 — Frontmatter parity: every per-harness form must carry the same
+// description as the Claude form (spec §4: keep emitted descriptions in sync
+// by hand until the generator ships). Normalized-whitespace comparison.
+function frontmatterDescription(file) {
+  const src = readFileSync(file, 'utf8');
+  const m = src.match(/^---\n([\s\S]*?)\n---/);
+  if (!m) return null;
+  const fm = m[1].split('\n');
+  for (let i = 0; i < fm.length; i++) {
+    const line = fm[i];
+    if (!line.startsWith('description:')) continue;
+    const inline = line.slice('description:'.length).trim();
+    if (inline && inline !== '|' && inline !== '>') return inline;
+    // block scalar — collect indented continuation lines
+    const parts = [];
+    for (let j = i + 1; j < fm.length && /^\s+\S/.test(fm[j]); j++) parts.push(fm[j].trim());
+    return parts.join(' ');
+  }
+  return null;
+}
+
+const normWs = (s) => (s ?? '').replace(/\s+/g, ' ').trim();
+
+function phaseFrontmatterParity(rows) {
+  for (const r of rows) {
+    const claudeWrapper = join(SKILLS_DIR, r.skill, 'SKILL.md');
+    if (!existsSync(claudeWrapper)) continue; // Reachability already failed it
+    const claudeDesc = normWs(frontmatterDescription(claudeWrapper));
+    if (!claudeDesc) {
+      fail('Parity', `'${r.skill}' Claude wrapper has no frontmatter description`);
+      continue;
+    }
+    const forms = [
+      join(CURSOR_RULES, `${r.skill}.mdc`),
+      join(ANTIGRAVITY_SKILLS, r.skill, 'SKILL.md'),
+      join(ANTIGRAVITY_WORKFLOWS, `${r.skill}.md`),
+    ];
+    for (const f of forms) {
+      if (!existsSync(f)) continue; // parity phases 6/7b already failed it
+      const desc = normWs(frontmatterDescription(f));
+      if (desc !== claudeDesc) {
+        fail('Parity', `'${r.skill}' description drift in ${rel(f)} — sync it with the Claude form`);
+      }
+    }
+  }
+}
+
 // Phase 7 — Scaffold-sync: every registered skill must propagate upstream.
 function phaseScaffold(rows) {
   if (!existsSync(MANIFEST)) {
@@ -355,6 +402,7 @@ if (rows.length) {
   phaseWrapperIntegrity(rows);
   phaseCursorParity(rows);
   phaseAntigravityParity(rows);
+  phaseFrontmatterParity(rows);
   phaseScaffold(rows);
 }
 

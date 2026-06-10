@@ -15,6 +15,13 @@ SCAFFOLD_URL="${SCAFFOLD_URL:-https://github.com/victusfate/scaffold.git}"
 SHA_FILE=".github/scaffold-sync-sha"
 SELF="bin/sync-from-scaffold.sh"
 
+# All paths (manifest entries, SHA file, .scaffold-keep) are repo-root-relative
+if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+  echo "error: run inside a git repository" >&2
+  exit 1
+fi
+cd "$REPO_ROOT"
+
 # Ensure scaffold remote exists
 if ! git remote get-url scaffold &>/dev/null; then
   git remote add scaffold "$SCAFFOLD_URL"
@@ -33,11 +40,17 @@ fi
 
 echo "Syncing to ${current_sha:0:7}${last_sha:+ (from ${last_sha:0:7})}..."
 
-# Read manifest from scaffold
+# Read manifest from scaffold — a failed read must abort before any writes
+# (a process-substitution failure is invisible to set -e and would otherwise
+# no-op the loop and still save the SHA, silently marking us synced)
+if ! manifest=$(git show scaffold/main:.github/scaffold-files.txt 2>/dev/null); then
+  echo "error: could not read manifest .github/scaffold-files.txt from scaffold/main" >&2
+  exit 1
+fi
 files=()
 while IFS= read -r line; do
   [[ -n "$line" ]] && files+=("$line")
-done < <(git show scaffold/main:.github/scaffold-files.txt)
+done <<< "$manifest"
 
 updated=(); skipped=(); conflicts=(); review=(); kept=()
 ours=''; base=''; theirs=''

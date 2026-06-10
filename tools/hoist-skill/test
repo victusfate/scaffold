@@ -2,7 +2,7 @@
 // Isolated acceptance check for hoist-skill.
 // Runs in a temp dir. Exits non-zero on any failure.
 
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -11,6 +11,11 @@ import { tmpdir } from 'node:os';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const RUN  = join(dirname(fileURLToPath(import.meta.url)), 'run');
 
+// Temp dirs registered here are deleted on exit (L7 cleanup)
+const _tmpDirs = [];
+const makeTmp = () => { const d = mkdtempSync(join(tmpdir(), 'hoist-test-')); _tmpDirs.push(d); return d; };
+process.on('exit', () => { for (const d of _tmpDirs) { try { rmSync(d, { recursive: true }); } catch {} } });
+
 let passed = 0, failed = 0;
 
 function assert(label, cond, detail = '') {
@@ -18,7 +23,7 @@ function assert(label, cond, detail = '') {
   else       { console.error(`  ✗ ${label}${detail ? ': ' + detail : ''}`); failed++; }
 }
 
-function run(args, dest) {
+function run(args) {
   return spawnSync('node', [RUN, ...args], { encoding: 'utf8' });
 }
 
@@ -26,7 +31,7 @@ function run(args, dest) {
 
 console.log('\nCase 1: emit feature-chain --harness claude');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   const r = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest]);
   assert('exits 0', r.status === 0, r.stderr);
   assert('canonical body written', existsSync(join(dest, 'skills/feature-chain.md')));
@@ -46,7 +51,7 @@ console.log('\nCase 1: emit feature-chain --harness claude');
 
 console.log('\nCase 2: .scaffold-keep blocks a path');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   writeFileSync(join(dest, '.scaffold-keep'), 'skills/feature-chain.md\n');
   const r = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest]);
   assert('exits 0', r.status === 0, r.stderr);
@@ -61,7 +66,7 @@ console.log('\nCase 2: .scaffold-keep blocks a path');
 
 console.log('\nCase 3: differing existing file becomes *.scaffold-new');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   mkdirSync(join(dest, 'skills'), { recursive: true });
   writeFileSync(join(dest, 'skills/feature-chain.md'), 'consumer-owned content\n');
   const r = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest]);
@@ -76,7 +81,7 @@ console.log('\nCase 3: differing existing file becomes *.scaffold-new');
 
 console.log('\nCase 4: unknown capability exits non-zero');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   const r = run(['--names', 'no-such-skill', '--harness', 'claude', '--into', dest]);
   assert('exits non-zero', r.status !== 0);
 }
@@ -98,7 +103,7 @@ console.log('\nCase 5: --list prints valid JSON');
 
 console.log('\nCase 6: emit feature-chain --harness antigravity');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   const r = run(['--names', 'feature-chain', '--harness', 'antigravity', '--into', dest]);
   assert('exits 0', r.status === 0, r.stderr);
   assert('.agents skill written', existsSync(join(dest, '.agents/skills/feature-chain/SKILL.md')));
@@ -112,7 +117,7 @@ console.log('\nCase 6: emit feature-chain --harness antigravity');
 
 console.log('\nCase 7: claude wrapper fallback has description frontmatter');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   // Use a skill whose canonical wrapper exists in the scaffold root so we also prove
   // the "use existing source" path produces valid frontmatter.
   const r = run(['--names', 'hoist-skill', '--harness', 'claude', '--into', dest]);
@@ -130,7 +135,7 @@ console.log('\nCase 7: claude wrapper fallback has description frontmatter');
 
 console.log('\nCase 8: emit writes manifest; re-emit does not duplicate');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   const r1 = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest]);
   assert('exits 0', r1.status === 0, r1.stderr);
 
@@ -154,7 +159,7 @@ console.log('\nCase 8: emit writes manifest; re-emit does not duplicate');
 
 console.log('\nCase 9: --no-record leaves no manifest');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   const r = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest, '--no-record']);
   assert('exits 0', r.status === 0, r.stderr);
   assert('no manifest written', !existsSync(join(dest, '.sync', 'hoisted')));
@@ -164,7 +169,7 @@ console.log('\nCase 9: --no-record leaves no manifest');
 
 console.log('\nCase 10: --from-manifest emits the recorded set');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   mkdirSync(join(dest, '.sync'), { recursive: true });
   writeFileSync(join(dest, '.sync', 'hoisted'),
     '# .sync/hoisted\nfeature-chain\tclaude\tv9.9.9\n');
@@ -214,7 +219,7 @@ console.log('\nCase 12: --names and --from-manifest are mutually exclusive');
 
 console.log('\nCase 13: --ref is recorded in manifest');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   const r = run(['--names', 'feature-chain', '--harness', 'claude', '--into', dest, '--ref', 'v1.2.3']);
   assert('exits 0', r.status === 0, r.stderr);
   const lines = readFileSync(join(dest, '.sync', 'hoisted'), 'utf8')
@@ -237,7 +242,7 @@ console.log('\nCase 14: --plan echoes --ref');
 
 console.log('\nCase 15: replay preserves pinned ref (no --ref passed)');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   mkdirSync(join(dest, '.sync'), { recursive: true });
   writeFileSync(join(dest, '.sync', 'hoisted'),
     '# header\nfeature-chain\tclaude\tv1.2.3\n');
@@ -253,7 +258,7 @@ console.log('\nCase 15: replay preserves pinned ref (no --ref passed)');
 
 console.log('\nCase 16: --from-manifest --ref re-records with new ref in place');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   mkdirSync(join(dest, '.sync'), { recursive: true });
   writeFileSync(join(dest, '.sync', 'hoisted'),
     'feature-chain\tclaude\tv1.2.3\n');
@@ -271,14 +276,14 @@ console.log('\nCase 16: --from-manifest --ref re-records with new ref in place')
 console.log('\nCase 17: missing skill body gives actionable error (P3)');
 {
   // Build a partial mirror: has RESOLVER.md but lacks skills/tdd.md
-  const fakeRoot = mkdtempSync(join(tmpdir(), 'hoist-fake-root-'));
+  const fakeRoot = makeTmp();
   mkdirSync(join(fakeRoot, '.claude', 'skills'), { recursive: true });
   // Copy real RESOLVER.md so registry parsing works
   const realResolver = readFileSync(join(ROOT, '.claude', 'skills', 'RESOLVER.md'), 'utf8');
   writeFileSync(join(fakeRoot, '.claude', 'skills', 'RESOLVER.md'), realResolver, 'utf8');
   // Deliberately omit skills/tdd.md
 
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   const r = spawnSync('node', [RUN, '--names', 'tdd', '--harness', 'claude', '--into', dest], {
     encoding: 'utf8',
     env: { ...process.env, HOIST_SCAFFOLD_ROOT: fakeRoot },
@@ -323,7 +328,7 @@ console.log('\nCase 18: --fetch emits skills from a local HTTP file server');
     });
   });
 
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   const r = spawnSync('node', [RUN, '--fetch', '--names', 'tdd', '--harness', 'claude', '--into', dest], {
     encoding: 'utf8',
     timeout: 15000,
@@ -348,7 +353,7 @@ console.log('\nCase 18: --fetch emits skills from a local HTTP file server');
 
 console.log('\nCase 19: --plan --from-manifest preserves pinned refs in sources');
 {
-  const dest = mkdtempSync(join(tmpdir(), 'cap-export-'));
+  const dest = makeTmp();
   mkdirSync(join(dest, '.sync'), { recursive: true });
   writeFileSync(join(dest, '.sync', 'hoisted'),
     'feature-chain\tclaude\tv1.2.3\n');

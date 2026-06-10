@@ -1,7 +1,7 @@
 ---
 name: code-quality-review
 description: |
-  Review implementation for structural quality — file size, abstraction discipline, type precision, canonical reuse. Auto-fixes in chain mode.
+  Review implementation for structural quality — file size, spaghetti, abstraction discipline, type precision, canonical reuse. Auto-fixes when called from the chain; shows diffs for approval when called standalone.
 license: MIT
 metadata:
   author: victusfate

@@ -1,5 +1,5 @@
 ---
-description: When the user wants to build a feature using TDD, mentions red-green-refactor, or wants test-first development.
+description: Use when the user wants to build a feature or fix a bug using test-driven development, or mentions red-green-refactor, TDD, or test-first development.
 alwaysApply: false
 ---
 

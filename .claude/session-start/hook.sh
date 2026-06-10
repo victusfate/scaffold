@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # session-start: SessionStart hook for Claude Code
 # Fetches origin/main silently and warns if the working branch is behind.
 # Exits 0 always — a fetch failure must never block a session.
