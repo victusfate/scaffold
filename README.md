@@ -90,6 +90,7 @@ The sync script uses git (no curl after bootstrap), compares blob SHAs, and thre
 - **No silent first-sync overwrite.** When no base SHA exists and a target file already exists and differs, the incoming version is written to `<file>.scaffold-new` for deliberate review. The original is left untouched. Diff and merge when ready; re-run the sync to save the SHA once resolved.
 - **`.scaffold-keep`.** Add an optional `.scaffold-keep` file at your repo root (one path or glob per line; `#` comments and blank lines ignored). Any matching path is always skipped — even on first sync — and reported as "Kept (consumer-owned)". Use this to protect any file you own locally from being overwritten.
 - **`CLAUDE.md` is shipped as a starting point.** On first sync into a repo that has no `CLAUDE.md`, scaffold writes one. If you have already customized yours, add `CLAUDE.md` to `.scaffold-keep` — the sidecar or keep-list will protect it from then on.
+- **`LICENSE` is never synced.** The sync only writes files listed in `.github/scaffold-files.txt`, and `LICENSE` is not one of them. A repo created from the template starts with scaffold's MIT `LICENSE` (a one-time copy from "Use this template") — replace it, delete it, or go closed-source/private as you like. Scaffold will never re-add or overwrite it.
 
 **Pinning to a release tag** (recommended for reproducible pulls):
 ```bash
@@ -307,4 +308,9 @@ The `grill-with-docs`, `to-prd`, and `tdd` skills are adapted from [Matt Pocock'
 
 ## License
 
-MIT
+scaffold itself is MIT (see `LICENSE`).
+
+Repos generated from this template are **not** bound by it. `LICENSE` is never
+synced, so you are free to relicense — pick any license, remove `LICENSE`
+entirely, or keep the repo closed-source/private. Scaffold never re-adds or
+overwrites it on sync.
