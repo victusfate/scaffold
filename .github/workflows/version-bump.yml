@@ -37,14 +37,15 @@ jobs:
 
       - name: Bump version
         run: |
-          # Skip if this is itself a version-bump commit (prevent re-trigger loop)
-          LAST_MSG=$(git log -1 --format=%s)
-          if [[ "$LAST_MSG" == chore\(release\):* ]]; then
-            echo "Version bump commit — skipping"
+          git fetch origin main --quiet
+
+          # Bump at most once per branch: if a release commit already exists on
+          # this branch since it diverged from main, there is nothing to do. This
+          # also breaks the re-trigger loop when our own bump push fires synchronize.
+          if git log origin/main..HEAD --format=%s | grep -q '^chore(release):'; then
+            echo "Branch already bumped — skipping"
             exit 0
           fi
-
-          git fetch origin main --quiet
 
           # Base the bump on main's current version, not the PR branch's, so a
           # branch cut from an older main bumps relative to the latest release.
@@ -58,14 +59,8 @@ jobs:
             exit 0
           fi
 
-          CURRENT=$(node -p "require('./package.json').version")
-          if [ "$CURRENT" = "$NEXT" ]; then
-            echo "package.json already at $NEXT — nothing to do"
-            exit 0
-          fi
-
           npm version "$NEXT" --no-git-tag-version
-          echo "Bumped $CURRENT -> $NEXT (base $BASE)"
+          echo "Bumped $BASE -> $NEXT"
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
