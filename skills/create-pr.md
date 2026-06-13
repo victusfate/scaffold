@@ -61,7 +61,50 @@ Each round:
 
 Track auto-fixes applied (scope + one-liner) to include in the PR body.
 
-### Step 3 — push if needed
+### Step 3 — bump version on the branch
+
+If the repo has no `package.json`, skip this step silently.
+
+Bump the release version here, on the branch, so the bump commit is pushed under
+your credentials and `verify` runs on it — letting the PR merge cleanly. No CI
+job and no extra token are involved. Tagging stays on merge to main (e.g. in
+`release.yml`); this step only edits `package.json`.
+
+1. **Skip if already bumped.** If any commit the branch adds already bumps the
+   version, do nothing more in this step:
+   ```bash
+   git fetch origin main -q
+   git log origin/main..HEAD --format=%s | grep -q '^chore(release):' && echo "already bumped"
+   ```
+   If that prints `already bumped`, continue to Step 4.
+
+2. **Read the base version from `origin/main`** — not the branch — so a branch
+   cut from an older main still bumps relative to the current release:
+   ```bash
+   CURRENT=$(git show origin/main:package.json | node -p "JSON.parse(require('fs').readFileSync(0,'utf8')).version")
+   ```
+
+3. **Compute the next version** from the conventional commits the branch adds.
+   If `scripts/compute-bump.mjs` exists, use it:
+   ```bash
+   NEXT=$(git log --pretty=%s%n%b origin/main..HEAD | node scripts/compute-bump.mjs "$CURRENT")
+   ```
+   Otherwise apply the rule by hand across all branch commit messages: a
+   `BREAKING CHANGE` or `!:` → major, a `feat:` → minor, a `fix:` → patch,
+   nothing release-worthy → `none`. If the result is `none`, continue to Step 4
+   without bumping.
+
+4. **Apply and commit** the bump — no tag. `npm version` with an explicit
+   version sets `package.json` absolutely (correct even if the branch's version
+   already drifted):
+   ```bash
+   npm version "$NEXT" --no-git-tag-version
+   git add package.json package-lock.json 2>/dev/null
+   git commit -m "chore(release): bump version to $NEXT"
+   ```
+   Stage only those files explicitly — never `git add -A`.
+
+### Step 4 — push if needed
 
 ```bash
 git push -u origin $(git branch --show-current)
@@ -69,7 +112,7 @@ git push -u origin $(git branch --show-current)
 
 If the push fails, report the error and stop.
 
-### Step 4 — draft title and body
+### Step 5 — draft title and body
 
 Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 
@@ -112,17 +155,17 @@ If auto-corrections were applied in Step 2, append this section:
 - [ ] No git add -A; explicit paths staged
 ```
 
-### Step 5 — create the PR
+### Step 6 — create the PR
 
 Use the available GitHub tool (`mcp__github__create_pull_request` or `gh pr create`) to open the PR against the repo's default base branch (usually `main`).
 
-### Step 6 — subscribe immediately
+### Step 7 — subscribe immediately
 
 Without pausing or asking, call `mcp__github__subscribe_pr_activity` (or equivalent) for the PR number just returned.
 
 **Never ask the user whether to subscribe. Always do it.**
 
-### Step 7 — report
+### Step 8 — report
 
 Return the PR URL and confirm subscription is active. One line each.
 

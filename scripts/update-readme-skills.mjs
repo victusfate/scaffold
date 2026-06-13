@@ -127,7 +127,7 @@ ${agentWorkflows}
 scripts/
   check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-readme-skills.mjs       # regenerate README.md skill sections from RESOLVER.md
-  compute-bump.mjs               # conventional-commit version bump (used by version-bump.yml)
+  compute-bump.mjs               # conventional-commit version bump (used by the create-pr skill)
   test-sync.sh                   # isolated tests for bin/sync-from-scaffold.sh
   test-bootstrap.sh              # isolated tests for bin/bootstrap.sh
 .githooks/
@@ -136,7 +136,7 @@ scripts/
   scaffold-files.txt             # manifest of files managed by scaffold
   workflows/
     ci.yml                       # verify (npm test) + integration jobs on PRs
-    version-bump.yml             # post-merge version bump + tag on main
+    release.yml                  # tag v<version> on merge to main
     sync-scaffold.yml            # manual workflow to sync updates via PR
 .claudeignore                    # excludes build artifacts from Claude's context
 \`\`\``;
