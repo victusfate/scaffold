@@ -1,0 +1,37 @@
+name: Release
+
+# Tags the release on merge to main. version-bump.yml has already set
+# package.json to the release version on the PR branch, so here we just read it
+# and create the matching tag. Only a tag is pushed — never a commit to main —
+# so the branch ruleset (which blocks direct pushes) is never hit. Idempotent:
+# skips if the tag already exists.
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Tag release
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists — skipping"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "v$VERSION" -m "Release v$VERSION"
+          git push origin "v$VERSION"
+          echo "Tagged v$VERSION"
