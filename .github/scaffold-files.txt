@@ -3,6 +3,7 @@ CLAUDE.md
 CODEOWNERS
 GEMINI.md
 docs/agent-authoring-requirements.md
+docs/skills.md
 .claudeignore
 .claude/settings.json
 .claude/session-start/hook.sh
@@ -13,7 +14,7 @@ bin/sync-from-scaffold.sh
 .github/scaffold-files.txt
 .github/workflows/sync-scaffold.yml
 scripts/check-resolvable.mjs
-scripts/update-readme-skills.mjs
+scripts/update-skills-doc.mjs
 tools/hoist-skill/tool.yaml
 tools/hoist-skill/run
 tools/hoist-skill/hoist.mjs

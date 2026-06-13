@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// update-readme-skills.mjs — regenerate README.md skill sections from RESOLVER.md.
+// update-skills-doc.mjs — regenerate docs/skills.md skill sections from RESOLVER.md.
 //
-//   node scripts/update-readme-skills.mjs          # update README.md in place
-//   node scripts/update-readme-skills.mjs --check  # exit 1 if README is stale (used by pre-commit)
+//   node scripts/update-skills-doc.mjs          # update docs/skills.md in place
+//   node scripts/update-skills-doc.mjs --check  # exit 1 if docs/skills.md is stale (used by pre-commit)
+//
+// The README is intentionally NOT checked — downstream consumers own their README.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -10,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RESOLVER = join(ROOT, '.claude', 'skills', 'RESOLVER.md');
-const README = join(ROOT, 'README.md');
+const DOC = join(ROOT, 'docs', 'skills.md');
 
 const CHECK = process.argv.includes('--check');
 
@@ -54,7 +56,7 @@ function pad(name, col) {
 
 function generateInvocation(rows) {
   const list = rows.map(r => `\`/${r.skill}\``).join(', ');
-  return `Skills can also be invoked individually: ${list}.`;
+  return `Skills can be invoked individually: ${list}.`;
 }
 
 function generateStructure(rows) {
@@ -89,6 +91,7 @@ GEMINI.md                        # references AGENTS.md
 package.json                     # npm entry (bin/sync) — name, version, engines, test scripts
 docs/
   agent-authoring-requirements.md  # normative spec for tools, scripts, skills, bin
+  skills.md                        # this file — generated skill list + repo layout
 bin/
   bootstrap.sh                   # one-time setup for downstream repos
   sync-from-scaffold.sh          # pull scaffold updates into a downstream repo
@@ -126,12 +129,12 @@ ${pad('    agents.md', agentWCol)}# thin pointer to AGENTS.md (always-on)
 ${agentWorkflows}
 scripts/
   check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
-  update-readme-skills.mjs       # regenerate README.md skill sections from RESOLVER.md
+  update-skills-doc.mjs          # regenerate docs/skills.md skill sections from RESOLVER.md
   compute-bump.mjs               # conventional-commit version bump (used by the create-pr skill)
   test-sync.sh                   # isolated tests for bin/sync-from-scaffold.sh
   test-bootstrap.sh              # isolated tests for bin/bootstrap.sh
 .githooks/
-  pre-commit                     # runs the linter and README freshness check — enable via core.hooksPath
+  pre-commit                     # runs the linter and skills-doc freshness check — enable via core.hooksPath
 .github/
   scaffold-files.txt             # manifest of files managed by scaffold
   workflows/
@@ -159,25 +162,25 @@ function escapeRe(s) {
 // ---------------------------------------------------------------- main
 
 if (!existsSync(RESOLVER)) { console.error(`RESOLVER.md not found at ${RESOLVER}`); process.exit(1); }
-if (!existsSync(README))   { console.error(`README.md not found at ${README}`);   process.exit(1); }
+if (!existsSync(DOC))      { console.error(`docs/skills.md not found at ${DOC}`);   process.exit(1); }
 
 const rows = parseResolver();
 if (rows.length === 0) { console.error('No skill rows found in RESOLVER.md'); process.exit(1); }
 
-let readme = readFileSync(README, 'utf8');
-readme = replaceBetween(readme, 'BEGIN_SKILLS_INVOCATION', 'END_SKILLS_INVOCATION', generateInvocation(rows));
-readme = replaceBetween(readme, 'BEGIN_SKILLS_STRUCTURE',  'END_SKILLS_STRUCTURE',  generateStructure(rows));
+const original = readFileSync(DOC, 'utf8');
+let doc = original;
+doc = replaceBetween(doc, 'BEGIN_SKILLS_INVOCATION', 'END_SKILLS_INVOCATION', generateInvocation(rows));
+doc = replaceBetween(doc, 'BEGIN_SKILLS_STRUCTURE',  'END_SKILLS_STRUCTURE',  generateStructure(rows));
 
-const original = readFileSync(README, 'utf8');
-if (original === readme) {
-  console.log(`✓ README.md skills sections are up to date — ${rows.length} skills.`);
+if (original === doc) {
+  console.log(`✓ docs/skills.md sections are up to date — ${rows.length} skills.`);
   process.exit(0);
 }
 
 if (CHECK) {
-  console.error(`✗ README.md skills sections are stale — run: node scripts/update-readme-skills.mjs`);
+  console.error(`✗ docs/skills.md sections are stale — run: node scripts/update-skills-doc.mjs`);
   process.exit(1);
 }
 
-writeFileSync(README, readme, 'utf8');
-console.log(`✓ README.md updated — ${rows.length} skills written.`);
+writeFileSync(DOC, doc, 'utf8');
+console.log(`✓ docs/skills.md updated — ${rows.length} skills written.`);
