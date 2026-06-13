@@ -147,7 +147,7 @@ tools/
 scripts/
   check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-readme-skills.mjs       # regenerate README.md skill sections from RESOLVER.md
-  compute-bump.mjs               # conventional-commit version bump (used by version-bump.yml)
+  compute-bump.mjs               # conventional-commit version bump (used by the create-pr skill)
   test-sync.sh                   # isolated tests for bin/sync-from-scaffold.sh
   test-bootstrap.sh              # isolated tests for bin/bootstrap.sh
 .githooks/
@@ -156,7 +156,7 @@ scripts/
   scaffold-files.txt             # manifest of files managed by scaffold
   workflows/
     ci.yml                       # verify (npm test) + integration jobs on PRs
-    version-bump.yml             # post-merge version bump + tag on main
+    release.yml                  # tag v<version> on merge to main
     sync-scaffold.yml            # manual workflow to sync updates via PR
 .claudeignore                    # excludes build artifacts from Claude's context
 ```
@@ -411,10 +411,11 @@ Or just run `/protect-branch` in Claude Code — it opens this page and walks yo
 
 No manual steps needed day-to-day:
 
-1. Developer opens PR with [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, etc.)
-2. `verify` job runs `npm test` (all tool/script suites + linter + README freshness) — must pass before merge is allowed
-3. PR merges to `main`
-4. `version-bump` workflow computes the bump from the merged commits (`scripts/compute-bump.mjs`), commits the new `package.json` version to `main`, and pushes the `v<version>` tag
+1. Developer writes [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, etc.) on the branch
+2. The `create-pr` skill computes the bump from the branch's commits (`scripts/compute-bump.mjs`) and commits the new `package.json` version **on the branch**, before opening the PR
+3. `verify` job runs `npm test` (all tool/script suites + linter + README freshness) on the bump commit — must pass before merge is allowed
+4. PR merges to `main` with the version bump included
+5. `release.yml` reads the version from `package.json` on `main` and pushes the `v<version>` tag
 
 ### Commit → version mapping
 

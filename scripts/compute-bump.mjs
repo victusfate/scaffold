@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // compute-bump — derive the next semver from conventional-commit messages.
-// Why: version-bump.yml needs a pure, testable core; the workflow previously
-// re-applied bumps to an already-bumped package.json on every PR push.
+// Why: the create-pr skill needs a pure, testable core to derive the bump it
+// commits onto the branch; a prior CI approach re-bumped on every PR push.
 // Usage: git log --pretty=%s%n%b <range> | node scripts/compute-bump.mjs <current-version>
 // Prints the next version, or "none" when no release-worthy commit exists.
 

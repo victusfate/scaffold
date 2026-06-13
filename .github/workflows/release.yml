@@ -1,6 +1,6 @@
 name: Release
 
-# Tags the release on merge to main. version-bump.yml has already set
+# Tags the release on merge to main. The create-pr skill has already set
 # package.json to the release version on the PR branch, so here we just read it
 # and create the matching tag. Only a tag is pushed — never a commit to main —
 # so the branch ruleset (which blocks direct pushes) is never hit. Idempotent:
