@@ -106,7 +106,8 @@ if command -v python3 >/dev/null 2>&1; then
   printf 'line1\nCHANGED\nline3\n' > "$F8"
   out=$(run_hook "$(hook_input "$F8" sess-8)" env READ_ONCE_MODE=warn READ_ONCE_DIFF=1)
   check "diff output is valid JSON" bash -c "printf '%s' \"\$1\" | jq -e ." _ "$out"
-  check "reason carries the delta"  bash -c "printf '%s' \"\$1\" | jq -r '.hookSpecificOutput.permissionDecisionReason' | grep -q 'CHANGED'" _ "$out"
+  check "diff branch blocks (delta replaces read, even in warn)" bash -c "printf '%s' \"\$1\" | jq -e '.decision == \"block\"'" _ "$out"
+  check "reason carries the delta"  bash -c "printf '%s' \"\$1\" | jq -r '.reason' | grep -q 'CHANGED'" _ "$out"
 else
   echo "8. Diff mode within TTL → SKIPPED (no python3)"
 fi
@@ -120,13 +121,13 @@ printf 'a\nc\n' > "$F9"
 out=$(run_hook "$(hook_input "$F9" sess-9)" env READ_ONCE_MODE=warn READ_ONCE_DIFF=1 READ_ONCE_TTL=0)
 check "no diff reason emitted (silent full read)" test -z "$out"
 
-# ── test 10: default config (no env) → deny + diff ──────────────────────────
+# ── test 10: default config (no env) → hybrid (unchanged warn, changed blocks) ─
 
-echo "10. Defaults (no env vars) → deny mode, diff on"
+echo "10. Defaults (no env vars) → unchanged allows (warn), changed blocks (diff)"
 F10="$WORK/defaults.txt"; printf 'one\ntwo\nthree\n' > "$F10"
 run_hook "$(hook_input "$F10" sess-10)" env > /dev/null          # first read, silent
 out=$(run_hook "$(hook_input "$F10" sess-10)" env)               # unchanged re-read
-check "unchanged re-read blocks by default" bash -c "printf '%s' '$out' | jq -e '.decision == \"block\"'"
+check "unchanged re-read allows by default" bash -c "printf '%s' '$out' | jq -e '.hookSpecificOutput.permissionDecision == \"allow\"'"
 if command -v python3 >/dev/null 2>&1; then
   printf 'one\nTWO-CHANGED\nthree\n' > "$F10"
   out=$(run_hook "$(hook_input "$F10" sess-10)" env)             # changed re-read → diff
