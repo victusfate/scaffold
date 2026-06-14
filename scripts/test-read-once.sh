@@ -87,6 +87,39 @@ run_hook "$(hook_input "$F6" sess-6)" env READ_ONCE_MODE=warn > /dev/null
 lines=$(wc -l < "$STATS" | tr -d ' ')
 check "stats pruned to <=5000 lines" test "$lines" -le 5000
 
+# ── test 7: mtime change with same content → still a hit (content-hash) ─────
+
+echo "7. Touch (mtime bumps, content identical) → still a cache hit"
+F7="$WORK/touch.txt"; echo "content" > "$F7"
+run_hook "$(hook_input "$F7" sess-7)" env READ_ONCE_MODE=warn > /dev/null  # first read, silent
+touch "$F7"                                                                 # mtime changes, hash does not
+out=$(run_hook "$(hook_input "$F7" sess-7)" env READ_ONCE_MODE=warn)
+check "still allow after touch"   bash -c "printf '%s' '$out' | jq -e '.hookSpecificOutput.permissionDecision == \"allow\"'"
+check "advisory says in context"  bash -c "printf '%s' '$out' | grep -qi 'already in context'"
+
+# ── test 8: diff mode within TTL → emits just the delta ─────────────────────
+
+if command -v python3 >/dev/null 2>&1; then
+  echo "8. Diff mode within TTL → shows changes only"
+  F8="$WORK/diff.txt"; printf 'line1\nline2\nline3\n' > "$F8"
+  run_hook "$(hook_input "$F8" sess-8)" env READ_ONCE_MODE=warn READ_ONCE_DIFF=1 > /dev/null
+  printf 'line1\nCHANGED\nline3\n' > "$F8"
+  out=$(run_hook "$(hook_input "$F8" sess-8)" env READ_ONCE_MODE=warn READ_ONCE_DIFF=1)
+  check "diff output is valid JSON" bash -c "printf '%s' \"\$1\" | jq -e ." _ "$out"
+  check "reason carries the delta"  bash -c "printf '%s' \"\$1\" | jq -r '.hookSpecificOutput.permissionDecisionReason' | grep -q 'CHANGED'" _ "$out"
+else
+  echo "8. Diff mode within TTL → SKIPPED (no python3)"
+fi
+
+# ── test 9: diff mode, prior read aged past TTL → full re-read, no stale diff ─
+
+echo "9. Diff mode with expired TTL → falls through to full re-read"
+F9="$WORK/diff-expired.txt"; printf 'a\nb\n' > "$F9"
+run_hook "$(hook_input "$F9" sess-9)" env READ_ONCE_MODE=warn READ_ONCE_DIFF=1 READ_ONCE_TTL=0 > /dev/null
+printf 'a\nc\n' > "$F9"
+out=$(run_hook "$(hook_input "$F9" sess-9)" env READ_ONCE_MODE=warn READ_ONCE_DIFF=1 READ_ONCE_TTL=0)
+check "no diff reason emitted (silent full read)" test -z "$out"
+
 # ── summary ────────────────────────────────────────────────────────────────
 
 echo ""
