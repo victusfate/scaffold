@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/read-once/hook.sh"
+            "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/read-once/hook.sh\"; [ -f \"$f\" ] && bash \"$f\" || exit 0"
           }
         ]
       }
