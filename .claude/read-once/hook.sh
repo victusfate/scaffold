@@ -23,24 +23,24 @@
 # to BOTH unchanged-file and diff branches, so a stale "apply this diff" is
 # never sent against content that has aged out of context.
 #
-# Modes & savings (be honest about this):
-#   deny (default) — blocks the re-read. Saves ~ESTIMATED_TOKENS, but can fight
-#                    the Edit tool (Edit wants a fresh Read). Paired with diff
-#                    mode below, a changed file returns only its delta.
-#   warn           — allows the read with an advisory string. The full file
-#                    still comes back, so warn saves NO tokens. It is a nudge
-#                    that avoids the Edit deadlock + parallel-read cascades.
-#   READ_ONCE_DIFF=1 (default) — sends only the delta on changed files. Real
-#                    savings under deny; under warn it is advisory-only.
+# Modes & savings (be honest about this). The default is a hybrid:
+#   UNCHANGED re-read → governed by MODE, default "warn": allowed with an
+#                    advisory (saves nothing, but keeps the Edit tool happy and
+#                    avoids the parallel-read cascade). Set MODE=deny to block
+#                    and save the full re-read, at the cost of Edit friction.
+#   CHANGED file (diff branch, READ_ONCE_DIFF=1 default) → always blocked and
+#                    replaced with just the delta. This is a post-change re-read,
+#                    not a pre-Edit freshness check, so blocking is safe — and
+#                    it's where the real 80-95% savings come from.
 #
 # Install (PreToolUse on Read). Use an absolute path via $CLAUDE_PROJECT_DIR and
 # guard for the file's existence so a bare/relative path can't break Read:
 #   "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/read-once/hook.sh\"; [ -f \"$f\" ] && bash \"$f\" || exit 0"
 #
 # Config (env vars):
-#   READ_ONCE_MODE=deny     "deny" (default) blocks the re-read, "warn" allows it with advisory.
+#   READ_ONCE_MODE=warn     Unchanged re-reads: "warn" (default) allows w/ advisory, "deny" blocks.
 #   READ_ONCE_TTL=1200      Seconds before a cached read expires (default: 1200)
-#   READ_ONCE_DIFF=1        Show only diff when files change (default: 1; set 0 to disable)
+#   READ_ONCE_DIFF=1        Changed files: return only the delta, always (default: 1; set 0 to disable)
 #   READ_ONCE_DIFF_MAX=40   Max diff lines before falling back to full re-read (default: 40)
 #   READ_ONCE_DISABLED=1    Disable the hook entirely
 
@@ -87,13 +87,18 @@ fi
 CACHE_DIR="${HOME}/.claude/read-once"
 mkdir -p "$CACHE_DIR"
 
-# Mode: "deny" (default) blocks the re-read so savings are real; "warn" allows
-# the read with only an advisory (saves nothing). deny can fight the Edit tool
-# (Edit wants a fresh Read) — set READ_ONCE_MODE=warn if that deadlock bites.
-MODE="${READ_ONCE_MODE:-deny}"
+# Mode governs the UNCHANGED-file re-read only:
+#   "warn" (default) allows it with an advisory — keeps the Edit tool happy
+#          (Edit wants a fresh Read before it edits), saves nothing on its own.
+#   "deny" blocks it — saves the full re-read, but can fight the Edit tool.
+# The changed-file diff branch (below) always blocks regardless of MODE, because
+# the read there isn't a pre-Edit freshness check — it's a post-change re-read,
+# so returning just the delta is safe and where the real savings come from.
+MODE="${READ_ONCE_MODE:-warn}"
 
-# Diff mode config — on by default. Pairs with deny so a changed file returns
-# only its delta instead of the whole file. See the secrets-at-rest note above.
+# Diff mode config — on by default. On a changed file, return only its delta
+# instead of the whole file (the diff branch blocks unconditionally to do this).
+# See the secrets-at-rest note above; set READ_ONCE_DIFF=0 to disable.
 DIFF_MODE="${READ_ONCE_DIFF:-1}"
 DIFF_MAX="${READ_ONCE_DIFF_MAX:-40}"
 
@@ -340,12 +345,10 @@ print(reason)
 " 2>/dev/null)
 
       if [ -n "$REASON" ]; then
-        if [ "$MODE" = "deny" ]; then
-          jq -cn --arg r "$REASON" '{"decision":"block","reason":$r}'
-        else
-          jq -cn --arg r "$REASON" \
-            '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"allow",permissionDecisionReason:$r}}'
-        fi
+        # Always block on the diff branch: the delta REPLACES the full read.
+        # Allowing here would re-read the whole file AND append the diff — strictly
+        # worse. Independent of MODE (which only governs unchanged re-reads).
+        jq -cn --arg r "$REASON" '{"decision":"block","reason":$r}'
         exit 0
       fi
       # Python failed — fall through to full re-read
