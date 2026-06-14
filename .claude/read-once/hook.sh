@@ -8,13 +8,14 @@
 # granularity (two edits in the same second look unchanged) and lies under
 # git checkout / touch / clock skew. Hash is the reliable signal.
 #
-# Diff mode: When a file HAS changed since the last read, instead of allowing
-# a full re-read, shows only what changed (the diff). Claude already has the
-# old content in context — it just needs the delta. Saves 80-95% of tokens
-# when iterating on files. Enable with READ_ONCE_DIFF=1.
+# Diff mode (ON by default): When a file HAS changed since the last read,
+# instead of allowing a full re-read, shows only what changed (the diff). Claude
+# already has the old content in context — it just needs the delta. Saves 80-95%
+# of tokens when iterating on files. Disable with READ_ONCE_DIFF=0.
 #   NOTE: diff mode writes full file snapshots to ~/.claude/read-once/snapshots/.
 #   That duplicates file content (including secrets) at rest outside the repo.
-#   Keep it off for repos with sensitive files, or scope where it runs.
+#   For repos with sensitive files, set READ_ONCE_DIFF=0 (and consider
+#   READ_ONCE_MODE=warn), or scope where the hook runs.
 #
 # Compaction-aware: the PostCompact hook (compact.sh) clears this session's
 # cache the moment context is compacted. As a backstop, cache entries also
@@ -23,21 +24,23 @@
 # never sent against content that has aged out of context.
 #
 # Modes & savings (be honest about this):
-#   warn (default) — allows the read with an advisory string. The full file
-#                    still comes back, so warn saves NO tokens. It is a nudge,
-#                    and it avoids the Edit deadlock + parallel-read cascades.
-#   deny           — blocks the re-read. Saves ~ESTIMATED_TOKENS, but can fight
-#                    the Edit tool (Edit wants a fresh Read).
-#   READ_ONCE_DIFF=1 — sends only the delta. Real savings, small correctness risk.
+#   deny (default) — blocks the re-read. Saves ~ESTIMATED_TOKENS, but can fight
+#                    the Edit tool (Edit wants a fresh Read). Paired with diff
+#                    mode below, a changed file returns only its delta.
+#   warn           — allows the read with an advisory string. The full file
+#                    still comes back, so warn saves NO tokens. It is a nudge
+#                    that avoids the Edit deadlock + parallel-read cascades.
+#   READ_ONCE_DIFF=1 (default) — sends only the delta on changed files. Real
+#                    savings under deny; under warn it is advisory-only.
 #
 # Install (PreToolUse on Read). Use an absolute path via $CLAUDE_PROJECT_DIR and
 # guard for the file's existence so a bare/relative path can't break Read:
 #   "command": "f=\"$CLAUDE_PROJECT_DIR/.claude/read-once/hook.sh\"; [ -f \"$f\" ] && bash \"$f\" || exit 0"
 #
 # Config (env vars):
-#   READ_ONCE_MODE=warn     "warn" (default) allows read with advisory, "deny" blocks it.
+#   READ_ONCE_MODE=deny     "deny" (default) blocks the re-read, "warn" allows it with advisory.
 #   READ_ONCE_TTL=1200      Seconds before a cached read expires (default: 1200)
-#   READ_ONCE_DIFF=1        Show only diff when files change (default: 0)
+#   READ_ONCE_DIFF=1        Show only diff when files change (default: 1; set 0 to disable)
 #   READ_ONCE_DIFF_MAX=40   Max diff lines before falling back to full re-read (default: 40)
 #   READ_ONCE_DISABLED=1    Disable the hook entirely
 
@@ -84,12 +87,14 @@ fi
 CACHE_DIR="${HOME}/.claude/read-once"
 mkdir -p "$CACHE_DIR"
 
-# Mode: "warn" (default) allows read with advisory message, "deny" blocks it.
-# warn mode fixes: Edit tool deadlock, parallel read cascade failures.
-MODE="${READ_ONCE_MODE:-warn}"
+# Mode: "deny" (default) blocks the re-read so savings are real; "warn" allows
+# the read with only an advisory (saves nothing). deny can fight the Edit tool
+# (Edit wants a fresh Read) — set READ_ONCE_MODE=warn if that deadlock bites.
+MODE="${READ_ONCE_MODE:-deny}"
 
-# Diff mode config
-DIFF_MODE="${READ_ONCE_DIFF:-0}"
+# Diff mode config — on by default. Pairs with deny so a changed file returns
+# only its delta instead of the whole file. See the secrets-at-rest note above.
+DIFF_MODE="${READ_ONCE_DIFF:-1}"
 DIFF_MAX="${READ_ONCE_DIFF_MAX:-40}"
 
 # Snapshot directory for diff mode
