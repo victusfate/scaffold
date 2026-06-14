@@ -105,3 +105,8 @@ skills/protect-branch.md
 .cursor/rules/protect-branch.mdc
 .agents/skills/protect-branch/SKILL.md
 .agent/workflows/protect-branch.md
+skills/frontend-design.md
+.claude/skills/frontend-design/SKILL.md
+.cursor/rules/frontend-design.mdc
+.agents/skills/frontend-design/SKILL.md
+.agent/workflows/frontend-design.md
