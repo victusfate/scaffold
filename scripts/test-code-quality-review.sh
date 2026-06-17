@@ -17,6 +17,9 @@ grep -q 'Quality Scores' "$FILE" \
 grep -q 'quality-override' "$FILE" \
   && ok "override syntax referenced" || fail "missing override syntax"
 
+grep -qE 'inline override|preceding line|// quality-override|suppress' "$FILE" \
+  && ok "inline pragma awareness described" || fail "inline pragma awareness not described"
+
 grep -q '10/10\|score.*10\|10 on all\|all.*10' "$FILE" \
   && ok "10/10 gate threshold stated" || fail "missing 10/10 gate threshold"
 
