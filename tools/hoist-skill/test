@@ -372,6 +372,19 @@ console.log('\nCase 19: --plan --from-manifest preserves pinned refs in sources'
   assert('capability source ref matches manifest pin', capSource?.ref === 'v1.2.3', `got: ${capSource?.ref}`);
 }
 
+// ---------------------------------------------------------------- case 20: back-compat export surface
+// Guards the regression where splitting hoist.mjs dropped the readManifest export.
+// Consumer-vendored tools/sync/run.mjs copies (not in scaffold-files.txt) import
+// readManifest from '../hoist-skill/hoist.mjs'; dropping it breaks them on sync.
+
+console.log('\nCase 20: hoist.mjs preserves back-compat export surface');
+{
+  const mod = await import('./hoist.mjs');
+  assert('exports hoist', typeof mod.hoist === 'function');
+  assert('re-exports readManifest (back-compat for vendored run.mjs)',
+    typeof mod.readManifest === 'function');
+}
+
 // ---------------------------------------------------------------- summary
 
 console.log(`\n${passed} passed, ${failed} failed.`);

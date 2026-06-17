@@ -11,6 +11,12 @@ import { readManifest, upsertManifest } from './manifest.mjs';
 import { makeEmitters } from './emitters.mjs';
 import { parseResolverRows } from '../lib/resolver-parse.mjs';
 
+// Back-compat: `readManifest` moved to ./manifest.mjs when this file was split.
+// Consumer-vendored tools/sync/run.mjs copies import it from here and are not
+// refreshed by sync (run.mjs is not in scaffold-files.txt), so re-export it to
+// keep those copies resolving after they pull the new hoist.mjs.
+export { readManifest } from './manifest.mjs';
+
 const SCAFFOLD_ROOT = process.env.HOIST_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
 const HARNESSES     = ['claude', 'cursor', 'antigravity'];
