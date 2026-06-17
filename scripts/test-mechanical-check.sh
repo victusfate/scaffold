@@ -30,6 +30,10 @@ printf 'function timeout() { return 86400; }\n' > "$MAGIC"
 COMMENTED="$FIXTURES/commented.js"
 printf '// function old() {\n//   return 1;\n// }\nfunction current() {}\n' > "$COMMENTED"
 
+# Fixture: digits inside a quoted string are data (e.g. a grep pattern), not a magic number
+QUOTED="$FIXTURES/quoted.sh"
+printf 'grep -qE "Score.*10|10 on all" "$f"\n' > "$QUOTED"
+
 # Clean file should pass
 if bash "$SCRIPT" "$CLEAN" > /dev/null 2>&1; then
   ok "clean file passes"
@@ -80,6 +84,13 @@ if echo "$output" | grep -qE '(commented\.js|commented):'; then
   ok "commented-out code citation includes filename"
 else
   fail "commented-out code error must include filename:line citation"
+fi
+
+# Digits inside a quoted string should NOT be flagged as a magic number
+if bash "$SCRIPT" "$QUOTED" > /dev/null 2>&1; then
+  ok "digits inside a quoted string are not a magic number"
+else
+  fail "quoted-string digits should not be flagged as a magic number"
 fi
 
 echo ""
