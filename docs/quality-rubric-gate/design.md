@@ -63,7 +63,7 @@
 
 **Rationale:** Prevents hallucinated quality scores. Subjective judgment ("this feels like a 7") is replaced by evidence-based accounting. Trivially machine-measurable items (file line count via `wc -l`) act as a sanity check.
 
-**Gate:** 10/10 on all four dimensions required to ship. The auto-fix loop drives toward 10/10; if it cannot reach it automatically, it surfaces the remaining violations for the developer to resolve. There is no "good enough" threshold — mandatory citations mean every deduction is auditable, so the loop should always be able to close.
+**Gate:** 10/10 on all four dimensions is achieved during development — at each TDD REFACTOR phase — not deferred to merge time. By the time a PR is created, all scores should already be 10/10. The CI check and `create-pr` gate are safety nets that confirm nothing slipped through; they are not the primary enforcement point. If the auto-fix loop cannot reach 10/10, it surfaces the remaining violations for the developer to resolve before the next slice starts.
 
 **Override:** Only model-driven (non-numeric) criteria are overridable. Add `quality-override: <file> — <criterion> — <reason>` to the PR body; the model gate skips that criterion for that file. Mechanical/numeric criteria (file length, magic literals, commented-out code) are hard gates — the code must be fixed; no override path exists for them.
 

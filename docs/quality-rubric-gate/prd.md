@@ -6,7 +6,11 @@ Code generated during the TDD flow is verified for behavioral correctness (tests
 
 ## Solution
 
-Introduce a four-dimension rubric (Quality, Readability, Encapsulation, Clarity) with evidence-based scoring: every deduction requires a `filename:line` citation. The rubric lives in `lib/code-quality-rubric.md` as a single source of truth. It is `@`-included into the TDD REFACTOR phase (per-slice check) and into `code-quality-review` (final authoritative pass). After all slices complete, a scored report is shown to the user and included in the PR body. Any dimension scoring below 8 is a hard blocker; 10/10 is the target the auto-fix loop drives toward.
+Introduce a four-dimension rubric (Quality, Readability, Encapsulation, Clarity) with evidence-based scoring: every deduction requires a `filename:line` citation. The rubric lives in `lib/code-quality-rubric.md` as a single source of truth. It is `@`-included into the TDD REFACTOR phase (per-slice check) and into `code-quality-review` (final authoritative pass).
+
+**Primary enforcement is during development, not at merge.** The auto-fix loop runs at every REFACTOR phase and drives each file to 10/10 before the next slice starts. By the time a PR is created, all scores are already 10/10. The `create-pr` model gate and the CI mechanical check are safety nets — they confirm nothing slipped through, not the point where quality is established.
+
+A scored report is shown to the user after all slices complete and included in the PR body as a record of confirmed scores.
 
 ## User Stories
 
