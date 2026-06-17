@@ -24,6 +24,7 @@ the first match.
 | hoist-skill | `/(?:^\/hoist-skill\b)\|(?:hoist\|export\|copy\|add)\s+(?:scaffold\s+)?skills?\s+(?:to\|into)\b/i` | `skills/hoist-skill.md` | Hoist scaffold capabilities into a consumer repo in the target harness format |
 | protect-branch | `/(?:^\/protect-branch\b)\|(?:set\s+up\|configure\|check)\s+(?:branch\s+protection\|protected\s+branch)/i` | `skills/protect-branch.md` | Open GitHub branch protection settings for the current repo and show a targeted configuration checklist |
 | frontend-design | `/(?:^\/frontend-design\b)/i` | `skills/frontend-design.md` | Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics |
+| audit | `/(?:^\/audit\b)\|(?:score\|audit)\s+(?:the\s+)?(?:codebase\|repo\|source\s+files)/i` | `skills/audit.md` | Score source files ranked worst-first across all four rubric dimensions with cited violations |
 
 ## Column contract
 

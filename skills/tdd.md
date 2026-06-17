@@ -32,9 +32,15 @@ Tests written in bulk verify imagined behavior and become insensitive to real ch
 ```
 RED:      Write next test → confirm it fails
 GREEN:    Write minimal code to pass → confirm it passes
-REFACTOR: Extract duplication, deepen modules — only after GREEN, never while RED
+REFACTOR: Confirm quality scores — only after GREEN, never while RED
 ```
 Rules: one test at a time, only enough code to pass, don't anticipate future tests.
+
+**The rubric is the generative voice, not a post-hoc judge.** Before writing GREEN code, load the quality rubric:
+
+@../lib/code-quality-rubric.md
+
+Write code as the thoughtful senior engineer described there. Code that would violate the rubric is never written in the first place — REFACTOR is a confirmation pass, not a correction pass.
 
 **Per-cycle checklist:**
 - Test describes behavior, not implementation
@@ -42,6 +48,20 @@ Rules: one test at a time, only enough code to pass, don't anticipate future tes
 - Test would survive an internal refactor
 - Code is minimal for this test
 - No speculative features added
+
+**Quality confirmation (run at REFACTOR, before committing):**
+
+Score every file touched in this slice against the four rubric dimensions. Emit the score table:
+
+```
+## Quality Scores — Slice N
+| File | Quality | Readability | Encapsulation | Clarity |
+|------|---------|-------------|---------------|---------|
+| path/to/file | 10 | 10 | 10 | 10 |
+Violations: none
+```
+
+Any score below 10 means GREEN introduced a violation. For violations where the fix is <30 lines: apply in place, re-run tests, re-score. For violations where the fix is >30 lines or requires architectural rethinking: surface to the user with the citation — do not silently patch. Do not commit until all scores are 10/10 or violations are explicitly surfaced.
 
 **Test-quality self-audit (run at REFACTOR, before committing):**
 - Do any assertions use the default value for the field they verify? Replace with a sentinel (non-default) value — a bug that silently resets to the default will hide behind matching data.

@@ -112,7 +112,20 @@ git push -u origin $(git branch --show-current)
 
 If the push fails, report the error and stop.
 
-### Step 5 — draft title and body
+### Step 5 — quality gate
+
+Run `/code-quality-review` in review mode (standalone invocation) against the changed files. This produces the Quality Scores table.
+
+**All files must score 10/10 on all four dimensions before continuing.** Any score below 10 blocks PR creation — surface the violations and wait for the user to fix them or add `quality-override` annotations.
+
+Override syntax (model-driven criteria only — mechanical violations must be fixed):
+```
+quality-override: <file> — <criterion> — <reason>
+```
+
+Once all scores are 10/10 (or approved overrides cover every remaining violation), save the Quality Scores table — it will be included in the PR body in Step 6.
+
+### Step 6 — draft title and body
 
 Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 
@@ -124,6 +137,11 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 - <bullet 1>
 - <bullet 2>
 - <bullet 3 if needed>
+
+## Quality Scores
+| File | Quality | Readability | Encapsulation | Clarity |
+|------|---------|-------------|---------------|---------|
+| <paste score table from Step 5> |
 
 ## Test plan
 - [ ] <concrete thing to verify>
@@ -155,17 +173,17 @@ If auto-corrections were applied in Step 2, append this section:
 - [ ] No git add -A; explicit paths staged
 ```
 
-### Step 6 — create the PR
+### Step 7 — create the PR
 
 Use the available GitHub tool (`mcp__github__create_pull_request` or `gh pr create`) to open the PR against the repo's default base branch (usually `main`).
 
-### Step 7 — subscribe immediately
+### Step 8 — subscribe immediately
 
 Without pausing or asking, call `mcp__github__subscribe_pr_activity` (or equivalent) for the PR number just returned.
 
 **Never ask the user whether to subscribe. Always do it.**
 
-### Step 8 — report
+### Step 9 — report
 
 Return the PR URL and confirm subscription is active. One line each.
 

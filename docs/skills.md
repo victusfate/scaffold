@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`.
+Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`.
 <!-- END_SKILLS_INVOCATION -->
 
 ## Structure
@@ -52,6 +52,7 @@ tools/
     hoist-skill/SKILL.md          # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md      # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
+    audit/SKILL.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
   read-once/
@@ -78,6 +79,7 @@ tools/
     hoist-skill.mdc          # mirrors hoist-skill for Cursor
     protect-branch.mdc       # mirrors protect-branch for Cursor
     frontend-design.mdc      # mirrors frontend-design for Cursor
+    audit.mdc                # mirrors audit for Cursor
 .agents/
   skills/
     feature-chain/SKILL.md        # Orchestrate design → PRD → TDD → review end to end
@@ -97,6 +99,7 @@ tools/
     hoist-skill/SKILL.md          # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md      # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
+    audit/SKILL.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
 .agent/
   rules/
     agents.md               # thin pointer to AGENTS.md (always-on)
@@ -118,6 +121,7 @@ tools/
     hoist-skill.md          # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design.md      # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
+    audit.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
 scripts/
   check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-skills-doc.mjs          # regenerate docs/skills.md skill sections from RESOLVER.md

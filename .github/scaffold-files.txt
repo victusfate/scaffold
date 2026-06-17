@@ -14,11 +14,18 @@ bin/sync-from-scaffold.sh
 .github/scaffold-files.txt
 .github/workflows/sync-scaffold.yml
 scripts/check-resolvable.mjs
+scripts/check-quality-mechanical.sh
+scripts/resolver-phases.mjs
+scripts/resolver-utils.mjs
 scripts/update-skills-doc.mjs
 tools/hoist-skill/tool.yaml
 tools/hoist-skill/run
 tools/hoist-skill/hoist.mjs
+tools/hoist-skill/emitters.mjs
+tools/hoist-skill/manifest.mjs
 tools/lib/safe-write.mjs
+tools/lib/resolver-parse.mjs
+.github/workflows/quality.yml
 tools/hoist-skill/test
 tools/hoist-skill/README.md
 skills/hoist-skill.md
@@ -100,6 +107,7 @@ skills/resume.md
 .agents/skills/resume/SKILL.md
 .agent/workflows/pause.md
 .agent/workflows/resume.md
+lib/code-quality-rubric.md
 skills/protect-branch.md
 .claude/skills/protect-branch/SKILL.md
 .cursor/rules/protect-branch.mdc
@@ -110,3 +118,8 @@ skills/frontend-design.md
 .cursor/rules/frontend-design.mdc
 .agents/skills/frontend-design/SKILL.md
 .agent/workflows/frontend-design.md
+skills/audit.md
+.claude/skills/audit/SKILL.md
+.cursor/rules/audit.mdc
+.agents/skills/audit/SKILL.md
+.agent/workflows/audit.md
