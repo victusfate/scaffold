@@ -46,6 +46,23 @@
 
 ---
 
+## Slice 6 — audit skill: score a codebase, ranked worst-first
+
+**Behavior:** `/audit` is a standalone skill that scores any scope of files against the four rubric dimensions. Default scope is all source files in the repo; accepts an optional path argument to narrow scope. Output is a ranked report — worst-scoring files first — with dimension scores and cited violations for each file. Supports `--fix` to auto-apply violations in place. Shares metrics with `code-quality-review` via `@`-include of `lib/code-quality-rubric.md`.
+
+**Difference from `code-quality-review`:** `code-quality-review` runs in the chain (changed files only, feeds into PR body, auto-fix mode default). `audit` is standalone (configurable scope, ranked full report, report mode default).
+
+**Files:**
+- `skills/audit.md` (create — full skill definition, @-includes rubric)
+- `.claude/skills/audit/SKILL.md` (create — Claude wrapper)
+- `.cursor/rules/audit.mdc` (create — Cursor wrapper)
+- `.agents/skills/audit/SKILL.md` (create — Antigravity wrapper)
+- `.agent/workflows/audit.md` (create — Antigravity workflow)
+- `.claude/skills/RESOLVER.md` (add entry)
+- `.github/scaffold-files.txt` (add all 5 files)
+
+**Tests:** Verify `skills/audit.md` contains the `@`-include of the rubric, describes ranked output format, and supports `--fix` flag. Verify RESOLVER entry and manifest entries present.
+
 ## Slice 5 — Mechanical CI check + workflow
 
 **Behavior:** `scripts/check-quality-mechanical.sh` runs against changed files, checks file length (>250 lines = violation), magic literals (bare numeric/string not assigned to a named constant), and commented-out code blocks. Emits `filename:line` citations, exits non-zero on any violation. `.github/workflows/quality.yml` runs it as a required check on every PR.
