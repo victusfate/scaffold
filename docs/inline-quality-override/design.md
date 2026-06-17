@@ -157,6 +157,11 @@ pragma awareness through this change.
   `// quality-override:` comment line is skipped by the mechanical script's
   comment filter and does not match its commented-out-code token list, so it
   produces no false positive.)
+  > Deviation: the pragma logic does not touch `check-quality-mechanical.sh`, but
+  > a **separate** false-positive was fixed in it during implementation — the
+  > magic-number scan flagged the digit `10` inside grep-pattern strings in the
+  > rubric test scripts. The fix strips quoted substrings before the scan (bare
+  > numeric literals are still flagged). See tdd-log Slice 6.
 - `skills/tdd.md` and `skills/create-pr.md` are **not** edited: tdd inherits the
   rule via its `@`-include of the rubric, and create-pr inherits the behavior by
   invoking `code-quality-review`.

@@ -40,3 +40,16 @@
   check-resolvable.mjs); release section's "README freshness" → `docs/skills.md`
   freshness, and noted the separate Quality Gate workflow. npm test green
   (README is not asserted by the suite; verified by read-through).
+
+## Slice 6 — Mechanical check: stop false-positive on quoted digits (added)
+- Status: done
+- Notes: NOT in the original plan. The mechanical Quality Gate flagged pre-existing
+  lines in test-rubric-format.sh / test-code-quality-review.sh as magic numbers —
+  the digit "10" inside grep-pattern strings ("Score.*10", "10/10"). Since these
+  files entered this branch's diff, CI would have failed, and magic-number is a
+  mechanical (non-overridable) criterion, so the inline pragma can't rescue it.
+  User chose the root-cause fix. RED: added a quoted-string fixture to
+  test-mechanical-check.sh asserting digits inside a quoted string are not flagged.
+  GREEN: strip single/double-quoted substrings before the magic-number scan in
+  check-quality-mechanical.sh; bare numeric literals still flagged (magic.js
+  fixture still fails). 8/8; gate now clean on the branch diff.
