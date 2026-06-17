@@ -100,6 +100,7 @@ skills/resume.md
 .agents/skills/resume/SKILL.md
 .agent/workflows/pause.md
 .agent/workflows/resume.md
+lib/code-quality-rubric.md
 skills/protect-branch.md
 .claude/skills/protect-branch/SKILL.md
 .cursor/rules/protect-branch.mdc
