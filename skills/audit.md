@@ -21,6 +21,8 @@ Score any scope of source files against the four rubric dimensions and report th
 
 2. **Score each file** — apply all four rubric dimensions. Produce the per-file score table and violation list exactly as defined in the rubric's Score Report Format. Every deduction requires a `filename:line` citation.
 
+   Before deducting, check whether the preceding line — or, for a whole-file criterion, the first non-blank, non-shebang line — carries a `// quality-override: <criterion> — <reason>` pragma. If the criterion is model-driven and the reason is non-empty, suppress that deduction and emit it as an accepted override at zero weight: `path:line [<criterion>/override] accepted — <reason>`. Mechanical criteria are never suppressed. A malformed pragma (unknown criterion, blank reason, or missing separator) is itself a `[Clarity/minor]` violation.
+
 3. **Rank worst-first** — sort files by their lowest single-dimension score (ascending), then by total violation count. Files with all 10/10 scores appear last.
 
 4. **Emit the ranked report:**

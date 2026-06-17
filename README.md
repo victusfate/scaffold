@@ -20,6 +20,7 @@ gh repo clone victusfate/my-new-project
 - **Careful before fast** — features start with a structured design Q&A (`grill-with-docs`) that locks in vocabulary and decisions before any code is written.
 - **Automatic flow** — once Q&A is done, the chain runs to completion (PRD → TDD → review gate) without manual handoffs.
 - **Minimal viable diff** — agents are instructed to make the smallest change that achieves the goal, no opportunistic refactors.
+- **Quality is scored, not vibed** — every file is graded on a four-dimension rubric with cited, weighted deductions; the chain won't open a PR until each changed file scores 10/10.
 
 ## Workflow
 
@@ -32,10 +33,49 @@ grill-with-docs → to-prd → tdd → review
 
 1. **grill-with-docs** — Agent interviews you one question at a time, sharpens terminology, stress-tests against the codebase, and produces `./docs/<slug>/design.md` with a canonical vocabulary and Mermaid/ASCII diagrams as structure becomes clear.
 2. **to-prd** — Synthesizes the conversation and codebase into `./docs/<slug>/prd.md` automatically. No re-interviewing.
-3. **tdd** — Derives `plan.md` from the PRD, then executes RED → GREEN → REFACTOR one vertical slice at a time. Commits per slice.
-4. **Review** — Chain stops and presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
+3. **tdd** — Derives `plan.md` from the PRD, then executes RED → GREEN → REFACTOR one vertical slice at a time, scoring each slice against the quality rubric as it goes. Commits per slice.
+4. **Review** — Once the slices pass, `code-quality-review` brings every changed file to 10/10 on all four rubric dimensions, then the chain presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
 
 Skills can also be invoked individually. See [`docs/skills.md`](docs/skills.md) for the full skill list and repo layout.
+
+## Quality gate
+
+Every feature is scored against a four-dimension rubric — **Quality**,
+**Readability**, **Encapsulation**, **Clarity** — defined once in
+[`lib/code-quality-rubric.md`](lib/code-quality-rubric.md) and shared by every
+skill that scores code. Each dimension starts at 10 and every deduction must cite
+a `filename:line` (`Score = 10 − Σ(violation weights)`), so a score is never a
+vibe.
+
+The rubric is woven through the chain, not bolted on at the end:
+
+- **tdd** loads the rubric as the *generative voice* — code that would violate it
+  is never written, and REFACTOR is a confirmation pass.
+- **`/code-quality-review`** scores the changed files once the slices pass
+  (auto-fix in the chain, review mode standalone). All files must reach 10/10
+  before a PR is opened, and `create-pr` re-runs it as a gate.
+- **`/audit`** is the standalone counterpart — score any scope of files, ranked
+  worst-first, with `--fix` to apply small fixes in place.
+
+A mechanical pre-flight runs in CI on every PR via
+[`.github/workflows/quality.yml`](.github/workflows/quality.yml) →
+`scripts/check-quality-mechanical.sh`: file length, magic literals, and
+commented-out code, each emitting `filename:line` citations and failing the build
+on any hit.
+
+**Overrides (model-driven criteria only).** A genuinely irreducible violation can
+be exempted two ways — both require a reason and appear in the report at zero
+score weight:
+
+- **PR body:** `quality-override: <file> — <criterion> — <reason>`
+- **Inline (colocated):** `// quality-override: <criterion> — <reason>` on the
+  line immediately above the offending line (or the first non-blank, non-shebang
+  line for a whole-file criterion). The rationale lives next to the code and
+  survives merge.
+
+Mechanical criteria can never be overridden by either form — the code must be
+fixed. A malformed pragma (unknown criterion, blank reason, or missing separator)
+is itself a `[Clarity/minor]` violation.
 
 ## Harness support
 
@@ -203,14 +243,17 @@ node scripts/check-resolvable.mjs          # errors block, DRY duplication warns
 node scripts/check-resolvable.mjs --strict # DRY duplication also blocks
 ```
 
-It enforces seven phases: **Reachability** (no skill orphaned from the table),
+It enforces nine phases: **Reachability** (no skill orphaned from the table),
 **Ambiguity** (no two skills share a slash-command route), **DRY** (duplicated
 prose blocks should move to `lib/`), **MECE** (no two skills with overlapping
-purpose — merge via args), **Cursor parity** (every skill has a
-`.cursor/rules/<slug>.mdc` mirror), **Antigravity parity** (every skill has a
-`.agents/skills/<slug>/SKILL.md` + `.agent/workflows/<slug>.md` pair for Google
-Antigravity), and **Scaffold-sync** (every skill is registered in
-`.github/scaffold-files.txt` so it propagates downstream).
+purpose — merge via args), **Wrapper integrity** (each harness wrapper
+`@`-includes the canonical skill body instead of duplicating it), **Cursor
+parity** (every skill has a `.cursor/rules/<slug>.mdc` mirror), **Antigravity
+parity** (every skill has a `.agents/skills/<slug>/SKILL.md` +
+`.agent/workflows/<slug>.md` pair for Google Antigravity), **Frontmatter parity**
+(every wrapper's description matches the Claude form), and **Scaffold-sync**
+(every skill is registered in `.github/scaffold-files.txt` so it propagates
+downstream).
 
 Enable it as a pre-commit gate:
 
@@ -289,7 +332,7 @@ No manual steps needed day-to-day:
 
 1. Developer writes [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, etc.) on the branch
 2. The `create-pr` skill computes the bump from the branch's commits (`scripts/compute-bump.mjs`) and commits the new `package.json` version **on the branch**, before opening the PR
-3. `verify` job runs `npm test` (all tool/script suites + linter + README freshness) on the bump commit — must pass before merge is allowed
+3. `verify` job runs `npm test` (all tool/script suites, the skill-engine linter, the skill/rubric assertion suites, and the `docs/skills.md` freshness check) on the bump commit — must pass before merge is allowed. A separate **Quality Gate** workflow (`quality.yml`) runs the mechanical checks on every PR.
 4. PR merges to `main` with the version bump included
 5. `release.yml` reads the version from `package.json` on `main` and pushes the `v<version>` tag
 

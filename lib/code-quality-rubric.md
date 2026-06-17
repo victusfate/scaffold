@@ -29,6 +29,8 @@ A score of 9 means exactly one minor violation, cited.
 
 **Override (model-driven criteria only):** add `quality-override: <file> — <criterion> — <reason>` to the PR body to exempt a file from a specific non-numeric criterion. Mechanical criteria (file length, magic literals, commented-out code) cannot be overridden — the code must be fixed.
 
+**Inline override (colocated):** place `// quality-override: <criterion> — <reason>` on the line immediately above the offending line. It suppresses that single deduction for `<criterion>` and appears in audit output as an accepted override at **zero** score weight. For a violation that scopes the whole file, place the pragma on the first non-blank, non-shebang line. `<reason>` is required and the em dash `—` is the separator. Mechanical criteria cannot be overridden inline or via PR body — the code must be fixed. A malformed pragma (unknown criterion, blank reason, or missing separator) is itself a `[Clarity/minor]` violation, since a broken override is worse than none.
+
 ---
 
 ## Score Report Format
