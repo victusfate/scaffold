@@ -12,6 +12,7 @@ SCRIPT=scripts/check-quality-mechanical.sh
 
 FIXTURES=$(mktemp -d)
 trap 'rm -rf "$FIXTURES"' EXIT
+FIXTURE_LINE_COUNT=260   # deliberately over the 250-line limit
 
 # Fixture: clean file (≤250 lines, no magic numbers, no commented-out code)
 CLEAN="$FIXTURES/clean.js"
@@ -19,7 +20,7 @@ printf 'const MAX_RETRIES = 3;\nfunction run() { return MAX_RETRIES; }\n' > "$CL
 
 # Fixture: file over 250 lines
 LONG="$FIXTURES/long.js"
-for i in $(seq 1 260); do printf 'const x%d = %d;\n' "$i" "$i"; done > "$LONG"
+for i in $(seq 1 "$FIXTURE_LINE_COUNT"); do printf 'const x%d = %d;\n' "$i" "$i"; done > "$LONG"
 
 # Fixture: file with magic number
 MAGIC="$FIXTURES/magic.js"
