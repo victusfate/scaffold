@@ -18,6 +18,18 @@
 | Mechanical check | The CI shell script that verifies machine-checkable criteria (file length, magic literals, commented-out code) as a required GitHub status check |
 | Quality override | `quality-override: <file> — <criterion> — <reason>` in the PR body; exempts a named file from a specific model-driven criterion only. Mechanical criteria cannot be overridden — the code must be fixed. |
 
+## Reviewer Persona
+
+The rubric is evaluated from the perspective of a **thoughtful senior engineer reading for pleasure**. Their single question: *"Does this code ask anything unnecessary of me?"* Correctness is assumed. They are looking for signal, not ceremony.
+
+This persona shapes every criterion:
+- A function with six parameters fails not because of a rule but because it makes the reader hold six things in mind before they can understand one thing.
+- A comment that restates what the code says fails because it adds noise without adding meaning.
+- A 300-line file fails because no one reads a 300-line file with pleasure.
+- Code that just works but could be half the size is not good enough — the missed simplification is a failure.
+
+**What "10/10" means:** a reader opens the file, reads top to bottom without backtracking, understands every decision, and feels nothing was wasted. No confusion, no ceremony, no line noise. Just as much code as the problem requires and not one character more.
+
 ## Decisions
 
 ### D1 — Augment, not replace
@@ -31,6 +43,11 @@
 - Thin wrappers / abstraction violations → Encapsulation ("opaque internals")
 - Types (unnecessary optionality, casts) → Quality / Clarity
 - Canonical reuse → Clarity ("canonical vocabulary", "obvious data flow")
+
+**Additional criteria from persona:**
+- **Parameter count** — any function/method/hook with >4 parameters is a violation (minor). Group related args into a named options object. The caller should not need to remember argument order.
+- **No ceremony** — any line that exists only to satisfy a pattern (boilerplate, identity wrappers, re-exports of unchanged values) is a violation (minor).
+- **Reader load** — if understanding a single line requires simultaneously holding >1 external concept in mind, it is a violation (major). This is not a mechanical check; the reviewer must cite what the reader would need to look up.
 
 **Alternatives considered:** Replace outright — rejected because it discards concrete worked examples that help the model recognize violations.
 
