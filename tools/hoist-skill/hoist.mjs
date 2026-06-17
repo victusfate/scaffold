@@ -6,7 +6,10 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
-import { loadKeep, safeWrite as sharedSafeWrite } from '../lib/safe-write.mjs';
+import { loadKeep } from '../lib/safe-write.mjs';
+import { readManifest, upsertManifest } from './manifest.mjs';
+import { makeEmitters } from './emitters.mjs';
+import { parseResolverRows } from '../lib/resolver-parse.mjs';
 
 const SCAFFOLD_ROOT = process.env.HOIST_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -22,78 +25,6 @@ process.on('exit', () => {
   if (_fetchTempDir) try { rmSync(_fetchTempDir, { recursive: true, force: true }); } catch { /* best-effort */ }
 });
 
-// ---------------------------------------------------------------- RESOLVER parse
-
-function splitRow(row) {
-  const cells = [];
-  let cur = '', inBt = false;
-  for (const ch of row) {
-    if (ch === '`') { inBt = !inBt; cur += ch; }
-    else if (ch === '|' && !inBt) { cells.push(cur.trim()); cur = ''; }
-    else { cur += ch; }
-  }
-  if (cur.trim()) cells.push(cur.trim());
-  return cells.filter((c, i, a) => !(i === 0 && c === '') && !(i === a.length - 1 && c === ''));
-}
-
-function parseResolver(resolverPath) {
-  const lines = readFileSync(resolverPath, 'utf8').split('\n');
-  const rows = [];
-  let inTable = false;
-  for (const line of lines) {
-    const isRow = /^\s*\|.*\|\s*$/.test(line);
-    if (!isRow) { if (inTable && line.trim()) break; continue; }
-    const cells = splitRow(line);
-    if (cells[0] === 'Skill') { inTable = true; continue; }
-    if (/^-{2,}$/.test(cells[0]?.replace(/[:\s]/g, ''))) continue;
-    if (!inTable || cells.length < 4) continue;
-    rows.push({
-      name: cells[0].replace(/`/g, ''),
-      path: cells[2].replace(/`/g, ''),
-      purpose: cells[3],
-    });
-  }
-  return rows;
-}
-
-// ---------------------------------------------------------------- manifest
-
-export function readManifest(path) {
-  if (!existsSync(path)) return [];
-  return readFileSync(path, 'utf8')
-    .split('\n')
-    .filter(l => l.trim() && !l.startsWith('#'))
-    .map(l => {
-      const parts = l.split('\t');
-      return { name: (parts[0] || '').trim(), harness: (parts[1] || '').trim(), ref: (parts[2] || 'main').trim() };
-    })
-    .filter(e => e.name && e.harness);
-}
-
-function upsertManifest(path, newEntries) {
-  mkdirSync(dirname(path), { recursive: true });
-  const existing = readManifest(path);
-  let header = '# .sync/hoisted — skills hoisted from scaffold; replayed by /pull-scaffold.\n# <name>\t<harness>\t<ref>\n';
-  if (existsSync(path)) {
-    const commentLines = readFileSync(path, 'utf8').split('\n').filter(l => l.startsWith('#'));
-    if (commentLines.length) header = commentLines.join('\n') + '\n';
-  }
-  const merged = [...existing];
-  for (const entry of newEntries) {
-    const idx = merged.findIndex(e => e.name === entry.name && e.harness === entry.harness);
-    if (idx >= 0) merged[idx] = entry;
-    else merged.push(entry);
-  }
-  writeFileSync(path, header + merged.map(e => `${e.name}\t${e.harness}\t${e.ref}`).join('\n') + '\n', 'utf8');
-}
-
-// ---------------------------------------------------------------- clobber-safe write
-// Shared engine (tools/lib/safe-write.mjs); hoist logs status lines to stderr.
-
-function safeWrite(dest, relPath, content, kept, results, force) {
-  sharedSafeWrite(dest, relPath, content, kept, results, force, { log: console.error });
-}
-
 // ---------------------------------------------------------------- source paths (for --plan and --fetch)
 
 function capSourcePaths(cap, harness) {
@@ -107,57 +38,6 @@ function capSourcePaths(cap, harness) {
     paths.push({ path: `.agent/workflows/${cap.name}.md`, required: false });
   }
   return paths;
-}
-
-// ---------------------------------------------------------------- per-harness emitters
-
-function emitClaude(cap, dest, kept, results, srcRoot, force) {
-  const bodyAbs = join(srcRoot, cap.path);
-  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
-  const wrapperRel = `.claude/skills/${cap.name}/SKILL.md`;
-  const src = join(srcRoot, '.claude', 'skills', cap.name, 'SKILL.md');
-  const content = existsSync(src)
-    ? readFileSync(src, 'utf8')
-    : `---\ndescription: ${cap.purpose}\n---\n\n@../../../${cap.path}\n`;
-  safeWrite(dest, wrapperRel, content, kept, results, force);
-}
-
-function emitCursor(cap, dest, kept, results, srcRoot, force) {
-  const bodyAbs = join(srcRoot, cap.path);
-  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
-  const cursorRel = `.cursor/rules/${cap.name}.mdc`;
-  const src = join(srcRoot, '.cursor', 'rules', `${cap.name}.mdc`);
-  const content = existsSync(src)
-    ? readFileSync(src, 'utf8')
-    : `---\ndescription: ${cap.purpose}\n---\n\n@../../${cap.path}\n`;
-  safeWrite(dest, cursorRel, content, kept, results, force);
-}
-
-function emitAntigravity(cap, dest, kept, results, srcRoot, force) {
-  const bodyAbs = join(srcRoot, cap.path);
-  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
-
-  const agentSkillRel = `.agents/skills/${cap.name}/SKILL.md`;
-  const agentSkillSrc = join(srcRoot, '.agents', 'skills', cap.name, 'SKILL.md');
-  const agentSkillContent = existsSync(agentSkillSrc)
-    ? readFileSync(agentSkillSrc, 'utf8')
-    : `---\nname: ${cap.name}\ndescription: |\n  ${cap.purpose}\nlicense: MIT\nmetadata:\n  version: "1.0"\n---\n\nRead and follow the complete skill instructions in [\`${cap.path}\`](../../../${cap.path}).\n`;
-  safeWrite(dest, agentSkillRel, agentSkillContent, kept, results, force);
-
-  const workflowRel = `.agent/workflows/${cap.name}.md`;
-  const workflowSrc = join(srcRoot, '.agent', 'workflows', `${cap.name}.md`);
-  const workflowContent = existsSync(workflowSrc)
-    ? readFileSync(workflowSrc, 'utf8')
-    : `---\ndescription: ${cap.purpose}\n---\n\nRead and follow the complete skill instructions in [\`${cap.path}\`](../../${cap.path}).\n`;
-  safeWrite(dest, workflowRel, workflowContent, kept, results, force);
-}
-
-function makeEmitters(srcRoot, force) {
-  return {
-    claude:      (cap, dest, kept, results) => emitClaude(cap, dest, kept, results, srcRoot, force),
-    cursor:      (cap, dest, kept, results) => emitCursor(cap, dest, kept, results, srcRoot, force),
-    antigravity: (cap, dest, kept, results) => emitAntigravity(cap, dest, kept, results, srcRoot, force),
-  };
 }
 
 // ---------------------------------------------------------------- network fetch (--fetch mode)
@@ -252,7 +132,7 @@ export async function hoist(opts = {}) {
     }
   }
 
-  const registry = parseResolver(join(srcRoot, RESOLVER_REL));
+  const registry = parseResolverRows(join(srcRoot, RESOLVER_REL));
 
   if (listMode) {
     return {
@@ -349,4 +229,3 @@ export async function hoist(opts = {}) {
   const usedHarnesses = [...new Set(emitPairs.map(p => p.harness))];
   return { into: INTO, harnesses: usedHarnesses, results };
 }
-
