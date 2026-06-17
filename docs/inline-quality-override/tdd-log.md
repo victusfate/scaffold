@@ -8,3 +8,24 @@
   pre-wiring, so non-breaking. `npm test` now green and runs them (12/14/5/6/7/5
   checks). No behavioral RED — gate-infrastructure slice; proof is npm test runs
   and passes them.
+
+## Slice 2 — Rubric: inline-override subsection (canonical source)
+- Status: done
+- Notes: RED added 4 assertions to test-rubric-format.sh (inline section,
+  `// quality-override` comment form, mechanical-not-overridable-inline,
+  malformed→Clarity). GREEN added the "Inline override (colocated)" paragraph
+  after the PR-body Override block. 16/16. Propagates to audit/code-quality-review/
+  tdd via the existing @-include.
+
+## Slice 3 — audit.md: pragma-awareness in Procedure step 2
+- Status: done
+- Notes: RED added 2 assertions to test-audit-skill.sh (pragma referenced,
+  preceding-line suppression). GREEN added the "before deducting, check the
+  preceding line" instruction to step 2. 16/16.
+
+## Slice 4 — code-quality-review.md: pragma-awareness in scoring
+- Status: done
+- Notes: RED added 1 assertion to test-code-quality-review.sh (inline pragma
+  awareness, distinct from the pre-existing PR-body override check). GREEN added
+  the preceding-line suppression instruction to the Gate section. 6/6. create-pr's
+  Step 5 gate inherits this by invoking code-quality-review.

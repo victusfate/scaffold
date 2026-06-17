@@ -25,6 +25,8 @@ All files must score 10/10 on all four dimensions before the completion summary 
 
 Mechanical criteria (file length, magic literals, commented-out code) cannot be overridden — the code must be fixed. Model-driven criteria may be overridden via `quality-override` in the PR body.
 
+Before deducting, check the preceding line — or, for a whole-file criterion, the first non-blank, non-shebang line — for a `// quality-override: <criterion> — <reason>` pragma. If the criterion is model-driven and the reason is non-empty, suppress that deduction and report it as an accepted override at zero weight: `path:line [<criterion>/override] accepted — <reason>`. A malformed pragma (unknown criterion, blank reason, or missing separator) is itself a `[Clarity/minor]` violation.
+
 ## Output
 
 After scoring, emit the Quality Scores table before the completion summary:
