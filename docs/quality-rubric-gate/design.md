@@ -51,3 +51,59 @@
 
 **Rationale:** User requirement — visibility into scores at PR time, not just a pass/fail gate. The report surfaces any remaining 8–9 scores so the user can decide to accept or fix before merging.
 
+### D6 — Scores derived from binary violation counting with mandatory citation
+**Decision:** Every score is derived from an explicit count of PASS/FAIL violations. The model must cite `filename:line` for every deduction. No citation → no deduction. Score = 10 − (violations × weight). A "9" means exactly one cited violation.
+
+**Rationale:** Prevents hallucinated quality scores. Subjective judgment ("this feels like a 7") is replaced by evidence-based accounting. Trivially machine-measurable items (file line count via `wc -l`) act as a sanity check.
+
+**Gate:** 8+ on all four dimensions to ship. 10/10 is the target; the auto-fix loop aims for it. Any dimension below 8 is a hard blocker. Scores of 8–9 ship but appear visibly in the PR report.
+
+**Future:** Further measurement enhancement (static analysis, AST-based checks) will be researched separately and can slot in by adding tool-assisted checks alongside the citation model.
+
+## Edge Cases & Scenarios
+
+- **Scenario:** A slice introduces a 300-line orchestrator file → Readability auto-deduction at REFACTOR; auto-fix extracts until under 250 lines or flags for user if extraction exceeds 30 lines.
+- **Scenario:** A violation fix during REFACTOR breaks tests → revert the fix, surface to user with diagnosis rather than looping.
+- **Scenario:** Final report shows one file scoring 7 on Encapsulation → hard blocker; auto-fix applies before PR is created.
+- **Scenario:** React-specific criteria (useEffect deps) in code that is not React → skip those items; they produce no deduction for non-applicable contexts.
+
+## Visualizations
+
+```mermaid
+flowchart TD
+    A[TDD slice GREEN] --> B[REFACTOR phase]
+    B --> C{Rubric check\nbinary violations}
+    C -- "0 violations\ncited" --> D[Score 10/10\nCommit + advance]
+    C -- "violations cited\nfix < 30 lines" --> E[Auto-fix in place\nRe-run tests]
+    E --> C
+    C -- "fix > 30 lines\nor architectural" --> F[Block + surface\nto user]
+    D --> G{More slices?}
+    G -- yes --> A
+    G -- no --> H[Final code-quality-review\nscored report all dims]
+    H --> I[Score report\nin PR body]
+    I --> J{Any dim < 8?}
+    J -- yes --> K[Hard blocker\nauto-fix loop]
+    K --> H
+    J -- no --> L[PR created]
+```
+
+## Q&A Summary
+
+**Q:** Replace or augment existing criteria?
+**A:** Augment — existing criteria (file size, spaghetti, thin wrappers, types, canonical reuse) map into the four dimensions.
+
+**Q:** Where does the rubric live?
+**A:** `lib/code-quality-rubric.md` — @-included by `skills/code-quality-review.md` and `skills/tdd.md`.
+
+**Q:** When does the check run?
+**A:** At every TDD slice REFACTOR phase, plus the final `code-quality-review` pass.
+
+**Q:** Auto-fix or block?
+**A:** Auto-fix in place for fixes <30 lines; block and surface for larger/architectural changes.
+
+**Q:** Score visibility?
+**A:** Scored report (dimension × file) shown after TDD, included in PR body.
+
+**Q:** How to prevent hallucinated scores?
+**A:** Binary violation counting with mandatory file:line citation. No citation → no deduction. Enhancement via static analysis deferred to future research.
+
