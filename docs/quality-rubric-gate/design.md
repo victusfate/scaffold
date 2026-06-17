@@ -10,6 +10,9 @@
 | Auto-fix | The code-quality-review mode in which findings are applied directly without user approval |
 | Review mode | The code-quality-review mode in which findings are presented as diffs for user approval |
 | Slice | One vertical TDD unit (data → logic → UI → tests) from plan.md |
+| Baseline Score | The rubric score for a file before this PR's changes; published in the PR report for comparison |
+| Citation | A `filename:line` reference that must accompany every violation claim; absence invalidates the deduction |
+| Violation Weight | The score deduction per cited violation; defined per criterion in the rubric |
 
 ## Decisions
 
@@ -59,6 +62,13 @@
 **Gate:** 8+ on all four dimensions to ship. 10/10 is the target; the auto-fix loop aims for it. Any dimension below 8 is a hard blocker. Scores of 8–9 ship but appear visibly in the PR report.
 
 **Future:** Further measurement enhancement (static analysis, AST-based checks) will be researched separately and can slot in by adding tool-assisted checks alongside the citation model.
+
+### D7 — Scaffold dogfoods the rubric against its own source files
+**Decision:** As part of implementing this feature, we run the rubric against scaffold's own changed source files (`scripts/`, `tools/`, `skills/`, `bin/`) and publish the baseline scores. This validates the rubric logic, surfaces any existing violations in scaffold, and produces a concrete reference output that confirms the implementation works correctly.
+
+**Rationale:** The best test of a scoring system is running it on known code. Scaffold's own files are familiar, well-maintained, and reviewed — if the rubric produces plausible scores there, it's working. If it doesn't, we catch it before downstream repos see it.
+
+**Scope:** Run against files changed by this PR, plus a spot-check of the two largest files in `tools/` and `scripts/`.
 
 ## Edge Cases & Scenarios
 
