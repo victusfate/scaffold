@@ -27,3 +27,17 @@
 
 **Alternatives considered:** Replace outright — rejected because it discards concrete worked examples that help the model recognize violations.
 
+### D2 — Rubric lives in lib/, referenced by @-include
+**Decision:** Rubric content lives in `lib/code-quality-rubric.md`. Both `skills/code-quality-review.md` and `skills/tdd.md` `@`-include it.
+
+**Rationale:** The rubric runs after every code gen — at each TDD slice's REFACTOR phase, not just the final review. Two skills need it; a shared lib doc avoids duplication and gives downstream repos a single file to override.
+
+**Alternatives considered:** Embed in `code-quality-review.md` only — rejected because the REFACTOR phase in `tdd.md` also needs the rubric, and duplicating prose across skills creates drift.
+
+### D3 — Rubric check is per-slice in REFACTOR, not just end-of-feature
+**Decision:** The four-dimension rubric check runs at the REFACTOR step of every TDD slice, as well as at the final `code-quality-review` pass after all slices complete.
+
+**Rationale:** User requirement — "runs after any code gen" to prevent structurally poor code accumulating slice by slice. Catching violations per-slice is cheaper than fixing them all at the end.
+
+**Scope:** The per-slice check is a self-assessment against the rubric criteria; the final `code-quality-review` is the authoritative scored pass in auto-fix mode.
+
