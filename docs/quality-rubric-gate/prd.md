@@ -12,10 +12,11 @@ Introduce a four-dimension rubric (Quality, Readability, Encapsulation, Clarity)
 
 1. As a developer running `/tdd`, I want the rubric checked at every REFACTOR phase so violations are fixed before the next slice starts, not discovered at PR time.
 2. As a developer, I want every quality score backed by a cited `filename:line` violation so I can audit or dispute the score.
-3. As a developer, I want to see a scored dimension × file table after TDD completes so I know exactly where the remaining 8s or 9s are before creating a PR.
+3. As a developer, I want to see a scored dimension × file table after TDD completes so I know exactly where any remaining violations are before creating a PR.
 4. As a developer, I want violations auto-fixed in place (and tests re-run) for small fixes (<30 lines) so the chain keeps moving without interruption.
 5. As a developer, I want large or architectural fixes surfaced for my approval rather than silently applied.
-6. As a PR reviewer, I want the rubric scores in the PR body so I can see the quality baseline at a glance.
+6. As a PR reviewer, I want the rubric scores in the PR body so I can confirm all dimensions hit 10/10 (or see any explicit overrides with stated reasons).
+7. As a scaffold maintainer, I want a mechanical CI check as a required GitHub status so quality gates can't be bypassed by skipping the skill.
 7. As a scaffold maintainer, I want the rubric to gate this PR's own changed files (dogfooding) so the implementation is self-validating from day one.
 
 ## Implementation Decisions
@@ -42,11 +43,16 @@ Introduce a four-dimension rubric (Quality, Readability, Encapsulation, Clarity)
   - path/to/file.js:47 [Readability/minor] magic number 86400 — extract to MAX_AGE_SECONDS
   ```
 
-- **Gate:** scores are emitted after the table. Any dimension <8 triggers the auto-fix loop before the summary or PR creation proceeds.
+- **Gate:** 10/10 on all four dimensions required on every changed file. Any dimension below 10 triggers the auto-fix loop before the summary or PR creation proceeds. A `quality-override: <file> — <criterion> — <reason>` line in the PR body exempts that file from a specific model-driven criterion only. Mechanical criteria (file length, magic literals, commented-out code) cannot be overridden — the code must be fixed. Overrides are visible in the PR record and must be re-justified per PR.
+
+### Mechanical CI check
+
+- **Create `scripts/check-quality-mechanical.sh`** — shell script that runs against `git diff main...HEAD --name-only` to find changed files, then for each: checks line count (`wc -l` > 250 = violation), scans for magic literals (bare numeric/string literals not assigned to a named constant, via regex), scans for commented-out code blocks (`//` or `#` lines containing code patterns). Emits `PASS` or `FAIL` with `filename:line` citations. Exits non-zero on any violation.
+- **Create `.github/workflows/quality.yml`** — GitHub Actions workflow that runs `scripts/check-quality-mechanical.sh` as a required check on every PR. Must pass before merge.
 
 ### Scaffold-files manifest
 
-`lib/code-quality-rubric.md` must be added to `.github/scaffold-files.txt` so it propagates to downstream repos on sync.
+`lib/code-quality-rubric.md` and `scripts/check-quality-mechanical.sh` must be added to `.github/scaffold-files.txt` so they propagate to downstream repos on sync.
 
 ### Harness wrappers
 

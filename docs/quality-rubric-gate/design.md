@@ -15,6 +15,8 @@
 | Violation Weight | The score deduction per cited violation; each criterion in `lib/code-quality-rubric.md` declares its own weight (minor = −1, major = −2, critical = −4) |
 | Per-slice check | Lightweight rubric self-assessment run at each TDD REFACTOR phase; auto-fixes violations in place |
 | Final review | The authoritative scored pass run by `code-quality-review` after all slices complete; produces the dimension × file score table |
+| Mechanical check | The CI shell script that verifies machine-checkable criteria (file length, magic literals, commented-out code) as a required GitHub status check |
+| Quality override | `quality-override: <file> — <criterion> — <reason>` in the PR body; exempts a named file from a specific model-driven criterion only. Mechanical criteria cannot be overridden — the code must be fixed. |
 
 ## Decisions
 
@@ -61,9 +63,24 @@
 
 **Rationale:** Prevents hallucinated quality scores. Subjective judgment ("this feels like a 7") is replaced by evidence-based accounting. Trivially machine-measurable items (file line count via `wc -l`) act as a sanity check.
 
-**Gate:** 8+ on all four dimensions to ship. 10/10 is the target; the auto-fix loop aims for it. Any dimension below 8 is a hard blocker. Scores of 8–9 ship but appear visibly in the PR report.
+**Gate:** 10/10 on all four dimensions required to ship. The auto-fix loop drives toward 10/10; if it cannot reach it automatically, it surfaces the remaining violations for the developer to resolve. There is no "good enough" threshold — mandatory citations mean every deduction is auditable, so the loop should always be able to close.
+
+**Override:** Only model-driven (non-numeric) criteria are overridable. Add `quality-override: <file> — <criterion> — <reason>` to the PR body; the model gate skips that criterion for that file. Mechanical/numeric criteria (file length, magic literals, commented-out code) are hard gates — the code must be fixed; no override path exists for them.
+
+Overrides are visible in the PR record and must be re-justified on each new PR that touches the file.
 
 **Future:** Further measurement enhancement (static analysis, AST-based checks) will be researched separately and can slot in by adding tool-assisted checks alongside the citation model.
+
+### D7b — Two-tier merge validation
+**Decision:** Merge validation is two-tier:
+1. **Mechanical CI check** (`scripts/check-quality-mechanical.sh`) — runs as a required GitHub Actions job. Checks file length (`wc -l`), magic literals (regex), commented-out code (regex). Emits pass/fail with citations. Blocks merge at infrastructure level.
+2. **Model-driven gate in `create-pr`** — runs the full four-dimension rubric before opening the PR. Blocks PR creation if any file scores below 10/10 on any dimension (after auto-fix loop). Scores go in PR body.
+
+**Gate:** 10/10 on all four dimensions on all changed files. No partial credit.
+
+**Override:** `quality-override: <file> — <reason>` in PR body exempts a specific file from both tiers. Visible in PR record; must be re-justified per PR.
+
+**Rationale:** Mechanical CI catches criteria that can be checked without a model — enforced at the GitHub infrastructure level regardless of whether the developer ran the skill. The model pass catches the rest. Together they're stronger than either alone.
 
 ### D7 — Scaffold dogfoods the rubric against its own source files
 **Decision:** The rubric gates this PR's own changed files. Because the PR modifies `lib/code-quality-rubric.md`, `skills/code-quality-review.md`, and `skills/tdd.md`, the final review runs on those exact files — dogfooding is the normal gate, not a special step.
