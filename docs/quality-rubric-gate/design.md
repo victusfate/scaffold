@@ -41,3 +41,13 @@
 
 **Scope:** The per-slice check is a self-assessment against the rubric criteria; the final `code-quality-review` is the authoritative scored pass in auto-fix mode.
 
+### D4 — Auto-fix in place; block only for large/architectural changes
+**Decision:** Rubric violations found during REFACTOR are fixed immediately in-place. Tests re-run to confirm green before committing. Block and surface only when the fix would exceed ~30 lines or require architectural rethinking.
+
+**Rationale:** Keeps the chain moving without per-slice interruptions while still catching structural problems early.
+
+### D5 — Scored report shown after TDD, included in PR
+**Decision:** After all TDD slices complete and all auto-fixes are applied, the final `code-quality-review` produces a scored report (dimension × file, 1–10 each) that is shown to the user before PR creation and included in the PR body.
+
+**Rationale:** User requirement — visibility into scores at PR time, not just a pass/fail gate. The report surfaces any remaining 8–9 scores so the user can decide to accept or fix before merging.
+
