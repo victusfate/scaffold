@@ -13,14 +13,14 @@
 
 ---
 
-## Slice 2 — TDD skill: per-slice rubric check in REFACTOR
+## Slice 2 — TDD skill: rubric as generative voice (strange loop)
 
-**Behavior:** After every GREEN, the REFACTOR phase runs the rubric against files touched in that slice, shows per-dimension scores with citations, auto-fixes violations <30 lines and re-runs tests, blocks and surfaces violations >30 lines. Slice is not committed until all scores are 10/10.
+**Behavior:** The rubric is loaded before GREEN, not just at REFACTOR. The model writes code as the thoughtful senior engineer — the reviewer persona is the generative voice. REFACTOR is a confirmation pass: scores are shown, violations are surfaced (not silently patched). A violation found at REFACTOR signals a GREEN-phase failure; auto-fix applies for <30 lines, surfaces for >30. Slice not committed until all scores are 10/10.
 
 **Files:**
-- `skills/tdd.md` (modify — add rubric check to REFACTOR section)
+- `skills/tdd.md` (modify — @-include rubric before GREEN step AND in REFACTOR; REFACTOR reframed as confirmation)
 
-**Tests:** Verify `skills/tdd.md` contains the `@`-include of the rubric and describes the per-slice scoring and auto-fix loop.
+**Tests:** Verify `skills/tdd.md` contains the `@`-include before the GREEN step, the confirmation framing in REFACTOR, and the per-slice score display.
 
 ---
 

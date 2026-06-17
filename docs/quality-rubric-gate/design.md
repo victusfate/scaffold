@@ -18,6 +18,18 @@
 | Mechanical check | The CI shell script that verifies machine-checkable criteria (file length, magic literals, commented-out code) as a required GitHub status check |
 | Quality override | `quality-override: <file> — <criterion> — <reason>` in the PR body; exempts a named file from a specific model-driven criterion only. Mechanical criteria cannot be overridden — the code must be fixed. |
 
+## Strange Loop Architecture
+
+The rubric is not a post-hoc judge. It is the generative voice itself.
+
+The standard model is: write code → review → fix. This produces code that starts poor and gets corrected. The loop terminates when violations are gone.
+
+The strange loop model: load the rubric first → write code as the reviewer would write it → REFACTOR confirms rather than corrects. The reviewer and the generator are the same consciousness. Code that violates the rubric was never written — the inner voice rejected it during composition.
+
+**Practical consequence:** In the TDD skill, the rubric is `@`-included at the top of the REFACTOR prompt AND before the GREEN step. The model does not write first and judge later; it writes as the thoughtful senior engineer who would never produce a 300-line file or a 6-parameter function in the first place.
+
+REFACTOR becomes a confirmation pass, not a correction pass. If REFACTOR finds violations, something went wrong during GREEN — surface it rather than silently patching.
+
 ## Reviewer Persona
 
 The rubric is evaluated from the perspective of a **thoughtful senior engineer reading for pleasure**. Their single question: *"Does this code ask anything unnecessary of me?"* Correctness is assumed. They are looking for signal, not ceremony.
