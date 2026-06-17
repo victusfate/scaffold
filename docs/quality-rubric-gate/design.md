@@ -12,7 +12,9 @@
 | Slice | One vertical TDD unit (data → logic → UI → tests) from plan.md |
 | Baseline Score | The rubric score for a file before this PR's changes; published in the PR report for comparison |
 | Citation | A `filename:line` reference that must accompany every violation claim; absence invalidates the deduction |
-| Violation Weight | The score deduction per cited violation; defined per criterion in the rubric |
+| Violation Weight | The score deduction per cited violation; each criterion in `lib/code-quality-rubric.md` declares its own weight (minor = −1, major = −2, critical = −4) |
+| Per-slice check | Lightweight rubric self-assessment run at each TDD REFACTOR phase; auto-fixes violations in place |
+| Final review | The authoritative scored pass run by `code-quality-review` after all slices complete; produces the dimension × file score table |
 
 ## Decisions
 
@@ -55,7 +57,7 @@
 **Rationale:** User requirement — visibility into scores at PR time, not just a pass/fail gate. The report surfaces any remaining 8–9 scores so the user can decide to accept or fix before merging.
 
 ### D6 — Scores derived from binary violation counting with mandatory citation
-**Decision:** Every score is derived from an explicit count of PASS/FAIL violations. The model must cite `filename:line` for every deduction. No citation → no deduction. Score = 10 − (violations × weight). A "9" means exactly one cited violation.
+**Decision:** Every score is derived from an explicit count of PASS/FAIL violations. The model must cite `filename:line` for every deduction. No citation → no deduction. Score = 10 − Σ(violation weights). Weights are declared per criterion in `lib/code-quality-rubric.md`: minor violations (−1), major violations (−2), critical violations (−4). A score of "9" means exactly one minor violation cited.
 
 **Rationale:** Prevents hallucinated quality scores. Subjective judgment ("this feels like a 7") is replaced by evidence-based accounting. Trivially machine-measurable items (file line count via `wc -l`) act as a sanity check.
 
@@ -64,11 +66,9 @@
 **Future:** Further measurement enhancement (static analysis, AST-based checks) will be researched separately and can slot in by adding tool-assisted checks alongside the citation model.
 
 ### D7 — Scaffold dogfoods the rubric against its own source files
-**Decision:** As part of implementing this feature, we run the rubric against scaffold's own changed source files (`scripts/`, `tools/`, `skills/`, `bin/`) and publish the baseline scores. This validates the rubric logic, surfaces any existing violations in scaffold, and produces a concrete reference output that confirms the implementation works correctly.
+**Decision:** The rubric gates this PR's own changed files. Because the PR modifies `lib/code-quality-rubric.md`, `skills/code-quality-review.md`, and `skills/tdd.md`, the final review runs on those exact files — dogfooding is the normal gate, not a special step.
 
-**Rationale:** The best test of a scoring system is running it on known code. Scaffold's own files are familiar, well-maintained, and reviewed — if the rubric produces plausible scores there, it's working. If it doesn't, we catch it before downstream repos see it.
-
-**Scope:** Run against files changed by this PR, plus a spot-check of the two largest files in `tools/` and `scripts/`.
+**Rationale:** Running the rubric on the files that define the rubric is the strongest validation. If the implementation produces plausible, auditable scores on its own source, it works. If it doesn't, we catch it before downstream repos see it.
 
 ## Edge Cases & Scenarios
 
