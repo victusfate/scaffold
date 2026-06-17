@@ -29,3 +29,14 @@
   awareness, distinct from the pre-existing PR-body override check). GREEN added
   the preceding-line suppression instruction to the Gate section. 6/6. create-pr's
   Step 5 gate inherits this by invoking code-quality-review.
+
+## Slice 5 — README: full refresh against latest flows (doc-only)
+- Status: done
+- Notes: Added a "Quality gate" section (rubric, /audit, /code-quality-review,
+  mechanical quality.yml, both override forms) and a "Quality is scored, not
+  vibed" philosophy bullet. Updated Workflow phases 3–4 to mention rubric scoring
+  + the 10/10 gate. Corrected drift found during the audit: skill-engine "seven
+  phases" → nine (added Wrapper integrity + Frontmatter parity, verified against
+  check-resolvable.mjs); release section's "README freshness" → `docs/skills.md`
+  freshness, and noted the separate Quality Gate workflow. npm test green
+  (README is not asserted by the suite; verified by read-through).
