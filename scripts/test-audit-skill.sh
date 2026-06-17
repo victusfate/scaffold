@@ -24,6 +24,12 @@ grep -qE 'rank|worst|score' "$SKILL" \
 grep -qE '\-\-fix|--fix' "$SKILL" \
   && ok "--fix flag described" || fail "--fix flag not described"
 
+grep -q 'quality-override' "$SKILL" \
+  && ok "inline override pragma referenced" || fail "inline override pragma not referenced"
+
+grep -qE 'preceding line|line above|accepted override|suppress' "$SKILL" \
+  && ok "preceding-line suppression described" || fail "preceding-line suppression not described"
+
 grep -q '@../../../skills/audit.md' "$CLAUDE_WRAPPER" \
   && ok "Claude wrapper @-includes skill body" || fail "Claude wrapper missing @-include"
 
