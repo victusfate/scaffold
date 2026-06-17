@@ -118,3 +118,8 @@ skills/frontend-design.md
 .cursor/rules/frontend-design.mdc
 .agents/skills/frontend-design/SKILL.md
 .agent/workflows/frontend-design.md
+skills/audit.md
+.claude/skills/audit/SKILL.md
+.cursor/rules/audit.mdc
+.agents/skills/audit/SKILL.md
+.agent/workflows/audit.md
