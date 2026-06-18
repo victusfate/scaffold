@@ -3,7 +3,6 @@ import { existsSync, readFileSync } from 'fs';
 import { join, extname } from 'path';
 import { registry } from './registry.mjs';
 
-// Build extension → language map from registry
 const extMap = new Map();
 for (const [lang, entry] of Object.entries(registry)) {
   for (const ext of entry.extensions) extMap.set(ext, lang);

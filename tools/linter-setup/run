@@ -4,7 +4,6 @@
 //   linter-setup [--detect-only] [--into <path>] [--scaffold-root=<path>]
 //   linter-setup [--into <path>] [--scaffold-root=<path>]  < confirmed-languages.json
 
-import { createReadStream } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 

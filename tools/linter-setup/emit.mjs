@@ -25,12 +25,10 @@ export async function emit(language, targetRepo, srcRoot) {
 
     if (existsSync(destPath)) {
       const existing = readFileSync(destPath, 'utf8');
-      // already has scaffold marker — skip
       if (existing.includes(entry.marker)) {
         skipped.push(dest);
         continue;
       }
-      // foreign config — write sidecar, leave original untouched
       copyFileSync(srcPath, `${destPath}.scaffold-new`);
       sidecars.push(dest);
       continue;

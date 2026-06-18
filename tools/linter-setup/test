@@ -18,7 +18,6 @@ const fail_ = msg => { console.log(`  ✗ ${msg}`); fail++; };
 // Slice 1 — registry
 
 const REQUIRED_FIELDS = ['extensions', 'linter', 'workflowFile', 'marker', 'metricsOnly'];
-const REQUIRED_CONFIG_FIELDS = ['configFile']; // absent only when metricsOnly
 
 const EXPECTED_LANGUAGES = [
   'js', 'python', 'go', 'rust', 'ruby', 'shell', 'elixir', 'zig', 'mojo',
