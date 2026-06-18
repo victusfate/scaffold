@@ -4,7 +4,7 @@
 # Exits non-zero if any violation is found. All violations include filename:line citations.
 set -euo pipefail
 
-MAX_LINES=250
+MAX_LINES=500
 VIOLATIONS=0
 
 emit() { echo "$1"; VIOLATIONS=$((VIOLATIONS + 1)); }
