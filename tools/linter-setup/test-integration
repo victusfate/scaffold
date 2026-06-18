@@ -209,5 +209,27 @@ console.log('\nScenario 11: invalid JSON on stdin exits non-zero');
   assert('exits non-zero', r.code !== 0);
 }
 
+// ----------------------------------------------------------------
+// Scenario 12: stale detection — fresh emit is scaffold, drifted is stale
+console.log('\nScenario 12: emitted config reports scaffold; drifted hash reports stale');
+{
+  const repo = makeTmpRepo();
+  addFile(repo, 'app.js');
+  runWithStdin(['--into', repo, scaffoldRootArg], '["js"]');
+
+  const cfgPath = join(repo, 'eslint.config.mjs');
+  const stamped = readFileSync(cfgPath, 'utf8');
+  assert('emitted config carries stamped hash', /sha256:[0-9a-f]{12}/.test(stamped));
+
+  let js = JSON.parse(run(['--detect-only', '--into', repo, scaffoldRootArg]).stdout)
+    .find(x => x.language === 'js');
+  assert('freshly emitted config is scaffold (current)', js?.state === 'scaffold', `got ${js?.state}`);
+
+  writeFileSync(cfgPath, stamped.replace(/sha256:[0-9a-f]+/, 'sha256:000000000000'));
+  js = JSON.parse(run(['--detect-only', '--into', repo, scaffoldRootArg]).stdout)
+    .find(x => x.language === 'js');
+  assert('drifted config reports stale', js?.state === 'stale', `got ${js?.state}`);
+}
+
 console.log(`\n${passed} passed, ${failed} failed.`);
 process.exit(failed > 0 ? 1 : 0);

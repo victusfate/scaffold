@@ -105,7 +105,7 @@ async function main() {
   // Suggest /add-linter for any detected language not yet using scaffold thresholds
   if (!check) {
     try {
-      const langs = await detect(INTO);
+      const langs = await detect(INTO, srcRoot);
       const actionable = langs.filter(l => l.state !== 'scaffold');
       if (actionable.length > 0) {
         const names = actionable.map(l => l.language).join(', ');
