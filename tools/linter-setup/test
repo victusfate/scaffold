@@ -1,0 +1,272 @@
+#!/usr/bin/env node
+import { registry } from './registry.mjs';
+import { detect } from './detect.mjs';
+import { emit } from './emit.mjs';
+import { templateHash } from './hash.mjs';
+import { mkdtempSync, writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { execSync } from 'child_process';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+let pass = 0, fail = 0;
+const ok   = msg => { console.log(`  ✓ ${msg}`); pass++; };
+const fail_ = msg => { console.log(`  ✗ ${msg}`); fail++; };
+
+// Slice 1 — registry
+
+const REQUIRED_FIELDS = ['extensions', 'linter', 'workflowFile', 'marker', 'metricsOnly'];
+
+const EXPECTED_LANGUAGES = [
+  'js', 'python', 'go', 'rust', 'ruby', 'shell', 'elixir', 'zig', 'mojo',
+];
+
+for (const lang of EXPECTED_LANGUAGES) {
+  registry[lang]
+    ? ok(`${lang} in registry`)
+    : fail_(`${lang} missing from registry`);
+}
+
+for (const [lang, entry] of Object.entries(registry)) {
+  for (const field of REQUIRED_FIELDS) {
+    entry[field] !== undefined
+      ? ok(`${lang}.${field} present`)
+      : fail_(`${lang}.${field} missing`);
+  }
+  if (!entry.metricsOnly) {
+    entry.configFile
+      ? ok(`${lang}.configFile present (metrics language)`)
+      : fail_(`${lang}.configFile missing (metrics language)`);
+  }
+  Array.isArray(entry.extensions) && entry.extensions.length > 0
+    ? ok(`${lang}.extensions non-empty array`)
+    : fail_(`${lang}.extensions must be non-empty array`);
+  typeof entry.marker === 'string' && entry.marker.includes(lang)
+    ? ok(`${lang}.marker contains language name`)
+    : fail_(`${lang}.marker must contain language name`);
+}
+
+// zig and mojo are metricsOnly
+['zig', 'mojo'].forEach(lang => {
+  registry[lang]?.metricsOnly === true
+    ? ok(`${lang} is metricsOnly`)
+    : fail_(`${lang} should be metricsOnly`);
+});
+
+// metrics languages are not metricsOnly
+['js', 'python', 'go', 'rust', 'ruby', 'elixir'].forEach(lang => {
+  registry[lang]?.metricsOnly === false
+    ? ok(`${lang} is not metricsOnly`)
+    : fail_(`${lang} should not be metricsOnly`);
+});
+
+// Slice 2 — detection
+
+function makeTmp() {
+  const dir = mkdtempSync(join(tmpdir(), 'linter-setup-test-'));
+  execSync('git init -q', { cwd: dir });
+  execSync('git config commit.gpgsign false', { cwd: dir });
+  execSync('git config user.email "test@test.com"', { cwd: dir });
+  execSync('git config user.name "Test"', { cwd: dir });
+  execSync('git commit --allow-empty -m init -q', { cwd: dir });
+  return dir;
+}
+
+function touch(dir, relPath) {
+  const full = join(dir, relPath);
+  mkdirSync(full.replace(/\/[^/]+$/, ''), { recursive: true });
+  writeFileSync(full, '');
+  execSync(`git add "${relPath}"`, { cwd: dir });
+}
+
+// no files → empty result
+{
+  const dir = makeTmp();
+  const result = await detect(dir);
+  result.length === 0
+    ? ok('empty repo → no languages detected')
+    : fail_('empty repo should return empty array');
+}
+
+// .py file → python state:none
+{
+  const dir = makeTmp();
+  touch(dir, 'main.py');
+  const result = await detect(dir);
+  const py = result.find(r => r.language === 'python');
+  py ? ok('python detected from .py file') : fail_('python not detected');
+  py?.state === 'none' ? ok('python state is none (no config)') : fail_(`python state should be none, got ${py?.state}`);
+}
+
+// unknown extension → not reported
+{
+  const dir = makeTmp();
+  touch(dir, 'main.swift');
+  const result = await detect(dir);
+  result.length === 0
+    ? ok('unknown extension not reported')
+    : fail_('unknown extension should not appear in results');
+}
+
+// multiple languages detected
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  touch(dir, 'main.py');
+  touch(dir, 'main.go');
+  const result = await detect(dir);
+  const langs = result.map(r => r.language).sort();
+  JSON.stringify(langs) === JSON.stringify(['go', 'js', 'python'])
+    ? ok('js + python + go all detected')
+    : fail_(`expected [go,js,python], got [${langs}]`);
+}
+
+// existing config with scaffold marker → state:scaffold
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), '// scaffold-linter: js\n');
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const result = await detect(dir);
+  const js = result.find(r => r.language === 'js');
+  js?.state === 'scaffold'
+    ? ok('js state is scaffold when marker present')
+    : fail_(`js state should be scaffold, got ${js?.state}`);
+}
+
+// existing config without scaffold marker → state:foreign
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), 'export default [];\n');
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const result = await detect(dir);
+  const js = result.find(r => r.language === 'js');
+  js?.state === 'foreign'
+    ? ok('js state is foreign when config exists without marker')
+    : fail_(`js state should be foreign, got ${js?.state}`);
+}
+
+// Slice 3 — emit (JS/TS tracer bullet)
+
+const srcRoot = join(__dirname, '../../');
+
+// emit JS config + workflow into fresh dir
+{
+  const dir = makeTmp();
+  const result = await emit('js', dir, srcRoot);
+  existsSync(join(dir, 'eslint.config.mjs'))
+    ? ok('emit: eslint.config.mjs written')
+    : fail_('emit: eslint.config.mjs not found');
+  existsSync(join(dir, '.github/workflows/lint-js.yml'))
+    ? ok('emit: lint-js.yml written')
+    : fail_('emit: lint-js.yml not found');
+  const config = readFileSync(join(dir, 'eslint.config.mjs'), 'utf8');
+  config.includes('// scaffold-linter: js')
+    ? ok('emit: scaffold marker in config')
+    : fail_('emit: scaffold marker missing from config');
+  result.written?.length === 2
+    ? ok('emit: result lists 2 written files')
+    : fail_(`emit: expected 2 written, got ${result.written?.length}`);
+}
+
+// emit: conflict → sidecar written, original untouched
+{
+  const dir = makeTmp();
+  const existing = 'export default []; // existing config\n';
+  writeFileSync(join(dir, 'eslint.config.mjs'), existing);
+  await emit('js', dir, srcRoot);
+  const original = readFileSync(join(dir, 'eslint.config.mjs'), 'utf8');
+  original === existing
+    ? ok('emit: original untouched on conflict')
+    : fail_('emit: original was overwritten on conflict');
+  existsSync(join(dir, 'eslint.config.mjs.scaffold-new'))
+    ? ok('emit: sidecar written on conflict')
+    : fail_('emit: sidecar not written on conflict');
+}
+
+// emit: scaffold state → skipped (already set up)
+{
+  const dir = makeTmp();
+  const existing = '// scaffold-linter: js\nexport default [];\n';
+  writeFileSync(join(dir, 'eslint.config.mjs'), existing);
+  const result = await emit('js', dir, srcRoot);
+  result.skipped?.includes('eslint.config.mjs')
+    ? ok('emit: scaffold config skipped (already set up)')
+    : fail_('emit: scaffold config should be skipped');
+}
+
+// Slice 1 (merge-tune) — emit stamps template hash into the marker
+
+{
+  const dir = makeTmp();
+  await emit('js', dir, srcRoot);
+  const config = readFileSync(join(dir, 'eslint.config.mjs'), 'utf8');
+  const expected = templateHash(srcRoot, 'js');
+  const m = config.match(/scaffold-linter: js sha256:([0-9a-f]{12})/);
+  m
+    ? ok('emit: marker carries sha256:<hash12>')
+    : fail_('emit: marker missing stamped hash');
+  m && m[1] === expected
+    ? ok('emit: stamped hash matches template hash')
+    : fail_(`emit: stamped hash ${m?.[1]} != template ${expected}`);
+}
+
+// Slice 2 (merge-tune) — detect resolves `stale` via hash compare
+
+// stamped hash differs from current template → stale
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), '// scaffold-linter: js sha256:000000000000\nexport default [];\n');
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const js = (await detect(dir, srcRoot)).find(r => r.language === 'js');
+  js?.state === 'stale'
+    ? ok('js state is stale when stamped hash differs from template')
+    : fail_(`js state should be stale, got ${js?.state}`);
+}
+
+// stamped hash matches current template → scaffold
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  const current = templateHash(srcRoot, 'js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), `// scaffold-linter: js sha256:${current}\nexport default [];\n`);
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const js = (await detect(dir, srcRoot)).find(r => r.language === 'js');
+  js?.state === 'scaffold'
+    ? ok('js state is scaffold when stamped hash matches current template')
+    : fail_(`js state should be scaffold, got ${js?.state}`);
+}
+
+// Slice 3 (merge-tune) — marker parsing: legacy + unreachable tolerance
+
+// marker present without a stamped hash (legacy) → scaffold, never stale
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), '// scaffold-linter: js\nexport default [];\n');
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const js = (await detect(dir, srcRoot)).find(r => r.language === 'js');
+  js?.state === 'scaffold'
+    ? ok('legacy marker without hash → scaffold (current)')
+    : fail_(`legacy marker should be scaffold, got ${js?.state}`);
+}
+
+// template unreachable (bogus srcRoot) → cannot compute hash → scaffold, never stale
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), '// scaffold-linter: js sha256:000000000000\nexport default [];\n');
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const js = (await detect(dir, join(dir, 'no-such-scaffold'))).find(r => r.language === 'js');
+  js?.state === 'scaffold'
+    ? ok('unreachable template → scaffold fallback (never falsely stale)')
+    : fail_(`unreachable template should fall back to scaffold, got ${js?.state}`);
+}
+
+console.log(`\n${pass} passed, ${fail} failed.`);
+process.exit(fail > 0 ? 1 : 0);

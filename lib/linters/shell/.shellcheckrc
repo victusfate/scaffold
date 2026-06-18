@@ -1,0 +1,5 @@
+# scaffold-linter: shell
+# Shellcheck enforces correctness for shell scripts.
+# Quantitative metrics (file length, magic numbers) are covered by the
+# scaffold mechanical check (check-quality-mechanical.sh) for .sh/.bash files.
+enable=all

@@ -1,0 +1,18 @@
+# scaffold-linter: zig
+# zig fmt enforces formatting. No complexity linter exists for Zig yet.
+name: Lint Zig
+
+on:
+  pull_request:
+    paths:
+      - '**/*.zig'
+
+jobs:
+  zig-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
+      - run: zig fmt --check .

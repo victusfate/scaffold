@@ -1,0 +1,20 @@
+# scaffold-linter: python
+
+[lint]
+select = [
+  "E",      # pycodestyle errors
+  "W",      # pycodestyle warnings
+  "C901",   # McCabe complexity (max-complexity below)
+  "PLR0913", # too many arguments (>4)
+  "PLR0914", # too many local variables (file size proxy)
+  "PLR2004", # magic value in comparison
+]
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.pylint]
+max-args = 4
+
+[format]
+line-length = 120

@@ -123,3 +123,8 @@ skills/audit.md
 .cursor/rules/audit.mdc
 .agents/skills/audit/SKILL.md
 .agent/workflows/audit.md
+skills/add-linter.md
+.claude/skills/add-linter/SKILL.md
+.cursor/rules/add-linter.mdc
+.agents/skills/add-linter/SKILL.md
+.agent/workflows/add-linter.md
