@@ -215,5 +215,32 @@ const srcRoot = join(__dirname, '../../');
     : fail_(`emit: stamped hash ${m?.[1]} != template ${expected}`);
 }
 
+// Slice 2 (merge-tune) — detect resolves `stale` via hash compare
+
+// stamped hash differs from current template → stale
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), '// scaffold-linter: js sha256:000000000000\nexport default [];\n');
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const js = (await detect(dir, srcRoot)).find(r => r.language === 'js');
+  js?.state === 'stale'
+    ? ok('js state is stale when stamped hash differs from template')
+    : fail_(`js state should be stale, got ${js?.state}`);
+}
+
+// stamped hash matches current template → scaffold
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  const current = templateHash(srcRoot, 'js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), `// scaffold-linter: js sha256:${current}\nexport default [];\n`);
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const js = (await detect(dir, srcRoot)).find(r => r.language === 'js');
+  js?.state === 'scaffold'
+    ? ok('js state is scaffold when stamped hash matches current template')
+    : fail_(`js state should be scaffold, got ${js?.state}`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed.`);
 process.exit(fail > 0 ? 1 : 0);
