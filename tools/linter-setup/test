@@ -21,7 +21,7 @@ const fail_ = msg => { console.log(`  ✗ ${msg}`); fail++; };
 const REQUIRED_FIELDS = ['extensions', 'linter', 'workflowFile', 'marker', 'metricsOnly'];
 
 const EXPECTED_LANGUAGES = [
-  'js', 'python', 'go', 'rust', 'ruby', 'shell', 'elixir', 'zig', 'mojo',
+  'js', 'ts', 'python', 'go', 'rust', 'ruby', 'shell', 'elixir', 'zig', 'mojo',
 ];
 
 for (const lang of EXPECTED_LANGUAGES) {
@@ -57,7 +57,7 @@ for (const [lang, entry] of Object.entries(registry)) {
 });
 
 // metrics languages are not metricsOnly
-['js', 'python', 'go', 'rust', 'ruby', 'elixir'].forEach(lang => {
+['js', 'ts', 'python', 'go', 'rust', 'ruby', 'elixir'].forEach(lang => {
   registry[lang]?.metricsOnly === false
     ? ok(`${lang} is not metricsOnly`)
     : fail_(`${lang} should not be metricsOnly`);
@@ -150,6 +150,38 @@ function touch(dir, relPath) {
     : fail_(`js state should be foreign, got ${js?.state}`);
 }
 
+// ts/js split — .ts file → ts detected, js not
+{
+  const dir = makeTmp();
+  touch(dir, 'main.ts');
+  const langs = (await detect(dir)).map(r => r.language).sort();
+  JSON.stringify(langs) === JSON.stringify(['ts'])
+    ? ok('.ts file → ts detected (not js)')
+    : fail_(`expected [ts], got [${langs}]`);
+}
+
+// ts supersedes js — repo with both .js and .ts → only ts (one eslint config)
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  touch(dir, 'main.ts');
+  const langs = (await detect(dir)).map(r => r.language).sort();
+  JSON.stringify(langs) === JSON.stringify(['ts'])
+    ? ok('ts supersedes js when both present')
+    : fail_(`expected [ts], got [${langs}]`);
+}
+
+// tsconfig.json promotes a .js-only repo to the ts variant
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  touch(dir, 'tsconfig.json');
+  const langs = (await detect(dir)).map(r => r.language).sort();
+  JSON.stringify(langs) === JSON.stringify(['ts'])
+    ? ok('tsconfig.json promotes js → ts')
+    : fail_(`expected [ts], got [${langs}]`);
+}
+
 // Slice 3 — emit (JS/TS tracer bullet)
 
 const srcRoot = join(__dirname, '../../');
@@ -197,6 +229,42 @@ const srcRoot = join(__dirname, '../../');
   result.skipped?.includes('eslint.config.mjs')
     ? ok('emit: scaffold config skipped (already set up)')
     : fail_('emit: scaffold config should be skipped');
+}
+
+// emit ts → ships config + workflow + tsconfig.json (extraFiles)
+{
+  const dir = makeTmp();
+  const result = await emit('ts', dir, srcRoot);
+  existsSync(join(dir, 'eslint.config.mjs'))
+    ? ok('emit ts: eslint.config.mjs written')
+    : fail_('emit ts: eslint.config.mjs not found');
+  existsSync(join(dir, '.github/workflows/lint-ts.yml'))
+    ? ok('emit ts: lint-ts.yml written')
+    : fail_('emit ts: lint-ts.yml not found');
+  existsSync(join(dir, 'tsconfig.json'))
+    ? ok('emit ts: tsconfig.json written (extraFiles)')
+    : fail_('emit ts: tsconfig.json not found');
+  const config = readFileSync(join(dir, 'eslint.config.mjs'), 'utf8');
+  config.includes('// scaffold-linter: ts')
+    ? ok('emit ts: scaffold marker in config')
+    : fail_('emit ts: scaffold marker missing from config');
+  result.written?.length === 3
+    ? ok('emit ts: result lists 3 written files')
+    : fail_(`emit ts: expected 3 written, got ${result.written?.length}`);
+}
+
+// emit ts: pre-existing tsconfig.json preserved as sidecar (marker-less file)
+{
+  const dir = makeTmp();
+  const existing = '{ "compilerOptions": { "strict": false } }\n';
+  writeFileSync(join(dir, 'tsconfig.json'), existing);
+  await emit('ts', dir, srcRoot);
+  readFileSync(join(dir, 'tsconfig.json'), 'utf8') === existing
+    ? ok('emit ts: existing tsconfig.json untouched')
+    : fail_('emit ts: existing tsconfig.json was overwritten');
+  existsSync(join(dir, 'tsconfig.json.scaffold-new'))
+    ? ok('emit ts: tsconfig.json sidecar written on conflict')
+    : fail_('emit ts: tsconfig.json sidecar not written');
 }
 
 // Slice 1 (merge-tune) — emit stamps template hash into the marker

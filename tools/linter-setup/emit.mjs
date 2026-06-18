@@ -22,6 +22,9 @@ export async function emit(language, targetRepo, srcRoot) {
   const files = [];
   if (entry.configFile) files.push({ src: entry.configFile, dest: entry.configFile });
   files.push({ src: entry.workflowFile, dest: join('.github', 'workflows', entry.workflowFile) });
+  // Extra files (e.g. tsconfig.json) ship verbatim to the repo root; they carry
+  // no marker, so a pre-existing copy is preserved as a sidecar rather than skipped.
+  for (const extra of entry.extraFiles ?? []) files.push({ src: extra, dest: extra });
 
   for (const { src, dest } of files) {
     const srcPath = join(srcDir, src);

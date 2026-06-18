@@ -1,10 +1,23 @@
 export const registry = {
   js: {
-    extensions: ['.js', '.mjs', '.cjs', '.ts', '.tsx'],
+    extensions: ['.js', '.mjs', '.cjs'],
     linter: 'ESLint',
     configFile: 'eslint.config.mjs',
     workflowFile: 'lint-js.yml',
     marker: '// scaffold-linter: js',
+    metricsOnly: false,
+  },
+  // TypeScript is its own variant: a type-aware ESLint config that also lints
+  // plain JS via fall-through. `ts` supersedes `js` in detection (see detect.mjs)
+  // so a repo with both .ts and .js gets one config, not two. Ships a minimal
+  // tsconfig.json (extraFiles) so projectService can resolve a TS program.
+  ts: {
+    extensions: ['.ts', '.tsx'],
+    linter: 'ESLint (typescript-eslint)',
+    configFile: 'eslint.config.mjs',
+    workflowFile: 'lint-ts.yml',
+    extraFiles: ['tsconfig.json'],
+    marker: '// scaffold-linter: ts',
     metricsOnly: false,
   },
   python: {
