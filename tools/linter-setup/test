@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 import { registry } from './registry.mjs';
+import { detect } from './detect.mjs';
+import { mkdtempSync, writeFileSync, mkdirSync } from 'fs';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { execSync } from 'child_process';
 
 let pass = 0, fail = 0;
 const ok   = msg => { console.log(`  ✓ ${msg}`); pass++; };
@@ -52,6 +57,93 @@ for (const [lang, entry] of Object.entries(registry)) {
     ? ok(`${lang} is not metricsOnly`)
     : fail_(`${lang} should not be metricsOnly`);
 });
+
+// Slice 2 — detection
+
+function makeTmp() {
+  const dir = mkdtempSync(join(tmpdir(), 'linter-setup-test-'));
+  execSync('git init -q', { cwd: dir });
+  execSync('git config commit.gpgsign false', { cwd: dir });
+  execSync('git config user.email "test@test.com"', { cwd: dir });
+  execSync('git config user.name "Test"', { cwd: dir });
+  execSync('git commit --allow-empty -m init -q', { cwd: dir });
+  return dir;
+}
+
+function touch(dir, relPath) {
+  const full = join(dir, relPath);
+  mkdirSync(full.replace(/\/[^/]+$/, ''), { recursive: true });
+  writeFileSync(full, '');
+  execSync(`git add "${relPath}"`, { cwd: dir });
+}
+
+// no files → empty result
+{
+  const dir = makeTmp();
+  const result = await detect(dir);
+  result.length === 0
+    ? ok('empty repo → no languages detected')
+    : fail_('empty repo should return empty array');
+}
+
+// .py file → python state:none
+{
+  const dir = makeTmp();
+  touch(dir, 'main.py');
+  const result = await detect(dir);
+  const py = result.find(r => r.language === 'python');
+  py ? ok('python detected from .py file') : fail_('python not detected');
+  py?.state === 'none' ? ok('python state is none (no config)') : fail_(`python state should be none, got ${py?.state}`);
+}
+
+// unknown extension → not reported
+{
+  const dir = makeTmp();
+  touch(dir, 'main.swift');
+  const result = await detect(dir);
+  result.length === 0
+    ? ok('unknown extension not reported')
+    : fail_('unknown extension should not appear in results');
+}
+
+// multiple languages detected
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  touch(dir, 'main.py');
+  touch(dir, 'main.go');
+  const result = await detect(dir);
+  const langs = result.map(r => r.language).sort();
+  JSON.stringify(langs) === JSON.stringify(['go', 'js', 'python'])
+    ? ok('js + python + go all detected')
+    : fail_(`expected [go,js,python], got [${langs}]`);
+}
+
+// existing config with scaffold marker → state:scaffold
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), '// scaffold-linter: js\n');
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const result = await detect(dir);
+  const js = result.find(r => r.language === 'js');
+  js?.state === 'scaffold'
+    ? ok('js state is scaffold when marker present')
+    : fail_(`js state should be scaffold, got ${js?.state}`);
+}
+
+// existing config without scaffold marker → state:foreign
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), 'export default [];\n');
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const result = await detect(dir);
+  const js = result.find(r => r.language === 'js');
+  js?.state === 'foreign'
+    ? ok('js state is foreign when config exists without marker')
+    : fail_(`js state should be foreign, got ${js?.state}`);
+}
 
 console.log(`\n${pass} passed, ${fail} failed.`);
 process.exit(fail > 0 ? 1 : 0);
