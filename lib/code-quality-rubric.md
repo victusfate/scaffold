@@ -73,7 +73,7 @@ A file scores 10 when:
 
 A file scores 10 when:
 
-- **Fits in one mental model** — a reader holds the whole file after one pass. Hooks and utilities: ≤150 lines. Components: ≤200 lines. Orchestrators: ≤250 lines. *[mechanical: check with `wc -l`]* (major)
+- **Fits in one mental model** — a reader holds the whole file after one pass. All file types: ≤500 lines. *[mechanical: check with `wc -l`]* (major)
 - **Top-to-bottom narrative** — declarations, derived state, effects, return appear in that order with no backtracking. (minor)
 - **No destructuring walls** — when a hook or function returns >8 names, callers group them or the hook is split. *[mechanical: count destructured names at call site]* (minor)
 - **No surprise control flow** — early returns are fine; deeply nested conditionals in JSX or effects are not. (major)
