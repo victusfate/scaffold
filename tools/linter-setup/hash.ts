@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { registry } from './registry.mjs';
+import { registry } from './registry.ts';
 
 // Content hash of a language's pristine scaffold template: first 12 hex chars of
 // the sha256 over the template file's bytes. Returns null when the language has

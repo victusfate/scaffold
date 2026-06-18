@@ -7,9 +7,9 @@
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { detect } from './detect.mjs';
-import { emit } from './emit.mjs';
-import { registry } from './registry.mjs';
+import { detect } from './detect.ts';
+import { emit } from './emit.ts';
+import { registry } from './registry.ts';
 
 const SCAFFOLD_ROOT = process.env.LINTER_SETUP_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');

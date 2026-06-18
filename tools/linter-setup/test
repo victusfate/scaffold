@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-import { registry } from './registry.mjs';
-import { detect } from './detect.mjs';
-import { emit } from './emit.mjs';
-import { templateHash } from './hash.mjs';
+import { registry } from './registry.ts';
+import { detect } from './detect.ts';
+import { emit } from './emit.ts';
+import { templateHash } from './hash.ts';
 import { mkdtempSync, writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';

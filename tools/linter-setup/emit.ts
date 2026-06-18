@@ -1,8 +1,8 @@
 import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
-import { registry } from './registry.mjs';
-import { templateHash } from './hash.mjs';
-import { mergeDevDependencies, mergeScripts } from './deps.mjs';
+import { registry } from './registry.ts';
+import { templateHash } from './hash.ts';
+import { mergeDevDependencies, mergeScripts } from './deps.ts';
 
 // Stamp the template hash into the config's marker line, so detection can later
 // tell a current scaffold config from a stale one. First occurrence only.

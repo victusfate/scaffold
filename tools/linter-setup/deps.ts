@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { registry } from './registry.mjs';
+import { registry } from './registry.ts';
 
 // Indentation of an existing JSON file, so we don't reflow the consumer's
 // package.json. Falls back to two spaces.

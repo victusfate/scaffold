@@ -2,8 +2,8 @@ import { execSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { join, extname, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { registry } from './registry.mjs';
-import { templateHash } from './hash.mjs';
+import { registry } from './registry.ts';
+import { templateHash } from './hash.ts';
 
 const DEFAULT_SRC_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
