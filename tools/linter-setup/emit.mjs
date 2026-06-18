@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { join, dirname } from 'path';
 import { registry } from './registry.mjs';
 import { templateHash } from './hash.mjs';
+import { mergeDevDependencies } from './deps.mjs';
 
 // Stamp the template hash into the config's marker line, so detection can later
 // tell a current scaffold config from a stale one. First occurrence only.
@@ -22,6 +23,9 @@ export async function emit(language, targetRepo, srcRoot) {
   const files = [];
   if (entry.configFile) files.push({ src: entry.configFile, dest: entry.configFile });
   files.push({ src: entry.workflowFile, dest: join('.github', 'workflows', entry.workflowFile) });
+  // Extra files (e.g. tsconfig.json) ship verbatim to the repo root; they carry
+  // no marker, so a pre-existing copy is preserved as a sidecar rather than skipped.
+  for (const extra of entry.extraFiles ?? []) files.push({ src: extra, dest: extra });
 
   for (const { src, dest } of files) {
     const srcPath = join(srcDir, src);
@@ -56,5 +60,11 @@ export async function emit(language, targetRepo, srcRoot) {
     written.push(dest);
   }
 
-  return { written, skipped, sidecars };
+  // Add devDependencies only once the config is actually adopted — i.e. it was
+  // written fresh or was already current. A sidecar means the consumer hasn't
+  // merged our config yet, so injecting deps would be premature.
+  const adopted = entry.configFile && !sidecars.includes(entry.configFile);
+  const deps = adopted ? mergeDevDependencies(targetRepo, language) : { added: [], status: 'sidecar' };
+
+  return { written, skipped, sidecars, deps };
 }

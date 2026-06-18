@@ -134,6 +134,7 @@ skills/add-linter.md
 tools/linter-setup/run
 tools/linter-setup/detect.mjs
 tools/linter-setup/emit.mjs
+tools/linter-setup/deps.mjs
 tools/linter-setup/registry.mjs
 tools/linter-setup/hash.mjs
 tools/linter-setup/test
@@ -153,4 +154,7 @@ lib/linters/rust/clippy.toml
 lib/linters/rust/lint-rust.yml
 lib/linters/shell/.shellcheckrc
 lib/linters/shell/lint-shell.yml
+lib/linters/ts/eslint.config.mjs
+lib/linters/ts/lint-ts.yml
+lib/linters/ts/tsconfig.json
 lib/linters/zig/lint-zig.yml

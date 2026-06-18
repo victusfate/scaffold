@@ -9,7 +9,7 @@ LINTERS_DIR="lib/linters"
 [ -d "$LINTERS_DIR" ] || { echo "MISSING: $LINTERS_DIR"; exit 1; }
 
 # Each language has a workflow file with pull_request trigger
-LANGUAGES="js python go rust ruby shell elixir zig mojo"
+LANGUAGES="js ts python go rust ruby shell elixir zig mojo"
 for lang in $LANGUAGES; do
   dir="$LINTERS_DIR/$lang"
   [ -d "$dir" ] && ok "$lang template dir exists" || fail "$lang template dir missing"
@@ -30,7 +30,7 @@ for lang in $LANGUAGES; do
 done
 
 # Metrics languages have config files with scaffold marker and at least one threshold
-METRICS_LANGS="js python go rust ruby elixir"
+METRICS_LANGS="js ts python go rust ruby elixir"
 for lang in $METRICS_LANGS; do
   dir="$LINTERS_DIR/$lang"
   config=$(ls "$dir"/*.toml "$dir"/*.yml "$dir"/*.mjs "$dir"/.*.yml "$dir"/.*.exs "$dir"/.*rc "$dir"/.*.exs 2>/dev/null \

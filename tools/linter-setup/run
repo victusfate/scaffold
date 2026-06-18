@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 import { detect } from './detect.mjs';
 import { emit } from './emit.mjs';
+import { registry } from './registry.mjs';
 
 const SCAFFOLD_ROOT = process.env.LINTER_SETUP_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -69,6 +70,14 @@ async function main() {
     for (const f of result.written)   console.log(`  written   ${lang}  ${f}`);
     for (const f of result.sidecars)  console.log(`  sidecar   ${lang}  ${f}  (original unchanged)`);
     for (const f of result.skipped)   console.log(`  skipped   ${lang}  ${f}  (scaffold already present)`);
+
+    const deps = result.deps;
+    if (deps?.added.length) {
+      console.log(`  deps      ${lang}  package.json += ${deps.added.join(', ')}  (run npm install)`);
+    } else if (deps?.status === 'no-package-json') {
+      const names = Object.keys(registry[lang]?.devDependencies ?? {}).join(' ');
+      console.log(`  deps      ${lang}  no package.json — install manually: npm i -D ${names}`);
+    }
   }
 }
 

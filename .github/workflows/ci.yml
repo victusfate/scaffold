@@ -33,5 +33,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-save eslint @eslint/js typescript-eslint globals
+      - run: npm install --no-save eslint @eslint/js globals
       - run: npx eslint .

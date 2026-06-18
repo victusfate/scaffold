@@ -35,6 +35,14 @@ export async function detect(repoPath, srcRoot = DEFAULT_SRC_ROOT) {
     if (lang) detected.add(lang);
   }
 
+  // A tsconfig.json signals a TypeScript project even when only .js files are
+  // tracked (JS-with-checkJs setups), so promote to the ts variant.
+  if (existsSync(join(repoPath, 'tsconfig.json'))) detected.add('ts');
+
+  // ts supersedes js: the ts ESLint config lints plain JS via fall-through, and
+  // both variants emit the same eslint.config.mjs — emitting both would collide.
+  if (detected.has('ts')) detected.delete('js');
+
   return Array.from(detected).map(language => {
     const entry = registry[language];
     const configPath = entry.configFile ? join(repoPath, entry.configFile) : null;

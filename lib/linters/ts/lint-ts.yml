@@ -1,9 +1,11 @@
-# scaffold-linter: js
-name: Lint JS
+# scaffold-linter: ts
+name: Lint TS
 
 on:
   pull_request:
     paths:
+      - '**/*.ts'
+      - '**/*.tsx'
       - '**/*.js'
       - '**/*.mjs'
       - '**/*.cjs'
@@ -17,5 +19,5 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm install --save-dev eslint @eslint/js globals
+      - run: npm install --save-dev eslint @eslint/js typescript-eslint globals
       - run: npx eslint .
