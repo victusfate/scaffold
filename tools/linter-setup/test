@@ -124,6 +124,28 @@ function touch(dir, relPath) {
     : fail_(`expected [go,js,python], got [${langs}]`);
 }
 
+// vendored linter templates are excluded from detection
+{
+  const dir = makeTmp();
+  touch(dir, 'lib/linters/elixir/.credo.exs');
+  touch(dir, 'tools/linter-setup/detect.mjs');
+  const result = await detect(dir);
+  result.length === 0
+    ? ok('vendored templates (lib/linters, tools/linter-setup) not detected')
+    : fail_(`vendored templates should not be detected, got [${result.map(r => r.language)}]`);
+}
+
+// real source is still detected even when vendored templates are present
+{
+  const dir = makeTmp();
+  touch(dir, 'lib/linters/elixir/.credo.exs');
+  touch(dir, 'main.py');
+  const langs = (await detect(dir)).map(r => r.language).sort();
+  JSON.stringify(langs) === JSON.stringify(['python'])
+    ? ok('real source detected alongside vendored templates')
+    : fail_(`expected [python], got [${langs}]`);
+}
+
 // existing config with scaffold marker → state:scaffold
 {
   const dir = makeTmp();
@@ -338,6 +360,57 @@ const srcRoot = join(__dirname, '../../');
   pkg.devDependencies?.['typescript-eslint']
     ? ok('deps: ts variant adds typescript-eslint')
     : fail_('deps: typescript-eslint missing for ts');
+}
+
+// scripts — fresh js add injects lint + lint:fix into package.json
+{
+  const dir = makeTmp();
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'x' }, null, 2) + '\n');
+  const result = await emit('js', dir, srcRoot);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  pkg.scripts?.lint === 'eslint .' && pkg.scripts?.['lint:fix'] === 'eslint . --fix'
+    ? ok('scripts: js lint + lint:fix added to package.json')
+    : fail_(`scripts: js lint scripts missing/wrong (${JSON.stringify(pkg.scripts)})`);
+  result.scripts?.status === 'written' && result.scripts.added.length === 2
+    ? ok('scripts: result reports 2 scripts added')
+    : fail_(`scripts: expected 2 added, got ${result.scripts?.added?.length} (${result.scripts?.status})`);
+}
+
+// scripts — ts lint:fix is gated on tsc --noEmit
+{
+  const dir = makeTmp();
+  writeFileSync(join(dir, 'package.json'), '{}\n');
+  await emit('ts', dir, srcRoot);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  pkg.scripts?.['lint:fix'] === 'eslint . --fix && tsc --noEmit'
+    ? ok('scripts: ts lint:fix is gated on tsc --noEmit')
+    : fail_(`scripts: ts lint:fix should gate on tsc, got "${pkg.scripts?.['lint:fix']}"`);
+}
+
+// scripts — a consumer's own lint script is never overwritten
+{
+  const dir = makeTmp();
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ scripts: { lint: 'my-linter' } }, null, 2) + '\n');
+  const result = await emit('js', dir, srcRoot);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  pkg.scripts.lint === 'my-linter' && pkg.scripts['lint:fix'] === 'eslint . --fix'
+    ? ok('scripts: existing lint preserved, lint:fix still added')
+    : fail_(`scripts: existing lint clobbered or lint:fix missing (${JSON.stringify(pkg.scripts)})`);
+  !result.scripts.added.includes('lint')
+    ? ok('scripts: existing lint not re-added')
+    : fail_('scripts: existing lint should not be re-added');
+}
+
+// scripts — foreign config → sidecar, scripts NOT injected (config not adopted)
+{
+  const dir = makeTmp();
+  writeFileSync(join(dir, 'package.json'), '{}\n');
+  writeFileSync(join(dir, 'eslint.config.mjs'), 'export default [];\n');
+  const result = await emit('js', dir, srcRoot);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  result.scripts?.status === 'sidecar' && !pkg.scripts
+    ? ok('scripts: foreign config → sidecar, scripts not injected')
+    : fail_(`scripts: expected sidecar with no scripts, got ${result.scripts?.status}`);
 }
 
 // deps — foreign config → sidecar, deps NOT injected (config not adopted)

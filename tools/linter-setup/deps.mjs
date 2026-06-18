@@ -54,3 +54,37 @@ export function mergeDevDependencies(targetRepo, language) {
   writeFileSync(pkgPath, JSON.stringify(pkg, null, detectIndent(raw)) + trailingNL);
   return { added, status: 'written' };
 }
+
+// Idempotently add a language's lint scripts (lint, lint:fix) to the target
+// repo's package.json. Only fills in script names the repo hasn't already
+// defined — never overwrites a consumer's own `lint` command. Returns the same
+// { added, status } shape as mergeDevDependencies.
+export function mergeScripts(targetRepo, language) {
+  const scripts = registry[language]?.scripts;
+  if (!scripts) return { added: [], status: 'none' };
+
+  const pkgPath = join(targetRepo, 'package.json');
+  if (!existsSync(pkgPath)) return { added: [], status: 'no-package-json' };
+
+  const raw = readFileSync(pkgPath, 'utf8');
+  let pkg;
+  try {
+    pkg = JSON.parse(raw);
+  } catch {
+    return { added: [], status: 'unparsable' };
+  }
+
+  const existing = pkg.scripts ?? {};
+  const added = [];
+  for (const [name, command] of Object.entries(scripts)) {
+    if (name in existing) continue;
+    existing[name] = command;
+    added.push(name);
+  }
+  if (added.length === 0) return { added: [], status: 'satisfied' };
+
+  pkg.scripts = existing;
+  const trailingNL = raw.endsWith('\n') ? '\n' : '';
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, detectIndent(raw)) + trailingNL);
+  return { added, status: 'written' };
+}

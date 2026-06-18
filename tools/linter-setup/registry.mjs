@@ -13,6 +13,12 @@ export const registry = {
       '@eslint/js': '^10.0.1',
       globals: '^17.6.0',
     },
+    // package.json scripts added on adopt. Plain JS has no type-checker, so
+    // `lint:fix` is a bare autofix.
+    scripts: {
+      lint: 'eslint .',
+      'lint:fix': 'eslint . --fix',
+    },
   },
   // TypeScript is its own variant: a type-aware ESLint config that also lints
   // plain JS via fall-through. `ts` supersedes `js` in detection (see detect.mjs)
@@ -31,6 +37,13 @@ export const registry = {
       '@eslint/js': '^10.0.1',
       'typescript-eslint': '^8.61.1',
       globals: '^17.6.0',
+    },
+    // package.json scripts added on adopt. Type-aware autofix can rewrite code
+    // in ways tsc rejects, so `lint:fix` re-runs `tsc --noEmit` as the gate —
+    // the fix is only trustworthy if the type-checker still passes.
+    scripts: {
+      lint: 'eslint .',
+      'lint:fix': 'eslint . --fix && tsc --noEmit',
     },
   },
   python: {

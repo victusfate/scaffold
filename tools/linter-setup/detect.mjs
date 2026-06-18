@@ -29,8 +29,14 @@ export async function detect(repoPath, srcRoot = DEFAULT_SRC_ROOT) {
   const files = execSync('git ls-files', { cwd: repoPath })
     .toString().trim().split('\n').filter(Boolean);
 
+  // Vendored linter templates and setup tooling ship example configs in many
+  // languages (e.g. a .credo.exs for Elixir). When scaffold lints itself these
+  // would be detected as repo source, so exclude them from language detection.
+  const VENDORED = /^(lib\/linters|tools\/linter-setup)\//;
+
   const detected = new Set();
   for (const file of files) {
+    if (VENDORED.test(file)) continue;
     const lang = extMap.get(extname(file));
     if (lang) detected.add(lang);
   }

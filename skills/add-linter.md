@@ -74,6 +74,13 @@ hasn't adopted the config yet (add them when you apply the merge in Step 4). If
 there's no `package.json`, the CLI reports the `npm i -D …` one-liner instead of
 creating one. Remind the user to run `npm install` after deps are added.
 
+For the JS/TS variants the CLI also adds `lint` and `lint:fix` scripts to
+`package.json` `scripts` (idempotently — a script name the consumer already
+defines is left untouched). The TS `lint:fix` is **`eslint . --fix && tsc
+--noEmit`**: type-aware autofix can rewrite code in ways tsc rejects, so the
+fix is only trusted once the type-checker still passes. Never run a bare
+`eslint . --fix` on a type-aware config without that gate.
+
 ## Step 4 — merge step (state `foreign` and `stale` only)
 
 The CLI never edits an existing config; the **merge is yours to perform**. For each
@@ -119,6 +126,7 @@ For each language processed, report:
 |--------|---------|
 | `written` | "✓ [lang]: wrote [files]" |
 | `deps` | "✓ [lang]: added [packages] to package.json devDependencies — run `npm install`" |
+| `scripts` | "✓ [lang]: added [scripts] to package.json scripts (js/ts)" |
 | `merged` | "✓ [lang]: merged into [file] (original kept as [file].bak)" |
 | `tuned` | "✓ [lang]: applied [N] preference edits" |
 | `skipped` | "— [lang]: already current (skipped)" |
