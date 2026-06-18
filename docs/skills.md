@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`.
+Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`.
 <!-- END_SKILLS_INVOCATION -->
 
 ## Structure
@@ -53,6 +53,7 @@ tools/
     protect-branch/SKILL.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md      # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
     audit/SKILL.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
+    add-linter/SKILL.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
   read-once/
@@ -80,6 +81,7 @@ tools/
     protect-branch.mdc       # mirrors protect-branch for Cursor
     frontend-design.mdc      # mirrors frontend-design for Cursor
     audit.mdc                # mirrors audit for Cursor
+    add-linter.mdc           # mirrors add-linter for Cursor
 .agents/
   skills/
     feature-chain/SKILL.md        # Orchestrate design → PRD → TDD → review end to end
@@ -100,6 +102,7 @@ tools/
     protect-branch/SKILL.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md      # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
     audit/SKILL.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
+    add-linter/SKILL.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
 .agent/
   rules/
     agents.md               # thin pointer to AGENTS.md (always-on)
@@ -122,6 +125,7 @@ tools/
     protect-branch.md       # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design.md      # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
     audit.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
+    add-linter.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
 scripts/
   check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-skills-doc.mjs          # regenerate docs/skills.md skill sections from RESOLVER.md
