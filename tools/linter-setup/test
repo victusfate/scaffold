@@ -242,5 +242,31 @@ const srcRoot = join(__dirname, '../../');
     : fail_(`js state should be scaffold, got ${js?.state}`);
 }
 
+// Slice 3 (merge-tune) — marker parsing: legacy + unreachable tolerance
+
+// marker present without a stamped hash (legacy) → scaffold, never stale
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), '// scaffold-linter: js\nexport default [];\n');
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const js = (await detect(dir, srcRoot)).find(r => r.language === 'js');
+  js?.state === 'scaffold'
+    ? ok('legacy marker without hash → scaffold (current)')
+    : fail_(`legacy marker should be scaffold, got ${js?.state}`);
+}
+
+// template unreachable (bogus srcRoot) → cannot compute hash → scaffold, never stale
+{
+  const dir = makeTmp();
+  touch(dir, 'app.js');
+  writeFileSync(join(dir, 'eslint.config.mjs'), '// scaffold-linter: js sha256:000000000000\nexport default [];\n');
+  execSync('git add eslint.config.mjs', { cwd: dir });
+  const js = (await detect(dir, join(dir, 'no-such-scaffold'))).find(r => r.language === 'js');
+  js?.state === 'scaffold'
+    ? ok('unreachable template → scaffold fallback (never falsely stale)')
+    : fail_(`unreachable template should fall back to scaffold, got ${js?.state}`);
+}
+
 console.log(`\n${pass} passed, ${fail} failed.`);
 process.exit(fail > 0 ? 1 : 0);
