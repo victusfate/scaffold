@@ -33,10 +33,10 @@ package.json
 docs/*/**
 docs/branch-versioning.md
 
-# Maintainer-only bin tooling
-bin/globalize-skill.sh
-bin/install-skills.sh
-bin/repo-bound-skills.txt
+# Author-side sync engine shim (into tools/sync/**, also internal). Distinct
+# from the consumer pull path bin/sync-from-scaffold.sh, which does ship.
+# (globalize-skill.sh / install-skills.sh / repo-bound-skills.txt ship: they
+# fix the @import dangle when globalizing a synced stub, which consumers hit too.)
 bin/sync
 
 # Scaffold's own dev/test scripts
