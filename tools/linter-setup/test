@@ -2,6 +2,7 @@
 import { registry } from './registry.mjs';
 import { detect } from './detect.mjs';
 import { emit } from './emit.mjs';
+import { templateHash } from './hash.mjs';
 import { mkdtempSync, writeFileSync, mkdirSync, existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -196,6 +197,22 @@ const srcRoot = join(__dirname, '../../');
   result.skipped?.includes('eslint.config.mjs')
     ? ok('emit: scaffold config skipped (already set up)')
     : fail_('emit: scaffold config should be skipped');
+}
+
+// Slice 1 (merge-tune) — emit stamps template hash into the marker
+
+{
+  const dir = makeTmp();
+  await emit('js', dir, srcRoot);
+  const config = readFileSync(join(dir, 'eslint.config.mjs'), 'utf8');
+  const expected = templateHash(srcRoot, 'js');
+  const m = config.match(/scaffold-linter: js sha256:([0-9a-f]{12})/);
+  m
+    ? ok('emit: marker carries sha256:<hash12>')
+    : fail_('emit: marker missing stamped hash');
+  m && m[1] === expected
+    ? ok('emit: stamped hash matches template hash')
+    : fail_(`emit: stamped hash ${m?.[1]} != template ${expected}`);
 }
 
 console.log(`\n${pass} passed, ${fail} failed.`);
