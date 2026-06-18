@@ -140,6 +140,17 @@ git fetch scaffold refs/tags/v1.0:refs/tags/scaffold-v1.0
 
 A GitHub Actions workflow can be installed at `.github/workflows/sync-scaffold.yml` — trigger it manually from the Actions tab for a PR-based update flow. Install it with `--with-workflow` during bootstrap, or copy it manually.
 
+### What ships, and how we keep the manifest honest
+
+Two lists classify every tracked file in this repo:
+
+- **`.github/scaffold-files.txt`** — the manifest of files that sync to consumers.
+- **`.github/scaffold-internal.txt`** — files deliberately held back (this repo's own CI, dev/test scripts, feature artifacts, maintainer tooling).
+
+CI (`scripts/check-resolvable.mjs` → `phaseManifestCompleteness`) fails if a tracked file is in **neither** list, or if the manifest lists a file that no longer exists. This makes "ship it unless explicitly held back" the default, so adding a skill's runtime (e.g. `tools/<x>/`, `lib/<x>/`) without also shipping it can't silently slip through. The check is keyed on `scaffold-internal.txt`, which never syncs — so consumer repos (which lack it) skip it rather than flagging their own files.
+
+> **Future direction — git-native sync.** Today's flow is a hand-rolled *selective vendoring* tool: it re-implements merge (3-way against the stored SHA) and ignore (`.scaffold-keep`) over a curated subset that scatters into ~13 shared dirs. That keeps the *destination* repo simple (files live natively where each harness reads them, no install step) at the cost of a bespoke sync tool plus a manifest that must be kept complete (the guard above). A possible future swap: relocate scaffold's payload under a single owned prefix (e.g. `vendor/scaffold/`) consumed via **`git subtree`** (real `git pull`, history, conflict resolution, `git subtree push` upstream) plus an **install step** that places files into harness paths. That trades manifest-maintenance for an install/symlink layer in every consumer — worth it once we want real history and bidirectional contribution badly enough to pay that cost. Not adopting it now; keeping `sync-scaffold` as-is.
+
 ## Using scaffold skills as a dependency
 
 The sync flow above is bulk — it pulls every file in the manifest. If you only want specific skills in a specific harness, use `hoist-skill` instead. scaffold owns the emit so consumers do not need to know the internal canonical+generated layout.

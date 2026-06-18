@@ -9,16 +9,18 @@ import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseResolverRows } from '../tools/lib/resolver-parse.mjs';
+import { execSync } from 'node:child_process';
 import {
   phaseReachability, phaseAmbiguity, phaseDry, phaseMece,
   phaseWrapperIntegrity, phaseCursorParity, phaseAntigravityParity,
-  phaseFrontmatterParity, phaseScaffold,
+  phaseFrontmatterParity, phaseScaffold, phaseManifestCompleteness,
 } from './resolver-phases.mjs';
 
 const ROOT              = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR        = join(ROOT, '.claude', 'skills');
 const RESOLVER          = join(SKILLS_DIR, 'RESOLVER.md');
 const MANIFEST          = join(ROOT, '.github', 'scaffold-files.txt');
+const INTERNAL          = join(ROOT, '.github', 'scaffold-internal.txt');
 const CURSOR_RULES      = join(ROOT, '.cursor', 'rules');
 const ANTIGRAVITY_SKILLS    = join(ROOT, '.agents', 'skills');
 const ANTIGRAVITY_WORKFLOWS = join(ROOT, '.agent', 'workflows');
@@ -38,6 +40,14 @@ const manifestSet = new Set(
   existsSync(MANIFEST) ? readFileSync(MANIFEST, 'utf8').split('\n').map(l => l.trim()).filter(Boolean) : []
 );
 const listedInManifest = p => manifestSet.has(p);
+
+const trackedFiles = (() => {
+  try {
+    return execSync('git ls-files', { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+  } catch {
+    return []; // not a git checkout — manifest completeness check no-ops
+  }
+})();
 
 function skillDirsOnDisk() {
   if (!existsSync(SKILLS_DIR)) return [];
@@ -68,6 +78,9 @@ if (rows.length) {
   phaseFrontmatterParity(rows, ctx);
   phaseScaffold(rows, ctx);
 }
+
+// Manifest completeness is independent of RESOLVER parsing — run it always.
+phaseManifestCompleteness(null, { fail, MANIFEST, INTERNAL, manifestSet, trackedFiles, rel });
 
 if (!QUIET && warnings.length) {
   console.warn(`\n${warnings.length} warning(s):`);
