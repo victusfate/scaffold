@@ -18,9 +18,9 @@ FIXTURE_LINE_COUNT=510   # deliberately over the 500-line limit
 CLEAN="$FIXTURES/clean.js"
 printf 'const MAX_RETRIES = 3;\nfunction run() { return MAX_RETRIES; }\n' > "$CLEAN"
 
-# Fixture: file over 500 lines
+# Fixture: file over 500 lines — comment lines only, no magic-number or commented-code violations
 LONG="$FIXTURES/long.js"
-for i in $(seq 1 "$FIXTURE_LINE_COUNT"); do printf 'const x%d = %d;\n' "$i" "$i"; done > "$LONG"
+for i in $(seq 1 "$FIXTURE_LINE_COUNT"); do printf '// padding\n'; done > "$LONG"
 
 # Fixture: file with magic number
 MAGIC="$FIXTURES/magic.js"
@@ -45,7 +45,7 @@ fi
 if bash "$SCRIPT" "$LONG" > /dev/null 2>&1; then
   fail "long file should fail"
 else
-  ok "long file (>250 lines) fails"
+  ok "long file (>500 lines) fails"
 fi
 
 # Long file error includes filename:line citation
