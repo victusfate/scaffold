@@ -1,0 +1,19 @@
+# scaffold-linter: mojo
+# mojo format enforces formatting. No complexity linter exists for Mojo yet.
+name: Lint Mojo
+
+on:
+  pull_request:
+    paths:
+      - '**/*.mojo'
+
+jobs:
+  mojo-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Mojo
+        run: |
+          curl -ssL https://magic.modular.com | bash
+          echo "$HOME/.modular/bin" >> $GITHUB_PATH
+      - run: mojo format --check .

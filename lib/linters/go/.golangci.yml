@@ -1,0 +1,23 @@
+# scaffold-linter: go
+linters:
+  enable:
+    - cyclop      # cyclomatic complexity
+    - funlen      # function length
+    - gocognit    # cognitive complexity
+    - mnd         # magic number detector
+    - revive      # includes max-func-arg-count
+
+linters-settings:
+  cyclop:
+    max-complexity: 10
+  funlen:
+    lines: 500
+    statements: 100
+  gocognit:
+    min-complexity: 10
+  mnd:
+    ignored-numbers: ['0', '1', '2']
+  revive:
+    rules:
+      - name: argument-limit
+        arguments: [4]

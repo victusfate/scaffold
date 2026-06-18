@@ -1,0 +1,22 @@
+# scaffold-linter: ruby
+Metrics/MethodLength:
+  Max: 50
+
+Metrics/ModuleLength:
+  Max: 500
+
+Metrics/ClassLength:
+  Max: 500
+
+Metrics/CyclomaticComplexity:
+  Max: 10
+
+Metrics/PerceivedComplexity:
+  Max: 10
+
+Metrics/ParameterLists:
+  Max: 4
+
+# Magic numbers: not available as a RuboCop rule.
+# The scaffold mechanical check (check-quality-mechanical.sh) covers bare
+# numeric literals for all file types including .rb files.
