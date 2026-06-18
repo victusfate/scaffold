@@ -11,6 +11,9 @@ docs/skills.md
 .claude/read-once/compact.sh
 bin/bootstrap.sh
 bin/sync-from-scaffold.sh
+bin/globalize-skill.sh
+bin/install-skills.sh
+bin/repo-bound-skills.txt
 .github/scaffold-files.txt
 .github/workflows/sync-scaffold.yml
 scripts/check-resolvable.mjs
