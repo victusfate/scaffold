@@ -1,14 +1,31 @@
 import { execSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
-import { join, extname } from 'path';
+import { join, extname, dirname } from 'path';
+import { fileURLToPath } from 'url';
 import { registry } from './registry.mjs';
+import { templateHash } from './hash.mjs';
+
+const DEFAULT_SRC_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 const extMap = new Map();
 for (const [lang, entry] of Object.entries(registry)) {
   for (const ext of entry.extensions) extMap.set(ext, lang);
 }
 
-export async function detect(repoPath) {
+// Read the hash stamped into a config's marker line.
+//   undefined → marker absent (foreign)
+//   null      → marker present but unstamped (legacy — treated as current)
+//   <hex>     → stamped hash
+function stampedHash(content, marker) {
+  const idx = content.indexOf(marker);
+  if (idx === -1) return undefined;
+  const nl = content.indexOf('\n', idx);
+  const line = content.slice(idx, nl === -1 ? content.length : nl);
+  const m = line.match(/sha256:([0-9a-f]+)/);
+  return m ? m[1] : null;
+}
+
+export async function detect(repoPath, srcRoot = DEFAULT_SRC_ROOT) {
   const files = execSync('git ls-files', { cwd: repoPath })
     .toString().trim().split('\n').filter(Boolean);
 
@@ -24,7 +41,16 @@ export async function detect(repoPath) {
     let state = 'none';
     if (configPath && existsSync(configPath)) {
       const content = readFileSync(configPath, 'utf8');
-      state = content.includes(entry.marker) ? 'scaffold' : 'foreign';
+      const stamped = stampedHash(content, entry.marker);
+      if (stamped === undefined) {
+        state = 'foreign';
+      } else {
+        // Legacy (unstamped) marker or unreachable template → treat as current.
+        const current = templateHash(srcRoot, language);
+        state = (stamped === null || current === null || stamped === current)
+          ? 'scaffold'
+          : 'stale';
+      }
     }
     return { language, state };
   });
