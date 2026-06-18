@@ -1,7 +1,7 @@
 // hoist-skill engine — emit scaffold capabilities into a consumer repo.
 // Importable on Node 18+; the `run` CLI shim wraps this module.
 
-import { readFileSync, writeFileSync, mkdirSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { writeFileSync, mkdirSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';

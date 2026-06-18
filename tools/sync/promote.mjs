@@ -3,7 +3,7 @@
 // .scaffold-keep honored, sidecars for differing files unless force.
 
 import { readFileSync, existsSync } from 'node:fs';
-import { join, resolve, normalize } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { safeWrite, loadKeep } from '../lib/safe-write.mjs';
 

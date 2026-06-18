@@ -62,7 +62,7 @@ export function phaseDry(rows, { fail, warn, ROOT, STRICT }) {
   for (const [block, owners] of blockOwners) {
     if (owners.size >= 2) {
       const msg = `duplicated block across {${[...owners].join(', ')}} — extract to lib/:\n    "${block.split('\n')[0]}…"`;
-      STRICT ? fail('DRY', msg) : warn('DRY', msg);
+      if (STRICT) fail('DRY', msg); else warn('DRY', msg);
     }
   }
 }

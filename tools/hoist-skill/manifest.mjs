@@ -1,6 +1,6 @@
 // Manifest read/write for .sync/hoisted.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { dirname } from 'node:path';
 
 export function readManifest(path) {
   if (!existsSync(path)) return [];
