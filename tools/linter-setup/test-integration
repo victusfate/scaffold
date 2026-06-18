@@ -1,0 +1,213 @@
+#!/usr/bin/env node
+// End-to-end integration test for linter-setup CLI.
+// Gate: set RUN_INTEGRATION=1 to run.
+
+if (!process.env.RUN_INTEGRATION) {
+  console.log('skip — set RUN_INTEGRATION=1 to run integration tests');
+  process.exit(0);
+}
+
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync, execSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+
+const SCAFFOLD_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
+const BIN           = join(SCAFFOLD_ROOT, 'tools/linter-setup/run');
+
+let passed = 0, failed = 0;
+
+function assert(label, cond, detail = '') {
+  if (cond) { console.log(`  ✓ ${label}`); passed++; }
+  else       { console.error(`  ✗ ${label}${detail ? ': ' + detail : ''}`); failed++; }
+}
+
+function run(args, opts = {}) {
+  try {
+    const out = execFileSync(process.execPath, [BIN, ...args], {
+      encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'], ...opts,
+    });
+    return { code: 0, stdout: out, stderr: '' };
+  } catch (e) {
+    return { code: e.status ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
+  }
+}
+
+function runWithStdin(args, stdin, opts = {}) {
+  try {
+    const out = execFileSync(process.execPath, [BIN, ...args], {
+      encoding: 'utf8', input: stdin, stdio: ['pipe', 'pipe', 'pipe'], ...opts,
+    });
+    return { code: 0, stdout: out, stderr: '' };
+  } catch (e) {
+    return { code: e.status ?? 1, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
+  }
+}
+
+function makeTmpRepo() {
+  const dir = mkdtempSync(join(tmpdir(), 'linter-int-test-'));
+  execSync('git init -q', { cwd: dir });
+  execSync('git config commit.gpgsign false', { cwd: dir });
+  execSync('git config user.email "test@test.com"', { cwd: dir });
+  execSync('git config user.name "Test"', { cwd: dir });
+  execSync('git commit --allow-empty -m init -q', { cwd: dir });
+  return dir;
+}
+
+function addFile(dir, relPath) {
+  const full = join(dir, relPath);
+  mkdirSync(dirname(full), { recursive: true });
+  writeFileSync(full, '');
+  execSync(`git add "${relPath}"`, { cwd: dir });
+}
+
+const scaffoldRootArg = `--scaffold-root=${SCAFFOLD_ROOT}`;
+
+// ----------------------------------------------------------------
+// Scenario 1: --detect-only on empty repo → empty JSON array
+console.log('\nScenario 1: --detect-only on empty repo');
+{
+  const repo = makeTmpRepo();
+  const r = run(['--detect-only', '--into', repo, scaffoldRootArg]);
+  assert('exit 0', r.code === 0);
+  let parsed;
+  try { parsed = JSON.parse(r.stdout); } catch { parsed = null; }
+  assert('outputs valid JSON', Array.isArray(parsed), r.stdout);
+  assert('empty array for empty repo', parsed?.length === 0);
+}
+
+// ----------------------------------------------------------------
+// Scenario 2: --detect-only with .js and .py files → detects js + python
+console.log('\nScenario 2: --detect-only detects languages from file extensions');
+{
+  const repo = makeTmpRepo();
+  addFile(repo, 'app.js');
+  addFile(repo, 'main.py');
+  const r = run(['--detect-only', '--into', repo, scaffoldRootArg]);
+  assert('exit 0', r.code === 0);
+  let parsed;
+  try { parsed = JSON.parse(r.stdout); } catch { parsed = null; }
+  assert('outputs valid JSON array', Array.isArray(parsed));
+  const langs = parsed?.map(x => x.language).sort() ?? [];
+  assert('js detected', langs.includes('js'));
+  assert('python detected', langs.includes('python'));
+  const jState = parsed?.find(x => x.language === 'js')?.state;
+  const pState = parsed?.find(x => x.language === 'python')?.state;
+  assert('js state is none', jState === 'none', `got ${jState}`);
+  assert('python state is none', pState === 'none', `got ${pState}`);
+}
+
+// ----------------------------------------------------------------
+// Scenario 3: --detect-only with existing scaffold config → state:scaffold
+console.log('\nScenario 3: --detect-only with scaffold config reports state:scaffold');
+{
+  const repo = makeTmpRepo();
+  addFile(repo, 'app.js');
+  writeFileSync(join(repo, 'eslint.config.mjs'), '// scaffold-linter: js\nexport default [];\n');
+  execSync('git add eslint.config.mjs', { cwd: repo });
+  const r = run(['--detect-only', '--into', repo, scaffoldRootArg]);
+  assert('exit 0', r.code === 0);
+  const parsed = JSON.parse(r.stdout);
+  const js = parsed.find(x => x.language === 'js');
+  assert('js state is scaffold', js?.state === 'scaffold', `got ${js?.state}`);
+}
+
+// ----------------------------------------------------------------
+// Scenario 4: --detect-only with foreign config → state:foreign
+console.log('\nScenario 4: --detect-only with foreign config reports state:foreign');
+{
+  const repo = makeTmpRepo();
+  addFile(repo, 'app.js');
+  writeFileSync(join(repo, 'eslint.config.mjs'), 'export default [];\n');
+  execSync('git add eslint.config.mjs', { cwd: repo });
+  const r = run(['--detect-only', '--into', repo, scaffoldRootArg]);
+  assert('exit 0', r.code === 0);
+  const parsed = JSON.parse(r.stdout);
+  const js = parsed.find(x => x.language === 'js');
+  assert('js state is foreign', js?.state === 'foreign', `got ${js?.state}`);
+}
+
+// ----------------------------------------------------------------
+// Scenario 5: emit js via stdin → config and workflow written
+console.log('\nScenario 5: emit js via stdin writes config + workflow');
+{
+  const repo = makeTmpRepo();
+  const r = runWithStdin(['--into', repo, scaffoldRootArg], '["js"]');
+  assert('exit 0', r.code === 0, r.stderr);
+  assert('eslint.config.mjs written', existsSync(join(repo, 'eslint.config.mjs')));
+  assert('lint-js.yml written', existsSync(join(repo, '.github/workflows/lint-js.yml')));
+  const content = readFileSync(join(repo, 'eslint.config.mjs'), 'utf8');
+  assert('scaffold marker in config', content.includes('// scaffold-linter: js'));
+  assert('stdout mentions written', r.stdout.includes('written'));
+}
+
+// ----------------------------------------------------------------
+// Scenario 6: emit with foreign config → sidecar, original untouched
+console.log('\nScenario 6: emit with foreign config produces sidecar');
+{
+  const repo = makeTmpRepo();
+  const original = 'export default []; // my existing config\n';
+  writeFileSync(join(repo, 'eslint.config.mjs'), original);
+  const r = runWithStdin(['--into', repo, scaffoldRootArg], '["js"]');
+  assert('exit 0', r.code === 0, r.stderr);
+  const unchanged = readFileSync(join(repo, 'eslint.config.mjs'), 'utf8');
+  assert('original config untouched', unchanged === original);
+  assert('sidecar written', existsSync(join(repo, 'eslint.config.mjs.scaffold-new')));
+  assert('stdout mentions sidecar', r.stdout.includes('sidecar'));
+}
+
+// ----------------------------------------------------------------
+// Scenario 7: emit with scaffold config → skipped
+console.log('\nScenario 7: emit with existing scaffold config skips file');
+{
+  const repo = makeTmpRepo();
+  writeFileSync(join(repo, 'eslint.config.mjs'), '// scaffold-linter: js\nexport default [];\n');
+  const r = runWithStdin(['--into', repo, scaffoldRootArg], '["js"]');
+  assert('exit 0', r.code === 0, r.stderr);
+  assert('stdout mentions skipped', r.stdout.includes('skipped'));
+}
+
+// ----------------------------------------------------------------
+// Scenario 8: emit multiple languages
+console.log('\nScenario 8: emit multiple languages in one pass');
+{
+  const repo = makeTmpRepo();
+  const r = runWithStdin(['--into', repo, scaffoldRootArg], '["js","python","go"]');
+  assert('exit 0', r.code === 0, r.stderr);
+  assert('eslint.config.mjs written', existsSync(join(repo, 'eslint.config.mjs')));
+  assert('ruff.toml written', existsSync(join(repo, 'ruff.toml')));
+  assert('lint-go.yml written', existsSync(join(repo, '.github/workflows/lint-go.yml')));
+}
+
+// ----------------------------------------------------------------
+// Scenario 9: emit format-only language (zig) — workflow only
+console.log('\nScenario 9: zig emit writes only workflow (no config)');
+{
+  const repo = makeTmpRepo();
+  const r = runWithStdin(['--into', repo, scaffoldRootArg], '["zig"]');
+  assert('exit 0', r.code === 0, r.stderr);
+  assert('lint-zig.yml written', existsSync(join(repo, '.github/workflows/lint-zig.yml')));
+}
+
+// ----------------------------------------------------------------
+// Scenario 10: no stdin in full mode → error exit
+console.log('\nScenario 10: full mode with no stdin exits non-zero');
+{
+  const repo = makeTmpRepo();
+  const r = runWithStdin(['--into', repo, scaffoldRootArg], '');
+  assert('exits non-zero', r.code !== 0);
+  assert('error message on stderr', r.stderr.includes('linter-setup'));
+}
+
+// ----------------------------------------------------------------
+// Scenario 11: invalid JSON on stdin → error exit
+console.log('\nScenario 11: invalid JSON on stdin exits non-zero');
+{
+  const repo = makeTmpRepo();
+  const r = runWithStdin(['--into', repo, scaffoldRootArg], 'not-json');
+  assert('exits non-zero', r.code !== 0);
+}
+
+console.log(`\n${passed} passed, ${failed} failed.`);
+process.exit(failed > 0 ? 1 : 0);
