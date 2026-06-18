@@ -1,0 +1,57 @@
+#!/usr/bin/env node
+import { registry } from './registry.mjs';
+
+let pass = 0, fail = 0;
+const ok   = msg => { console.log(`  ✓ ${msg}`); pass++; };
+const fail_ = msg => { console.log(`  ✗ ${msg}`); fail++; };
+
+// Slice 1 — registry
+
+const REQUIRED_FIELDS = ['extensions', 'linter', 'workflowFile', 'marker', 'metricsOnly'];
+const REQUIRED_CONFIG_FIELDS = ['configFile']; // absent only when metricsOnly
+
+const EXPECTED_LANGUAGES = [
+  'js', 'python', 'go', 'rust', 'ruby', 'shell', 'elixir', 'zig', 'mojo',
+];
+
+for (const lang of EXPECTED_LANGUAGES) {
+  registry[lang]
+    ? ok(`${lang} in registry`)
+    : fail_(`${lang} missing from registry`);
+}
+
+for (const [lang, entry] of Object.entries(registry)) {
+  for (const field of REQUIRED_FIELDS) {
+    entry[field] !== undefined
+      ? ok(`${lang}.${field} present`)
+      : fail_(`${lang}.${field} missing`);
+  }
+  if (!entry.metricsOnly) {
+    entry.configFile
+      ? ok(`${lang}.configFile present (metrics language)`)
+      : fail_(`${lang}.configFile missing (metrics language)`);
+  }
+  Array.isArray(entry.extensions) && entry.extensions.length > 0
+    ? ok(`${lang}.extensions non-empty array`)
+    : fail_(`${lang}.extensions must be non-empty array`);
+  typeof entry.marker === 'string' && entry.marker.includes(lang)
+    ? ok(`${lang}.marker contains language name`)
+    : fail_(`${lang}.marker must contain language name`);
+}
+
+// zig and mojo are metricsOnly
+['zig', 'mojo'].forEach(lang => {
+  registry[lang]?.metricsOnly === true
+    ? ok(`${lang} is metricsOnly`)
+    : fail_(`${lang} should be metricsOnly`);
+});
+
+// metrics languages are not metricsOnly
+['js', 'python', 'go', 'rust', 'ruby', 'elixir'].forEach(lang => {
+  registry[lang]?.metricsOnly === false
+    ? ok(`${lang} is not metricsOnly`)
+    : fail_(`${lang} should not be metricsOnly`);
+});
+
+console.log(`\n${pass} passed, ${fail} failed.`);
+process.exit(fail > 0 ? 1 : 0);
