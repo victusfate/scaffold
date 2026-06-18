@@ -143,3 +143,43 @@ export function phaseScaffold(rows, { fail, warn, MANIFEST, listedInManifest, re
     if (!listedInManifest(p)) warn('Scaffold', `${p} not in scaffold manifest — consider adding it`);
   }
 }
+
+// Mirrors the .scaffold-keep matcher in tools/lib/safe-write.mjs:loadKeep —
+// exact path, dir prefix, or * glob (where * spans path separators).
+function compileIgnore(patterns) {
+  return (rel) => patterns.some(p => {
+    if (p.includes('*')) {
+      const re = new RegExp('^' + p.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+      return re.test(rel);
+    }
+    return rel === p || rel.startsWith(p + '/');
+  });
+}
+
+// Completeness guard for the sync manifest. Every tracked file must be either
+// shipped (scaffold-files.txt) or held back (scaffold-internal.txt); every
+// manifest entry must be a real tracked file and not also internal. This makes
+// "ship unless ignored" the default, closing the "added a file but forgot the
+// manifest" gap. Scaffold-only: keyed on the internal list, which never syncs,
+// so consumer repos (which lack it) skip the check rather than flag their own
+// files.
+export function phaseManifestCompleteness(_rows, { fail, MANIFEST, INTERNAL, manifestSet, trackedFiles, rel }) {
+  if (!existsSync(INTERNAL)) return; // not the scaffold repo — nothing to guard
+  if (!existsSync(MANIFEST)) { fail('Manifest', `manifest not found at ${rel(MANIFEST)}`); return; }
+
+  const patterns = readFileSync(INTERNAL, 'utf8')
+    .split('\n').map(l => l.replace(/#.*/, '').trim()).filter(Boolean);
+  const isInternal = compileIgnore(patterns);
+  const tracked = new Set(trackedFiles);
+
+  for (const f of trackedFiles) {
+    if (!manifestSet.has(f) && !isInternal(f))
+      fail('Manifest', `${f} is tracked but neither shipped (${rel(MANIFEST)}) nor held back (${rel(INTERNAL)}) — add it to one`);
+  }
+  for (const p of manifestSet) {
+    if (!tracked.has(p))
+      fail('Manifest', `${rel(MANIFEST)} lists ${p}, which is not a tracked file — remove or fix it`);
+    else if (isInternal(p))
+      fail('Manifest', `${p} is in both ${rel(MANIFEST)} and ${rel(INTERNAL)} — a file can't be shipped and held back`);
+  }
+}
