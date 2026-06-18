@@ -19,5 +19,5 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm install --save-dev eslint @eslint/js
+      - run: npm install --save-dev eslint @eslint/js typescript-eslint
       - run: npx eslint .
