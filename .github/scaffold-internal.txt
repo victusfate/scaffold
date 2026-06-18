@@ -21,6 +21,10 @@ LICENSE
 README.md
 package.json
 
+# Scaffold's own ESLint config (dogfoods the shipped template). Consumers get
+# the template at lib/linters/js/eslint.config.mjs via the linter-setup tooling.
+eslint.config.mjs
+
 # Scaffold's own CI (consumers get sync-scaffold.yml + quality.yml instead)
 .github/workflows/ci.yml
 .github/workflows/release.yml
