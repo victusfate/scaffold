@@ -10,6 +10,7 @@ import { parsePolicy } from './policy.mjs';
 import { promoteFiles } from './promote.mjs';
 import { hoist } from '../hoist-skill/hoist.mjs';
 import { readManifest } from '../hoist-skill/manifest.mjs';
+import { detect } from '../linter-setup/detect.mjs';
 
 const SCAFFOLD_ROOT = process.env.SYNC_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -100,6 +101,22 @@ async function main() {
 
   console.log('');
   console.log(`done.${check ? ' (dry run — no files written)' : ''}`);
+
+  // Suggest /add-linter for any detected language not yet using scaffold thresholds
+  if (!check) {
+    try {
+      const langs = await detect(INTO);
+      const actionable = langs.filter(l => l.state !== 'scaffold');
+      if (actionable.length > 0) {
+        const names = actionable.map(l => l.language).join(', ');
+        console.log('');
+        console.log(`hint: languages detected without scaffold linter config: ${names}`);
+        console.log('  Run /add-linter to add quality thresholds for each language.');
+      }
+    } catch {
+      // non-fatal: skip hint if detect fails (e.g. not a git repo)
+    }
+  }
 }
 
 main().catch(e => { console.error(`sync: ${e.message}`); process.exit(1); });
