@@ -65,6 +65,15 @@ Use `--scaffold-root` if needed for non-standard paths. The CLI is deterministic
   the existing config is left untouched
 - `scaffold` → skipped
 
+When a config is **adopted** (written fresh, or already current), the CLI also
+adds the linter's npm packages to the repo's `package.json` `devDependencies`
+(idempotently — only names missing from both `dependencies` and
+`devDependencies`; existing versions are never changed), so the starter runs
+locally. A `sidecar` (foreign/stale) does **not** inject deps — the consumer
+hasn't adopted the config yet (add them when you apply the merge in Step 4). If
+there's no `package.json`, the CLI reports the `npm i -D …` one-liner instead of
+creating one. Remind the user to run `npm install` after deps are added.
+
 ## Step 4 — merge step (state `foreign` and `stale` only)
 
 The CLI never edits an existing config; the **merge is yours to perform**. For each
@@ -109,6 +118,7 @@ For each language processed, report:
 | Result | Message |
 |--------|---------|
 | `written` | "✓ [lang]: wrote [files]" |
+| `deps` | "✓ [lang]: added [packages] to package.json devDependencies — run `npm install`" |
 | `merged` | "✓ [lang]: merged into [file] (original kept as [file].bak)" |
 | `tuned` | "✓ [lang]: applied [N] preference edits" |
 | `skipped` | "— [lang]: already current (skipped)" |

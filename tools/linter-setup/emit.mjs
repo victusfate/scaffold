@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from
 import { join, dirname } from 'path';
 import { registry } from './registry.mjs';
 import { templateHash } from './hash.mjs';
+import { mergeDevDependencies } from './deps.mjs';
 
 // Stamp the template hash into the config's marker line, so detection can later
 // tell a current scaffold config from a stale one. First occurrence only.
@@ -59,5 +60,11 @@ export async function emit(language, targetRepo, srcRoot) {
     written.push(dest);
   }
 
-  return { written, skipped, sidecars };
+  // Add devDependencies only once the config is actually adopted — i.e. it was
+  // written fresh or was already current. A sidecar means the consumer hasn't
+  // merged our config yet, so injecting deps would be premature.
+  const adopted = entry.configFile && !sidecars.includes(entry.configFile);
+  const deps = adopted ? mergeDevDependencies(targetRepo, language) : { added: [], status: 'sidecar' };
+
+  return { written, skipped, sidecars, deps };
 }

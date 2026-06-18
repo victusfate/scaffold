@@ -267,6 +267,91 @@ const srcRoot = join(__dirname, '../../');
     : fail_('emit ts: tsconfig.json sidecar not written');
 }
 
+// deps — fresh js add injects devDependencies into package.json
+{
+  const dir = makeTmp();
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'x', version: '1.0.0' }, null, 2) + '\n');
+  const result = await emit('js', dir, srcRoot);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  pkg.devDependencies?.eslint && pkg.devDependencies?.['@eslint/js'] && pkg.devDependencies?.globals
+    ? ok('deps: js devDependencies added to package.json')
+    : fail_('deps: js devDependencies missing');
+  result.deps?.status === 'written' && result.deps.added.length === 3
+    ? ok('deps: result reports 3 packages added')
+    : fail_(`deps: expected 3 added, got ${result.deps?.added?.length} (${result.deps?.status})`);
+}
+
+// deps — re-emit is idempotent (nothing new added)
+{
+  const dir = makeTmp();
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'x' }, null, 2) + '\n');
+  await emit('js', dir, srcRoot);
+  const result = await emit('js', dir, srcRoot);
+  result.deps?.status === 'satisfied' && result.deps.added.length === 0
+    ? ok('deps: second emit is idempotent (satisfied)')
+    : fail_(`deps: expected satisfied, got ${result.deps?.status}`);
+}
+
+// deps — package already in dependencies is not duplicated into devDependencies
+{
+  const dir = makeTmp();
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ dependencies: { eslint: '^9.0.0' } }, null, 2) + '\n');
+  const result = await emit('js', dir, srcRoot);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  pkg.dependencies.eslint === '^9.0.0' && !pkg.devDependencies?.eslint
+    ? ok('deps: existing eslint in dependencies left untouched (not duplicated)')
+    : fail_('deps: eslint duplicated or version overwritten');
+  !result.deps.added.includes('eslint')
+    ? ok('deps: eslint not re-added')
+    : fail_('deps: eslint should not be re-added');
+}
+
+// deps — existing devDependencies preserved alongside additions
+{
+  const dir = makeTmp();
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ devDependencies: { vitest: '^1.0.0' } }, null, 2) + '\n');
+  await emit('js', dir, srcRoot);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  pkg.devDependencies.vitest === '^1.0.0' && pkg.devDependencies.eslint
+    ? ok('deps: existing devDependencies preserved alongside additions')
+    : fail_('deps: existing devDependencies clobbered');
+}
+
+// deps — no package.json → reported, none fabricated
+{
+  const dir = makeTmp();
+  const result = await emit('js', dir, srcRoot);
+  result.deps?.status === 'no-package-json'
+    ? ok('deps: missing package.json reported as no-package-json')
+    : fail_(`deps: expected no-package-json, got ${result.deps?.status}`);
+  !existsSync(join(dir, 'package.json'))
+    ? ok('deps: package.json not fabricated when absent')
+    : fail_('deps: package.json should not be created');
+}
+
+// deps — ts variant adds typescript-eslint
+{
+  const dir = makeTmp();
+  writeFileSync(join(dir, 'package.json'), '{}\n');
+  await emit('ts', dir, srcRoot);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  pkg.devDependencies?.['typescript-eslint']
+    ? ok('deps: ts variant adds typescript-eslint')
+    : fail_('deps: typescript-eslint missing for ts');
+}
+
+// deps — foreign config → sidecar, deps NOT injected (config not adopted)
+{
+  const dir = makeTmp();
+  writeFileSync(join(dir, 'package.json'), '{}\n');
+  writeFileSync(join(dir, 'eslint.config.mjs'), 'export default [];\n');
+  const result = await emit('js', dir, srcRoot);
+  const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
+  result.deps?.status === 'sidecar' && !pkg.devDependencies
+    ? ok('deps: foreign config → sidecar, deps not injected')
+    : fail_(`deps: expected sidecar with no deps, got ${result.deps?.status}`);
+}
+
 // Slice 1 (merge-tune) — emit stamps template hash into the marker
 
 {

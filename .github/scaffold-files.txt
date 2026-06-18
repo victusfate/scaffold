@@ -134,6 +134,7 @@ skills/add-linter.md
 tools/linter-setup/run
 tools/linter-setup/detect.mjs
 tools/linter-setup/emit.mjs
+tools/linter-setup/deps.mjs
 tools/linter-setup/registry.mjs
 tools/linter-setup/hash.mjs
 tools/linter-setup/test

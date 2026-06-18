@@ -6,6 +6,13 @@ export const registry = {
     workflowFile: 'lint-js.yml',
     marker: '// scaffold-linter: js',
     metricsOnly: false,
+    // npm packages the shipped config imports — added to the consumer's
+    // package.json devDependencies on adopt, so the starter runs locally.
+    devDependencies: {
+      eslint: '^10.5.0',
+      '@eslint/js': '^10.0.1',
+      globals: '^17.6.0',
+    },
   },
   // TypeScript is its own variant: a type-aware ESLint config that also lints
   // plain JS via fall-through. `ts` supersedes `js` in detection (see detect.mjs)
@@ -19,6 +26,12 @@ export const registry = {
     extraFiles: ['tsconfig.json'],
     marker: '// scaffold-linter: ts',
     metricsOnly: false,
+    devDependencies: {
+      eslint: '^10.5.0',
+      '@eslint/js': '^10.0.1',
+      'typescript-eslint': '^8.61.1',
+      globals: '^17.6.0',
+    },
   },
   python: {
     extensions: ['.py'],
