@@ -21,7 +21,9 @@ agent layer.
 | **sidecar** | `<config>.scaffold-new` — deterministic copy of the template emitted next to a foreign config. |
 | **merge** | Agent-produced single config combining the user's foreign rules with scaffold thresholds. |
 | **tune / customization step** | Interactive agent step that adapts rule severities/values to the project's stated preferences. |
-| **marker** | `scaffold-linter: <lang>` comment that flags a config as scaffold-managed (drives `state` detection). |
+| **marker** | `scaffold-linter: <lang> sha256:<hash12>` comment that flags a config as scaffold-managed and records the template hash it was merged from (drives `state` detection). |
+| **state** | Detection output for a language; one of `none` \| `foreign` \| `scaffold` \| `stale`. |
+| **stale** | A scaffold-managed config whose stamped template hash differs from the current template hash — eligible for re-merge. |
 | **backup** | `<config>.bak` — the original foreign config, preserved until the user confirms the merge. |
 
 ## Decisions
@@ -44,11 +46,14 @@ idempotent (`emit` skips marked configs). The risk that remains is **freeze** �
 marked config never picks up updated scaffold thresholds. Resolve it with a
 content-hash stamped into the marker (self-maintaining; no hand-bumped version).
 
-Marker format gains a hash of the **pristine scaffold template** at merge time:
+Marker format gains a hash of the **pristine scaffold template** at merge time —
+the first **12 hex chars** of the `sha256` of the template file's UTF-8 bytes:
 ```
 # scaffold-linter: python sha256:a1b2c3d4e5f6
 ```
-`detect.mjs` recomputes the current template hash and compares:
+`detect.mjs` recomputes the current template hash (same algorithm + truncation)
+and compares. **Contract:** `detect()` returns `{ language, state }[]` where
+`state ∈ { 'none', 'foreign', 'scaffold', 'stale' }`:
 
 | Config file | Marker | Hash | state |
 |---|---|---|---|
