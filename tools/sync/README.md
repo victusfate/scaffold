@@ -31,6 +31,14 @@ npx github:victusfate/scaffold sync [--into <path>] [--ref <ref>] [--check] [--f
    ships only seeds the ledger, so pre-existing orphans self-heal on the next
    upstream change.
 
+5. `removed-files.tsv` records every path scaffold has stopped shipping
+   (renamed or deleted upstream), one `removed_path\treplacement\tcommit\tdate\treason`
+   line each. On every sync, any of those paths still present in the consumer
+   repo — that the ledger doesn't already track — is reported as a read-only
+   hint (with its replacement, if it was renamed). This covers orphans that
+   predate the ledger, which the prune pass alone can't see (D5). The hint
+   never deletes: review and remove each, or claim it via `.scaffold-keep`.
+
 The provenance line names both sources, e.g.
 `scaffold sync  files=package@0.5.0  skills-ref=main  into=/repo`. File
 promotion reads the npx package checkout (pin it with
