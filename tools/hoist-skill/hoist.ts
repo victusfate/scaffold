@@ -1,5 +1,5 @@
 // hoist-skill engine — emit scaffold capabilities into a consumer repo.
-// Importable on Node 18+; the `run` CLI shim wraps this module.
+// Importable on Node ≥23.6 (native TS type-stripping); the `run` CLI shim wraps this module.
 
 import { writeFileSync, mkdirSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -172,9 +172,9 @@ export async function hoist(opts: HoistOpts = {}): Promise<HoistResult> {
   let srcRoot = srcRootOpt ? resolve(srcRootOpt) : SCAFFOLD_ROOT;
 
   if (fetchMode) {
-    if (Number(process.versions.node.split('.')[0]) < 18) {
-      throw new Error(`hoist-skill: --fetch requires Node 18+ (current: ${process.version})`);
-    }
+    // No Node-version guard here: this module is TypeScript run via native
+    // type-stripping, so it only loads on Node ≥23.6 — well above fetch()'s
+    // availability floor. The engines field + .npmrc enforce the minimum.
     _fetchTempDir = mkdtempSync(join(tmpdir(), 'hoist-skill-'));
     srcRoot = _fetchTempDir;
     const resolverContent = await fetchRaw(`${RAW_BASE}/${ref}/${RESOLVER_REL}`, true);

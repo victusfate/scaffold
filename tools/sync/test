@@ -299,7 +299,7 @@ const POLICY_BASE = {
 
 // ---------------------------------------------------------------- slice 4: hoist-skill API export
 
-// Case 16a: hoist() is importable from the .mjs engine module (works on Node 18+,
+// Case 16a: hoist() is importable from the .ts engine module (works on Node ≥23.6,
 // unlike an extensionless ESM import)
 let hoist;
 {

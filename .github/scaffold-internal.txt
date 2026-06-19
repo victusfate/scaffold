@@ -17,6 +17,7 @@
 .github/scaffold-internal.txt
 .github/scaffold-sync-sha
 .gitignore
+.npmrc
 LICENSE
 README.md
 package.json
