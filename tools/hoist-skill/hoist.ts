@@ -6,10 +6,56 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
-import { loadKeep } from '../lib/safe-write.ts';
+import { loadKeep, type WriteResult } from '../lib/safe-write.ts';
 import { readManifest, upsertManifest } from './manifest.ts';
-import { makeEmitters } from './emitters.ts';
-import { parseResolverRows } from '../lib/resolver-parse.ts';
+import { makeEmitters, type Capability, type Emitter } from './emitters.ts';
+import { parseResolverRows, type ResolverRow } from '../lib/resolver-parse.ts';
+
+export type Harness = 'claude' | 'cursor' | 'antigravity';
+
+interface EmitPair {
+  name: string;
+  harness: Harness;
+  ref?: string;
+}
+
+interface SourcePath {
+  path: string;
+  required: boolean;
+  ref?: string;
+}
+
+export interface HoistOpts {
+  names?: string;
+  harness?: string;
+  into?: string;
+  force?: boolean;
+  list?: boolean;
+  ref?: string;
+  refExplicit?: boolean;
+  noRecord?: boolean;
+  plan?: boolean;
+  fetch?: boolean;
+  fromManifest?: string | null;
+  srcRoot?: string | null;
+}
+
+interface ListResult {
+  capabilities: { name: string; purpose: string }[];
+  harnesses: readonly string[];
+}
+interface PlanResult {
+  ref: string;
+  harness?: string;
+  harnesses?: string[];
+  sources: SourcePath[];
+}
+interface EmitOutcome {
+  into: string;
+  harnesses: string[];
+  results: WriteResult[];
+}
+export type HoistResult = ListResult | PlanResult | EmitOutcome;
 
 // Back-compat: `readManifest` moved to ./manifest.mjs when this file was split.
 // Consumer-vendored tools/sync/run.mjs copies import it from here and are not
@@ -19,22 +65,22 @@ export { readManifest } from './manifest.ts';
 
 const SCAFFOLD_ROOT = process.env.HOIST_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
-const HARNESSES     = ['claude', 'cursor', 'antigravity'];
+const HARNESSES: readonly Harness[] = ['claude', 'cursor', 'antigravity'];
 const TOOL_REL      = 'tools/hoist-skill/run';
 const RESOLVER_REL  = '.claude/skills/RESOLVER.md';
 const RAW_BASE      = process.env.HOIST_RAW_BASE
   ?? 'https://raw.githubusercontent.com/victusfate/scaffold';
 
 // Temp dir created in --fetch mode; cleaned up on any exit path.
-let _fetchTempDir = null;
+let _fetchTempDir: string | null = null;
 process.on('exit', () => {
   if (_fetchTempDir) try { rmSync(_fetchTempDir, { recursive: true, force: true }); } catch { /* best-effort */ }
 });
 
 // ---------------------------------------------------------------- source paths (for --plan and --fetch)
 
-function capSourcePaths(cap, harness) {
-  const paths = [{ path: cap.path, required: true }];
+function capSourcePaths(cap: Capability, harness: Harness): SourcePath[] {
+  const paths: SourcePath[] = [{ path: cap.path, required: true }];
   if (harness === 'claude') {
     paths.push({ path: `.claude/skills/${cap.name}/SKILL.md`, required: false });
   } else if (harness === 'cursor') {
@@ -48,7 +94,7 @@ function capSourcePaths(cap, harness) {
 
 // ---------------------------------------------------------------- network fetch (--fetch mode)
 
-async function fetchRaw(url, required = true) {
+async function fetchRaw(url: string, required = true): Promise<string | null> {
   const res = await fetch(url);
   if (!res.ok) {
     if (required) throw new Error(`hoist-skill: fetch failed for ${url} (${res.status})`);
@@ -57,10 +103,17 @@ async function fetchRaw(url, required = true) {
   return res.text();
 }
 
-async function populateFetchRoot(tempDir, pairs, registry, ref) {
-  const written = new Set();
+// Look up a capability by name; throws if absent (callers pre-validate names).
+function findCap(registry: ResolverRow[], name: string): Capability {
+  const cap = registry.find(r => r.name === name);
+  if (!cap) throw new Error(`hoist-skill: unknown capability ${name}`);
+  return cap;
+}
+
+async function populateFetchRoot(tempDir: string, pairs: EmitPair[], registry: ResolverRow[], ref: string): Promise<void> {
+  const written = new Set<string>();
   for (const { name, harness, ref: pairRef } of pairs) {
-    const cap = registry.find(r => r.name === name);
+    const cap = findCap(registry, name);
     for (const { path: p, required } of capSourcePaths(cap, harness)) {
       if (written.has(p)) continue;
       const content = await fetchRaw(`${RAW_BASE}/${pairRef ?? ref}/${p}`, required);
@@ -75,9 +128,9 @@ async function populateFetchRoot(tempDir, pairs, registry, ref) {
 
 // ---------------------------------------------------------------- pre-check sources (pure-emit mode)
 
-function checkLocalSources(pairs, srcRoot, registry, ref) {
+function checkLocalSources(pairs: EmitPair[], srcRoot: string, registry: ResolverRow[], ref: string): void {
   for (const { name } of pairs) {
-    const cap = registry.find(r => r.name === name);
+    const cap = findCap(registry, name);
     const bodyAbs = join(srcRoot, cap.path);
     if (!existsSync(bodyAbs)) {
       throw new Error(
@@ -95,7 +148,7 @@ function checkLocalSources(pairs, srcRoot, registry, ref) {
  * Returns the result object (same shape as the JSON previously printed to stdout).
  * Throws on fatal errors instead of calling process.exit().
  */
-export async function hoist(opts = {}) {
+export async function hoist(opts: HoistOpts = {}): Promise<HoistResult> {
   const {
     names: rawNames     = 'all',
     harness: rawHarness = 'claude',
@@ -125,6 +178,7 @@ export async function hoist(opts = {}) {
     _fetchTempDir = mkdtempSync(join(tmpdir(), 'hoist-skill-'));
     srcRoot = _fetchTempDir;
     const resolverContent = await fetchRaw(`${RAW_BASE}/${ref}/${RESOLVER_REL}`, true);
+    if (resolverContent === null) throw new Error(`hoist-skill: could not fetch ${RESOLVER_REL}`);
     const resolverDest = join(srcRoot, RESOLVER_REL);
     mkdirSync(dirname(resolverDest), { recursive: true });
     writeFileSync(resolverDest, resolverContent, 'utf8');
@@ -148,7 +202,7 @@ export async function hoist(opts = {}) {
   }
 
   // Build emit pairs: [{ name, harness }]
-  let emitPairs;
+  let emitPairs: EmitPair[];
 
   if (fromManifestFlag) {
     const entries = readManifest(manifestReadPath);
@@ -156,21 +210,21 @@ export async function hoist(opts = {}) {
       throw new Error(`No entries found in manifest: ${manifestReadPath}`);
     }
     const unknownNames     = entries.filter(e => !registry.find(r => r.name === e.name)).map(e => e.name);
-    const unknownHarnesses = entries.filter(e => !HARNESSES.includes(e.harness)).map(e => e.harness);
+    const unknownHarnesses = entries.filter(e => !(HARNESSES as readonly string[]).includes(e.harness)).map(e => e.harness);
     if (unknownNames.length) {
       throw new Error(`Unknown capabilities in manifest: ${unknownNames.join(', ')}\nAvailable: ${registry.map(r => r.name).join(', ')}`);
     }
     if (unknownHarnesses.length) {
       throw new Error(`Unknown harnesses in manifest: ${unknownHarnesses.join(', ')}\nAvailable: ${HARNESSES.join(', ')}`);
     }
-    emitPairs = entries.map(e => ({ name: e.name, harness: e.harness, ref: e.ref }));
+    emitPairs = entries.map(e => ({ name: e.name, harness: e.harness as Harness, ref: e.ref }));
   } else {
     const requestedNames = rawNames === 'all' ? registry.map(r => r.name) : rawNames.split(',').map(s => s.trim());
     const unknown = requestedNames.filter(n => !registry.find(r => r.name === n));
     if (unknown.length) {
       throw new Error(`Unknown capabilities: ${unknown.join(', ')}\nAvailable: ${registry.map(r => r.name).join(', ')}`);
     }
-    const requestedHarnesses = rawHarness === 'all' ? HARNESSES : [rawHarness];
+    const requestedHarnesses: Harness[] = rawHarness === 'all' ? [...HARNESSES] : [rawHarness as Harness];
     const badHarnesses = requestedHarnesses.filter(h => !HARNESSES.includes(h));
     if (badHarnesses.length) {
       throw new Error(`Unknown harnesses: ${badHarnesses.join(', ')}\nAvailable: ${HARNESSES.join(', ')}`);
@@ -183,25 +237,24 @@ export async function hoist(opts = {}) {
 
   // Plan mode: output annotated sources list, no emit
   if (planMode) {
-    const seen    = new Set([TOOL_REL, RESOLVER_REL]);
-    const sources = [
+    const seen    = new Set<string>([TOOL_REL, RESOLVER_REL]);
+    const sources: SourcePath[] = [
       { path: TOOL_REL,     required: true },
       { path: RESOLVER_REL, required: true },
     ];
     const uniqueHarnesses = [...new Set(emitPairs.map(p => p.harness))];
 
     for (const { name, harness, ref: pairRef } of emitPairs) {
-      const cap = registry.find(r => r.name === name);
+      const cap = findCap(registry, name);
       const pRef = pairRef ?? ref;
       for (const s of capSourcePaths(cap, harness)) {
         if (!seen.has(s.path)) { seen.add(s.path); sources.push({ ...s, ref: pRef }); }
       }
     }
 
-    const out = { ref };
+    const out: PlanResult = { ref, sources };
     if (uniqueHarnesses.length === 1) out.harness = uniqueHarnesses[0];
     else out.harnesses = uniqueHarnesses;
-    out.sources = sources;
     return out;
   }
 
@@ -215,12 +268,13 @@ export async function hoist(opts = {}) {
   // Emit
   const EMITTERS = makeEmitters(srcRoot, force);
   const kept     = loadKeep(INTO);
-  const results  = [];
+  const results: WriteResult[]  = [];
 
   for (const { name, harness } of emitPairs) {
-    const cap = registry.find(r => r.name === name);
+    const cap = findCap(registry, name);
     console.error(`→ ${name} [${harness}]`);
-    EMITTERS[harness](cap, INTO, kept, results);
+    const emit: Emitter = EMITTERS[harness];
+    emit(cap, INTO, kept, results);
   }
 
   // Record manifest — skip if replaying without an explicit --ref (nothing changed)

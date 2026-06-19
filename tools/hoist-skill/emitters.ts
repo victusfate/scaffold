@@ -1,13 +1,29 @@
 // Per-harness emitters for hoist-skill.
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { safeWrite as sharedSafeWrite } from '../lib/safe-write.ts';
+import { safeWrite as sharedSafeWrite, type KeepMatcher, type WriteResult } from '../lib/safe-write.ts';
 
-function safeWrite(dest, relPath, content, kept, results, force) {
+// A skill capability resolved from RESOLVER.md, ready to emit per harness.
+export interface Capability {
+  name: string;
+  path: string;
+  purpose: string;
+}
+
+// An emitter writes a capability's files into dest, appending to results.
+export type Emitter = (cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[]) => void;
+
+export interface Emitters {
+  claude: Emitter;
+  cursor: Emitter;
+  antigravity: Emitter;
+}
+
+function safeWrite(dest: string, relPath: string, content: string, kept: KeepMatcher, results: WriteResult[], force: boolean): void {
   sharedSafeWrite(dest, relPath, content, kept, results, force, { log: console.error });
 }
 
-export function emitClaude(cap, dest, kept, results, srcRoot, force) {
+export function emitClaude(cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[], srcRoot: string, force: boolean): void {
   const bodyAbs = join(srcRoot, cap.path);
   safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
   const wrapperRel = `.claude/skills/${cap.name}/SKILL.md`;
@@ -18,7 +34,7 @@ export function emitClaude(cap, dest, kept, results, srcRoot, force) {
   safeWrite(dest, wrapperRel, content, kept, results, force);
 }
 
-export function emitCursor(cap, dest, kept, results, srcRoot, force) {
+export function emitCursor(cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[], srcRoot: string, force: boolean): void {
   const bodyAbs = join(srcRoot, cap.path);
   safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
   const cursorRel = `.cursor/rules/${cap.name}.mdc`;
@@ -29,7 +45,7 @@ export function emitCursor(cap, dest, kept, results, srcRoot, force) {
   safeWrite(dest, cursorRel, content, kept, results, force);
 }
 
-export function emitAntigravity(cap, dest, kept, results, srcRoot, force) {
+export function emitAntigravity(cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[], srcRoot: string, force: boolean): void {
   const bodyAbs = join(srcRoot, cap.path);
   safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
 
@@ -48,7 +64,7 @@ export function emitAntigravity(cap, dest, kept, results, srcRoot, force) {
   safeWrite(dest, workflowRel, workflowContent, kept, results, force);
 }
 
-export function makeEmitters(srcRoot, force) {
+export function makeEmitters(srcRoot: string, force: boolean): Emitters {
   return {
     claude:      (cap, dest, kept, results) => emitClaude(cap, dest, kept, results, srcRoot, force),
     cursor:      (cap, dest, kept, results) => emitCursor(cap, dest, kept, results, srcRoot, force),

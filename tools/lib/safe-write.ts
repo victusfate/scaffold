@@ -1,20 +1,35 @@
 // Shared clobber-safe write engine — the one place the "never silently
 // overwrite consumer files" contract lives (agent-authoring-requirements §2a).
-// Consumed by tools/hoist-skill/hoist.mjs and tools/sync/promote.mjs.
+// Consumed by tools/hoist-skill/hoist.ts and tools/sync/promote.ts.
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 
+export type KeepMatcher = (rel: string) => boolean;
+
+// status is a string because higher layers (promote, hoist) push their own
+// statuses onto the same results array (guarded-skip, protected, …).
+export interface WriteResult {
+  path: string;
+  status: string;
+  sidecar?: string;
+}
+
+export interface SafeWriteOpts {
+  check?: boolean;
+  log?: ((line: string) => void) | null;
+}
+
 // Returns a matcher over .scaffold-keep patterns in dest (exact path, dir
 // prefix, or * glob). Absent file -> matches nothing.
-export function loadKeep(dest) {
+export function loadKeep(dest: string): KeepMatcher {
   const kf = join(dest, '.scaffold-keep');
   if (!existsSync(kf)) return () => false;
   const patterns = readFileSync(kf, 'utf8')
     .split('\n')
     .map(l => l.replace(/#.*/, '').trim())
     .filter(Boolean);
-  return (rel) => patterns.some(p => {
+  return (rel: string) => patterns.some(p => {
     if (p.includes('*')) {
       const re = new RegExp('^' + p.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
       return re.test(rel);
@@ -32,7 +47,15 @@ export function loadKeep(dest) {
  * Pushes { path, status[, sidecar] } onto results.
  * opts.log, when set, receives the hoist-style status line per write.
  */
-export function safeWrite(dest, relPath, content, kept, results, force, opts = {}) {
+export function safeWrite(
+  dest: string,
+  relPath: string,
+  content: string,
+  kept: KeepMatcher,
+  results: WriteResult[],
+  force: boolean,
+  opts: SafeWriteOpts = {},
+): void {
   const { check = false, log = null } = opts;
   if (kept(relPath)) {
     results.push({ path: relPath, status: 'kept' });
