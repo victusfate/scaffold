@@ -53,3 +53,22 @@ export function parseResolverRows(resolverPath: string): ResolverRow[] {
   }
   return rows;
 }
+
+// Parse the slug column of the "## Bundled skills" table — self-contained
+// vendored skills (own SKILL.md + assets) that ship as a single
+// .claude/skills/<slug>/ tree and are exempt from the prompt-skill wrapper
+// contract. Returns [] if the file or section is absent.
+export function parseBundledSkills(resolverPath: string): string[] {
+  if (!existsSync(resolverPath)) return [];
+  const slugs: string[] = [];
+  let inSection = false, inTable = false;
+  for (const line of readFileSync(resolverPath, 'utf8').split('\n')) {
+    if (/^##\s+/.test(line)) { inSection = /^##\s+Bundled skills/i.test(line); inTable = false; continue; }
+    if (!inSection || !/^\s*\|.*\|\s*$/.test(line)) continue;
+    const cells = splitRow(line);
+    if (cells[0] === 'Skill') { inTable = true; continue; }
+    if (/^-{2,}$/.test(cells[0]?.replace(/[:\s]/g, ''))) continue;
+    if (inTable && cells[0]) slugs.push(cells[0].replace(/`/g, ''));
+  }
+  return slugs;
+}

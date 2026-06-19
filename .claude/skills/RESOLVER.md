@@ -44,3 +44,17 @@ the first match.
   this file — edit here, not in the wrappers.
 - **Purpose** — one operational sentence. Two skills with near-identical
   purpose fail the MECE check and must be merged via parameterized args.
+
+## Bundled skills
+
+Self-contained Anthropic Agent Skills vendored from upstream — they own their
+`SKILL.md` (with its own frontmatter) plus bundled scripts/data/references, and
+ship as a single `.claude/skills/<slug>/` tree. Registered here so they are not
+flagged as orphaned and are covered by the manifest, but **exempt** from the
+prompt-skill wrapper contract: no canonical `skills/<slug>.md`, no
+`.cursor`/`.agents`/`.agent` wrappers, no Invocation Regex (the skill's own
+`description` drives loading). Claude-harness only.
+
+| Skill | Source (license) | Purpose |
+|---|---|---|
+| drawio-skill | github.com/Agents365-ai/drawio-skill (MIT) | Generate `.drawio` diagrams and export PNG/SVG/PDF/JPG via the draw.io desktop CLI |
