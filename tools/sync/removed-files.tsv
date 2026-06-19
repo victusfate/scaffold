@@ -1,0 +1,41 @@
+# removed-files — paths scaffold stopped shipping (renamed or deleted upstream).
+# Generated from git history; sync reads this to flag removed files still present in a consumer repo.
+# removed_path	replacement	commit	date	reason
+scripts/check-resolvable.mjs	scripts/check-resolvable.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+scripts/compute-bump.test.mjs	scripts/compute-bump.test.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+scripts/compute-bump.mjs	scripts/compute-bump.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+scripts/resolver-phases.mjs	scripts/resolver-phases.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+scripts/resolver-utils.mjs	scripts/resolver-utils.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+scripts/update-skills-doc.mjs	scripts/update-skills-doc.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/hoist-skill/emitters.mjs	tools/hoist-skill/emitters.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/hoist-skill/hoist.mjs	tools/hoist-skill/hoist.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/hoist-skill/manifest.mjs	tools/hoist-skill/manifest.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/lib/resolver-parse.mjs	tools/lib/resolver-parse.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/lib/safe-write.mjs	tools/lib/safe-write.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/linter-setup/detect.mjs	tools/linter-setup/detect.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/linter-setup/emit.mjs	tools/linter-setup/emit.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/linter-setup/hash.mjs	tools/linter-setup/hash.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/linter-setup/registry.mjs	tools/linter-setup/registry.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/sync/policy.mjs	tools/sync/policy.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/sync/promote.mjs	tools/sync/promote.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+tools/sync/run.mjs	tools/sync/run.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+scripts/update-readme-skills.mjs	scripts/update-skills-doc.mjs	f01a1a6	2026-06-13	fix(skills-doc): move generated skill list out of README into docs/skills.md
+.agents/skills/skill-export/SKILL.md	.agents/skills/hoist-skill/SKILL.md	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
+.claude/skills/skill-export/SKILL.md	.claude/skills/hoist-skill/SKILL.md	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
+.cursor/rules/skill-export.mdc	.cursor/rules/hoist-skill.mdc	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
+skills/skill-export.md	skills/hoist-skill.md	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
+tools/capability-export/README.md	tools/hoist-skill/README.md	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
+tools/capability-export/run	tools/hoist-skill/run	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
+tools/capability-export/test	tools/hoist-skill/test	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
+tools/capability-export/tool.yaml	tools/hoist-skill/tool.yaml	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
+.agent/workflows/thermo-nuclear-quality.md	.agent/workflows/prune.md	554f502	2026-05-31	refactor(skill): rename thermo-nuclear-quality → prune
+.agents/skills/thermo-nuclear-quality/SKILL.md	.agents/skills/prune/SKILL.md	554f502	2026-05-31	refactor(skill): rename thermo-nuclear-quality → prune
+.claude/skills/thermo-nuclear-quality/SKILL.md	.claude/skills/prune/SKILL.md	554f502	2026-05-31	refactor(skill): rename thermo-nuclear-quality → prune
+.cursor/rules/thermo-nuclear-quality.mdc	.cursor/rules/prune.mdc	554f502	2026-05-31	refactor(skill): rename thermo-nuclear-quality → prune
+skills/thermo-nuclear-quality.md	skills/prune.md	554f502	2026-05-31	refactor(skill): rename thermo-nuclear-quality → prune
+tools/linter-setup/deps.mjs	-	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
+.github/workflows/version-bump.yml	-	3829bf4	2026-06-13	feat(create-pr): bump version on branch; drop CI version-bump
+.github/workflows/release.yml	-	2f25a75	2026-06-09	feat(code-quality-improvements): slice 5 green — wire real test suite into CI, single versioning mechanism
+.agent/workflows/skill-export.md	-	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
+.claude/skills/thermo-nuclear-quality-review/SKILL.md	-	1f9a4d6	2026-05-28	refactor(quality): split into design-review and code-quality-review skills
+.cursor/rules/thermo-nuclear-quality-review.mdc	-	1f9a4d6	2026-05-28	refactor(quality): split into design-review and code-quality-review skills

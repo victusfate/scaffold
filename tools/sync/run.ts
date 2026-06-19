@@ -85,6 +85,52 @@ function pruneOrphans(into: string, results: WriteResult[], check: boolean, prun
   }
 }
 
+// ---------------------------------------------------------- removed-files hint
+
+/**
+ * Flag paths scaffold removed upstream (renamed or deleted) that are still
+ * present in the consumer repo. Reads `tools/sync/removed-files.tsv` from the
+ * scaffold source and reports the gap the ledger can't see: removed paths on
+ * disk that aren't in the current managed set and aren't already tracked by the
+ * ledger (those are handled by the prune pass). Read-only guidance — never
+ * deletes; the consumer reviews each, deletes it, or claims it via .scaffold-keep.
+ */
+function removedFilesHint(srcRoot: string, into: string, results: WriteResult[]): void {
+  const manifestPath = join(srcRoot, 'tools', 'sync', 'removed-files.tsv');
+  if (!existsSync(manifestPath)) return;
+
+  const ownedNow = new Set(
+    results.filter(r => r.status === 'written' || r.status === 'unchanged' || r.status === 'would-write').map(r => r.path),
+  );
+  const ledger = readLedger(join(into, '.sync', 'managed'));
+
+  // Paths sync must never flag or touch downstream. `.pause/` is the consumer's
+  // own pause/resume state — never scaffold's to manage — so skip it even if a
+  // future manifest regeneration re-adds it from git history.
+  const NEVER_DOWNSTREAM = ['.pause/'];
+
+  const flagged: { path: string; replacement: string }[] = [];
+  for (const line of readFileSync(manifestPath, 'utf8').split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const [removed, replacement] = line.split('\t');
+    if (!removed) continue;
+    if (NEVER_DOWNSTREAM.some(p => removed.startsWith(p))) continue;
+    if (ownedNow.has(removed)) continue;        // re-added under the same path
+    if (ledger.has(removed)) continue;          // prune pass already covers it
+    if (!existsSync(join(into, removed))) continue; // consumer never had it / already gone
+    flagged.push({ path: removed, replacement: replacement?.trim() || '-' });
+  }
+  if (!flagged.length) return;
+
+  console.log('');
+  console.log(`hint: ${flagged.length} file(s) removed upstream are still present here (not tracked by the ledger):`);
+  for (const f of flagged) {
+    console.log(`  ${f.path}${f.replacement !== '-' ? `  →  ${f.replacement}` : '  (removed)'}`);
+  }
+  console.log('  Review and delete, or add to .scaffold-keep to claim them.');
+}
+
 // ---------------------------------------------------------------- main
 
 async function main(): Promise<void> {
@@ -144,6 +190,7 @@ async function main(): Promise<void> {
   }
 
   pruneOrphans(INTO, results, check, prune);
+  removedFilesHint(srcRoot, INTO, results);
 
   const warnings = results.filter(r => r.status === 'guarded-skip');
   if (warnings.length) {

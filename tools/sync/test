@@ -608,5 +608,21 @@ const noKeep = () => false;
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
+// Case 36: removed-files manifest flags a leftover the ledger can't see — read-only
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'agents');
+  writeFile(src, 'tools/sync/removed-files.tsv',
+    '# h\nold.mjs\told.ts\tabc1234\t2026-06-18\tTS migration\n');
+  writeFile(dst, '.sync/policy.yaml', 'files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted');
+  writeFile(dst, 'old.mjs', 'pre-ledger orphan'); // present, untracked by any ledger
+
+  const r = run(['--into', dst, `--scaffold-root=${src}`]);
+  assert('case 36: sync exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  assert('case 36: removed file flagged with replacement', /old\.mjs.+old\.ts/.test(r.stdout), r.stdout);
+  assert('case 36: hint is read-only — file kept', existsSync(join(dst, 'old.mjs')));
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
 console.error(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
