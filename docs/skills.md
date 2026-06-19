@@ -6,6 +6,8 @@
 
 <!-- BEGIN_SKILLS_INVOCATION -->
 Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`.
+
+Bundled skills (self-contained Anthropic Agent Skills, Claude harness; loaded by description rather than a slash command): `drawio-skill`, `improve`.
 <!-- END_SKILLS_INVOCATION -->
 
 ## Structure
@@ -55,6 +57,8 @@ tools/
     audit/SKILL.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail/SKILL.md             # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
+    drawio-skill/SKILL.md         # (bundled) Generate `.drawio` diagrams and export PNG/SVG/PDF/JPG via the draw.io desktop CLI
+    improve/SKILL.md              # (bundled) Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
   read-once/
