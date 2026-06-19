@@ -1,4 +1,20 @@
-export const registry = {
+export type Language =
+  | 'js' | 'ts' | 'python' | 'go' | 'rust'
+  | 'ruby' | 'shell' | 'elixir' | 'zig' | 'mojo';
+
+export interface RegistryEntry {
+  extensions: string[];
+  linter: string;
+  configFile?: string;
+  workflowFile: string;
+  marker: string;
+  metricsOnly: boolean;
+  extraFiles?: string[];
+  devDependencies?: Record<string, string>;
+  scripts?: Record<string, string>;
+}
+
+export const registry: Record<Language, RegistryEntry> = {
   js: {
     extensions: ['.js', '.mjs', '.cjs'],
     linter: 'ESLint',
@@ -12,6 +28,12 @@ export const registry = {
       eslint: '^10.5.0',
       '@eslint/js': '^10.0.1',
       globals: '^17.6.0',
+    },
+    // package.json scripts added on adopt. Plain JS has no type-checker, so
+    // `lint:fix` is a bare autofix.
+    scripts: {
+      lint: 'eslint .',
+      'lint:fix': 'eslint . --fix',
     },
   },
   // TypeScript is its own variant: a type-aware ESLint config that also lints
@@ -31,6 +53,13 @@ export const registry = {
       '@eslint/js': '^10.0.1',
       'typescript-eslint': '^8.61.1',
       globals: '^17.6.0',
+    },
+    // package.json scripts added on adopt. Type-aware autofix can rewrite code
+    // in ways tsc rejects, so `lint:fix` re-runs `tsc --noEmit` as the gate —
+    // the fix is only trustworthy if the type-checker still passes.
+    scripts: {
+      lint: 'eslint .',
+      'lint:fix': 'eslint . --fix && tsc --noEmit',
     },
   },
   python: {

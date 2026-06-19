@@ -21,7 +21,7 @@ inputs:
     type: string
     description: Local scaffold tree to read files AND skills from (no network). Primarily for testing. Uses --scaffold-root=<path> form.
 run:
-  command: node tools/sync/run.mjs  # paths relative to the scaffold repo root
+  command: node tools/sync/run.ts  # paths relative to the scaffold repo root
 test:
   command: node tools/sync/test
 test-integration:

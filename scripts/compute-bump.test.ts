@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tests for scripts/compute-bump.mjs — conventional-commit version bump logic.
+// Tests for scripts/compute-bump.ts — conventional-commit version bump logic.
 
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
@@ -8,12 +8,12 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 let passed = 0, failed = 0;
 
-function assert(label, cond, detail = '') {
+function assert(label: string, cond: boolean, detail = ''): void {
   if (cond) { console.error(`  pass  ${label}`); passed++; }
   else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
 }
 
-const { computeBump } = await import('./compute-bump.mjs');
+const { computeBump } = await import('./compute-bump.ts');
 
 // feat → minor
 {
@@ -59,7 +59,7 @@ const { computeBump } = await import('./compute-bump.mjs');
 
 // CLI: messages on stdin, version as arg, next version on stdout
 {
-  const out = execFileSync(process.execPath, [join(HERE, 'compute-bump.mjs'), '1.2.3'], {
+  const out = execFileSync(process.execPath, [join(HERE, 'compute-bump.ts'), '1.2.3'], {
     input: 'feat: something\nfix: other\n', encoding: 'utf8',
   }).trim();
   assert('CLI prints next version', out === '1.3.0', out);
@@ -67,7 +67,7 @@ const { computeBump } = await import('./compute-bump.mjs');
 
 // CLI: no bump → prints none
 {
-  const out = execFileSync(process.execPath, [join(HERE, 'compute-bump.mjs'), '1.2.3'], {
+  const out = execFileSync(process.execPath, [join(HERE, 'compute-bump.ts'), '1.2.3'], {
     input: 'docs: readme\n', encoding: 'utf8',
   }).trim();
   assert('CLI prints none for no bump', out === 'none', out);

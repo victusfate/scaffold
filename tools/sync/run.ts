@@ -6,11 +6,11 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parsePolicy } from './policy.mjs';
-import { promoteFiles } from './promote.mjs';
-import { hoist } from '../hoist-skill/hoist.mjs';
-import { readManifest } from '../hoist-skill/manifest.mjs';
-import { detect } from '../linter-setup/detect.mjs';
+import { parsePolicy } from './policy.ts';
+import { promoteFiles } from './promote.ts';
+import { hoist } from '../hoist-skill/hoist.ts';
+import { readManifest } from '../hoist-skill/manifest.ts';
+import { detect } from '../linter-setup/detect.ts';
 
 const SCAFFOLD_ROOT = process.env.SYNC_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
@@ -18,10 +18,10 @@ const SCAFFOLD_ROOT = process.env.SYNC_SCAFFOLD_ROOT
 // ---------------------------------------------------------------- args
 
 const args = process.argv.slice(2);
-const has  = (flag) => args.includes(flag);
-const get  = (flag) => { const i = args.indexOf(flag); return i !== -1 ? args[i + 1] : null; };
+const has  = (flag: string): boolean => args.includes(flag);
+const get  = (flag: string): string | null => { const i = args.indexOf(flag); return i !== -1 ? args[i + 1] : null; };
 // --scaffold-root=<path> form (for testing)
-const getEq = (prefix) => {
+const getEq = (prefix: string): string | null => {
   const a = args.find(a => a.startsWith(prefix + '='));
   return a ? a.slice(prefix.length + 1) : null;
 };
@@ -34,9 +34,11 @@ const srcRootArg = getEq('--scaffold-root');
 const srcRoot    = srcRootArg ? resolve(srcRootArg) : SCAFFOLD_ROOT;
 const INTO       = resolve(intoRaw);
 
+const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
 // ---------------------------------------------------------------- main
 
-async function main() {
+async function main(): Promise<void> {
   const policyPath = join(INTO, '.sync', 'policy.yaml');
   if (!existsSync(policyPath)) {
     console.error(`sync: missing policy file at ${policyPath}`);
@@ -48,7 +50,7 @@ async function main() {
   try {
     policy = parsePolicy(readFileSync(policyPath, 'utf8'));
   } catch (e) {
-    console.error(`sync: invalid policy — ${e.message}`);
+    console.error(`sync: invalid policy — ${errMsg(e)}`);
     process.exit(1);
   }
 
@@ -57,7 +59,8 @@ async function main() {
   // Print provenance before any writes. Files always come from the local
   // source tree (the npx package checkout, or --scaffold-root); only skill
   // hoisting resolves --ref. Name both so mixed-version syncs are visible.
-  const pkgVersion = JSON.parse(readFileSync(join(SCAFFOLD_ROOT, 'package.json'), 'utf8')).version;
+  const pkg = JSON.parse(readFileSync(join(SCAFFOLD_ROOT, 'package.json'), 'utf8')) as { version?: string };
+  const pkgVersion = pkg.version;
   const filesSrc = srcRootArg ? srcRoot : `package@${pkgVersion}`;
   console.log(`scaffold sync  files=${filesSrc}  skills-ref=${ref}  into=${INTO}${check ? '  (--check)' : ''}`);
 
@@ -85,7 +88,7 @@ async function main() {
           fromManifest: manifestPath, ref, into: INTO, refExplicit: Boolean(refArg), force,
         });
       } catch (e) {
-        console.error(`sync: hoist failed — ${e.message}`);
+        console.error(`sync: hoist failed — ${errMsg(e)}`);
         process.exit(1);
       }
     }
@@ -105,7 +108,7 @@ async function main() {
   // Suggest /add-linter for any detected language not yet using scaffold thresholds
   if (!check) {
     try {
-      const langs = await detect(INTO, srcRoot);
+      const langs = detect(INTO, srcRoot);
       const actionable = langs.filter(l => l.state !== 'scaffold');
       if (actionable.length > 0) {
         const names = actionable.map(l => l.language).join(', ');
@@ -119,4 +122,4 @@ async function main() {
   }
 }
 
-main().catch(e => { console.error(`sync: ${e.message}`); process.exit(1); });
+main().catch((e: unknown) => { console.error(`sync: ${errMsg(e)}`); process.exit(1); });

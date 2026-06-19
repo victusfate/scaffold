@@ -1,7 +1,7 @@
 # Skills
 
 > Generated from [`.claude/skills/RESOLVER.md`](../.claude/skills/RESOLVER.md) by
-> `scripts/update-skills-doc.mjs`. Run `node scripts/update-skills-doc.mjs` after
+> `scripts/update-skills-doc.ts`. Run `node scripts/update-skills-doc.ts` after
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
@@ -22,16 +22,16 @@ docs/
 bin/
   bootstrap.sh                   # one-time setup for downstream repos
   sync-from-scaffold.sh          # pull scaffold updates into a downstream repo
-  sync                           # npx entrypoint → tools/sync/run.mjs
+  sync                           # npx entrypoint → tools/sync/run.ts
   install-skills.sh              # copy skills into a global dir (e.g. ~/.claude/skills)
   globalize-skill.sh             # promote one skill into a global dir, imports inlined
   repo-bound-skills.txt          # shared guard list for the two installers
 tools/
   README.md                      # capability index (spec §2 registration)
   lib/
-    safe-write.mjs               # shared clobber-safe write engine (sidecars, .scaffold-keep)
-  hoist-skill/                   # tool: emit skills into a consumer repo (tool.yaml, run, hoist.mjs, test)
-  sync/                          # tool: npx consumer sync (tool.yaml, run.mjs, policy.mjs, promote.mjs, test)
+    safe-write.ts                # shared clobber-safe write engine (sidecars, .scaffold-keep)
+  hoist-skill/                   # tool: emit skills into a consumer repo (tool.yaml, run, hoist.ts, test)
+  sync/                          # tool: npx consumer sync (tool.yaml, run.ts, policy.ts, promote.ts, test)
 .claude/
   skills/
     RESOLVER.md                   # central routing table — skill → regex → path
@@ -127,9 +127,9 @@ tools/
     audit.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
 scripts/
-  check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
-  update-skills-doc.mjs          # regenerate docs/skills.md skill sections from RESOLVER.md
-  compute-bump.mjs               # conventional-commit version bump (used by the create-pr skill)
+  check-resolvable.ts            # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
+  update-skills-doc.ts           # regenerate docs/skills.md skill sections from RESOLVER.md
+  compute-bump.ts                # conventional-commit version bump (used by the create-pr skill)
   test-sync.sh                   # isolated tests for bin/sync-from-scaffold.sh
   test-bootstrap.sh              # isolated tests for bin/bootstrap.sh
 .githooks/

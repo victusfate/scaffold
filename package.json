@@ -3,12 +3,13 @@
   "version": "0.10.0",
   "type": "module",
   "engines": {
-    "node": ">=18"
+    "node": ">=23.6.0"
   },
   "scripts": {
-    "test": "tools/hoist-skill/test && tools/sync/test && node tools/linter-setup/test && node scripts/compute-bump.test.mjs && bash scripts/test-sync.sh && bash scripts/test-bootstrap.sh && bash scripts/test-rubric-format.sh && bash scripts/test-audit-skill.sh && bash scripts/test-code-quality-review.sh && bash scripts/test-tdd-rubric.sh && bash scripts/test-mechanical-check.sh && bash scripts/test-create-pr-gate.sh && bash scripts/test-linter-setup.sh && node scripts/check-resolvable.mjs --strict && node scripts/update-skills-doc.mjs --check",
+    "test": "tools/hoist-skill/test && tools/sync/test && node tools/linter-setup/test && node scripts/compute-bump.test.ts && bash scripts/test-sync.sh && bash scripts/test-bootstrap.sh && bash scripts/test-rubric-format.sh && bash scripts/test-audit-skill.sh && bash scripts/test-code-quality-review.sh && bash scripts/test-tdd-rubric.sh && bash scripts/test-mechanical-check.sh && bash scripts/test-create-pr-gate.sh && bash scripts/test-linter-setup.sh && node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check",
     "test:integration": "RUN_INTEGRATION=1 tools/hoist-skill/test-integration && RUN_INTEGRATION=1 tools/sync/test-integration && RUN_INTEGRATION=1 tools/linter-setup/test-integration",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
   },
   "bin": {
     "scaffold": "./bin/sync"

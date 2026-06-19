@@ -2,13 +2,19 @@ import { execSync } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { join, extname, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { registry } from './registry.mjs';
-import { templateHash } from './hash.mjs';
+import { registry, type Language } from './registry.ts';
+import { templateHash } from './hash.ts';
+
+export type DetectState = 'none' | 'foreign' | 'scaffold' | 'stale';
+export interface DetectResult {
+  language: Language;
+  state: DetectState;
+}
 
 const DEFAULT_SRC_ROOT = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
-const extMap = new Map();
-for (const [lang, entry] of Object.entries(registry)) {
+const extMap = new Map<string, Language>();
+for (const [lang, entry] of Object.entries(registry) as [Language, typeof registry[Language]][]) {
   for (const ext of entry.extensions) extMap.set(ext, lang);
 }
 
@@ -16,7 +22,7 @@ for (const [lang, entry] of Object.entries(registry)) {
 //   undefined → marker absent (foreign)
 //   null      → marker present but unstamped (legacy — treated as current)
 //   <hex>     → stamped hash
-function stampedHash(content, marker) {
+function stampedHash(content: string, marker: string): string | null | undefined {
   const idx = content.indexOf(marker);
   if (idx === -1) return undefined;
   const nl = content.indexOf('\n', idx);
@@ -25,12 +31,18 @@ function stampedHash(content, marker) {
   return m ? m[1] : null;
 }
 
-export async function detect(repoPath, srcRoot = DEFAULT_SRC_ROOT) {
+export function detect(repoPath: string, srcRoot = DEFAULT_SRC_ROOT): DetectResult[] {
   const files = execSync('git ls-files', { cwd: repoPath })
     .toString().trim().split('\n').filter(Boolean);
 
-  const detected = new Set();
+  // Vendored linter templates and setup tooling ship example configs in many
+  // languages (e.g. a .credo.exs for Elixir). When scaffold lints itself these
+  // would be detected as repo source, so exclude them from language detection.
+  const VENDORED = /^(lib\/linters|tools\/linter-setup)\//;
+
+  const detected = new Set<Language>();
   for (const file of files) {
+    if (VENDORED.test(file)) continue;
     const lang = extMap.get(extname(file));
     if (lang) detected.add(lang);
   }
@@ -46,7 +58,7 @@ export async function detect(repoPath, srcRoot = DEFAULT_SRC_ROOT) {
   return Array.from(detected).map(language => {
     const entry = registry[language];
     const configPath = entry.configFile ? join(repoPath, entry.configFile) : null;
-    let state = 'none';
+    let state: DetectState = 'none';
     if (configPath && existsSync(configPath)) {
       const content = readFileSync(configPath, 'utf8');
       const stamped = stampedHash(content, entry.marker);

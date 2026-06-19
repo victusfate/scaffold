@@ -18,7 +18,7 @@ npx github:victusfate/scaffold sync [--into <path>] [--ref <ref>] [--check] [--f
    - `skills.manifest` — path to the hoisted-skills manifest to replay
    Unknown keys are rejected (a typo'd section must not reclassify entries).
 2. Every write goes through the shared clobber-safe engine
-   (`tools/lib/safe-write.mjs`): `.scaffold-keep` paths are never touched, and
+   (`tools/lib/safe-write.ts`): `.scaffold-keep` paths are never touched, and
    a differing destination gets a `*.scaffold-new` sidecar unless `--force`.
 3. If the manifest exists, skills are re-hoisted at `--ref` (or the policy
    `ref`, then `main`). With `--check`, the replay count is reported instead.

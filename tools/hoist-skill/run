@@ -7,7 +7,7 @@
 // CLI shim — the engine lives in hoist.mjs (importable on Node 18+).
 
 import { join, resolve } from 'node:path';
-import { hoist } from './hoist.mjs';
+import { hoist } from './hoist.ts';
 
 const args = process.argv.slice(2);
 const get  = (flag) => { const i = args.indexOf(flag); return i !== -1 ? args[i + 1] : null; };

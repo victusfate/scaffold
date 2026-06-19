@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// update-skills-doc.mjs — regenerate docs/skills.md skill sections from RESOLVER.md.
+// update-skills-doc.ts — regenerate docs/skills.md skill sections from RESOLVER.md.
 //
-//   node scripts/update-skills-doc.mjs          # update docs/skills.md in place
-//   node scripts/update-skills-doc.mjs --check  # exit 1 if docs/skills.md is stale (used by pre-commit)
+//   node scripts/update-skills-doc.ts          # update docs/skills.md in place
+//   node scripts/update-skills-doc.ts --check  # exit 1 if docs/skills.md is stale (used by pre-commit)
 //
 // The README is intentionally NOT checked — downstream consumers own their README.
 
@@ -16,10 +16,15 @@ const DOC = join(ROOT, 'docs', 'skills.md');
 
 const CHECK = process.argv.includes('--check');
 
+interface SkillRow {
+  skill: string;
+  purpose: string;
+}
+
 // ---------------------------------------------------------------- parse RESOLVER
 
-function splitRow(row) {
-  const cells = [];
+function splitRow(row: string): string[] {
+  const cells: string[] = [];
   let current = '';
   let inBacktick = false;
   for (let i = 0; i < row.length; i++) {
@@ -32,9 +37,9 @@ function splitRow(row) {
   return cells.filter((c, i, arr) => !(i === 0 && c === '') && !(i === arr.length - 1 && c === ''));
 }
 
-function parseResolver() {
+function parseResolver(): SkillRow[] {
   const lines = readFileSync(RESOLVER, 'utf8').split('\n');
-  const rows = [];
+  const rows: SkillRow[] = [];
   let inTable = false;
   for (const line of lines) {
     const isRow = /^\s*\|.*\|\s*$/.test(line);
@@ -50,18 +55,18 @@ function parseResolver() {
 
 // ---------------------------------------------------------------- generate sections
 
-function pad(name, col) {
+function pad(name: string, col: number): string {
   return name + ' '.repeat(Math.max(2, col - name.length));
 }
 
-function generateInvocation(rows) {
+function generateInvocation(rows: SkillRow[]): string {
   const list = rows.map(r => `\`/${r.skill}\``).join(', ');
   return `Skills can be invoked individually: ${list}.`;
 }
 
-function generateStructure(rows) {
+function generateStructure(rows: SkillRow[]): string {
   // Compute alignment column per section (longest entry + 2 spaces before #)
-  const col = (names) => Math.max(...names.map(n => n.length)) + 2;
+  const col = (names: string[]): number => Math.max(...names.map(n => n.length)) + 2;
 
   const claudeCol = col([...rows.map(r => `    ${r.skill}/SKILL.md`), '    RESOLVER.md']);
   const cursorCol = col([...rows.map(r => `    ${r.skill}.mdc`),      '    agents.mdc']);
@@ -95,16 +100,16 @@ docs/
 bin/
   bootstrap.sh                   # one-time setup for downstream repos
   sync-from-scaffold.sh          # pull scaffold updates into a downstream repo
-  sync                           # npx entrypoint → tools/sync/run.mjs
+  sync                           # npx entrypoint → tools/sync/run.ts
   install-skills.sh              # copy skills into a global dir (e.g. ~/.claude/skills)
   globalize-skill.sh             # promote one skill into a global dir, imports inlined
   repo-bound-skills.txt          # shared guard list for the two installers
 tools/
   README.md                      # capability index (spec §2 registration)
   lib/
-    safe-write.mjs               # shared clobber-safe write engine (sidecars, .scaffold-keep)
-  hoist-skill/                   # tool: emit skills into a consumer repo (tool.yaml, run, hoist.mjs, test)
-  sync/                          # tool: npx consumer sync (tool.yaml, run.mjs, policy.mjs, promote.mjs, test)
+    safe-write.ts                # shared clobber-safe write engine (sidecars, .scaffold-keep)
+  hoist-skill/                   # tool: emit skills into a consumer repo (tool.yaml, run, hoist.ts, test)
+  sync/                          # tool: npx consumer sync (tool.yaml, run.ts, policy.ts, promote.ts, test)
 .claude/
   skills/
 ${pad('    RESOLVER.md', claudeCol)}# central routing table — skill → regex → path
@@ -128,9 +133,9 @@ ${pad('    agents.md', agentWCol)}# thin pointer to AGENTS.md (always-on)
   workflows/
 ${agentWorkflows}
 scripts/
-  check-resolvable.mjs           # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
-  update-skills-doc.mjs          # regenerate docs/skills.md skill sections from RESOLVER.md
-  compute-bump.mjs               # conventional-commit version bump (used by the create-pr skill)
+  check-resolvable.ts            # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
+  update-skills-doc.ts           # regenerate docs/skills.md skill sections from RESOLVER.md
+  compute-bump.ts                # conventional-commit version bump (used by the create-pr skill)
   test-sync.sh                   # isolated tests for bin/sync-from-scaffold.sh
   test-bootstrap.sh              # isolated tests for bin/bootstrap.sh
 .githooks/
@@ -147,7 +152,7 @@ scripts/
 
 // ---------------------------------------------------------------- replace markers
 
-function replaceBetween(content, beginTag, endTag, replacement) {
+function replaceBetween(content: string, beginTag: string, endTag: string, replacement: string): string {
   const begin = `<!-- ${beginTag} -->`;
   const end   = `<!-- ${endTag} -->`;
   const re = new RegExp(`${escapeRe(begin)}[\\s\\S]*?${escapeRe(end)}`, 'm');
@@ -155,7 +160,7 @@ function replaceBetween(content, beginTag, endTag, replacement) {
   return content.replace(re, `${begin}\n${replacement}\n${end}`);
 }
 
-function escapeRe(s) {
+function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
@@ -178,7 +183,7 @@ if (original === doc) {
 }
 
 if (CHECK) {
-  console.error(`✗ docs/skills.md sections are stale — run: node scripts/update-skills-doc.mjs`);
+  console.error(`✗ docs/skills.md sections are stale — run: node scripts/update-skills-doc.ts`);
   process.exit(1);
 }
 

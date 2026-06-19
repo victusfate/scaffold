@@ -1,20 +1,21 @@
 #!/usr/bin/env node
-// check-resolvable.mjs — strict compliance linter for the skill engine.
+// check-resolvable.ts — strict compliance linter for the skill engine.
 //
-//   node scripts/check-resolvable.mjs            # lint (DRY/MECE-soft as warnings)
-//   node scripts/check-resolvable.mjs --strict   # promote DRY warnings to errors
-//   node scripts/check-resolvable.mjs --quiet    # errors only
+//   node scripts/check-resolvable.ts            # lint (DRY/MECE-soft as warnings)
+//   node scripts/check-resolvable.ts --strict   # promote DRY warnings to errors
+//   node scripts/check-resolvable.ts --quiet    # errors only
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseResolverRows } from '../tools/lib/resolver-parse.mjs';
+import { parseResolverRows } from '../tools/lib/resolver-parse.ts';
 import { execSync } from 'node:child_process';
 import {
   phaseReachability, phaseAmbiguity, phaseDry, phaseMece,
   phaseWrapperIntegrity, phaseCursorParity, phaseAntigravityParity,
   phaseFrontmatterParity, phaseScaffold, phaseManifestCompleteness,
-} from './resolver-phases.mjs';
+  type PhaseCtx,
+} from './resolver-phases.ts';
 
 const ROOT              = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR        = join(ROOT, '.claude', 'skills');
@@ -29,17 +30,17 @@ const argv = new Set(process.argv.slice(2));
 const STRICT = argv.has('--strict');
 const QUIET  = argv.has('--quiet');
 
-const errors = [], warnings = [];
-const fail = (phase, msg) => errors.push(`[${phase}] ${msg}`);
-const warn = (phase, msg) => warnings.push(`[${phase}] ${msg}`);
+const errors: string[] = [], warnings: string[] = [];
+const fail = (phase: string, msg: string): number => errors.push(`[${phase}] ${msg}`);
+const warn = (phase: string, msg: string): number => warnings.push(`[${phase}] ${msg}`);
 
-const rel = p => p.replace(ROOT + '/', '');
+const rel = (p: string): string => p.replace(ROOT + '/', '');
 
 import { readFileSync } from 'node:fs';
-const manifestSet = new Set(
+const manifestSet = new Set<string>(
   existsSync(MANIFEST) ? readFileSync(MANIFEST, 'utf8').split('\n').map(l => l.trim()).filter(Boolean) : []
 );
-const listedInManifest = p => manifestSet.has(p);
+const listedInManifest = (p: string): boolean => manifestSet.has(p);
 
 const trackedFiles = (() => {
   try {
@@ -61,13 +62,14 @@ const rows = parseResolverRows(RESOLVER);
 if (!existsSync(RESOLVER)) fail('Parse', `RESOLVER.md not found at ${rel(RESOLVER)}`);
 else if (rows.length === 0) fail('Parse', 'No skill rows found in RESOLVER.md table.');
 
+const ctx: PhaseCtx = {
+  fail, warn, ROOT, STRICT, MANIFEST, INTERNAL, SKILLS_DIR, CURSOR_RULES,
+  ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS,
+  skillDirs: skillDirsOnDisk(),
+  trackedFiles, manifestSet, listedInManifest, rel,
+};
+
 if (rows.length) {
-  const ctx = {
-    fail, warn, ROOT, STRICT, MANIFEST, SKILLS_DIR, CURSOR_RULES,
-    ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS,
-    skillDirs: skillDirsOnDisk(),
-    listedInManifest, rel,
-  };
   phaseReachability(rows, ctx);
   phaseAmbiguity(rows, ctx);
   phaseDry(rows, ctx);
@@ -80,7 +82,7 @@ if (rows.length) {
 }
 
 // Manifest completeness is independent of RESOLVER parsing — run it always.
-phaseManifestCompleteness(null, { fail, MANIFEST, INTERNAL, manifestSet, trackedFiles, rel });
+phaseManifestCompleteness(rows, ctx);
 
 if (!QUIET && warnings.length) {
   console.warn(`\n${warnings.length} warning(s):`);

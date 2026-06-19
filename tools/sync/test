@@ -34,7 +34,7 @@ function run(args = [], opts = {}) {
 
 // ---------------------------------------------------------------- slice 2: policy parser
 
-import { parsePolicy } from './policy.mjs';
+import { parsePolicy } from './policy.ts';
 
 const VALID_YAML = `
 ref: v1.2
@@ -138,7 +138,7 @@ skills:
 
 // ---------------------------------------------------------------- slice 3: file promotion
 
-import { promoteFiles } from './promote.mjs';
+import { promoteFiles } from './promote.ts';
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
@@ -299,12 +299,12 @@ const POLICY_BASE = {
 
 // ---------------------------------------------------------------- slice 4: hoist-skill API export
 
-// Case 16a: hoist() is importable from the .mjs engine module (works on Node 18+,
+// Case 16a: hoist() is importable from the .ts engine module (works on Node ≥23.6,
 // unlike an extensionless ESM import)
 let hoist;
 {
   try {
-    ({ hoist } = await import('../hoist-skill/hoist.mjs'));
+    ({ hoist } = await import('../hoist-skill/hoist.ts'));
   } catch { /* fall through */ }
   assert('case 16a: hoist.mjs exports hoist()', typeof hoist === 'function');
 }

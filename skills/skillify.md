@@ -16,7 +16,7 @@ propagated upstream to `scaffold` so every downstream repo inherits it.
 - **Stay MECE.** Before generating, scan RESOLVER for a skill with overlapping
   purpose. If one exists, extend it with a parameterized arg instead of adding a
   near-duplicate.
-- **Validate before save is final.** Run `node scripts/check-resolvable.mjs` and
+- **Validate before save is final.** Run `node scripts/check-resolvable.ts` and
   resolve every error before opening the PR.
 
 ## Pipeline
@@ -108,9 +108,9 @@ repeating them.
 1. **Register** — add a row to `.claude/skills/RESOLVER.md` (unique `^\/<slug>`
    anchor, path pointing to `skills/<slug>.md`) and append all five new file
    paths to `.github/scaffold-files.txt`.
-2. **Tests** — the skill must survive `node scripts/check-resolvable.mjs`. Add a
+2. **Tests** — the skill must survive `node scripts/check-resolvable.ts`. Add a
    focused test for any logic the skill ships in a script.
-3. **Validate** — `node scripts/check-resolvable.mjs`. Fix every error.
+3. **Validate** — `node scripts/check-resolvable.ts`. Fix every error.
 4. **PR to scaffold** — new skills belong upstream so all repos inherit them:
    ```
    git fetch scaffold main

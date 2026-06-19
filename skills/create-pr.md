@@ -85,9 +85,9 @@ job and no extra token are involved. Tagging stays on merge to main (e.g. in
    ```
 
 3. **Compute the next version** from the conventional commits the branch adds.
-   If `scripts/compute-bump.mjs` exists, use it:
+   If `scripts/compute-bump.ts` exists, use it:
    ```bash
-   NEXT=$(git log --pretty=%s%n%b origin/main..HEAD | node scripts/compute-bump.mjs "$CURRENT")
+   NEXT=$(git log --pretty=%s%n%b origin/main..HEAD | node scripts/compute-bump.ts "$CURRENT")
    ```
    Otherwise apply the rule by hand across all branch commit messages: a
    `BREAKING CHANGE` or `!:` → major, a `feat:` → minor, a `fix:` → patch,

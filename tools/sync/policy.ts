@@ -1,16 +1,34 @@
 // Minimal parser for .sync/policy.yaml — fixed schema only.
 // Supports exactly the policy structure; not a general YAML parser.
 
-export function parsePolicy(text) {
+// A validated guarded entry — both fields are present (flushGuarded enforces it).
+export interface GuardedEntry {
+  path: string;
+  keep_marker: string;
+}
+
+// During parsing the two fields arrive on separate lines, so accumulate nullable.
+interface PendingGuarded {
+  path: string | null;
+  keep_marker: string | null;
+}
+
+export interface Policy {
+  ref: string;
+  files: { copy: string[]; guarded: GuardedEntry[]; protected: string[] };
+  skills: { manifest: string };
+}
+
+export function parsePolicy(text: string): Policy {
   const lines = text.split('\n');
 
-  function indentOf(line) {
+  function indentOf(line: string): number {
     let i = 0;
     while (i < line.length && line[i] === ' ') i++;
     return i;
   }
 
-  function unquote(s) {
+  function unquote(s: string): string {
     if (s.length >= 2 &&
         ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))) {
       return s.slice(1, -1);
@@ -18,22 +36,23 @@ export function parsePolicy(text) {
     return s;
   }
 
-  function flushGuarded() {
+  function flushGuarded(): void {
+    if (!pendingGuarded) return;
     if (!pendingGuarded.path) throw new Error(`policy: guarded entry missing "path": ${JSON.stringify(pendingGuarded)}`);
     if (!pendingGuarded.keep_marker) throw new Error(`policy: guarded entry missing "keep_marker": ${JSON.stringify(pendingGuarded)}`);
-    guarded.push(pendingGuarded);
+    guarded.push({ path: pendingGuarded.path, keep_marker: pendingGuarded.keep_marker });
     pendingGuarded = null;
   }
 
   // State
-  let ref = null;
+  let ref: string | null = null;
   let sawFiles = false;
-  const copy = [];
-  const guarded = [];
-  const protected_ = [];
-  let skillsManifest = null;
-  let section = null;
-  let pendingGuarded = null;
+  const copy: string[] = [];
+  const guarded: GuardedEntry[] = [];
+  const protected_: string[] = [];
+  let skillsManifest: string | null = null;
+  let section: string | null = null;
+  let pendingGuarded: PendingGuarded | null = null;
 
   for (const raw of lines) {
     const trimmed = raw.trim();

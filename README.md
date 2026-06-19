@@ -147,7 +147,7 @@ Two lists classify every tracked file in this repo:
 - **`.github/scaffold-files.txt`** — the manifest of files that sync to consumers.
 - **`.github/scaffold-internal.txt`** — files deliberately held back (this repo's own CI, dev/test scripts, feature artifacts, maintainer tooling).
 
-CI (`scripts/check-resolvable.mjs` → `phaseManifestCompleteness`) fails if a tracked file is in **neither** list, or if the manifest lists a file that no longer exists. This makes "ship it unless explicitly held back" the default, so adding a skill's runtime (e.g. `tools/<x>/`, `lib/<x>/`) without also shipping it can't silently slip through. The check is keyed on `scaffold-internal.txt`, which never syncs — so consumer repos (which lack it) skip it rather than flagging their own files.
+CI (`scripts/check-resolvable.ts` → `phaseManifestCompleteness`) fails if a tracked file is in **neither** list, or if the manifest lists a file that no longer exists. This makes "ship it unless explicitly held back" the default, so adding a skill's runtime (e.g. `tools/<x>/`, `lib/<x>/`) without also shipping it can't silently slip through. The check is keyed on `scaffold-internal.txt`, which never syncs — so consumer repos (which lack it) skip it rather than flagging their own files.
 
 > **Future direction — git-native sync.** Today's flow is a hand-rolled *selective vendoring* tool: it re-implements merge (3-way against the stored SHA) and ignore (`.scaffold-keep`) over a curated subset that scatters into ~13 shared dirs. That keeps the *destination* repo simple (files live natively where each harness reads them, no install step) at the cost of a bespoke sync tool plus a manifest that must be kept complete (the guard above). A possible future swap: relocate scaffold's payload under a single owned prefix (e.g. `vendor/scaffold/`) consumed via **`git subtree`** (real `git pull`, history, conflict resolution, `git subtree push` upstream) plus an **install step** that places files into harness paths. That trades manifest-maintenance for an install/symlink layer in every consumer — worth it once we want real history and bidirectional contribution badly enough to pay that cost. Not adopting it now; keeping `sync-scaffold` as-is.
 
@@ -250,8 +250,8 @@ which maps each skill to its invocation regex and path. A linter keeps the
 table and the skills on disk in sync:
 
 ```bash
-node scripts/check-resolvable.mjs          # errors block, DRY duplication warns
-node scripts/check-resolvable.mjs --strict # DRY duplication also blocks
+node scripts/check-resolvable.ts          # errors block, DRY duplication warns
+node scripts/check-resolvable.ts --strict # DRY duplication also blocks
 ```
 
 It enforces nine phases: **Reachability** (no skill orphaned from the table),
@@ -342,7 +342,7 @@ Or just run `/protect-branch` in Claude Code — it opens this page and walks yo
 No manual steps needed day-to-day:
 
 1. Developer writes [conventional commits](https://www.conventionalcommits.org/) (`feat:`, `fix:`, etc.) on the branch
-2. The `create-pr` skill computes the bump from the branch's commits (`scripts/compute-bump.mjs`) and commits the new `package.json` version **on the branch**, before opening the PR
+2. The `create-pr` skill computes the bump from the branch's commits (`scripts/compute-bump.ts`) and commits the new `package.json` version **on the branch**, before opening the PR
 3. `verify` job runs `npm test` (all tool/script suites, the skill-engine linter, the skill/rubric assertion suites, and the `docs/skills.md` freshness check) on the bump commit — must pass before merge is allowed. A separate **Quality Gate** workflow (`quality.yml`) runs the mechanical checks on every PR.
 4. PR merges to `main` with the version bump included
 5. `release.yml` reads the version from `package.json` on `main` and pushes the `v<version>` tag

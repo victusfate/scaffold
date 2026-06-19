@@ -1,10 +1,32 @@
-// Validation phases for check-resolvable.mjs.
+// Validation phases for check-resolvable.ts.
 // Each phase takes (rows, ctx) where ctx carries fail/warn and path constants.
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { compileCell, anchorSlug, tokens, jaccard, frontmatterDescription, normalizeWhitespace } from './resolver-utils.mjs';
+import { compileCell, anchorSlug, tokens, jaccard, frontmatterDescription, normalizeWhitespace, type Reporter } from './resolver-utils.ts';
+import type { ResolverRow } from '../tools/lib/resolver-parse.ts';
 
-export function phaseReachability(rows, { fail, ROOT, SKILLS_DIR, skillDirs, rel }) {
+// Shared context passed to every phase. Each phase destructures the subset it
+// needs; collecting them in one type keeps the call sites in check-resolvable.ts
+// honest about what each phase consumes.
+export interface PhaseCtx {
+  fail: Reporter;
+  warn: Reporter;
+  rel: (p: string) => string;
+  ROOT: string;
+  SKILLS_DIR: string;
+  CURSOR_RULES: string;
+  ANTIGRAVITY_SKILLS: string;
+  ANTIGRAVITY_WORKFLOWS: string;
+  MANIFEST: string;
+  INTERNAL: string;
+  STRICT: boolean;
+  skillDirs: string[];
+  trackedFiles: string[];
+  manifestSet: Set<string>;
+  listedInManifest: (p: string) => boolean;
+}
+
+export function phaseReachability(rows: ResolverRow[], { fail, ROOT, SKILLS_DIR, skillDirs, rel }: PhaseCtx): void {
   const registered = new Set(rows.map(r => r.name));
   for (const slug of skillDirs) {
     if (!registered.has(slug))
@@ -21,9 +43,11 @@ export function phaseReachability(rows, { fail, ROOT, SKILLS_DIR, skillDirs, rel
   }
 }
 
-export function phaseAmbiguity(rows, { fail }) {
-  const compiled = rows.map(r => ({ ...r, re: compileCell(r.regexCell, r.name, fail) })).filter(r => r.re);
-  const seenAnchor = new Map();
+export function phaseAmbiguity(rows: ResolverRow[], { fail }: PhaseCtx): void {
+  const compiled = rows
+    .map(r => ({ ...r, re: compileCell(r.regexCell, r.name, fail) }))
+    .filter((r): r is ResolverRow & { re: RegExp } => r.re !== null);
+  const seenAnchor = new Map<string | null, string>();
   for (const r of compiled) {
     const a = anchorSlug(r.regexCell);
     if (seenAnchor.has(a)) fail('Ambiguity', `duplicate anchor '^/${a}' shared by '${seenAnchor.get(a)}' and '${r.name}'`);
@@ -41,22 +65,23 @@ export function phaseAmbiguity(rows, { fail }) {
   }
 }
 
-export function phaseDry(rows, { fail, warn, ROOT, STRICT }) {
+export function phaseDry(rows: ResolverRow[], { fail, warn, ROOT, STRICT }: PhaseCtx): void {
   const MIN_RUN = 3;
   const MIN_LEN = 20;
-  const norm = l => l.trim();
-  const meaningful = l => l.length >= MIN_LEN && !l.startsWith('#') && !/^[-*]\s*$/.test(l);
+  const norm = (l: string): string => l.trim();
+  const meaningful = (l: string): boolean => l.length >= MIN_LEN && !l.startsWith('#') && !/^[-*]\s*$/.test(l);
   const fileLines = rows
     .filter(r => existsSync(join(ROOT, r.path)))
     .map(r => ({ skill: r.name, lines: readFileSync(join(ROOT, r.path), 'utf8').split('\n').map(norm) }));
-  const blockOwners = new Map();
+  const blockOwners = new Map<string, Set<string>>();
   for (const { skill, lines } of fileLines) {
     for (let i = 0; i + MIN_RUN <= lines.length; i++) {
       const run = lines.slice(i, i + MIN_RUN);
       if (!run.every(meaningful)) continue;
       const key = run.join('\n');
-      if (!blockOwners.has(key)) blockOwners.set(key, new Set());
-      blockOwners.get(key).add(skill);
+      let owners = blockOwners.get(key);
+      if (!owners) { owners = new Set(); blockOwners.set(key, owners); }
+      owners.add(skill);
     }
   }
   for (const [block, owners] of blockOwners) {
@@ -67,7 +92,7 @@ export function phaseDry(rows, { fail, warn, ROOT, STRICT }) {
   }
 }
 
-export function phaseMece(rows, { fail }) {
+export function phaseMece(rows: ResolverRow[], { fail }: PhaseCtx): void {
   const THRESHOLD = 0.7;
   const sig = rows.map(r => ({ name: r.name, t: tokens(r.purpose) }));
   for (let i = 0; i < sig.length; i++)
@@ -78,10 +103,10 @@ export function phaseMece(rows, { fail }) {
     }
 }
 
-export function phaseWrapperIntegrity(rows, { fail, SKILLS_DIR, CURSOR_RULES, ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS, rel }) {
+export function phaseWrapperIntegrity(rows: ResolverRow[], { fail, SKILLS_DIR, CURSOR_RULES, ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS, rel }: PhaseCtx): void {
   for (const r of rows) {
     const expected = `skills/${r.name}.md`;
-    const check = (path, include) => {
+    const check = (path: string, include: string): void => {
       if (!existsSync(path)) return;
       if (!readFileSync(path, 'utf8').includes(include))
         fail('Wrapper', `${rel(path)} must contain '${include}' — edit skills/${r.name}.md, not the wrapper`);
@@ -93,7 +118,7 @@ export function phaseWrapperIntegrity(rows, { fail, SKILLS_DIR, CURSOR_RULES, AN
   }
 }
 
-export function phaseCursorParity(rows, { fail, CURSOR_RULES, listedInManifest, rel }) {
+export function phaseCursorParity(rows: ResolverRow[], { fail, CURSOR_RULES, listedInManifest, rel }: PhaseCtx): void {
   for (const r of rows) {
     const mirror = join(CURSOR_RULES, `${r.name}.mdc`);
     if (!existsSync(mirror)) fail('Cursor', `'${r.name}' has no Cursor mirror at ${rel(mirror)}`);
@@ -102,7 +127,7 @@ export function phaseCursorParity(rows, { fail, CURSOR_RULES, listedInManifest, 
   }
 }
 
-export function phaseAntigravityParity(rows, { fail, ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS, listedInManifest, rel }) {
+export function phaseAntigravityParity(rows: ResolverRow[], { fail, ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS, listedInManifest, rel }: PhaseCtx): void {
   for (const r of rows) {
     const skillFile = join(ANTIGRAVITY_SKILLS, r.name, 'SKILL.md');
     if (!existsSync(skillFile)) fail('Antigravity', `'${r.name}' has no Antigravity skill at ${rel(skillFile)}`);
@@ -115,7 +140,7 @@ export function phaseAntigravityParity(rows, { fail, ANTIGRAVITY_SKILLS, ANTIGRA
   }
 }
 
-export function phaseFrontmatterParity(rows, { fail, SKILLS_DIR, CURSOR_RULES, ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS, rel }) {
+export function phaseFrontmatterParity(rows: ResolverRow[], { fail, SKILLS_DIR, CURSOR_RULES, ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS, rel }: PhaseCtx): void {
   for (const r of rows) {
     const claudeWrapper = join(SKILLS_DIR, r.name, 'SKILL.md');
     if (!existsSync(claudeWrapper)) continue;
@@ -133,21 +158,21 @@ export function phaseFrontmatterParity(rows, { fail, SKILLS_DIR, CURSOR_RULES, A
   }
 }
 
-export function phaseScaffold(rows, { fail, warn, MANIFEST, listedInManifest, rel }) {
+export function phaseScaffold(rows: ResolverRow[], { fail, warn, MANIFEST, listedInManifest, rel }: PhaseCtx): void {
   if (!existsSync(MANIFEST)) { fail('Scaffold', `manifest not found at ${rel(MANIFEST)}`); return; }
   for (const r of rows) {
     if (!listedInManifest(r.path))
       fail('Scaffold', `'${r.name}' path ${r.path} not in scaffold manifest — won't sync downstream`);
   }
-  for (const p of ['.claude/skills/RESOLVER.md', 'scripts/check-resolvable.mjs']) {
+  for (const p of ['.claude/skills/RESOLVER.md', 'scripts/check-resolvable.ts']) {
     if (!listedInManifest(p)) warn('Scaffold', `${p} not in scaffold manifest — consider adding it`);
   }
 }
 
-// Mirrors the .scaffold-keep matcher in tools/lib/safe-write.mjs:loadKeep —
+// Mirrors the .scaffold-keep matcher in tools/lib/safe-write.ts:loadKeep —
 // exact path, dir prefix, or * glob (where * spans path separators).
-function compileIgnore(patterns) {
-  return (rel) => patterns.some(p => {
+function compileIgnore(patterns: string[]): (rel: string) => boolean {
+  return (rel: string) => patterns.some(p => {
     if (p.includes('*')) {
       const re = new RegExp('^' + p.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
       return re.test(rel);
@@ -163,7 +188,7 @@ function compileIgnore(patterns) {
 // manifest" gap. Scaffold-only: keyed on the internal list, which never syncs,
 // so consumer repos (which lack it) skip the check rather than flag their own
 // files.
-export function phaseManifestCompleteness(_rows, { fail, MANIFEST, INTERNAL, manifestSet, trackedFiles, rel }) {
+export function phaseManifestCompleteness(_rows: ResolverRow[], { fail, MANIFEST, INTERNAL, manifestSet, trackedFiles, rel }: PhaseCtx): void {
   if (!existsSync(INTERNAL)) return; // not the scaffold repo — nothing to guard
   if (!existsSync(MANIFEST)) { fail('Manifest', `manifest not found at ${rel(MANIFEST)}`); return; }
 
