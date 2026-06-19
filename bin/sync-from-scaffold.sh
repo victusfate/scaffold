@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Pull agent guidance from scaffold into this repo.
-# Run locally:  bash bin/sync-from-scaffold.sh
+# Run locally:  bash bin/sync-from-scaffold.sh [--dry-run|-n]
 # Or trigger the .github/workflows/sync-scaffold.yml workflow.
 #
 # Clobber-safe behaviors:
@@ -9,6 +9,16 @@
 #     <file>.scaffold-new for deliberate review; the target is left unchanged.
 #   - .scaffold-keep: an optional file at the repo root (one path or glob per
 #     line; # and blank lines ignored) — any matching path is always skipped.
+#
+# Pruning (deletion propagation):
+#   - A file scaffold shipped at the last synced SHA but no longer lists in the
+#     manifest is an orphan. Driver: (manifest @ last_sha) − (manifest @ HEAD).
+#   - An orphan is deleted only when it is still byte-identical to what scaffold
+#     shipped (pristine). Consumer-modified orphans and .scaffold-keep paths are
+#     kept and reported, never auto-deleted. First sync prunes nothing.
+#
+# --dry-run / -n: preview updates, merges, sidecars, and deletions without
+#   writing anything or saving the synced SHA.
 set -euo pipefail
 
 SCAFFOLD_URL="${SCAFFOLD_URL:-https://github.com/victusfate/scaffold.git}"
@@ -21,6 +31,12 @@ if ! REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"; then
   exit 1
 fi
 cd "$REPO_ROOT"
+
+# --dry-run / -n: preview only — no writes, no deletions, no SHA save.
+DRY_RUN=0
+for arg in "$@"; do
+  case "$arg" in --dry-run|-n) DRY_RUN=1 ;; esac
+done
 
 # Ensure scaffold remote exists
 if ! git remote get-url scaffold &>/dev/null; then
@@ -39,6 +55,7 @@ if [ "$current_sha" = "$last_sha" ]; then
 fi
 
 echo "Syncing to ${current_sha:0:7}${last_sha:+ (from ${last_sha:0:7})}..."
+[ "$DRY_RUN" = 1 ] && echo "(dry run — no changes will be written)" || true
 
 # Read manifest from scaffold — a failed read must abort before any writes
 # (a process-substitution failure is invisible to set -e and would otherwise
@@ -53,6 +70,7 @@ while IFS= read -r line; do
 done <<< "$manifest"
 
 updated=(); skipped=(); conflicts=(); review=(); kept=()
+removed=(); would_remove=(); kept_removed=()
 ours=''; base=''; theirs=''
 trap 'rm -f "${ours:-}" "${base:-}" "${theirs:-}"' EXIT
 
@@ -82,7 +100,7 @@ sync_file() {
 
   # New file — just write it
   if [ ! -f "$file" ]; then
-    git show "scaffold/main:${file}" > "$file"
+    [ "$DRY_RUN" = 1 ] || git show "scaffold/main:${file}" > "$file"
     updated+=("+ $file")
     return 0
   fi
@@ -101,22 +119,25 @@ sync_file() {
 
   # Three-way merge using last synced SHA as base
   if [ -n "$last_sha" ] && git cat-file -e "${last_sha}:${file}" 2>/dev/null; then
-    ours=$(mktemp); base=$(mktemp); theirs=$(mktemp)
+    ours=$(mktemp); base=$(mktemp); theirs=$(mktemp); merged=$(mktemp)
     cp "$file" "$ours"
     git show "${last_sha}:${file}" > "$base"
     git show "scaffold/main:${file}" > "$theirs"
 
-    if git merge-file -p "$ours" "$base" "$theirs" > "$file" 2>/dev/null; then
+    # Merge into a scratch file so --dry-run can preview without touching $file.
+    if git merge-file -p "$ours" "$base" "$theirs" > "$merged" 2>/dev/null; then
+      [ "$DRY_RUN" = 1 ] || cp "$merged" "$file"
       updated+=("M $file")
     else
-      # non-zero exit means conflicts; -p already wrote markers to $file
+      # non-zero exit means conflicts; $merged holds the marked-up content
+      [ "$DRY_RUN" = 1 ] || cp "$merged" "$file"
       conflicts+=("$file")
     fi
-    rm -f "$ours" "$base" "$theirs"
+    rm -f "$ours" "$base" "$theirs" "$merged"
     ours=''; base=''; theirs=''
   else
     # No base SHA — don't overwrite; save sidecar for deliberate review
-    git show "scaffold/main:${file}" > "${file}.scaffold-new"
+    [ "$DRY_RUN" = 1 ] || git show "scaffold/main:${file}" > "${file}.scaffold-new"
     review+=("$file  →  ${file}.scaffold-new")
   fi
 }
@@ -127,7 +148,7 @@ sync_file() {
 # buffering issue, and the re-exec'd process finds local==remote and skips
 # the self-check. Falls through to sync_file below only when $SELF has local
 # edits (treated as skipped, same as any other locally-modified file).
-if git cat-file -e "scaffold/main:${SELF}" 2>/dev/null; then
+if [ "$DRY_RUN" != 1 ] && git cat-file -e "scaffold/main:${SELF}" 2>/dev/null; then
   _remote=$(git rev-parse "scaffold/main:${SELF}")
   _local=$(git hash-object "$SELF")
   if [ "$_local" != "$_remote" ] \
@@ -147,8 +168,41 @@ done
 # sync_file so it lands in skipped like any other locally-modified file.
 sync_file "$SELF"
 
+# ── Prune: files scaffold shipped last sync but no longer ships ─────────────
+# Driver: (manifest at last_sha) − (manifest at scaffold/main). A dropped file
+# is deleted only when it's still byte-identical to what scaffold shipped at
+# last_sha (pristine); .scaffold-keep paths and consumer-modified files are kept
+# and reported. First sync (no last_sha) prunes nothing — there is no prior
+# manifest to diff, so deletions can't be established safely.
+if [ -n "$last_sha" ] && git cat-file -e "${last_sha}:.github/scaffold-files.txt" 2>/dev/null; then
+  old_manifest=$(git show "${last_sha}:.github/scaffold-files.txt" 2>/dev/null || echo "")
+  new_set=$'\n'"${manifest}"$'\n'   # bound every entry with newlines for exact match
+  while IFS= read -r dropped; do
+    [ -z "$dropped" ] && continue
+    case "$new_set" in *$'\n'"$dropped"$'\n'*) continue ;; esac  # still shipped
+    [ -e "$dropped" ] || continue                                # already gone
+    if in_keep_list "$dropped"; then
+      kept_removed+=("$dropped  (kept — .scaffold-keep)")
+      continue
+    fi
+    # Pristine check: working-tree content must equal what scaffold shipped.
+    if git cat-file -e "${last_sha}:${dropped}" 2>/dev/null \
+       && [ "$(git hash-object "$dropped")" = "$(git rev-parse "${last_sha}:${dropped}")" ]; then
+      if [ "$DRY_RUN" = 1 ]; then
+        would_remove+=("$dropped")
+      else
+        git rm -q -f "$dropped" 2>/dev/null || rm -f "$dropped"
+        removed+=("$dropped")
+      fi
+    else
+      kept_removed+=("$dropped  (kept — locally modified)")
+    fi
+  done <<< "$old_manifest"
+fi
+
 # Save SHA only when there are no unresolved conflicts or pending reviews
-if [ ${#conflicts[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ]; then
+# (and never on a dry run).
+if [ "$DRY_RUN" != 1 ] && [ ${#conflicts[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ]; then
   mkdir -p "$(dirname "$SHA_FILE")"
   echo "$current_sha" > "$SHA_FILE"
 fi
@@ -159,7 +213,10 @@ echo ""
 [ ${#skipped[@]}   -gt 0 ] && echo "Skipped (uncommitted local edits — stash or commit first):"            && printf '  %s\n' "${skipped[@]}"
 [ ${#review[@]}    -gt 0 ] && echo "Review (new upstream version saved alongside — diff and merge):"       && printf '  %s\n' "${review[@]}"
 [ ${#conflicts[@]} -gt 0 ] && echo "Conflicts (resolve markers, commit, then re-run to save SHA):"         && printf '  %s\n' "${conflicts[@]}"
-[ ${#updated[@]} -eq 0 ] && [ ${#kept[@]} -eq 0 ] && [ ${#skipped[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ] && [ ${#conflicts[@]} -eq 0 ] && echo "Nothing to update."
+[ ${#removed[@]}      -gt 0 ] && echo "Removed (dropped upstream, pristine — deletion staged):"            && printf '  %s\n' "${removed[@]}"
+[ ${#would_remove[@]} -gt 0 ] && echo "Would remove (dropped upstream, pristine — dry run):"               && printf '  %s\n' "${would_remove[@]}"
+[ ${#kept_removed[@]} -gt 0 ] && echo "Kept (dropped upstream but not pristine / consumer-owned):"          && printf '  %s\n' "${kept_removed[@]}"
+[ ${#updated[@]} -eq 0 ] && [ ${#kept[@]} -eq 0 ] && [ ${#skipped[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ] && [ ${#conflicts[@]} -eq 0 ] && [ ${#removed[@]} -eq 0 ] && [ ${#would_remove[@]} -eq 0 ] && [ ${#kept_removed[@]} -eq 0 ] && echo "Nothing to update."
 
 [ ${#review[@]} -gt 0 ] || [ ${#conflicts[@]} -gt 0 ] && exit 1
 exit 0
