@@ -193,6 +193,78 @@ check "exits non-zero"     test "$rc" -ne 0
 check "SHA file not saved" test ! -f "$C/.github/scaffold-sync-sha"
 check "error mentions manifest" test -n "$(echo "$out" | grep -i 'manifest')"
 
+# ── test 10: file dropped from manifest, pristine → pruned ────────────────
+
+echo "10. Dropped upstream + pristine → removed downstream"
+S="$WORK/s10"; C="$WORK/c10"
+make_scaffold "$S" "AGENTS.md" "old.mjs"
+make_consumer "$C"
+out=""; sync_into out "$C" "$S" || true        # first sync — get both files + SHA
+(cd "$C" && git add -A && git commit -q -m "synced")
+# Upstream drops old.mjs from the manifest and the tree
+(cd "$S" && printf '%s\n' "AGENTS.md" > .github/scaffold-files.txt \
+  && git rm -q old.mjs && git add -A && git commit -q -m "drop old.mjs")
+
+out=""; rc=0; sync_into out "$C" "$S" || rc=$?
+check "exit 0"                 test "$rc" -eq 0
+check "pristine orphan removed" test ! -f "$C/old.mjs"
+check "kept file untouched"     test -f "$C/AGENTS.md"
+check "Removed in output"       test -n "$(echo "$out" | grep 'Removed')"
+
+# ── test 11: dropped but consumer-modified → kept, not deleted ────────────
+
+echo "11. Dropped upstream + locally modified → kept"
+S="$WORK/s11"; C="$WORK/c11"
+make_scaffold "$S" "AGENTS.md" "old.mjs"
+make_consumer "$C"
+out=""; sync_into out "$C" "$S" || true
+(cd "$C" && git add -A && git commit -q -m "synced")
+echo "my edits" >> "$C/old.mjs"               # consumer customized it
+(cd "$C" && git add old.mjs && git commit -q -m "customize")
+(cd "$S" && printf '%s\n' "AGENTS.md" > .github/scaffold-files.txt \
+  && git rm -q old.mjs && git add -A && git commit -q -m "drop old.mjs")
+
+out=""; rc=0; sync_into out "$C" "$S" || rc=$?
+check "exit 0"               test "$rc" -eq 0
+check "modified orphan kept"  test -f "$C/old.mjs"
+check "edit preserved"        grep -q "my edits" "$C/old.mjs"
+check "Kept in output"        test -n "$(echo "$out" | grep 'Kept (dropped')"
+
+# ── test 12: dropped + .scaffold-keep → kept ──────────────────────────────
+
+echo "12. Dropped upstream + .scaffold-keep → kept"
+S="$WORK/s12"; C="$WORK/c12"
+make_scaffold "$S" "AGENTS.md" "old.mjs"
+make_consumer "$C"
+out=""; sync_into out "$C" "$S" || true
+(cd "$C" && git add -A && git commit -q -m "synced")
+echo "old.mjs" > "$C/.scaffold-keep"
+(cd "$S" && printf '%s\n' "AGENTS.md" > .github/scaffold-files.txt \
+  && git rm -q old.mjs && git add -A && git commit -q -m "drop old.mjs")
+
+out=""; rc=0; sync_into out "$C" "$S" || rc=$?
+check "exit 0"            test "$rc" -eq 0
+check "keep-listed orphan kept" test -f "$C/old.mjs"
+
+# ── test 13: --dry-run previews deletion but writes nothing ───────────────
+
+echo "13. --dry-run → reports would-remove, deletes nothing, no SHA change"
+S="$WORK/s13"; C="$WORK/c13"
+make_scaffold "$S" "AGENTS.md" "old.mjs"
+make_consumer "$C"
+out=""; sync_into out "$C" "$S" || true
+(cd "$C" && git add -A && git commit -q -m "synced")
+sha_before=$(cat "$C/.github/scaffold-sync-sha")
+(cd "$S" && printf '%s\n' "AGENTS.md" > .github/scaffold-files.txt \
+  && git rm -q old.mjs && git add -A && git commit -q -m "drop old.mjs")
+
+rc=0
+out=$(cd "$C" && SCAFFOLD_URL="$S" bash "$SYNC" --dry-run 2>&1) || rc=$?
+check "exit 0"                  test "$rc" -eq 0
+check "file NOT deleted"        test -f "$C/old.mjs"
+check "Would remove in output"  test -n "$(echo "$out" | grep 'Would remove')"
+check "SHA unchanged"           test "$(cat "$C/.github/scaffold-sync-sha")" = "$sha_before"
+
 # ── summary ────────────────────────────────────────────────────────────────
 
 echo ""
