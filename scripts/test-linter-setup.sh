@@ -33,8 +33,12 @@ done
 METRICS_LANGS="js ts python go rust ruby elixir"
 for lang in $METRICS_LANGS; do
   dir="$LINTERS_DIR/$lang"
-  config=$(ls "$dir"/*.toml "$dir"/*.yml "$dir"/*.mjs "$dir"/.*.yml "$dir"/.*.exs "$dir"/.*rc "$dir"/.*.exs 2>/dev/null \
-    | grep -v 'lint-' | head -1 || true)
+  config=""
+  for _f in "$dir"/*.toml "$dir"/*.yml "$dir"/*.mjs "$dir"/.*.yml "$dir"/.*.exs "$dir"/.*rc; do
+    [ -e "$_f" ] || continue          # skip globs that didn't match
+    case "$_f" in */lint-*) continue ;; esac
+    config="$_f"; break
+  done
   if [ -n "$config" ]; then
     grep -q "scaffold-linter: $lang" "$config" \
       && ok "$lang config has scaffold marker" \

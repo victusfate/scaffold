@@ -20,7 +20,7 @@ printf 'const MAX_RETRIES = 3;\nfunction run() { return MAX_RETRIES; }\n' > "$CL
 
 # Fixture: file over 500 lines — comment lines only, no magic-number or commented-code violations
 LONG="$FIXTURES/long.js"
-for i in $(seq 1 "$FIXTURE_LINE_COUNT"); do printf '// padding\n'; done > "$LONG"
+for _ in $(seq 1 "$FIXTURE_LINE_COUNT"); do printf '// padding\n'; done > "$LONG"
 
 # Fixture: file with magic number
 MAGIC="$FIXTURES/magic.js"
