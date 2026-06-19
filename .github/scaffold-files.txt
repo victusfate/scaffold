@@ -185,3 +185,13 @@ lib/linters/zig/lint-zig.yml
 .claude/skills/drawio-skill/styles/built-in/default.json
 .claude/skills/drawio-skill/styles/built-in/handdrawn.json
 .claude/skills/drawio-skill/styles/schema.json
+skills/ponytail.md
+.claude/skills/ponytail/SKILL.md
+.cursor/rules/ponytail.mdc
+.agents/skills/ponytail/SKILL.md
+.agent/workflows/ponytail.md
+.claude/skills/improve/LICENSE
+.claude/skills/improve/references/audit-playbook.md
+.claude/skills/improve/references/closing-the-loop.md
+.claude/skills/improve/references/plan-template.md
+.claude/skills/improve/SKILL.md

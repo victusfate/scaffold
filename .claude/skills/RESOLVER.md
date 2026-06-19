@@ -26,6 +26,7 @@ the first match.
 | frontend-design | `/(?:^\/frontend-design\b)/i` | `skills/frontend-design.md` | Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics |
 | audit | `/(?:^\/audit\b)\|(?:score\|audit)\s+(?:the\s+)?(?:codebase\|repo\|source\s+files)/i` | `skills/audit.md` | Score source files ranked worst-first across all four rubric dimensions with cited violations |
 | add-linter | `/(?:^\/add-linter\b)\|(?:add\|set\s+up\|configure)\s+(?:a\s+)?linter/i` | `skills/add-linter.md` | Add linter configs and GitHub Actions workflows for languages detected in the current repo |
+| ponytail | `/(?:^\/ponytail\b)|lazy\s+senior\s+dev\s+mode/i` | `skills/ponytail.md` | Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions) |
 
 ## Column contract
 
@@ -58,3 +59,4 @@ prompt-skill wrapper contract: no canonical `skills/<slug>.md`, no
 | Skill | Source (license) | Purpose |
 |---|---|---|
 | drawio-skill | github.com/Agents365-ai/drawio-skill (MIT) | Generate `.drawio` diagrams and export PNG/SVG/PDF/JPG via the draw.io desktop CLI |
+| improve | github.com/shadcn/improve (MIT) | Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute |
