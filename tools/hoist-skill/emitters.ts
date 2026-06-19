@@ -1,7 +1,7 @@
 // Per-harness emitters for hoist-skill.
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { safeWrite as sharedSafeWrite } from '../lib/safe-write.mjs';
+import { safeWrite as sharedSafeWrite } from '../lib/safe-write.ts';
 
 function safeWrite(dest, relPath, content, kept, results, force) {
   sharedSafeWrite(dest, relPath, content, kept, results, force, { log: console.error });

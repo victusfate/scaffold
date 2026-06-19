@@ -6,11 +6,11 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parsePolicy } from './policy.mjs';
-import { promoteFiles } from './promote.mjs';
-import { hoist } from '../hoist-skill/hoist.mjs';
-import { readManifest } from '../hoist-skill/manifest.mjs';
-import { detect } from '../linter-setup/detect.mjs';
+import { parsePolicy } from './policy.ts';
+import { promoteFiles } from './promote.ts';
+import { hoist } from '../hoist-skill/hoist.ts';
+import { readManifest } from '../hoist-skill/manifest.ts';
+import { detect } from '../linter-setup/detect.ts';
 
 const SCAFFOLD_ROOT = process.env.SYNC_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');

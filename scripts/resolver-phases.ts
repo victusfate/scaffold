@@ -2,7 +2,7 @@
 // Each phase takes (rows, ctx) where ctx carries fail/warn and path constants.
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { compileCell, anchorSlug, tokens, jaccard, frontmatterDescription, normalizeWhitespace } from './resolver-utils.mjs';
+import { compileCell, anchorSlug, tokens, jaccard, frontmatterDescription, normalizeWhitespace } from './resolver-utils.ts';
 
 export function phaseReachability(rows, { fail, ROOT, SKILLS_DIR, skillDirs, rel }) {
   const registered = new Set(rows.map(r => r.name));
@@ -139,12 +139,12 @@ export function phaseScaffold(rows, { fail, warn, MANIFEST, listedInManifest, re
     if (!listedInManifest(r.path))
       fail('Scaffold', `'${r.name}' path ${r.path} not in scaffold manifest — won't sync downstream`);
   }
-  for (const p of ['.claude/skills/RESOLVER.md', 'scripts/check-resolvable.mjs']) {
+  for (const p of ['.claude/skills/RESOLVER.md', 'scripts/check-resolvable.ts']) {
     if (!listedInManifest(p)) warn('Scaffold', `${p} not in scaffold manifest — consider adding it`);
   }
 }
 
-// Mirrors the .scaffold-keep matcher in tools/lib/safe-write.mjs:loadKeep —
+// Mirrors the .scaffold-keep matcher in tools/lib/safe-write.ts:loadKeep —
 // exact path, dir prefix, or * glob (where * spans path separators).
 function compileIgnore(patterns) {
   return (rel) => patterns.some(p => {

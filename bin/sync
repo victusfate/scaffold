@@ -1,2 +1,2 @@
 #!/usr/bin/env node
-import '../tools/sync/run.mjs';
+import '../tools/sync/run.ts';

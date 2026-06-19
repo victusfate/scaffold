@@ -5,7 +5,7 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { safeWrite, loadKeep } from '../lib/safe-write.mjs';
+import { safeWrite, loadKeep } from '../lib/safe-write.ts';
 
 /**
  * Promote files from srcRoot into destRoot according to policy rules.

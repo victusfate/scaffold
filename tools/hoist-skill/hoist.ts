@@ -6,16 +6,16 @@ import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
-import { loadKeep } from '../lib/safe-write.mjs';
-import { readManifest, upsertManifest } from './manifest.mjs';
-import { makeEmitters } from './emitters.mjs';
-import { parseResolverRows } from '../lib/resolver-parse.mjs';
+import { loadKeep } from '../lib/safe-write.ts';
+import { readManifest, upsertManifest } from './manifest.ts';
+import { makeEmitters } from './emitters.ts';
+import { parseResolverRows } from '../lib/resolver-parse.ts';
 
 // Back-compat: `readManifest` moved to ./manifest.mjs when this file was split.
 // Consumer-vendored tools/sync/run.mjs copies import it from here and are not
 // refreshed by sync (run.mjs is not in scaffold-files.txt), so re-export it to
 // keep those copies resolving after they pull the new hoist.mjs.
-export { readManifest } from './manifest.mjs';
+export { readManifest } from './manifest.ts';
 
 const SCAFFOLD_ROOT = process.env.HOIST_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
