@@ -2,7 +2,7 @@
 #
 # The inverse of .github/scaffold-files.txt (the manifest of files that DO
 # sync). Together they must classify every tracked file: CI
-# (scripts/check-resolvable.mjs -> phaseManifestCompleteness) fails when a
+# (scripts/check-resolvable.ts -> phaseManifestCompleteness) fails when a
 # tracked file appears in neither list. That is how we stop "added a file but
 # forgot to add it to the manifest" regressions — the default becomes "ship it
 # unless it is explicitly held back here."
@@ -22,8 +22,12 @@ README.md
 package.json
 
 # Scaffold's own ESLint config (dogfoods the shipped template). Consumers get
-# the template at lib/linters/js/eslint.config.mjs via the linter-setup tooling.
+# the template at lib/linters/ts/eslint.config.mjs via the linter-setup tooling.
 eslint.config.mjs
+
+# Scaffold's own tsconfig for type-aware self-linting of its TS source.
+# Consumers get a tsconfig from the ts linter template (extraFiles), not this one.
+tsconfig.json
 
 # Scaffold's own CI (consumers get sync-scaffold.yml + quality.yml instead)
 .github/workflows/ci.yml

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tests for scripts/compute-bump.mjs — conventional-commit version bump logic.
+// Tests for scripts/compute-bump.ts — conventional-commit version bump logic.
 
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 let passed = 0, failed = 0;
 
-function assert(label, cond, detail = '') {
+function assert(label: string, cond: boolean, detail = ''): void {
   if (cond) { console.error(`  pass  ${label}`); passed++; }
   else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
 }
