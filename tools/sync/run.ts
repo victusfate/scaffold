@@ -8,8 +8,11 @@ import { fileURLToPath } from 'node:url';
 
 import { parsePolicy } from './policy.ts';
 import { promoteFiles } from './promote.ts';
+import { readLedger, writeLedger, hashContent, type Ledger } from './ledger.ts';
+import { computePrune } from './prune.ts';
 import { hoist } from '../hoist-skill/hoist.ts';
 import { readManifest } from '../hoist-skill/manifest.ts';
+import { loadKeep, type WriteResult } from '../lib/safe-write.ts';
 import { detect } from '../linter-setup/detect.ts';
 
 const SCAFFOLD_ROOT = process.env.SYNC_SCAFFOLD_ROOT
@@ -30,11 +33,57 @@ const intoRaw    = get('--into') ?? '.';
 const refArg     = get('--ref');
 const check      = has('--check');
 const force      = has('--force');
+const prune      = has('--prune');
 const srcRootArg = getEq('--scaffold-root');
 const srcRoot    = srcRootArg ? resolve(srcRootArg) : SCAFFOLD_ROOT;
 const INTO       = resolve(intoRaw);
 
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+const STATUS_PAD = 16;
+
+// ---------------------------------------------------------------- prune
+
+/**
+ * Diff the managed set against the previous ledger, report orphans, delete the
+ * pristine ones under --prune, and persist the next ledger (outside --check).
+ *
+ * The managed set is the policy-promoted files scaffold owns on disk: status
+ * `written`/`unchanged` on a real sync, `would-write`/`unchanged` under --check
+ * (where the dest file isn't written yet, so the hash recorded is irrelevant —
+ * --check persists no ledger).
+ */
+function pruneOrphans(into: string, results: WriteResult[], check: boolean, prune: boolean): void {
+  const ledgerPath = join(into, '.sync', 'managed');
+  const owned: Ledger = new Map();
+  for (const r of results) {
+    if (check) {
+      if (r.status === 'unchanged' || r.status === 'would-write') owned.set(r.path, '');
+    } else if (r.status === 'written' || r.status === 'unchanged') {
+      owned.set(r.path, hashContent(readFileSync(join(into, r.path), 'utf8')));
+    }
+  }
+
+  const { results: pruneResults, nextLedger } = computePrune({
+    destRoot: into, owned, previous: readLedger(ledgerPath), kept: loadKeep(into), check, prune,
+  });
+  for (const pr of pruneResults) {
+    console.log(`  ${pr.status.padEnd(STATUS_PAD)} ${pr.path}`);
+  }
+  if (!check) writeLedger(ledgerPath, nextLedger);
+
+  const modified = pruneResults.filter(r => r.status === 'orphan-modified');
+  if (modified.length) {
+    console.log('');
+    for (const m of modified) console.log(`  warning: orphan kept (locally modified) — ${m.path}`);
+  }
+
+  const pending = pruneResults.filter(r => r.status === 'orphan' || r.status === 'would-prune');
+  if (pending.length && !prune) {
+    console.log('');
+    console.log(`hint: ${pending.length} orphaned file(s) no longer shipped by scaffold — rerun with --prune to remove.`);
+  }
+}
 
 // ---------------------------------------------------------------- main
 
@@ -93,6 +142,8 @@ async function main(): Promise<void> {
       }
     }
   }
+
+  pruneOrphans(INTO, results, check, prune);
 
   const warnings = results.filter(r => r.status === 'guarded-skip');
   if (warnings.length) {
