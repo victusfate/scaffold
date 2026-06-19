@@ -1,5 +1,13 @@
 # scaffold-linter: shell
-# Shellcheck enforces correctness for shell scripts.
+# Shellcheck enforces correctness for shell scripts — its default checks flag
+# real bugs (quoting, unset vars, unsafe rm, etc.). We deliberately do NOT set
+# `enable=all`: the optional checks it adds (SC2250 ${var} braces, SC2292 [[ ]]
+# over [ ]) are stylistic, not correctness, and shipping a config the vendored
+# scripts themselves can't satisfy is worse than enforcing nothing.
 # Quantitative metrics (file length, magic numbers) are covered by the
 # scaffold mechanical check (check-quality-mechanical.sh) for .sh/.bash files.
-enable=all
+#
+# The lint workflow gates on warning-level and above (genuine bugs: unsafe rm,
+# unset expansion, bad redirects) via the action's `severity: warning` input —
+# `severity` is not a valid .shellcheckrc directive. Info-level findings
+# (e.g. SC2015 `A && B || C` in test assertions) stay advisory, not failures.

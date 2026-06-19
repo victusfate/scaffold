@@ -13,3 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ludeeus/action-shellcheck@master
+        with:
+          # Gate on real bugs; info-level style (e.g. SC2015) stays advisory.
+          severity: warning

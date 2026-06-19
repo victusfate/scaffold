@@ -80,7 +80,9 @@ for path in "$SRC"/*/; do
   if [ "$LINK" -eq 1 ]; then
     # Symlink: the stub's @import resolves through the real scaffold path, so
     # it stays live (and breaks if the scaffold checkout moves — see header).
-    rm -rf "$TARGET/$name"
+    # ${name:?} aborts if $name is ever empty, so this can't rm -rf "$TARGET/"
+    # and wipe the whole target dir (SC2115).
+    rm -rf "$TARGET/${name:?}"
     ln -s "${path%/}" "$TARGET/$name"
     installed+=("$name")
   else

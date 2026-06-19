@@ -96,7 +96,7 @@ if [ "$DRY" -eq 1 ]; then
   # list aux files that would also be copied
   while IFS= read -r f; do
     [ "$(basename "$f")" = "SKILL.md" ] && continue
-    echo "# + would copy aux: ${f#$SKILL_DIR/}"
+    echo "# + would copy aux: ${f#"$SKILL_DIR"/}"
   done < <(find "$SKILL_DIR" -type f)
   exit 0
 fi
@@ -107,7 +107,7 @@ printf '%s\n' "$RESOLVED" > "$TARGET/$NAME/SKILL.md"
 # Copy any aux files the skill ships alongside SKILL.md (lib/, scripts/, …)
 aux=0
 while IFS= read -r f; do
-  rel="${f#$SKILL_DIR/}"
+  rel="${f#"$SKILL_DIR"/}"
   [ "$rel" = "SKILL.md" ] && continue
   mkdir -p "$TARGET/$NAME/$(dirname "$rel")"
   cp "$f" "$TARGET/$NAME/$rel"

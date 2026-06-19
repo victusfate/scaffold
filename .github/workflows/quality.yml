@@ -16,3 +16,17 @@ jobs:
         run: git fetch origin main --depth=1
       - name: Run mechanical quality checks
         run: bash scripts/check-quality-mechanical.sh
+
+  shellcheck:
+    name: Shellcheck (dogfood)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Lint scaffold's own vendored shell scripts against the very .shellcheckrc
+      # we ship to consumers — so we never again ship a config our scripts fail.
+      - name: Shellcheck own scripts with the shipped config
+        run: |
+          cp lib/linters/shell/.shellcheckrc .shellcheckrc
+          # shellcheck is preinstalled on ubuntu-latest runners.
+          # -S warning matches the shipped lint-shell.yml action's severity gate.
+          git ls-files -z '*.sh' '*.bash' | xargs -0 -r shellcheck -S warning
