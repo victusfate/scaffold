@@ -17,6 +17,10 @@ inputs:
     type: boolean
     default: false
     description: Overwrite differing destination files instead of writing *.scaffold-new sidecars. Never bypasses guarded keep_marker checks or protected entries.
+  prune:
+    type: boolean
+    default: false
+    description: Delete orphaned files — those scaffold previously promoted (recorded in .sync/managed) but no longer ships. Only pristine, unmodified files are removed; .scaffold-keep and locally-edited orphans are kept. Without this flag, orphans are reported only.
   scaffold-root:
     type: string
     description: Local scaffold tree to read files AND skills from (no network). Primarily for testing. Uses --scaffold-root=<path> form.

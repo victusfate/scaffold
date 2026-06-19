@@ -473,5 +473,140 @@ let hoist;
   rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
 }
 
+// ---------------------------------------------------------------- slice: orphan ledger + prune
+
+import { readLedger, writeLedger, hashContent } from './ledger.ts';
+import { computePrune } from './prune.ts';
+
+// Case 27: ledger round-trips path -> hash, skipping comments
+{
+  const dst = makeTmp();
+  const path = join(dst, '.sync', 'managed');
+  const led = new Map([['a.ts', 'h1'], ['b.ts', 'h2']]);
+  writeLedger(path, led);
+  const back = readLedger(path);
+  assert('case 27: ledger round-trips a.ts', back.get('a.ts') === 'h1', JSON.stringify([...back]));
+  assert('case 27: ledger round-trips b.ts', back.get('b.ts') === 'h2');
+  assert('case 27: absent ledger reads empty', readLedger(join(makeTmp(), 'none')).size === 0);
+  rmSync(dst, { recursive: true });
+}
+
+const noKeep = () => false;
+
+// Case 28: pristine orphan — reported as `orphan` by default, retained in ledger
+{
+  const dst = makeTmp();
+  writeFile(dst, 'old.mjs', 'dead code');
+  const previous = new Map([['old.mjs', hashContent('dead code')]]);
+  const { results, nextLedger } = computePrune({
+    destRoot: dst, owned: new Map(), previous, kept: noKeep, check: false, prune: false,
+  });
+  assert('case 28: pristine orphan reported as orphan', results[0]?.status === 'orphan', results[0]?.status);
+  assert('case 28: orphan not deleted without --prune', existsSync(join(dst, 'old.mjs')));
+  assert('case 28: orphan retained in ledger', nextLedger.has('old.mjs'));
+  rmSync(dst, { recursive: true });
+}
+
+// Case 29: pristine orphan — deleted under prune, dropped from ledger
+{
+  const dst = makeTmp();
+  writeFile(dst, 'old.mjs', 'dead code');
+  const previous = new Map([['old.mjs', hashContent('dead code')]]);
+  const { results, nextLedger } = computePrune({
+    destRoot: dst, owned: new Map(), previous, kept: noKeep, check: false, prune: true,
+  });
+  assert('case 29: pristine orphan pruned', results[0]?.status === 'pruned', results[0]?.status);
+  assert('case 29: orphan file deleted', !existsSync(join(dst, 'old.mjs')));
+  assert('case 29: pruned path dropped from ledger', !nextLedger.has('old.mjs'));
+  rmSync(dst, { recursive: true });
+}
+
+// Case 30: check mode — pristine orphan is would-prune, never deleted
+{
+  const dst = makeTmp();
+  writeFile(dst, 'old.mjs', 'dead code');
+  const previous = new Map([['old.mjs', hashContent('dead code')]]);
+  const { results } = computePrune({
+    destRoot: dst, owned: new Map(), previous, kept: noKeep, check: true, prune: true,
+  });
+  assert('case 30: check reports would-prune', results[0]?.status === 'would-prune', results[0]?.status);
+  assert('case 30: check deletes nothing', existsSync(join(dst, 'old.mjs')));
+  rmSync(dst, { recursive: true });
+}
+
+// Case 31: locally-modified orphan — never auto-deleted, retained, warned via status
+{
+  const dst = makeTmp();
+  writeFile(dst, 'old.mjs', 'I edited this');
+  const previous = new Map([['old.mjs', hashContent('original scaffold content')]]);
+  const { results, nextLedger } = computePrune({
+    destRoot: dst, owned: new Map(), previous, kept: noKeep, check: false, prune: true,
+  });
+  assert('case 31: modified orphan flagged', results[0]?.status === 'orphan-modified', results[0]?.status);
+  assert('case 31: modified orphan kept on disk', existsSync(join(dst, 'old.mjs')));
+  assert('case 31: modified orphan retained in ledger', nextLedger.has('old.mjs'));
+  rmSync(dst, { recursive: true });
+}
+
+// Case 32: orphan released via .scaffold-keep — not deleted, dropped from ledger
+{
+  const dst = makeTmp();
+  writeFile(dst, 'old.mjs', 'dead code');
+  const previous = new Map([['old.mjs', hashContent('dead code')]]);
+  const { results, nextLedger } = computePrune({
+    destRoot: dst, owned: new Map(), previous, kept: rel => rel === 'old.mjs', check: false, prune: true,
+  });
+  assert('case 32: kept orphan released', results[0]?.status === 'orphan-kept', results[0]?.status);
+  assert('case 32: kept orphan not deleted', existsSync(join(dst, 'old.mjs')));
+  assert('case 32: kept orphan dropped from ledger', !nextLedger.has('old.mjs'));
+  rmSync(dst, { recursive: true });
+}
+
+// Case 33: orphan already gone from disk — reported, dropped from ledger
+{
+  const dst = makeTmp();
+  const previous = new Map([['old.mjs', hashContent('dead code')]]);
+  const { results, nextLedger } = computePrune({
+    destRoot: dst, owned: new Map(), previous, kept: noKeep, check: false, prune: true,
+  });
+  assert('case 33: gone orphan reported', results[0]?.status === 'orphan-gone', results[0]?.status);
+  assert('case 33: gone orphan dropped from ledger', !nextLedger.has('old.mjs'));
+  rmSync(dst, { recursive: true });
+}
+
+// Case 34: end-to-end — a file dropped from policy is pruned and the ledger updated
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'agents');
+  writeFile(dst, '.sync/policy.yaml', 'files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted');
+  // Consumer carries an old promoted file that policy no longer ships.
+  writeFile(dst, 'old.mjs', 'dead code');
+  writeLedger(join(dst, '.sync', 'managed'), new Map([['old.mjs', hashContent('dead code')]]));
+
+  const r = run(['--into', dst, '--prune', `--scaffold-root=${src}`]);
+  assert('case 34: prune sync exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  assert('case 34: orphan deleted', !existsSync(join(dst, 'old.mjs')), r.stdout);
+  assert('case 34: AGENTS.md promoted', existsSync(join(dst, 'AGENTS.md')));
+  const led34 = readLedger(join(dst, '.sync', 'managed'));
+  assert('case 34: ledger now owns AGENTS.md', led34.has('AGENTS.md'), JSON.stringify([...led34]));
+  assert('case 34: ledger drops pruned orphan', !led34.has('old.mjs'));
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
+// Case 35: first sync (no ledger) seeds it without deleting any pre-existing file
+{
+  const src = makeTmp(), dst = makeTmp();
+  writeFile(src, 'AGENTS.md', 'agents');
+  writeFile(dst, '.sync/policy.yaml', 'files:\n  copy:\n    - AGENTS.md\nskills:\n  manifest: .sync/hoisted');
+  writeFile(dst, 'pre-existing.mjs', 'not tracked yet'); // unmanaged orphan-to-be
+
+  const r = run(['--into', dst, '--prune', `--scaffold-root=${src}`]);
+  assert('case 35: first sync exits 0', r.code === 0, `exit ${r.code}\n${r.stderr}`);
+  assert('case 35: no ledger means nothing pruned', existsSync(join(dst, 'pre-existing.mjs')));
+  const led35 = readLedger(join(dst, '.sync', 'managed'));
+  assert('case 35: ledger seeded with AGENTS.md', led35.has('AGENTS.md'));
+  rmSync(src, { recursive: true }); rmSync(dst, { recursive: true });
+}
+
 console.error(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
