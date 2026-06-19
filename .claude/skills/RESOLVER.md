@@ -26,6 +26,7 @@ the first match.
 | frontend-design | `/(?:^\/frontend-design\b)/i` | `skills/frontend-design.md` | Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics |
 | audit | `/(?:^\/audit\b)\|(?:score\|audit)\s+(?:the\s+)?(?:codebase\|repo\|source\s+files)/i` | `skills/audit.md` | Score source files ranked worst-first across all four rubric dimensions with cited violations |
 | add-linter | `/(?:^\/add-linter\b)\|(?:add\|set\s+up\|configure)\s+(?:a\s+)?linter/i` | `skills/add-linter.md` | Add linter configs and GitHub Actions workflows for languages detected in the current repo |
+| ponytail | `/(?:^\/ponytail\b)|lazy\s+senior\s+dev\s+mode/i` | `skills/ponytail.md` | Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions) |
 
 ## Column contract
 
@@ -44,3 +45,18 @@ the first match.
   this file — edit here, not in the wrappers.
 - **Purpose** — one operational sentence. Two skills with near-identical
   purpose fail the MECE check and must be merged via parameterized args.
+
+## Bundled skills
+
+Self-contained Anthropic Agent Skills vendored from upstream — they own their
+`SKILL.md` (with its own frontmatter) plus bundled scripts/data/references, and
+ship as a single `.claude/skills/<slug>/` tree. Registered here so they are not
+flagged as orphaned and are covered by the manifest, but **exempt** from the
+prompt-skill wrapper contract: no canonical `skills/<slug>.md`, no
+`.cursor`/`.agents`/`.agent` wrappers, no Invocation Regex (the skill's own
+`description` drives loading). Claude-harness only.
+
+| Skill | Source (license) | Purpose |
+|---|---|---|
+| drawio-skill | github.com/Agents365-ai/drawio-skill (MIT) | Generate `.drawio` diagrams and export PNG/SVG/PDF/JPG via the draw.io desktop CLI |
+| improve | github.com/shadcn/improve (MIT) | Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute |

@@ -8,10 +8,10 @@
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseResolverRows } from '../tools/lib/resolver-parse.ts';
+import { parseResolverRows, parseBundledSkills } from '../tools/lib/resolver-parse.ts';
 import { execSync } from 'node:child_process';
 import {
-  phaseReachability, phaseAmbiguity, phaseDry, phaseMece,
+  phaseReachability, phaseBundled, phaseAmbiguity, phaseDry, phaseMece,
   phaseWrapperIntegrity, phaseCursorParity, phaseAntigravityParity,
   phaseFrontmatterParity, phaseScaffold, phaseManifestCompleteness,
   type PhaseCtx,
@@ -66,11 +66,13 @@ const ctx: PhaseCtx = {
   fail, warn, ROOT, STRICT, MANIFEST, INTERNAL, SKILLS_DIR, CURSOR_RULES,
   ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS,
   skillDirs: skillDirsOnDisk(),
+  bundledSkills: new Set(parseBundledSkills(RESOLVER)),
   trackedFiles, manifestSet, listedInManifest, rel,
 };
 
 if (rows.length) {
   phaseReachability(rows, ctx);
+  phaseBundled(rows, ctx);
   phaseAmbiguity(rows, ctx);
   phaseDry(rows, ctx);
   phaseMece(rows, ctx);

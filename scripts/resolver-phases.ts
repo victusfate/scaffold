@@ -21,15 +21,16 @@ export interface PhaseCtx {
   INTERNAL: string;
   STRICT: boolean;
   skillDirs: string[];
+  bundledSkills: Set<string>;
   trackedFiles: string[];
   manifestSet: Set<string>;
   listedInManifest: (p: string) => boolean;
 }
 
-export function phaseReachability(rows: ResolverRow[], { fail, ROOT, SKILLS_DIR, skillDirs, rel }: PhaseCtx): void {
+export function phaseReachability(rows: ResolverRow[], { fail, ROOT, SKILLS_DIR, skillDirs, bundledSkills, rel }: PhaseCtx): void {
   const registered = new Set(rows.map(r => r.name));
   for (const slug of skillDirs) {
-    if (!registered.has(slug))
+    if (!registered.has(slug) && !bundledSkills.has(slug))
       fail('Reachability', `orphaned skill '${slug}' on disk but missing from RESOLVER.md`);
   }
   for (const r of rows) {
@@ -40,6 +41,30 @@ export function phaseReachability(rows: ResolverRow[], { fail, ROOT, SKILLS_DIR,
     const claudeWrapper = join(SKILLS_DIR, r.name, 'SKILL.md');
     if (!existsSync(claudeWrapper))
       fail('Reachability', `'${r.name}' missing Claude wrapper at ${rel(claudeWrapper)}`);
+  }
+}
+
+// Validate bundled (vendored, self-contained) skills. Each ships as a single
+// .claude/skills/<slug>/ tree with its own SKILL.md frontmatter and is exempt
+// from the canonical/@-include/multi-harness wrapper contract — so the only
+// invariants are: the dir exists on disk, and SKILL.md carries a frontmatter
+// `name` matching the slug plus a `description`. Their files are covered by the
+// manifest-completeness phase like any other tracked file.
+export function phaseBundled(_rows: ResolverRow[], { fail, SKILLS_DIR, skillDirs, bundledSkills, rel }: PhaseCtx): void {
+  const onDisk = new Set(skillDirs);
+  for (const slug of bundledSkills) {
+    const skillMd = join(SKILLS_DIR, slug, 'SKILL.md');
+    if (!onDisk.has(slug)) {
+      fail('Bundled', `'${slug}' registered as bundled but ${rel(skillMd)} not found on disk`);
+      continue;
+    }
+    const frontmatter = readFileSync(skillMd, 'utf8').match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+    const name = frontmatter.match(/^name:\s*(.+?)\s*$/m)?.[1]?.replace(/['"]/g, '');
+    if (!name) fail('Bundled', `${rel(skillMd)} missing frontmatter 'name:'`);
+    else if (name !== slug)
+      fail('Bundled', `${rel(skillMd)} frontmatter name '${name}' must equal dir '${slug}'`);
+    if (!frontmatterDescription(skillMd))
+      fail('Bundled', `${rel(skillMd)} missing frontmatter 'description:'`);
   }
 }
 
