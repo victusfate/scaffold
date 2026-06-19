@@ -1,4 +1,20 @@
-export const registry = {
+export type Language =
+  | 'js' | 'ts' | 'python' | 'go' | 'rust'
+  | 'ruby' | 'shell' | 'elixir' | 'zig' | 'mojo';
+
+export interface RegistryEntry {
+  extensions: string[];
+  linter: string;
+  configFile?: string;
+  workflowFile: string;
+  marker: string;
+  metricsOnly: boolean;
+  extraFiles?: string[];
+  devDependencies?: Record<string, string>;
+  scripts?: Record<string, string>;
+}
+
+export const registry: Record<Language, RegistryEntry> = {
   js: {
     extensions: ['.js', '.mjs', '.cjs'],
     linter: 'ESLint',

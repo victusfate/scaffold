@@ -1,10 +1,25 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { registry } from './registry.ts';
+import { registry, type Language } from './registry.ts';
+
+// The subset of package.json this tool reads and writes.
+interface PackageJson {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+  scripts?: Record<string, string>;
+}
+
+export type MergeStatus =
+  | 'none' | 'no-package-json' | 'unparsable' | 'satisfied' | 'written' | 'sidecar';
+
+export interface MergeResult {
+  added: string[];
+  status: MergeStatus;
+}
 
 // Indentation of an existing JSON file, so we don't reflow the consumer's
 // package.json. Falls back to two spaces.
-function detectIndent(text) {
+function detectIndent(text: string): string | number {
   const m = text.match(/\n([ \t]+)"/);
   return m ? m[1] : 2;
 }
@@ -20,7 +35,7 @@ function detectIndent(text) {
 //   'unparsable'      — package.json exists but is not valid JSON
 //   'satisfied'       — every package already present (nothing written)
 //   'written'         — added packages were written
-export function mergeDevDependencies(targetRepo, language) {
+export function mergeDevDependencies(targetRepo: string, language: Language): MergeResult {
   const deps = registry[language]?.devDependencies;
   if (!deps) return { added: [], status: 'none' };
 
@@ -28,9 +43,9 @@ export function mergeDevDependencies(targetRepo, language) {
   if (!existsSync(pkgPath)) return { added: [], status: 'no-package-json' };
 
   const raw = readFileSync(pkgPath, 'utf8');
-  let pkg;
+  let pkg: PackageJson;
   try {
-    pkg = JSON.parse(raw);
+    pkg = JSON.parse(raw) as PackageJson;
   } catch {
     return { added: [], status: 'unparsable' };
   }
@@ -41,7 +56,7 @@ export function mergeDevDependencies(targetRepo, language) {
   ]);
 
   const devDeps = pkg.devDependencies ?? {};
-  const added = [];
+  const added: string[] = [];
   for (const [name, range] of Object.entries(deps)) {
     if (present.has(name)) continue;
     devDeps[name] = range;
@@ -59,7 +74,7 @@ export function mergeDevDependencies(targetRepo, language) {
 // repo's package.json. Only fills in script names the repo hasn't already
 // defined — never overwrites a consumer's own `lint` command. Returns the same
 // { added, status } shape as mergeDevDependencies.
-export function mergeScripts(targetRepo, language) {
+export function mergeScripts(targetRepo: string, language: Language): MergeResult {
   const scripts = registry[language]?.scripts;
   if (!scripts) return { added: [], status: 'none' };
 
@@ -67,15 +82,15 @@ export function mergeScripts(targetRepo, language) {
   if (!existsSync(pkgPath)) return { added: [], status: 'no-package-json' };
 
   const raw = readFileSync(pkgPath, 'utf8');
-  let pkg;
+  let pkg: PackageJson;
   try {
-    pkg = JSON.parse(raw);
+    pkg = JSON.parse(raw) as PackageJson;
   } catch {
     return { added: [], status: 'unparsable' };
   }
 
   const existing = pkg.scripts ?? {};
-  const added = [];
+  const added: string[] = [];
   for (const [name, command] of Object.entries(scripts)) {
     if (name in existing) continue;
     existing[name] = command;
