@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// check-resolvable.mjs — strict compliance linter for the skill engine.
+// check-resolvable.ts — strict compliance linter for the skill engine.
 //
-//   node scripts/check-resolvable.mjs            # lint (DRY/MECE-soft as warnings)
-//   node scripts/check-resolvable.mjs --strict   # promote DRY warnings to errors
-//   node scripts/check-resolvable.mjs --quiet    # errors only
+//   node scripts/check-resolvable.ts            # lint (DRY/MECE-soft as warnings)
+//   node scripts/check-resolvable.ts --strict   # promote DRY warnings to errors
+//   node scripts/check-resolvable.ts --quiet    # errors only
 
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';

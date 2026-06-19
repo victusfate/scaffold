@@ -51,7 +51,7 @@ tag (`v<version>`) — a tag push is not blocked by the ruleset.
    so a branch cut from an older main still bumps relative to the current
    release.
 3. Compute the next version from the branch's conventional commits via
-   `scripts/compute-bump.mjs` (`BREAKING`/`!:` → major, `feat:` → minor,
+   `scripts/compute-bump.ts` (`BREAKING`/`!:` → major, `feat:` → minor,
    `fix:` → patch, else none). If `none`, skip.
 4. `npm version <next> --no-git-tag-version`, then commit
    `chore(release): bump version to <next>` — staging only `package.json`
@@ -63,7 +63,7 @@ The full step text lives in `skills/create-pr.md`.
 
 - Hoist or copy the `create-pr` skill. The bump step degrades gracefully: it
   skips silently when there is no `package.json`, and falls back to the inline
-  bump rule when `scripts/compute-bump.mjs` is absent (so you can copy the skill
+  bump rule when `scripts/compute-bump.ts` is absent (so you can copy the skill
   without the script).
 - Keep a `release.yml` that tags on merge to `main` (reads `package.json`,
   skips if the tag exists, pushes `v<version>`).

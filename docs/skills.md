@@ -1,7 +1,7 @@
 # Skills
 
 > Generated from [`.claude/skills/RESOLVER.md`](../.claude/skills/RESOLVER.md) by
-> `scripts/update-skills-doc.mjs`. Run `node scripts/update-skills-doc.mjs` after
+> `scripts/update-skills-doc.ts`. Run `node scripts/update-skills-doc.ts` after
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->

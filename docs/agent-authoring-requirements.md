@@ -20,7 +20,7 @@
 
 | You want... | Home | Calling surface |
 |---|---|---|
-| repo-local shell plumbing, run by a human or a skill | `scripts/<name>.{sh,mjs}` | `bash scripts/<name>.sh` / `node scripts/<name>.mjs` |
+| repo-local shell plumbing, run by a human or a skill | `scripts/<name>.{sh,ts}` | `bash scripts/<name>.sh` / `node scripts/<name>.ts` |
 | a unit agents/MCP/other harnesses call with typed args | `tools/<name>/` | tool descriptor + `run` |
 | a distributable engine (npx-runnable, multi-command) | `bin/` | CLI / npx |
 | a conversational front door that wraps the above | `skills/<name>.md` (canonical) | the model, via triggers |
@@ -108,7 +108,7 @@ MCP-callable units).
 - **MUST** resolve its own root. Bash: `ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"`.
   Node: `import path from 'path'; import { fileURLToPath } from 'url';`
   then `const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');`
-  (for a script at `scripts/<name>.mjs`; add another `'..'` per extra level).
+  (for a script at `scripts/<name>.ts`; add another `'..'` per extra level).
 - **MUST** carry a header comment: what it does, why it exists, usage.
 - **MUST** be safe to re-run (idempotent) and report what changed vs was skipped.
 - **MUST NOT** `git add -A` (untracked sibling project dirs and caches exist);
@@ -131,7 +131,7 @@ author the per-harness forms by hand.
 
   > Until the canonical->harness generator ships (capability-sync Phase B), the
   > per-harness forms are created once from the canonical body (frontmatter + an
-  > `@` include) and their frontmatter is kept in sync by hand; `check-resolvable.mjs`
+  > `@` include) and their frontmatter is kept in sync by hand; `check-resolvable.ts`
   > enforces registration. Once the generator ships, regenerate instead of editing.
 
 - **Frontmatter (MUST):** every emitted form carries a `description` with explicit
@@ -139,7 +139,7 @@ author the per-harness forms by hand.
   frontmatter and the forms are generated from it; until then keep the emitted
   descriptions in sync.)
 - **Registration (MUST):** add the skill to `.claude/skills/RESOLVER.md` with its
-  invocation regex, canonical path, and purpose. `scripts/check-resolvable.mjs`
+  invocation regex, canonical path, and purpose. `scripts/check-resolvable.ts`
   enforces that every skill on disk is registered; it MUST pass.
 - **Thin front door (MUST):** a skill interprets intent and calls a
   script/tool/bin. It MUST NOT reimplement the called unit's invariants.
@@ -177,7 +177,7 @@ author the per-harness forms by hand.
 - [ ] A skill, if added, wraps and does not reimplement.
 - [ ] No `git add -A`; explicit paths staged.
 - [ ] Skill: canonical `skills/<name>.md` exists; per-harness forms are generated
-      (not hand-written) and registered in `RESOLVER.md`; `check-resolvable.mjs`
+      (not hand-written) and registered in `RESOLVER.md`; `check-resolvable.ts`
       passes.
 - [ ] No generated per-harness form (`.claude/skills/<name>/`, `.cursor/rules/`,
       `.agents/`, `.agent/`) was hand-edited without its canonical source.

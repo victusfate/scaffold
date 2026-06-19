@@ -1,7 +1,7 @@
 # RESOLVER — Skill Routing Table
 
 Central routing layer for the skill engine. Every skill on disk MUST be
-registered here (enforced by `scripts/check-resolvable.mjs`). The orchestrator
+registered here (enforced by `scripts/check-resolvable.ts`). The orchestrator
 matches user input against **Invocation Regex** top-to-bottom and dispatches to
 the first match.
 

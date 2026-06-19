@@ -2,7 +2,7 @@
 // compute-bump — derive the next semver from conventional-commit messages.
 // Why: the create-pr skill needs a pure, testable core to derive the bump it
 // commits onto the branch; a prior CI approach re-bumped on every PR push.
-// Usage: git log --pretty=%s%n%b <range> | node scripts/compute-bump.mjs <current-version>
+// Usage: git log --pretty=%s%n%b <range> | node scripts/compute-bump.ts <current-version>
 // Prints the next version, or "none" when no release-worthy commit exists.
 
 /**
@@ -40,7 +40,7 @@ import { fileURLToPath } from 'node:url';
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const current = process.argv[2];
   if (!current || !/^\d+\.\d+\.\d+$/.test(current)) {
-    console.error('usage: ... | compute-bump.mjs <current-version>');
+    console.error('usage: ... | compute-bump.ts <current-version>');
     process.exit(1);
   }
   const input = await new Promise<string>((res) => {
