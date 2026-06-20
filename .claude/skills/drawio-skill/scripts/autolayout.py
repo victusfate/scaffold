@@ -136,8 +136,8 @@ def build_dot(graph):
         emit_cluster(root, "")
     for node in graph["nodes"]:
         # Pass our pixel sizes to dot as inches so it lays out at the real size.
-        w = node.get("width", DEFAULT_W) / 72.0
-        h = node.get("height", DEFAULT_H) / 72.0
+        w = node.get("width", DEFAULT_W) / _PT_PER_INCH
+        h = node.get("height", DEFAULT_H) / _PT_PER_INCH
         lines.append(f'{dot_quote(node["id"])} [width={w:.4f} height={h:.4f}];')
     for edge in graph.get("edges", []):
         lines.append(f'{dot_quote(edge["source"])} -> {dot_quote(edge["target"])};')

@@ -163,9 +163,8 @@ async function main(): Promise<void> {
   const results = promoteFiles(policy, srcRoot, INTO, { check, force });
 
   // Print promotion summary
-  const STATUS_COL_WIDTH = 16;
   for (const r of results) {
-    console.log(`  ${r.status.padEnd(STATUS_COL_WIDTH)} ${r.path}`);
+    console.log(`  ${r.status.padEnd(STATUS_PAD)} ${r.path}`);
   }
 
   // Skills hoisting — skip if manifest doesn't exist and no skills section configured

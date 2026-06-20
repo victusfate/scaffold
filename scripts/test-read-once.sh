@@ -80,13 +80,14 @@ check "exit 0 despite corrupt marker" test "$rc" -eq 0
 # ── test 6: stats.jsonl bounded by hourly cleanup ───────────────────────────
 
 echo "6. stats.jsonl pruned by cleanup"
-STATS_FIXTURE_ENTRIES=6000  # must exceed the STATS_MAX_LINES threshold in hook.sh
+STATS_MAX_LINES=5000        # must match STATS_MAX_LINES in hook.sh
+STATS_FIXTURE_ENTRIES=6000  # must exceed STATS_MAX_LINES to trigger pruning
 for _ in $(seq 1 "$STATS_FIXTURE_ENTRIES"); do echo '{"ts":1,"event":"hit"}'; done > "$STATS"
 echo "0" > "$WORK/.claude/read-once/.last-cleanup"   # force cleanup window
 F6="$WORK/prune.txt"; echo "content" > "$F6"
 run_hook "$(hook_input "$F6" sess-6)" env READ_ONCE_MODE=warn > /dev/null
 lines=$(wc -l < "$STATS" | tr -d ' ')
-check "stats pruned to <=5000 lines" test "$lines" -le 5000
+check "stats pruned to <=$STATS_MAX_LINES lines" test "$lines" -le "$STATS_MAX_LINES"
 
 # ── test 7: mtime change with same content → still a hit (content-hash) ─────
 
