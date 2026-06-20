@@ -63,7 +63,10 @@ check_file() {
 if [ $# -gt 0 ]; then
   FILES=("$@")
 else
-  mapfile -t FILES < <(git diff main...HEAD --name-only 2>/dev/null | grep -E '\.(js|mjs|ts|tsx|sh|py|rb|go)$' || true)
+  mapfile -t FILES < <(git diff main...HEAD --name-only 2>/dev/null \
+    | grep -E '\.(js|mjs|ts|tsx|sh|py|rb|go)$' \
+    | grep -vE '^(\.claude/skills/|lib/linters/)' \
+    || true)
 fi
 
 for f in "${FILES[@]}"; do
