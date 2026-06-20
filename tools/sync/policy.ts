@@ -28,6 +28,10 @@ export function parsePolicy(text: string): Policy {
     return i;
   }
 
+  const PATH_PREFIX = 'path: ';
+  const KEEP_MARKER_PREFIX = 'keep_marker: ';
+  const MANIFEST_PREFIX = 'manifest: ';
+
   function unquote(s: string): string {
     if (s.length >= 2 &&
         ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'")))) {
@@ -89,10 +93,10 @@ export function parsePolicy(text: string): Policy {
 
         if (section === 'files.guarded') {
           if (pendingGuarded) flushGuarded();
-          if (val.startsWith('path: ')) {
-            pendingGuarded = { path: unquote(val.slice(6).trim()), keep_marker: null };
-          } else if (val.startsWith('keep_marker: ')) {
-            pendingGuarded = { path: null, keep_marker: unquote(val.slice(13).trim()) };
+          if (val.startsWith(PATH_PREFIX)) {
+            pendingGuarded = { path: unquote(val.slice(PATH_PREFIX.length).trim()), keep_marker: null };
+          } else if (val.startsWith(KEEP_MARKER_PREFIX)) {
+            pendingGuarded = { path: null, keep_marker: unquote(val.slice(KEEP_MARKER_PREFIX.length).trim()) };
           } else {
             throw new Error(`policy: guarded entry must have "path" and "keep_marker": ${val}`);
           }
@@ -102,18 +106,18 @@ export function parsePolicy(text: string): Policy {
 
       // Continuation lines for guarded object (indent 6)
       if (ind === 6 && section === 'files.guarded' && pendingGuarded) {
-        if (trimmed.startsWith('path: ')) {
-          pendingGuarded.path = unquote(trimmed.slice(6).trim());
-        } else if (trimmed.startsWith('keep_marker: ')) {
-          pendingGuarded.keep_marker = unquote(trimmed.slice(13).trim());
+        if (trimmed.startsWith(PATH_PREFIX)) {
+          pendingGuarded.path = unquote(trimmed.slice(PATH_PREFIX.length).trim());
+        } else if (trimmed.startsWith(KEEP_MARKER_PREFIX)) {
+          pendingGuarded.keep_marker = unquote(trimmed.slice(KEEP_MARKER_PREFIX.length).trim());
         }
         continue;
       }
     }
 
     // skills sub-keys (indent 2)
-    if (section === 'skills' && ind === 2 && trimmed.startsWith('manifest: ')) {
-      skillsManifest = trimmed.slice(10).trim();
+    if (section === 'skills' && ind === 2 && trimmed.startsWith(MANIFEST_PREFIX)) {
+      skillsManifest = trimmed.slice(MANIFEST_PREFIX.length).trim();
     }
   }
 

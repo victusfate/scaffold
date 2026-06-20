@@ -15,6 +15,9 @@ import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+const MAX_FILE_LINES = 500;
+const MAX_COMPLEXITY = 10;
+
 export default tseslint.config(
   { ignores: ['lib/linters/**', '**/*.scaffold-new', 'node_modules/**'] },
   js.configs.recommended,
@@ -29,9 +32,9 @@ export default tseslint.config(
     },
     rules: {
       // Match the shipped template's rubric thresholds (warn — informational).
-      'max-lines': ['warn', { max: 500 }],
+      'max-lines': ['warn', { max: MAX_FILE_LINES }],
       'max-params': ['warn', 4],
-      'complexity': ['warn', 10],
+      'complexity': ['warn', MAX_COMPLEXITY],
       'no-magic-numbers': ['warn', { ignore: [0, 1], ignoreArrayIndexes: true }],
       // See lib/linters/ts/eslint.config.mjs — autofix strips assertions tsc needs.
       '@typescript-eslint/no-unnecessary-type-assertion': 'off',

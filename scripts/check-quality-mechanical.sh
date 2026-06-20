@@ -12,6 +12,7 @@ emit() { echo "$1"; VIOLATIONS=$((VIOLATIONS + 1)); }
 check_file() {
   local file="$1"
   [ -f "$file" ] || return 0
+  local ext="${file##*.}"
 
   # File length
   local count
@@ -24,14 +25,27 @@ check_file() {
   # Matches: standalone integers ≥2 digits not in a `const NAME = N` assignment and not
   # inside a named-constant context. Skips 0 and 1 (universally understood), line-number
   # refs, and array index accesses.
-  local lineno=0
+  local lineno=0 in_docstring=0
   while IFS= read -r line; do
     lineno=$((lineno + 1))
+    # Python triple-quoted docstrings: count """ per line; odd count toggles in/out.
+    # Lines inside a docstring are not code and must not be scanned for magic numbers.
+    # Use bash string replacement — no subprocesses, safe under set -euo pipefail.
+    if [ "$ext" = "py" ]; then
+      local stripped="${line//\"\"\"/}"
+      local tq=$(( (${#line} - ${#stripped}) / 3 ))
+      [ $(( tq % 2 )) -eq 1 ] && in_docstring=$(( 1 - in_docstring ))
+      [ "$in_docstring" -eq 1 ] && continue
+    fi
     # Skip comment lines and empty lines
     [[ "$line" =~ ^[[:space:]]*(//|#|\*|/\*) ]] && continue
     [[ -z "${line// }" ]] && continue
-    # Skip const/let/var NAME = NUMBER (the definition is fine)
+    # Skip JS/TS const/let/var/readonly NAME = NUMBER (named constant definition)
     [[ "$line" =~ ^[[:space:]]*(const|let|var|readonly)[[:space:]]+[A-Z_]+ ]] && continue
+    # Skip shell/Python UPPER_CASE = <literal> — constant definitions in both languages.
+    # Leading underscores (Python private constants like _PT_PER_INCH) are included.
+    # Tuple form (A, B = 1, 2) is also covered. Excludes command substitutions ($(...)).
+    [[ "$line" =~ ^[[:space:]]*_*[A-Z][A-Z0-9_]*([[:space:]]*,[[:space:]]*_*[A-Z][A-Z0-9_]*)*[[:space:]]*=[[:space:]]*[0-9] ]] && continue
     # Numbers inside string literals are data (e.g. a grep pattern "Score.*10"),
     # not magic numbers — strip quoted substrings before the scan.
     local scan
@@ -65,7 +79,6 @@ if [ $# -gt 0 ]; then
 else
   mapfile -t FILES < <(git diff main...HEAD --name-only 2>/dev/null \
     | grep -E '\.(js|mjs|ts|tsx|sh|py|rb|go)$' \
-    | grep -vE '^(\.claude/skills/|lib/linters/)' \
     || true)
 fi
 

@@ -27,6 +27,8 @@ import sys
 INDEX = os.path.join(os.path.dirname(__file__), "..", "data", "shape-index.json.gz")
 _SOUNDEX_MAP = "01230120022455012603010202"   # A..Z digit codes
 _TRAIL = re.compile(r"\.*\d*$")               # strip trailing digits/dots before soundex
+_ALPHABET_LAST = len(_SOUNDEX_MAP) - 1        # index of last letter in the A..Z map
+DEFAULT_LIMIT = 10
 
 
 def soundex(name):
@@ -36,7 +38,7 @@ def soundex(name):
     si = 1
     for ch in name[1:]:
         c = ord(ch.upper()) - 65
-        if 0 <= c <= 25 and _SOUNDEX_MAP[c] != "0":
+        if 0 <= c <= _ALPHABET_LAST and _SOUNDEX_MAP[c] != "0":
             code = _SOUNDEX_MAP[c]
             if code != s[si - 1]:
                 s.append(code)
@@ -139,7 +141,7 @@ def search(shapes, tag_map, query, limit):
 def main():
     ap = argparse.ArgumentParser(description="Search official draw.io shapes for their style strings.")
     ap.add_argument("query", help='keywords, e.g. "aws lambda" or "uml actor"')
-    ap.add_argument("--limit", type=int, default=10)
+    ap.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     ap.add_argument("--json", action="store_true", help="emit JSON instead of a table")
     args = ap.parse_args()
 

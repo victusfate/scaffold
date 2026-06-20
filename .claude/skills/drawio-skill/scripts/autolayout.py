@@ -67,6 +67,8 @@ PALETTE = load_palette()
 # dot's cluster margin is set to this same value so each container box equals
 # dot's cluster box — which dot guarantees never overlaps, at any nesting depth.
 GROUP_PAD = 24
+GRID_SIZE = 10      # snap grid; matches the draw.io skill's default grid setting
+_PT_PER_INCH = 72   # PostScript points per inch — Graphviz uses inch coordinates
 
 
 def attr(value):
@@ -79,8 +81,7 @@ def dot_quote(value):
     return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def snap(value, grid=10):
-    # Align to the grid the skill uses everywhere (multiples of 10).
+def snap(value, grid=GRID_SIZE):
     return int(round(value / grid) * grid)
 
 
@@ -192,8 +193,8 @@ def to_drawio(graph, height, pos, edge_pts, color=True):
             continue
         w, h = node.get("width", DEFAULT_W), node.get("height", DEFAULT_H)
         xc, yc = pos[nid]
-        x = snap(xc * 72 - w / 2)
-        y = snap((height - yc) * 72 - h / 2)             # flip: dot origin is bottom-left
+        x = snap(xc * _PT_PER_INCH - w / 2)
+        y = snap((height - yc) * _PT_PER_INCH - h / 2)   # flip: dot origin is bottom-left
         rects[nid] = (x, y, w, h)
     # Parse the (possibly nested) group tree and assign each container a
     # collision-free id and a title (the path's last segment, or a member's groupLabel).
@@ -290,7 +291,7 @@ def to_drawio(graph, height, pos, edge_pts, color=True):
         interior = edge_pts.get((edge["source"], edge["target"]), [])[1:-1]
         if interior:
             points = "".join(
-                f'<mxPoint x="{snap(x * 72) + dx}" y="{snap((height - y) * 72) + dy}"/>'
+                f'<mxPoint x="{snap(x * _PT_PER_INCH) + dx}" y="{snap((height - y) * _PT_PER_INCH) + dy}"/>'
                 for x, y in interior
             )
             geom = (f'<mxGeometry relative="1" as="geometry">'

@@ -80,7 +80,8 @@ check "exit 0 despite corrupt marker" test "$rc" -eq 0
 # ── test 6: stats.jsonl bounded by hourly cleanup ───────────────────────────
 
 echo "6. stats.jsonl pruned by cleanup"
-for _ in $(seq 1 6000); do echo '{"ts":1,"event":"hit"}'; done > "$STATS"
+STATS_FIXTURE_ENTRIES=6000  # must exceed the STATS_MAX_LINES threshold in hook.sh
+for _ in $(seq 1 "$STATS_FIXTURE_ENTRIES"); do echo '{"ts":1,"event":"hit"}'; done > "$STATS"
 echo "0" > "$WORK/.claude/read-once/.last-cleanup"   # force cleanup window
 F6="$WORK/prune.txt"; echo "content" > "$F6"
 run_hook "$(hook_input "$F6" sess-6)" env READ_ONCE_MODE=warn > /dev/null
