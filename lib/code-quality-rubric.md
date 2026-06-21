@@ -72,6 +72,7 @@ A file scores 10 when:
 - **No god objects** — no class, hook, or component accumulates unrelated concerns. (major)
 - **No workarounds in wrong place** — workarounds (stable refs, one-shot flags, manual cooldowns) live at the source of the problem, not patched at the call site. (major)
 - **No dead logic** — no code that handles conditions that cannot occur, no feature flags for shipped features, no backwards-compat shims for callers that no longer exist. (major)
+- **No duplicate implementations** — every piece of logic has exactly one home. Within a file: two or more functions sharing the majority of their body must extract the shared logic into a helper. Across files: before implementing, search the codebase for an existing canonical equivalent; if one exists, import it instead. Re-implementing something that already exists elsewhere is always a violation, even if the duplicate works correctly. (major)
 - **No error handling theater** — only validates at real system boundaries (user input, external API responses). Trusts internal contracts. (minor)
 - **Correct dependency declarations** — all `useEffect`/`useCallback`/`useMemo` deps are accurate; no suppression comments that paper over a stale-closure bug. *[framework-specific: skip for non-React code]* (major)
 
@@ -134,3 +135,5 @@ A file scores 10 when:
 | Thin wrapper / identity layer | Encapsulation | major | Delete; inline or remove the layer |
 | Ceremony / boilerplate | Readability | minor | Every line earns its place or is deleted |
 | Reader must hold >1 concept | Readability | major | Extract named intermediate or simplify |
+| Duplicate implementation (within file) | Quality | major | Extract shared logic into a helper |
+| Duplicate implementation (cross-file) | Quality | major | Import from canonical source; delete local copy |

@@ -9,6 +9,7 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseResolverRows, parseBundledRows } from '../tools/lib/resolver-parse.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const RESOLVER = join(ROOT, '.claude', 'skills', 'RESOLVER.md');
@@ -19,55 +20,6 @@ const CHECK = process.argv.includes('--check');
 interface SkillRow {
   skill: string;
   purpose: string;
-}
-
-// ---------------------------------------------------------------- parse RESOLVER
-
-function splitRow(row: string): string[] {
-  const cells: string[] = [];
-  let current = '';
-  let inBacktick = false;
-  for (let i = 0; i < row.length; i++) {
-    const ch = row[i];
-    if (ch === '`') { inBacktick = !inBacktick; current += ch; }
-    else if (ch === '|' && !inBacktick) { cells.push(current.trim()); current = ''; }
-    else { current += ch; }
-  }
-  if (current.trim()) cells.push(current.trim());
-  return cells.filter((c, i, arr) => !(i === 0 && c === '') && !(i === arr.length - 1 && c === ''));
-}
-
-function parseResolver(): SkillRow[] {
-  const lines = readFileSync(RESOLVER, 'utf8').split('\n');
-  const rows: SkillRow[] = [];
-  let inTable = false;
-  for (const line of lines) {
-    const isRow = /^\s*\|.*\|\s*$/.test(line);
-    if (!isRow) { if (inTable && line.trim() !== '') break; continue; }
-    const cells = splitRow(line);
-    if (cells[0] === 'Skill') { inTable = true; continue; }
-    if (/^-{2,}$/.test(cells[0]?.replace(/[:\s]/g, ''))) continue;
-    if (!inTable || cells.length < 4) continue;
-    rows.push({ skill: cells[0].replace(/`/g, ''), purpose: cells[3] });
-  }
-  return rows;
-}
-
-// Parse the "## Bundled skills" table (Skill | Source | Purpose) — self-contained
-// vendored skills that ship as a single .claude/skills/<slug>/ tree.
-function parseBundled(): SkillRow[] {
-  const lines = readFileSync(RESOLVER, 'utf8').split('\n');
-  const rows: SkillRow[] = [];
-  let inSection = false, inTable = false;
-  for (const line of lines) {
-    if (/^##\s+/.test(line)) { inSection = /^##\s+Bundled skills/i.test(line); inTable = false; continue; }
-    if (!inSection || !/^\s*\|.*\|\s*$/.test(line)) continue;
-    const cells = splitRow(line);
-    if (cells[0] === 'Skill') { inTable = true; continue; }
-    if (/^-{2,}$/.test(cells[0]?.replace(/[:\s]/g, ''))) continue;
-    if (inTable && cells.length >= 3) rows.push({ skill: cells[0].replace(/`/g, ''), purpose: cells[2] });
-  }
-  return rows;
 }
 
 // ---------------------------------------------------------------- generate sections
@@ -200,9 +152,9 @@ function escapeRe(s: string): string {
 if (!existsSync(RESOLVER)) { console.error(`RESOLVER.md not found at ${RESOLVER}`); process.exit(1); }
 if (!existsSync(DOC))      { console.error(`docs/skills.md not found at ${DOC}`);   process.exit(1); }
 
-const rows = parseResolver();
+const rows = parseResolverRows(RESOLVER).map(r => ({ skill: r.name, purpose: r.purpose }));
 if (rows.length === 0) { console.error('No skill rows found in RESOLVER.md'); process.exit(1); }
-const bundled = parseBundled();
+const bundled = parseBundledRows(RESOLVER);
 
 const original = readFileSync(DOC, 'utf8');
 let doc = original;

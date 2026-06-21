@@ -1,7 +1,7 @@
-import { execSync } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
-import { join, extname, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { execSync } from 'node:child_process';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, extname, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { registry, type Language } from './registry.ts';
 import { templateHash } from './hash.ts';
 

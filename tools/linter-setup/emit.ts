@@ -1,5 +1,5 @@
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { join, dirname } from 'path';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { registry, type Language } from './registry.ts';
 import { templateHash } from './hash.ts';
 import { mergeDevDependencies, mergeScripts, type MergeResult } from './deps.ts';

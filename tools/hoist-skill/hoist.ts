@@ -1,5 +1,5 @@
 // hoist-skill engine — emit scaffold capabilities into a consumer repo.
-// Importable on Node ≥23.6 (native TS type-stripping); the `run` CLI shim wraps this module.
+// Importable on Node ≥22.18 (native TS type-stripping); the `run` CLI shim wraps this module.
 
 import { writeFileSync, mkdirSync, mkdtempSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
@@ -57,10 +57,10 @@ interface EmitOutcome {
 }
 export type HoistResult = ListResult | PlanResult | EmitOutcome;
 
-// Back-compat: `readManifest` moved to ./manifest.mjs when this file was split.
-// Consumer-vendored tools/sync/run.mjs copies import it from here and are not
-// refreshed by sync (run.mjs is not in scaffold-files.txt), so re-export it to
-// keep those copies resolving after they pull the new hoist.mjs.
+// Back-compat: `readManifest` moved to ./manifest.ts when this file was split.
+// Consumer-vendored tools/sync/run.ts copies import it from here and are not
+// refreshed by sync (run.ts is not in scaffold-files.txt), so re-export it to
+// keep those copies resolving after they pull the new hoist.ts.
 export { readManifest } from './manifest.ts';
 
 const SCAFFOLD_ROOT = process.env.HOIST_SCAFFOLD_ROOT
@@ -215,7 +215,7 @@ export async function hoist(opts: HoistOpts = {}): Promise<HoistResult> {
 
   if (fetchMode) {
     // No Node-version guard here: this module is TypeScript run via native
-    // type-stripping, so it only loads on Node ≥23.6 — well above fetch()'s
+    // type-stripping, so it only loads on Node ≥22.18 — well above fetch()'s
     // availability floor. The engines field + .npmrc enforce the minimum.
     _fetchTempDir = mkdtempSync(join(tmpdir(), 'hoist-skill-'));
     srcRoot = _fetchTempDir;

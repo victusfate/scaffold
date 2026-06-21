@@ -4,6 +4,7 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { compileCell, anchorSlug, tokens, jaccard, frontmatterDescription, normalizeWhitespace, type Reporter } from './resolver-utils.ts';
 import type { ResolverRow } from '../tools/lib/resolver-parse.ts';
+import { compileKeepMatcher } from '../tools/lib/safe-write.ts';
 
 // Shared context passed to every phase. Each phase destructures the subset it
 // needs; collecting them in one type keeps the call sites in check-resolvable.ts
@@ -204,17 +205,7 @@ export function phaseScaffold(rows: ResolverRow[], { fail, warn, MANIFEST, liste
   }
 }
 
-// Mirrors the .scaffold-keep matcher in tools/lib/safe-write.ts:loadKeep —
-// exact path, dir prefix, or * glob (where * spans path separators).
-function compileIgnore(patterns: string[]): (rel: string) => boolean {
-  return (rel: string) => patterns.some(p => {
-    if (p.includes('*')) {
-      const re = new RegExp('^' + p.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
-      return re.test(rel);
-    }
-    return rel === p || rel.startsWith(p + '/');
-  });
-}
+const compileIgnore = compileKeepMatcher;
 
 // Completeness guard for the sync manifest. Every tracked file must be either
 // shipped (scaffold-files.txt) or held back (scaffold-internal.txt); every

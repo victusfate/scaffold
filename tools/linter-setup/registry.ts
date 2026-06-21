@@ -37,7 +37,7 @@ export const registry: Record<Language, RegistryEntry> = {
     },
   },
   // TypeScript is its own variant: a type-aware ESLint config that also lints
-  // plain JS via fall-through. `ts` supersedes `js` in detection (see detect.mjs)
+  // plain JS via fall-through. `ts` supersedes `js` in detection (see detect.ts)
   // so a repo with both .ts and .js gets one config, not two. Ships a minimal
   // tsconfig.json (extraFiles) so projectService can resolve a TS program.
   ts: {

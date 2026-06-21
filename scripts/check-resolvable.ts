@@ -5,7 +5,7 @@
 //   node scripts/check-resolvable.ts --strict   # promote DRY warnings to errors
 //   node scripts/check-resolvable.ts --quiet    # errors only
 
-import { existsSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseResolverRows, parseBundledSkills } from '../tools/lib/resolver-parse.ts';
@@ -36,7 +36,6 @@ const warn = (phase: string, msg: string): number => warnings.push(`[${phase}] $
 
 const rel = (p: string): string => p.replace(ROOT + '/', '');
 
-import { readFileSync } from 'node:fs';
 const manifestSet = new Set<string>(
   existsSync(MANIFEST) ? readFileSync(MANIFEST, 'utf8').split('\n').map(l => l.trim()).filter(Boolean) : []
 );
