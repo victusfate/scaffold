@@ -85,14 +85,21 @@ job and no extra token are involved. Tagging stays on merge to main (e.g. in
    ```
 
 3. **Compute the next version** from the conventional commits the branch adds.
-   If `scripts/compute-bump.ts` exists, use it:
+   Prefer `compute-bump.ts`; fall back to `compute-bump.mjs` (mid-migration
+   consumers may have the `.mjs` but not yet the `.ts` replacement); fall back
+   to by-hand if neither is present:
    ```bash
-   NEXT=$(git log --pretty=%s%n%b origin/main..HEAD | node scripts/compute-bump.ts "$CURRENT")
+   BUMP_SCRIPT=""
+   [ -f scripts/compute-bump.ts  ] && BUMP_SCRIPT="scripts/compute-bump.ts"
+   [ -z "$BUMP_SCRIPT" ] && [ -f scripts/compute-bump.mjs ] && BUMP_SCRIPT="scripts/compute-bump.mjs"
+   if [ -n "$BUMP_SCRIPT" ]; then
+     NEXT=$(git log --pretty=%s%n%b origin/main..HEAD | node "$BUMP_SCRIPT" "$CURRENT")
+   else
+     # apply the rule by hand across all branch commit messages:
+     # BREAKING CHANGE or !: → major, feat: → minor, fix: → patch, else → none
+   fi
    ```
-   Otherwise apply the rule by hand across all branch commit messages: a
-   `BREAKING CHANGE` or `!:` → major, a `feat:` → minor, a `fix:` → patch,
-   nothing release-worthy → `none`. If the result is `none`, continue to Step 4
-   without bumping.
+   If the result is `none`, continue to Step 4 without bumping.
 
 4. **Apply and commit** the bump — no tag. `npm version` with an explicit
    version sets `package.json` absolutely (correct even if the branch's version
