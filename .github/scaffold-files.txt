@@ -15,9 +15,12 @@ bin/globalize-skill.sh
 bin/install-skills.sh
 bin/repo-bound-skills.txt
 .github/scaffold-files.txt
+.github/workflows/release.yml
 .github/workflows/sync-scaffold.yml
 scripts/check-resolvable.ts
 scripts/check-quality-mechanical.sh
+scripts/compute-bump.ts
+scripts/compute-bump.test.ts
 scripts/resolver-phases.ts
 scripts/resolver-utils.ts
 scripts/update-skills-doc.ts

@@ -30,9 +30,8 @@ eslint.config.mjs
 # Consumers get a tsconfig from the ts linter template (extraFiles), not this one.
 tsconfig.json
 
-# Scaffold's own CI (consumers get sync-scaffold.yml + quality.yml instead)
+# Scaffold's own CI (consumers get sync-scaffold.yml + quality.yml + release.yml)
 .github/workflows/ci.yml
-.github/workflows/release.yml
 
 # Session checkpoints
 .pause
@@ -48,8 +47,7 @@ docs/branch-versioning.md
 # fix the @import dangle when globalizing a synced stub, which consumers hit too.)
 bin/sync
 
-# Scaffold's own dev/test scripts
-scripts/compute-bump.*
+# Scaffold's own dev/test scripts (compute-bump ships — create-pr skill depends on it)
 scripts/test-*.sh
 
 # Scaffold-internal tooling (not part of the consumer payload)
