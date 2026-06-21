@@ -35,6 +35,19 @@ STYLE = ("shape=image;html=1;imageAspect=0;aspect=fixed;"
          "verticalLabelPosition=bottom;verticalAlign=top;image=")
 _VARIANT = re.compile(r"-(color|text)$")
 
+# Search scoring tiers: full-query match beats token match; exact beats prefix beats contains.
+_SCORE_FULL_EXACT = 100
+_SCORE_FULL_PREFIX = 60
+_SCORE_FULL_CONTAINS = 40
+_SCORE_TOKEN_EXACT = 90
+_SCORE_TOKEN_PREFIX = 50
+_SCORE_TOKEN_CONTAINS = 30
+_MIN_TOKEN_LEN = 3      # tokens shorter than this are too ambiguous to score
+
+DEFAULT_ICON_SIZE = 48  # default cell width/height in px (icons are square)
+_CDN_TIMEOUT_S = 15     # seconds to wait for CDN fetch before giving up
+_STYLE_PREVIEW_LEN = 160  # truncate style strings longer than this in plain output
+
 # Common RAG/LLM data stores that lobe-icons lacks, mapped to simple-icons
 # slugs (https://simpleicons.org, CC0). Served from the simple-icons CDN. Each
 # slug below is verified to return HTTP 200 at https://cdn.simpleicons.org/<slug>.
@@ -83,18 +96,18 @@ def search(fam, query, limit):
         b = squish(base)
         s = 0
         if q and q == b:
-            s = 100
+            s = _SCORE_FULL_EXACT
         elif q and b.startswith(q):
-            s = 60
+            s = _SCORE_FULL_PREFIX
         elif q and q in b:
-            s = 40
+            s = _SCORE_FULL_CONTAINS
         for t in tokens:
             if t == b:
-                s = max(s, 90)
-            elif len(t) >= 3 and b.startswith(t):
-                s = max(s, 50)
-            elif len(t) >= 3 and t in b:
-                s = max(s, 30)
+                s = max(s, _SCORE_TOKEN_EXACT)
+            elif len(t) >= _MIN_TOKEN_LEN and b.startswith(t):
+                s = max(s, _SCORE_TOKEN_PREFIX)
+            elif len(t) >= _MIN_TOKEN_LEN and t in b:
+                s = max(s, _SCORE_TOKEN_CONTAINS)
         if s:
             scored[base] = s
     return sorted(scored, key=lambda base: (-scored[base], base))[:limit]
@@ -129,7 +142,7 @@ def main():
     ap.add_argument("query", nargs="?", help='brand name, e.g. "openai" or "claude"')
     ap.add_argument("--limit", type=int, default=8)
     ap.add_argument("--variant", choices=["color", "mono", "text"], default="color")
-    ap.add_argument("--size", type=int, default=48, help="cell width/height in px (icons are square)")
+    ap.add_argument("--size", type=int, default=DEFAULT_ICON_SIZE, help="cell width/height in px (icons are square)")
     ap.add_argument("--embed", action="store_true",
                     help="inline the SVG as a data URI (fetches it now; portable, no network at render time)")
     ap.add_argument("--json", action="store_true")
@@ -158,7 +171,7 @@ def main():
             url = f"{cdn}{file}.svg"
             if args.embed:
                 try:
-                    svg = urllib.request.urlopen(url, timeout=15).read()
+                    svg = urllib.request.urlopen(url, timeout=_CDN_TIMEOUT_S).read()
                 except Exception as exc:                   # noqa: BLE001 - report and skip
                     sys.stderr.write(f"warning: could not fetch {url} ({exc})\n")
                     continue
@@ -178,7 +191,7 @@ def main():
             image = url
             if args.embed:
                 try:
-                    svg = urllib.request.urlopen(url, timeout=15).read()
+                    svg = urllib.request.urlopen(url, timeout=_CDN_TIMEOUT_S).read()
                     image = "data:image/svg+xml;base64," + base64.b64encode(svg).decode()
                 except Exception as exc:                   # noqa: BLE001 - keep the CDN URL
                     sys.stderr.write(f"warning: could not fetch {url} ({exc}); using CDN URL\n")
@@ -193,7 +206,7 @@ def main():
         print(json.dumps(results, indent=2, ensure_ascii=False))
     else:
         for r in results:
-            shown = r["style"] if len(r["style"]) < 160 else r["style"][:157] + "..."
+            shown = r["style"] if len(r["style"]) < _STYLE_PREVIEW_LEN else r["style"][:_STYLE_PREVIEW_LEN - 3] + "..."
             print(f"{r['brand']}  ({r['file']}, {r['w']}x{r['h']})\n  {shown}")
 
 

@@ -70,7 +70,7 @@ while IFS= read -r line; do
 done <<< "$manifest"
 
 updated=(); skipped=(); conflicts=(); review=(); kept=()
-removed=(); would_remove=(); kept_removed=()
+removed=(); would_remove=(); kept_removed=(); stale=()
 ours=''; base=''; theirs=''
 trap 'rm -f "${ours:-}" "${base:-}" "${theirs:-}"' EXIT
 
@@ -200,6 +200,22 @@ if [ -n "$last_sha" ] && git cat-file -e "${last_sha}:.github/scaffold-files.txt
   done <<< "$old_manifest"
 fi
 
+# ── Stale-path sweep: scaffold-removed paths still present in repo ───────────
+# Reads tools/sync/removed-files.tsv from scaffold (not shipped to consumers).
+# Catches files that escaped the manifest-diff pruning above — e.g. first-sync
+# consumers, or paths removed before this consumer's last synced SHA.
+if stale_tsv=$(git show scaffold/main:tools/sync/removed-files.tsv 2>/dev/null); then
+  while IFS=$'\t' read -r removed_path replacement _commit _date _reason; do
+    [[ -z "$removed_path" || "$removed_path" == \#* || "$removed_path" == "removed_path" ]] && continue
+    [ -e "$removed_path" ] || continue
+    if [ "$replacement" = "-" ]; then
+      stale+=("$removed_path  (deleted upstream — safe to remove)")
+    else
+      stale+=("$removed_path  →  $replacement")
+    fi
+  done <<< "$stale_tsv"
+fi
+
 # Save SHA only when there are no unresolved conflicts or pending reviews
 # (and never on a dry run).
 if [ "$DRY_RUN" != 1 ] && [ ${#conflicts[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ]; then
@@ -216,7 +232,8 @@ echo ""
 [ ${#removed[@]}      -gt 0 ] && echo "Removed (dropped upstream, pristine — deletion staged):"            && printf '  %s\n' "${removed[@]}"
 [ ${#would_remove[@]} -gt 0 ] && echo "Would remove (dropped upstream, pristine — dry run):"               && printf '  %s\n' "${would_remove[@]}"
 [ ${#kept_removed[@]} -gt 0 ] && echo "Kept (dropped upstream but not pristine / consumer-owned):"          && printf '  %s\n' "${kept_removed[@]}"
-[ ${#updated[@]} -eq 0 ] && [ ${#kept[@]} -eq 0 ] && [ ${#skipped[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ] && [ ${#conflicts[@]} -eq 0 ] && [ ${#removed[@]} -eq 0 ] && [ ${#would_remove[@]} -eq 0 ] && [ ${#kept_removed[@]} -eq 0 ] && echo "Nothing to update."
+[ ${#stale[@]}        -gt 0 ] && echo "Stale (renamed or deleted upstream — remove and update references):" && printf '  %s\n' "${stale[@]}"
+[ ${#updated[@]} -eq 0 ] && [ ${#kept[@]} -eq 0 ] && [ ${#skipped[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ] && [ ${#conflicts[@]} -eq 0 ] && [ ${#removed[@]} -eq 0 ] && [ ${#would_remove[@]} -eq 0 ] && [ ${#kept_removed[@]} -eq 0 ] && [ ${#stale[@]} -eq 0 ] && echo "Nothing to update."
 
 [ ${#review[@]} -gt 0 ] || [ ${#conflicts[@]} -gt 0 ] && exit 1
 exit 0

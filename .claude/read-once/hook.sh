@@ -113,22 +113,33 @@ fi
 # may have lost the content from its working context.
 TTL="${READ_ONCE_TTL:-1200}"
 
+HASH_PREFIX_LEN=16      # hex chars kept from sha256 for session/file IDs
+SHASUM_ALGO=256         # algorithm flag for shasum on macOS (-a 256 = sha256)
+LOCK_SPIN_RETRIES=50    # max mkdir spin attempts before breaking a stale lock
+CLEANUP_INTERVAL_S=3600 # run the session-cache cleanup at most once per hour
+STATS_MAX_LINES=5000    # cap on stats.jsonl; prune to this - 1 when exceeded
+CHARS_PER_TOKEN=4       # rough chars-per-token for file size → token estimate
+TOKEN_OVERHEAD_NUM=17   # token overhead fraction: line numbers add ~70%, so 1.7x
+TOKEN_OVERHEAD_DEN=10   # denominator for TOKEN_OVERHEAD_NUM (1.7 = 17/10)
+SECS_PER_MIN=60         # seconds per minute for human-readable TTL display
+TOKENS_PER_DIFF_LINE=10 # estimated tokens per line of diff output
+
 NOW=$(date +%s)
 
 # ── portable hashing ────────────────────────────────────────────────────────
-# sha256sum (Linux) or shasum -a 256 (macOS); first 16 hex chars is plenty.
+# sha256sum (Linux) or shasum -a "$SHASUM_ALGO" (macOS); first 16 hex chars is plenty.
 hash_str() {
   if command -v sha256sum >/dev/null 2>&1; then
-    printf '%s' "$1" | sha256sum | cut -c1-16
+    printf '%s' "$1" | sha256sum | cut -c1-${HASH_PREFIX_LEN}
   else
-    printf '%s' "$1" | shasum -a 256 | cut -c1-16
+    printf '%s' "$1" | shasum -a "$SHASUM_ALGO" | cut -c1-${HASH_PREFIX_LEN}
   fi
 }
 hash_file() {
   if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "$1" 2>/dev/null | cut -c1-16
+    sha256sum "$1" 2>/dev/null | cut -c1-${HASH_PREFIX_LEN}
   else
-    shasum -a 256 "$1" 2>/dev/null | cut -c1-16
+    shasum -a "$SHASUM_ALGO" "$1" 2>/dev/null | cut -c1-${HASH_PREFIX_LEN}
   fi
 }
 
@@ -148,7 +159,7 @@ acquire_lock() {
     _locked=1
   else
     local i=0
-    while [ "$i" -lt 50 ]; do
+    while [ "$i" -lt "$LOCK_SPIN_RETRIES" ]; do
       if mkdir "$LOCKDIR" 2>/dev/null; then _locked=1; return 0; fi
       sleep 0.1; i=$((i + 1))
     done
@@ -192,7 +203,7 @@ LAST_CLEANUP=$(cat "$CLEANUP_MARKER" 2>/dev/null || echo 0)
 # Tolerate corrupted marker — coerce non-numeric values to 0
 if ! [[ "$LAST_CLEANUP" =~ ^[0-9]+$ ]]; then LAST_CLEANUP=0; fi
 
-if [ $(( NOW - LAST_CLEANUP )) -gt 3600 ]; then
+if [ $(( NOW - LAST_CLEANUP )) -gt "$CLEANUP_INTERVAL_S" ]; then
   acquire_lock
   find "$CACHE_DIR" -name 'session-*.jsonl' -mtime +1 -delete 2>/dev/null || true
   find "$CACHE_DIR" -name 'session-*.saved' -mtime +1 -delete 2>/dev/null || true
@@ -201,8 +212,8 @@ if [ $(( NOW - LAST_CLEANUP )) -gt 3600 ]; then
   _stats="${CACHE_DIR}/stats.jsonl"
   if [ -f "$_stats" ]; then
     _lines=$(wc -l < "$_stats" | tr -d ' ')
-    if [ "${_lines:-0}" -gt 5000 ]; then
-      tail -n 4999 "$_stats" > "${_stats}.tmp" && mv "${_stats}.tmp" "$_stats" || rm -f "${_stats}.tmp"
+    if [ "${_lines:-0}" -gt "$STATS_MAX_LINES" ]; then
+      tail -n $(( STATS_MAX_LINES - 1 )) "$_stats" > "${_stats}.tmp" && mv "${_stats}.tmp" "$_stats" || rm -f "${_stats}.tmp"
     fi
   fi
   echo "$NOW" > "$CLEANUP_MARKER"
@@ -228,7 +239,7 @@ fi
 
 # Token estimation (~4 chars per token, line numbers add ~70%)
 FILE_SIZE=$(wc -c < "$FILE_PATH" 2>/dev/null | tr -d ' ')
-ESTIMATED_TOKENS=$(( (FILE_SIZE / 4) * 170 / 100 ))
+ESTIMATED_TOKENS=$(( (FILE_SIZE / CHARS_PER_TOKEN) * TOKEN_OVERHEAD_NUM / TOKEN_OVERHEAD_DEN ))
 
 # Check if we've seen this file before in this session.
 # Use jq for safe lookup — handles paths containing quotes or other special chars.
@@ -270,9 +281,9 @@ if [ -n "$CACHED_HASH" ] && [ "$CACHED_HASH" = "$CURRENT_HASH" ]; then
   fi
 
   # Cache hit — file unchanged and within TTL
-  MINUTES_AGO=$(( ENTRY_AGE / 60 ))
+  MINUTES_AGO=$(( ENTRY_AGE / SECS_PER_MIN ))
   BASENAME=$(basename "$FILE_PATH")
-  TTL_MIN=$(( TTL / 60 ))
+  TTL_MIN=$(( TTL / SECS_PER_MIN ))
 
   if [ "$MODE" = "deny" ]; then
     # Hard block — record tokens_saved and bump the O(1) running counter.
@@ -322,7 +333,7 @@ if [ -n "$CACHED_HASH" ] && [ "$DIFF_MODE" = "1" ] && [ -f "$SNAP_FILE" ]; then
     if [ -n "$DIFF_OUTPUT" ] && [ "$DIFF_LINES" -le "$DIFF_MAX" ]; then
       record_read
 
-      DIFF_TOKENS=$(( DIFF_LINES * 10 ))
+      DIFF_TOKENS=$(( DIFF_LINES * TOKENS_PER_DIFF_LINE ))
       TOKENS_SAVED=$(( ESTIMATED_TOKENS - DIFF_TOKENS ))
       if [ "$TOKENS_SAVED" -lt 0 ]; then TOKENS_SAVED=0; fi
 

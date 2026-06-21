@@ -164,7 +164,7 @@ async function main(): Promise<void> {
 
   // Print promotion summary
   for (const r of results) {
-    console.log(`  ${r.status.padEnd(16)} ${r.path}`);
+    console.log(`  ${r.status.padEnd(STATUS_PAD)} ${r.path}`);
   }
 
   // Skills hoisting — skip if manifest doesn't exist and no skills section configured
