@@ -37,7 +37,7 @@ A score of 9 means exactly one minor violation, cited.
 - *Named constants* — `const NAME = N`, `UPPER_CASE = N`, etc.
 - *String-literal contents* — numbers inside quoted strings are data.
 
-When a bare literal survives those exclusions and is genuinely self-documenting (e.g. `86400` where the context makes "seconds in a day" obvious), place `# quality-ok: magic-number — <reason>` (or `//` for JS/TS) on the **immediately preceding line**. The `<reason>` is required. File-length and commented-out-code violations have no bypass — the code must be fixed.
+When a bare literal survives those exclusions and is genuinely self-documenting (e.g. `86400` where the context makes "seconds in a day" obvious), place `# quality-ok: magic-number — <reason>` (or `//` for JS/TS) on the **immediately preceding line**. The `<reason>` is required. File-length and commented-out-code cannot be overridden inline or via PR body — those violations must be fixed in the code.
 
 ---
 
