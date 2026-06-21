@@ -20,6 +20,18 @@ export interface SafeWriteOpts {
   log?: ((line: string) => void) | null;
 }
 
+// Compile a list of .scaffold-keep patterns into a KeepMatcher.
+// Supports exact paths, dir prefixes, and * globs (where * spans separators).
+export function compileKeepMatcher(patterns: string[]): KeepMatcher {
+  return (rel: string) => patterns.some(p => {
+    if (p.includes('*')) {
+      const re = new RegExp('^' + p.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
+      return re.test(rel);
+    }
+    return rel === p || rel.startsWith(p + '/');
+  });
+}
+
 // Returns a matcher over .scaffold-keep patterns in dest (exact path, dir
 // prefix, or * glob). Absent file -> matches nothing.
 export function loadKeep(dest: string): KeepMatcher {
@@ -29,13 +41,7 @@ export function loadKeep(dest: string): KeepMatcher {
     .split('\n')
     .map(l => l.replace(/#.*/, '').trim())
     .filter(Boolean);
-  return (rel: string) => patterns.some(p => {
-    if (p.includes('*')) {
-      const re = new RegExp('^' + p.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
-      return re.test(rel);
-    }
-    return rel === p || rel.startsWith(p + '/');
-  });
+  return compileKeepMatcher(patterns);
 }
 
 /**

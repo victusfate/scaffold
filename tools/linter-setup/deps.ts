@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { join } from 'path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { registry, type Language } from './registry.ts';
 
 // The subset of package.json this tool reads and writes.
@@ -24,6 +24,38 @@ function detectIndent(text: string): string | number {
   return m ? m[1] : 2;
 }
 
+type Section = 'devDependencies' | 'scripts';
+
+// Shared merge engine: idempotently add entries to a package.json section.
+// For devDependencies, also checks dependencies to avoid duplicates.
+// Returns { added, status } — same shape for both public exports below.
+function mergeInto(targetRepo: string, section: Section, entries: Record<string, string>): MergeResult {
+  if (!entries || Object.keys(entries).length === 0) return { added: [], status: 'none' };
+  const pkgPath = join(targetRepo, 'package.json');
+  if (!existsSync(pkgPath)) return { added: [], status: 'no-package-json' };
+  const raw = readFileSync(pkgPath, 'utf8');
+  let pkg: PackageJson;
+  try { pkg = JSON.parse(raw) as PackageJson; } catch { return { added: [], status: 'unparsable' }; }
+
+  const present = section === 'devDependencies'
+    ? new Set([...Object.keys(pkg.dependencies ?? {}), ...Object.keys(pkg.devDependencies ?? {})])
+    : new Set(Object.keys(pkg.scripts ?? {}));
+
+  const target = (pkg[section] ?? {}) as Record<string, string>;
+  const added: string[] = [];
+  for (const [name, val] of Object.entries(entries)) {
+    if (present.has(name)) continue;
+    target[name] = val;
+    added.push(name);
+  }
+  if (added.length === 0) return { added: [], status: 'satisfied' };
+
+  pkg[section] = target as never;
+  const trailingNL = raw.endsWith('\n') ? '\n' : '';
+  writeFileSync(pkgPath, JSON.stringify(pkg, null, detectIndent(raw)) + trailingNL);
+  return { added, status: 'written' };
+}
+
 // Idempotently add a language's shipped linter packages to the target repo's
 // package.json devDependencies. Only fills in names absent from both
 // dependencies and devDependencies — never changes a version the repo already
@@ -35,71 +67,12 @@ function detectIndent(text: string): string | number {
 //   'unparsable'      — package.json exists but is not valid JSON
 //   'satisfied'       — every package already present (nothing written)
 //   'written'         — added packages were written
-export function mergeDevDependencies(targetRepo: string, language: Language): MergeResult {
-  const deps = registry[language]?.devDependencies;
-  if (!deps) return { added: [], status: 'none' };
-
-  const pkgPath = join(targetRepo, 'package.json');
-  if (!existsSync(pkgPath)) return { added: [], status: 'no-package-json' };
-
-  const raw = readFileSync(pkgPath, 'utf8');
-  let pkg: PackageJson;
-  try {
-    pkg = JSON.parse(raw) as PackageJson;
-  } catch {
-    return { added: [], status: 'unparsable' };
-  }
-
-  const present = new Set([
-    ...Object.keys(pkg.dependencies ?? {}),
-    ...Object.keys(pkg.devDependencies ?? {}),
-  ]);
-
-  const devDeps = pkg.devDependencies ?? {};
-  const added: string[] = [];
-  for (const [name, range] of Object.entries(deps)) {
-    if (present.has(name)) continue;
-    devDeps[name] = range;
-    added.push(name);
-  }
-  if (added.length === 0) return { added: [], status: 'satisfied' };
-
-  pkg.devDependencies = devDeps;
-  const trailingNL = raw.endsWith('\n') ? '\n' : '';
-  writeFileSync(pkgPath, JSON.stringify(pkg, null, detectIndent(raw)) + trailingNL);
-  return { added, status: 'written' };
-}
+export const mergeDevDependencies = (targetRepo: string, language: Language): MergeResult =>
+  mergeInto(targetRepo, 'devDependencies', registry[language]?.devDependencies ?? {});
 
 // Idempotently add a language's lint scripts (lint, lint:fix) to the target
 // repo's package.json. Only fills in script names the repo hasn't already
 // defined — never overwrites a consumer's own `lint` command. Returns the same
 // { added, status } shape as mergeDevDependencies.
-export function mergeScripts(targetRepo: string, language: Language): MergeResult {
-  const scripts = registry[language]?.scripts;
-  if (!scripts) return { added: [], status: 'none' };
-
-  const pkgPath = join(targetRepo, 'package.json');
-  if (!existsSync(pkgPath)) return { added: [], status: 'no-package-json' };
-
-  const raw = readFileSync(pkgPath, 'utf8');
-  let pkg: PackageJson;
-  try {
-    pkg = JSON.parse(raw) as PackageJson;
-  } catch {
-    return { added: [], status: 'unparsable' };
-  }
-
-  const existing = pkg.scripts ?? {};
-  const added: string[] = [];
-  for (const [name, command] of Object.entries(scripts)) {
-    if (name in existing) continue;
-    existing[name] = command;
-    added.push(name);
-  }
-  if (added.length === 0) return { added: [], status: 'satisfied' };
-
-  pkg.scripts = existing;
-  const trailingNL = raw.endsWith('\n') ? '\n' : '';
-  writeFileSync(pkgPath, JSON.stringify(pkg, null, detectIndent(raw)) + trailingNL);
-  return { added, status: 'written' };
-}
+export const mergeScripts = (targetRepo: string, language: Language): MergeResult =>
+  mergeInto(targetRepo, 'scripts', registry[language]?.scripts ?? {});

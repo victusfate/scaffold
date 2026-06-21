@@ -16,9 +16,6 @@ tools/linter-setup/detect.mjs	tools/linter-setup/detect.ts	a5a742a	2026-06-18	Fi
 tools/linter-setup/emit.mjs	tools/linter-setup/emit.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
 tools/linter-setup/hash.mjs	tools/linter-setup/hash.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
 tools/linter-setup/registry.mjs	tools/linter-setup/registry.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
-tools/sync/policy.mjs	tools/sync/policy.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
-tools/sync/promote.mjs	tools/sync/promote.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
-tools/sync/run.mjs	tools/sync/run.ts	a5a742a	2026-06-18	Fix linter detection + convert tooling to TypeScript (#54)
 scripts/update-readme-skills.mjs	scripts/update-skills-doc.mjs	f01a1a6	2026-06-13	fix(skills-doc): move generated skill list out of README into docs/skills.md
 .agents/skills/skill-export/SKILL.md	.agents/skills/hoist-skill/SKILL.md	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
 .claude/skills/skill-export/SKILL.md	.claude/skills/hoist-skill/SKILL.md	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill

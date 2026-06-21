@@ -54,13 +54,13 @@ export function parseResolverRows(resolverPath: string): ResolverRow[] {
   return rows;
 }
 
-// Parse the slug column of the "## Bundled skills" table — self-contained
-// vendored skills (own SKILL.md + assets) that ship as a single
-// .claude/skills/<slug>/ tree and are exempt from the prompt-skill wrapper
-// contract. Returns [] if the file or section is absent.
-export function parseBundledSkills(resolverPath: string): string[] {
+export interface BundledRow { skill: string; purpose: string; }
+
+// Parse the "## Bundled skills" table (Skill | Source | Purpose) — returns
+// { skill, purpose } for each row. Returns [] if the file or section is absent.
+export function parseBundledRows(resolverPath: string): BundledRow[] {
   if (!existsSync(resolverPath)) return [];
-  const slugs: string[] = [];
+  const rows: BundledRow[] = [];
   let inSection = false, inTable = false;
   for (const line of readFileSync(resolverPath, 'utf8').split('\n')) {
     if (/^##\s+/.test(line)) { inSection = /^##\s+Bundled skills/i.test(line); inTable = false; continue; }
@@ -68,7 +68,12 @@ export function parseBundledSkills(resolverPath: string): string[] {
     const cells = splitRow(line);
     if (cells[0] === 'Skill') { inTable = true; continue; }
     if (/^-{2,}$/.test(cells[0]?.replace(/[:\s]/g, ''))) continue;
-    if (inTable && cells[0]) slugs.push(cells[0].replace(/`/g, ''));
+    if (inTable && cells.length >= 3) rows.push({ skill: cells[0].replace(/`/g, ''), purpose: cells[2] });
   }
-  return slugs;
+  return rows;
+}
+
+// Thin wrapper returning only slugs for callers that don't need purpose.
+export function parseBundledSkills(resolverPath: string): string[] {
+  return parseBundledRows(resolverPath).map(r => r.skill);
 }

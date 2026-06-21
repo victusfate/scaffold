@@ -27,6 +27,7 @@ function safeWrite(dest: string, relPath: string, content: string, kept: KeepMat
 // Extracted here because the three emitters are otherwise structurally different:
 // claude/cursor each add one wrapper file; antigravity adds two (skill + workflow).
 // A table-driven approach would need variable-length rows and wouldn't be clearer.
+// quality-override: parameter-discipline — internal; makeEmitters presents the public 4-arg Emitter form
 function writeBody(cap: Capability, dest: string, srcRoot: string, kept: KeepMatcher, results: WriteResult[], force: boolean): void {
   safeWrite(dest, cap.path, readFileSync(join(srcRoot, cap.path), 'utf8'), kept, results, force);
 }
