@@ -141,6 +141,48 @@ function checkLocalSources(pairs: EmitPair[], srcRoot: string, registry: Resolve
   }
 }
 
+// ---------------------------------------------------------------- emit-pair resolution
+
+// Two paths produce the same EmitPair list — manifest replay vs. CLI args.
+// Extracted so hoist() reads as a linear sequence of stages rather than a
+// branching block that mixes validation with construction.
+function resolveEmitPairs({
+  fromManifestFlag, manifestReadPath, registry, rawNames, rawHarness, ref,
+}: {
+  fromManifestFlag: boolean;
+  manifestReadPath: string;
+  registry: ResolverRow[];
+  rawNames: string;
+  rawHarness: string;
+  ref: string;
+}): EmitPair[] {
+  if (fromManifestFlag) {
+    const entries = readManifest(manifestReadPath);
+    if (!entries.length) throw new Error(`No entries found in manifest: ${manifestReadPath}`);
+    const unknownNames     = entries.filter(e => !registry.find(r => r.name === e.name)).map(e => e.name);
+    const unknownHarnesses = entries.filter(e => !(HARNESSES as readonly string[]).includes(e.harness)).map(e => e.harness);
+    if (unknownNames.length)
+      throw new Error(`Unknown capabilities in manifest: ${unknownNames.join(', ')}\nAvailable: ${registry.map(r => r.name).join(', ')}`);
+    if (unknownHarnesses.length)
+      throw new Error(`Unknown harnesses in manifest: ${unknownHarnesses.join(', ')}\nAvailable: ${HARNESSES.join(', ')}`);
+    return entries.map(e => ({ name: e.name, harness: e.harness as Harness, ref: e.ref }));
+  }
+
+  const requestedNames = rawNames === 'all' ? registry.map(r => r.name) : rawNames.split(',').map(s => s.trim());
+  const unknown = requestedNames.filter(n => !registry.find(r => r.name === n));
+  if (unknown.length)
+    throw new Error(`Unknown capabilities: ${unknown.join(', ')}\nAvailable: ${registry.map(r => r.name).join(', ')}`);
+  const requestedHarnesses: Harness[] = rawHarness === 'all' ? [...HARNESSES] : [rawHarness as Harness];
+  const badHarnesses = requestedHarnesses.filter(h => !HARNESSES.includes(h));
+  if (badHarnesses.length)
+    throw new Error(`Unknown harnesses: ${badHarnesses.join(', ')}\nAvailable: ${HARNESSES.join(', ')}`);
+  const pairs: EmitPair[] = [];
+  for (const name of requestedNames)
+    for (const harness of requestedHarnesses)
+      pairs.push({ name, harness, ref });
+  return pairs;
+}
+
 // ---------------------------------------------------------------- hoist API
 
 /**
@@ -201,39 +243,7 @@ export async function hoist(opts: HoistOpts = {}): Promise<HoistResult> {
     };
   }
 
-  // Build emit pairs: [{ name, harness }]
-  let emitPairs: EmitPair[];
-
-  if (fromManifestFlag) {
-    const entries = readManifest(manifestReadPath);
-    if (!entries.length) {
-      throw new Error(`No entries found in manifest: ${manifestReadPath}`);
-    }
-    const unknownNames     = entries.filter(e => !registry.find(r => r.name === e.name)).map(e => e.name);
-    const unknownHarnesses = entries.filter(e => !(HARNESSES as readonly string[]).includes(e.harness)).map(e => e.harness);
-    if (unknownNames.length) {
-      throw new Error(`Unknown capabilities in manifest: ${unknownNames.join(', ')}\nAvailable: ${registry.map(r => r.name).join(', ')}`);
-    }
-    if (unknownHarnesses.length) {
-      throw new Error(`Unknown harnesses in manifest: ${unknownHarnesses.join(', ')}\nAvailable: ${HARNESSES.join(', ')}`);
-    }
-    emitPairs = entries.map(e => ({ name: e.name, harness: e.harness as Harness, ref: e.ref }));
-  } else {
-    const requestedNames = rawNames === 'all' ? registry.map(r => r.name) : rawNames.split(',').map(s => s.trim());
-    const unknown = requestedNames.filter(n => !registry.find(r => r.name === n));
-    if (unknown.length) {
-      throw new Error(`Unknown capabilities: ${unknown.join(', ')}\nAvailable: ${registry.map(r => r.name).join(', ')}`);
-    }
-    const requestedHarnesses: Harness[] = rawHarness === 'all' ? [...HARNESSES] : [rawHarness as Harness];
-    const badHarnesses = requestedHarnesses.filter(h => !HARNESSES.includes(h));
-    if (badHarnesses.length) {
-      throw new Error(`Unknown harnesses: ${badHarnesses.join(', ')}\nAvailable: ${HARNESSES.join(', ')}`);
-    }
-    emitPairs = [];
-    for (const name of requestedNames)
-      for (const harness of requestedHarnesses)
-        emitPairs.push({ name, harness, ref });
-  }
+  const emitPairs = resolveEmitPairs({ fromManifestFlag, manifestReadPath, registry, rawNames, rawHarness, ref });
 
   // Plan mode: output annotated sources list, no emit
   if (planMode) {

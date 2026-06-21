@@ -23,9 +23,20 @@ function safeWrite(dest: string, relPath: string, content: string, kept: KeepMat
   sharedSafeWrite(dest, relPath, content, kept, results, force, { log: console.error });
 }
 
+// Every harness emitter starts by writing the shared skill body (skills/<name>.md).
+// Extracted here because the three emitters are otherwise structurally different:
+// claude/cursor each add one wrapper file; antigravity adds two (skill + workflow).
+// A table-driven approach would need variable-length rows and wouldn't be clearer.
+function writeBody(cap: Capability, dest: string, srcRoot: string, kept: KeepMatcher, results: WriteResult[], force: boolean): void {
+  safeWrite(dest, cap.path, readFileSync(join(srcRoot, cap.path), 'utf8'), kept, results, force);
+}
+
+// Each emitter writes the body then one or more harness-specific wrappers.
+// Wrappers are thin @-include stubs generated from cap.purpose when no
+// curated version exists in the scaffold source tree.
+
 export function emitClaude(cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[], srcRoot: string, force: boolean): void {
-  const bodyAbs = join(srcRoot, cap.path);
-  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
+  writeBody(cap, dest, srcRoot, kept, results, force);
   const wrapperRel = `.claude/skills/${cap.name}/SKILL.md`;
   const src = join(srcRoot, '.claude', 'skills', cap.name, 'SKILL.md');
   const content = existsSync(src)
@@ -35,8 +46,7 @@ export function emitClaude(cap: Capability, dest: string, kept: KeepMatcher, res
 }
 
 export function emitCursor(cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[], srcRoot: string, force: boolean): void {
-  const bodyAbs = join(srcRoot, cap.path);
-  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
+  writeBody(cap, dest, srcRoot, kept, results, force);
   const cursorRel = `.cursor/rules/${cap.name}.mdc`;
   const src = join(srcRoot, '.cursor', 'rules', `${cap.name}.mdc`);
   const content = existsSync(src)
@@ -46,8 +56,7 @@ export function emitCursor(cap: Capability, dest: string, kept: KeepMatcher, res
 }
 
 export function emitAntigravity(cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[], srcRoot: string, force: boolean): void {
-  const bodyAbs = join(srcRoot, cap.path);
-  safeWrite(dest, cap.path, readFileSync(bodyAbs, 'utf8'), kept, results, force);
+  writeBody(cap, dest, srcRoot, kept, results, force);
 
   const agentSkillRel = `.agents/skills/${cap.name}/SKILL.md`;
   const agentSkillSrc = join(srcRoot, '.agents', 'skills', cap.name, 'SKILL.md');

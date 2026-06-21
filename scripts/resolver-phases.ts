@@ -91,7 +91,13 @@ export function phaseAmbiguity(rows: ResolverRow[], { fail }: PhaseCtx): void {
 }
 
 export function phaseDry(rows: ResolverRow[], { fail, warn, ROOT, STRICT }: PhaseCtx): void {
+  // 3 consecutive meaningful lines is the minimum for intentional duplication:
+  // a 1- or 2-line match fires on common phrases ("See also:", empty returns)
+  // too often to be actionable. 3 lines is long enough to signal a real block.
   const MIN_RUN = 3;
+  // Lines shorter than 20 chars are almost always structural (headings, bullets,
+  // closing braces) rather than logic — filtering them keeps the duplicate
+  // detector focused on actual content blocks.
   const MIN_LEN = 20;
   const norm = (l: string): string => l.trim();
   const meaningful = (l: string): boolean => l.length >= MIN_LEN && !l.startsWith('#') && !/^[-*]\s*$/.test(l);
@@ -118,6 +124,10 @@ export function phaseDry(rows: ResolverRow[], { fail, warn, ROOT, STRICT }: Phas
 }
 
 export function phaseMece(rows: ResolverRow[], { fail }: PhaseCtx): void {
+  // 0.7 Jaccard on purpose-description tokens is the overlap point where two
+  // skills are almost certainly describing the same intent. Below 0.7 the
+  // similarity is incidental (shared domain vocabulary). Calibrated against the
+  // current skill set: the closest legitimate pair scores ~0.45.
   const THRESHOLD = 0.7;
   const sig = rows.map(r => ({ name: r.name, t: tokens(r.purpose) }));
   for (let i = 0; i < sig.length; i++)
