@@ -27,9 +27,17 @@ Score = 10 − Σ(violation weights)
 
 A score of 9 means exactly one minor violation, cited.
 
-**Override (model-driven criteria only):** add `quality-override: <file> — <criterion> — <reason>` to the PR body to exempt a file from a specific non-numeric criterion. Mechanical criteria (file length, magic literals, commented-out code) cannot be overridden — the code must be fixed.
+**Override (model-driven criteria only):** add `quality-override: <file> — <criterion> — <reason>` to the PR body to exempt a file from a specific non-numeric criterion. Most mechanical criteria (file length, commented-out code) cannot be overridden — the code must be fixed.
 
-**Inline override (colocated):** place `// quality-override: <criterion> — <reason>` on the line immediately above the offending line. It suppresses that single deduction for `<criterion>` and appears in audit output as an accepted override at **zero** score weight. For a violation that scopes the whole file, place the pragma on the first non-blank, non-shebang line. `<reason>` is required and the em dash `—` is the separator. Mechanical criteria cannot be overridden inline or via PR body — the code must be fixed. A malformed pragma (unknown criterion, blank reason, or missing separator) is itself a `[Clarity/minor]` violation, since a broken override is worse than none.
+**Inline override (colocated):** place `// quality-override: <criterion> — <reason>` on the line immediately above the offending line. It suppresses that single deduction for `<criterion>` and appears in audit output as an accepted override at **zero** score weight. For a violation that scopes the whole file, place the pragma on the first non-blank, non-shebang line. `<reason>` is required and the em dash `—` is the separator. A malformed pragma (unknown criterion, blank reason, or missing separator) is itself a `[Clarity/minor]` violation, since a broken override is worse than none.
+
+**Magic-number pragma:** the magic-number check (`check-quality-mechanical.sh`) is intentionally narrowed to catch hidden thresholds, not every bare digit. Most legitimate cases are already excluded automatically:
+- *Test files* (`*.test.*`, `*.spec.*`, `test-*`) — assertion literals are specs, not thresholds.
+- *`return`/`exit` values* — protocol-defined (HTTP status codes, shell exit codes).
+- *Named constants* — `const NAME = N`, `UPPER_CASE = N`, etc.
+- *String-literal contents* — numbers inside quoted strings are data.
+
+When a bare literal survives those exclusions and is genuinely self-documenting (e.g. `86400` where the context makes "seconds in a day" obvious), place `# quality-ok: magic-number — <reason>` (or `//` for JS/TS) on the **immediately preceding line**. The `<reason>` is required. File-length and commented-out-code violations have no bypass — the code must be fixed.
 
 ---
 

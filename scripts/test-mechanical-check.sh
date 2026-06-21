@@ -34,6 +34,18 @@ printf '// function old() {\n//   return 1;\n// }\nfunction current() {}\n' > "$
 QUOTED="$FIXTURES/quoted.sh"
 printf 'grep -qE "Score.*10|10 on all" "$f"\n' > "$QUOTED"
 
+# Fixture: magic number suppressed by pragma on the preceding line
+PRAGMA="$FIXTURES/pragma.js"
+printf '// quality-ok: magic-number — milliseconds in a day is self-documenting\nconst delay = 86400;\n' > "$PRAGMA"
+
+# Fixture: test file — assertion literals are specs, not thresholds
+TESTFILE="$FIXTURES/foo.test.js"
+printf 'expect(result).toBe(86400);\n' > "$TESTFILE"
+
+# Fixture: return/exit with a bare number — protocol-defined, not a threshold
+RETURN="$FIXTURES/handler.js"
+printf 'function notFound() {\n  return 404;\n}\nfunction ok() {\n  return 200;\n}\n' > "$RETURN"
+
 # Clean file should pass
 if bash "$SCRIPT" "$CLEAN" > /dev/null 2>&1; then
   ok "clean file passes"
@@ -91,6 +103,27 @@ if bash "$SCRIPT" "$QUOTED" > /dev/null 2>&1; then
   ok "digits inside a quoted string are not a magic number"
 else
   fail "quoted-string digits should not be flagged as a magic number"
+fi
+
+# quality-ok: magic-number pragma suppresses the violation on the next line
+if bash "$SCRIPT" "$PRAGMA" > /dev/null 2>&1; then
+  ok "quality-ok: magic-number pragma suppresses violation"
+else
+  fail "pragma-suppressed magic number should pass"
+fi
+
+# Test files are fully skipped — assertion literals are specs, not thresholds
+if bash "$SCRIPT" "$TESTFILE" > /dev/null 2>&1; then
+  ok "test file magic numbers are not flagged"
+else
+  fail "magic numbers in test files should not be flagged"
+fi
+
+# return/exit with a bare number should NOT be flagged — protocol-defined values
+if bash "$SCRIPT" "$RETURN" > /dev/null 2>&1; then
+  ok "return/exit values are not flagged as magic numbers"
+else
+  fail "return/exit values should not be flagged as magic numbers"
 fi
 
 echo ""
