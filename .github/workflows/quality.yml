@@ -10,12 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Fetch main for diff
-        run: git fetch origin main --depth=1
-      - name: Run mechanical quality checks
-        run: bash scripts/check-quality-mechanical.sh
+      - name: Run mechanical quality checks (all files)
+        run: |
+          mapfile -t FILES < <(git ls-files | grep -E '\.(js|mjs|ts|tsx|sh|py|rb|go)$' || true)
+          [ ${#FILES[@]} -gt 0 ] && bash scripts/check-quality-mechanical.sh "${FILES[@]}"
 
   shellcheck:
     name: Shellcheck (dogfood)

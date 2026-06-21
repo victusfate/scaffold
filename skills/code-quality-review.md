@@ -4,7 +4,9 @@ Seek **ambitious structural simplification** — not just the absence of bad pat
 
 ## Scope and approach
 
-Use `git diff main...HEAD --name-only` to get the list of changed files. Read each changed file fully — structural issues like spaghetti, file size, and abstraction violations need full context, not just diff hunks. Apply all criteria in a single pass per file; do not re-read to verify. Do not spawn subagents. Do not read files outside the changed set unless a cross-file criterion (e.g. canonical reuse) specifically requires checking one adjacent file.
+Use `git diff main...HEAD --name-only` to get the list of changed files. Read each changed file fully — structural issues like spaghetti, file size, and abstraction violations need full context, not just diff hunks. Apply all criteria in a single pass per file; do not re-read to verify. Do not spawn subagents.
+
+**Cross-file DRY check (mandatory):** for every function or block of logic in a changed file that could plausibly exist elsewhere — parsers, merge helpers, matchers, formatters, validators — run a grep across the codebase before concluding no canonical version exists. If a canonical equivalent is found in an unmodified file, that is a **No duplicate implementations** violation against the changed file; read the canonical file to confirm the overlap and cite both paths in the violation.
 
 @../lib/code-quality-rubric.md
 
