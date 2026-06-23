@@ -80,11 +80,17 @@ check_file() {
     [[ "$line" =~ ^[[:space:]]*(return|exit)[[:space:]] ]] && { prev_quality_ok=0; continue; }
 
     # Numbers inside string literals are data (e.g. a grep pattern "Score.*10"),
-    # not magic numbers — strip quoted substrings before the scan.
-    local scan
-    scan=$(printf '%s' "$line" | sed "s/'[^']*'//g; s/\"[^\"]*\"//g")
-    # Flag bare integers ≥2 digits that are not array indices or lone 0/1
-    if echo "$scan" | grep -qE '[^a-zA-Z0-9_."\x27][0-9]{2,}[^a-zA-Z0-9_.]'; then
+    # not magic numbers — strip quoted substrings before the scan. The sed only
+    # spawns when the line actually contains a quote, so most lines skip it.
+    local scan="$line"
+    if [[ "$line" == *\'* || "$line" == *\"* ]]; then
+      scan=$(printf '%s' "$line" | sed "s/'[^']*'//g; s/\"[^\"]*\"//g")
+    fi
+    # Flag bare integers ≥2 digits that are not array indices or lone 0/1.
+    # Bash ERE in [[ =~ ]] supports {2,}; the regex lives in a variable so it
+    # is matched as a pattern (no subprocess vs the old echo|grep).
+    local magic_re='[^a-zA-Z0-9_."'\''][0-9]{2,}[^a-zA-Z0-9_.]'
+    if [[ "$scan" =~ $magic_re ]]; then
       emit "${file}:${lineno} [Readability/minor] magic number — extract to a named constant (or use quality-ok: magic-number pragma if the value is self-documenting)"
     fi
     prev_quality_ok=0
@@ -96,7 +102,7 @@ check_file() {
   lineno=0
   while IFS= read -r line; do
     lineno=$((lineno + 1))
-    if echo "$line" | grep -qE '^[[:space:]]*(//|#)[[:space:]]*(function|const|let|var|return|if|for|while|class|import|export|})'; then
+    if [[ "$line" =~ ^[[:space:]]*(//|#)[[:space:]]*(function|const|let|var|return|if|for|while|class|import|export|}) ]]; then
       if [ "$prev_was_comment" -eq 1 ]; then
         emit "${file}:${lineno} [Clarity/minor] commented-out code block — delete dead code instead of archiving inline"
       fi
