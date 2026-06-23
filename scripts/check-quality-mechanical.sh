@@ -86,6 +86,12 @@ check_file() {
     if [[ "$line" == *\'* || "$line" == *\"* ]]; then
       scan=$(printf '%s' "$line" | sed "s/'[^']*'//g; s/\"[^\"]*\"//g")
     fi
+    # Strip parseInt/parseFloat radix and .toString() radix — explicit base
+    # specs, not hidden thresholds. Guarded so the sed only spawns on the rare
+    # line that uses one.
+    if [[ "$scan" == *parseInt* || "$scan" == *.toString* ]]; then
+      scan=$(printf '%s' "$scan" | sed 's/parseInt([^,]*,[^)]*)/parseInt(X)/g; s/\.toString([^)]*)/\.toString(X)/g')
+    fi
     # Flag bare integers ≥2 digits that are not array indices or lone 0/1.
     # Bash ERE in [[ =~ ]] supports {2,}; the regex lives in a variable so it
     # is matched as a pattern (no subprocess vs the old echo|grep).
