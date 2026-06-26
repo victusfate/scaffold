@@ -4,6 +4,7 @@ Seek **ambitious structural simplification** — not just the absence of bad pat
 
 ## Execution model
 
+// quality-override: No duplicate implementations — isolation rationale is intentionally repeated across skill files; skill composition system pending
 Run the review as a separate Agent with isolated context. The agent invoking this skill has already internalized the session's work and cannot review it objectively. A fresh subagent has no such priors.
 
 **Phase 1 — gather (main agent):**
@@ -40,9 +41,7 @@ All files must score 10/10 on all four dimensions before the completion summary 
 - **< 30 lines changed:** apply the fix directly and re-score.
 - **≥ 30 lines or architectural change:** surface the violation, describe the fix, wait for user approval.
 
-Mechanical criteria (file length, magic literals, commented-out code) cannot be overridden — the code must be fixed. Model-driven criteria may be overridden via `quality-override` in the PR body.
-
-Before deducting, check the preceding line — or, for a whole-file criterion, the first non-blank, non-shebang line — for a `// quality-override: <criterion> — <reason>` pragma. If the criterion is model-driven and the reason is non-empty, suppress that deduction and report it as an accepted override at zero weight: `path:line [<criterion>/override] accepted — <reason>`. A malformed pragma (unknown criterion, blank reason, or missing separator) is itself a `[Clarity/minor]` violation.
+Mechanical criteria (file length, magic literals, commented-out code) cannot be overridden — the code must be fixed. Non-mechanical (model-driven) criteria — naming, responsibility scope, abstraction quality — may be overridden via `quality-override` in the PR body.
 
 ## Output
 

@@ -1,4 +1,4 @@
-## Overview
+## Purpose
 
 Review code for correctness bugs and reuse/simplification/efficiency cleanups. Default scope is the current branch diff; `--full` scans the entire codebase to catch issues before CI.
 
@@ -10,6 +10,7 @@ Review code for correctness bugs and reuse/simplification/efficiency cleanups. D
 
 ## Execution model
 
+// quality-override: No duplicate implementations — isolation rationale is intentionally repeated across skill files; skill composition system pending
 Run the review as a separate Agent with isolated context. The agent invoking this skill has already internalized the session's work and cannot review it objectively. A fresh subagent has no such priors.
 
 **Phase 1 — gather (main agent):**
