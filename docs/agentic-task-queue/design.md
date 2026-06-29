@@ -98,27 +98,40 @@ Two consequences:
   isolation between unrelated tasks is required, at the cost of more merge
   machinery. Default is the integration model; strict mode is deferred.
 
-### D7 — Merge-back conflict: replay, don't re-run
+### D7 — Merge-back conflict: agent-driven reconciliation task
 
-When a completed task branch fails to merge cleanly (a sibling landed on
-integration first and touched adjacent lines), the queue **never re-executes the
-task** — the worker already did valid work that may have cost minutes. Instead it
-**replays the existing commits** onto the updated integration tip:
+Automatic conflict resolution is **not trusted**. A clean *textual* rebase can
+still be *semantically* wrong, so the queue never silently auto-merges a
+conflicted branch. Merge-back has exactly one cheap fast path; everything else
+hands off to an agent.
 
-1. **Rebase** the task branch onto the current integration tip. Git replays the
-   worker's commits; non-overlapping changes auto-resolve. No agent involvement,
-   no re-execution.
-2. **Clean rebase →** re-run `validationScript` only (cheap relative to redoing
-   the work) to confirm the combined state still passes, then merge. Done.
-3. **Rebase conflict, or post-rebase validation failure →** spawn a scoped
-   **reconciliation step** that receives the task's full context (task spec, the
-   branch diff, the conflicting hunks or failing test) and resolves *only the
-   delta* — the conflicting hunks or the broken assertion — not the whole task.
+1. **Attempt the merge** of the task branch into the integration tip, then run
+   `validationScript`.
+   - **Clean merge + validation passes →** record `result.mergeCommit`, delete
+     the worktree, mark `"completed"`. This is the common, cheap case.
+2. **Any merge conflict, or a clean merge whose validation then fails →** set the
+   task `"reconciling"` and **enqueue a first-class reconciliation task**
+   (`origin: "automated/reconcile/<taskId>"`, `priority: "high"` so it clears
+   ahead of new default work).
 
-The worker's commits are the preserved context: re-running is the last resort,
-reserved for genuine semantic conflict, and even then it is scoped to the
-conflict rather than the entire task. Re-execution of the full task from scratch
-is never the default path.
+The reconciliation task is itself a normal queued unit — agent-driven, isolated
+worktree — but its job is integration, not re-implementation:
+
+- It **starts from the existing task branch** (the worker's commits are
+  preserved — no re-running the original task from scratch) and integrates it
+  against the current integration tip with full context: the task spec, the
+  branch diff, and the conflicting hunks or failing assertion.
+- The agent merges **carefully**, applying judgment rather than trusting a
+  mechanical rebase, and re-runs `validationScript`.
+- **Success →** merge into integration; the original task transitions
+  `reconciling → completed`.
+- **Cannot produce a clean, validated merge →** the original task transitions
+  `reconciling → failed` and is **held for later resolution** (human or a
+  re-queued attempt). Failing safe is preferred over forcing a merge through.
+
+The principle: preserve the worker's effort, never auto-merge on faith, and when
+careful agent-driven integration still can't succeed, stop and surface it rather
+than risk a bad merge.
 
 ### D8 — `run-all` failure policy: continue on independent work
 
@@ -196,8 +209,9 @@ pending → running → completed
                   ↘ failed                              (task or validation failure)
 ```
 
-`reconciling` is the transient state while a completed task branch is being
-rebase-replayed and, if needed, reconciled against the integration tip.
+`reconciling` is the state while an agent-driven reconciliation task (D7)
+integrates the branch against the integration tip; it resolves to `completed`
+(clean validated merge) or `failed` (held for later resolution).
 
 ---
 
@@ -258,12 +272,11 @@ order wins (D2). Returns that task block.
 3. Apply code changes to satisfy the task requirements.
 4. Run `command` then `validationScript`.
 5. **Success (exit 0):** commit on the task branch, then merge-back per D6/D7:
-   - Clean merge → record `result.mergeCommit`, delete the worktree, set
-     `status = "completed"`.
-   - Merge conflict → **rebase the task branch** onto the integration tip and
-     replay (D7). Clean rebase + passing validation → merge and complete.
-     Otherwise enter scoped reconciliation; only genuine semantic conflict
-     re-engages the worker, scoped to the delta.
+   - Clean merge + passing validation → record `result.mergeCommit`, delete the
+     worktree, set `status = "completed"`.
+   - Merge conflict, or clean merge with failing validation → set
+     `status = "reconciling"` and enqueue an agent-driven reconciliation task
+     (D7). Never auto-merge a conflicted branch.
 6. **Failure:** delete the worktree (no reset needed — the integration branch was
    never touched), set `status = "failed"`, write trace to `result.outputLog`.
 
@@ -288,7 +301,7 @@ All open questions from the prior revision are resolved:
 | OQ2 | Collision resolution for automated tasks | Defer and re-evaluate next watcher cycle; drop after N deferrals (default 3); manual work wins the lock | D9 |
 | OQ3 | Harness target | Ship to all three: Claude, Cursor, Antigravity | D5 |
 | OQ4 | `run-all` failure behavior | Continue with independent tasks; skip the failed task's transitive dependents | D8 |
-| OQ5 | Merge-back conflict handling | Rebase-replay existing commits, never re-run the task; scoped reconciliation only on genuine conflict | D7 |
+| OQ5 | Merge-back conflict handling | No auto-merge; conflict (or post-merge validation failure) spawns an agent-driven reconciliation task that preserves existing commits, or fails safe for later resolution | D7 |
 
 ## Remaining Implementation Notes
 
