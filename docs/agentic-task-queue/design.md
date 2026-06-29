@@ -39,16 +39,54 @@ and performs a context-collision check instead: if any file in the proposed
 task's `contextFiles` is claimed by a pending manual task, the automated task
 is dropped or deferred.
 
-### D4 — Isolation model
+### D4 — Isolation model: worktree per task
 
-Each `/queue step` invocation loads only the `contextFiles` listed in the task.
-No session state carries over between steps. On failure, the executor issues
-`git reset --hard` to the pre-step commit hash and marks the task `"failed"`.
+Each task executes in its **own git worktree** on its **own branch**, cut from
+the integration branch (see D6). The agent loads only the task's `contextFiles`;
+no session state carries between tasks.
+
+- **Success + validation passes:** commit on the task branch, merge that branch
+  back into the integration branch, delete the worktree, mark `"completed"`.
+- **Failure:** **delete the worktree** — nothing shared was touched, so there is
+  no `git reset` to perform. Mark `"failed"`, write the trace to
+  `result.outputLog`.
+
+This replaces the original `git reset --hard` rollback. A shared working tree
+forced serial execution and risked clobbering unrelated uncommitted work;
+disposable worktrees give real isolation and make rollback a no-op (throw the
+tree away).
 
 ### D5 — Skill home
 
 The `/queue` skill lives in the `system/agentic/queue-manager` namespace. It
 ships as a scaffold skill following the standard harness format.
+
+### D6 — Merge-back machinery: integration branch
+
+The queue maintains a single **integration branch** — its running trunk. The
+dependency relationship is realized through branch topology, not worktree
+nesting (worktrees are flat checkouts sharing one object database; they do not
+nest):
+
+1. Each task branches off the integration tip into its own worktree.
+2. On completion, the task branch merges back into integration.
+3. A dependent task's worktree is cut from the integration tip **only after all
+   its `dependsOn` branches have merged there.** So when task 4 (depends on
+   1–3) begins, integration already contains 1, 2, and 3 — task 4 sees their
+   work automatically, with no per-task octopus merge.
+
+Two consequences:
+
+- **Integration merges serialize even when execution parallelizes.** Tasks 1–3
+  may *run* concurrently, but they merge into integration one at a time;
+  conflicts between sibling tasks resolve at merge, sequentially. Merging is
+  cheap relative to execution, so this is acceptable.
+- **A dependent task sees everything merged before it, not strictly its
+  declared deps.** For feature breakdown this is usually desired (work
+  accumulates on the trunk). A strict "only my dependencies" base — cutting the
+  task branch and merging exactly the parent branches — is possible when genuine
+  isolation between unrelated tasks is required, at the cost of more merge
+  machinery. Default is the integration model; strict mode is deferred.
 
 ---
 
@@ -60,9 +98,13 @@ ships as a scaffold skill following the standard harness format.
 | **registry** | `.agent/queue.json` — the shared file tracking all tasks |
 | **slicer** | The ingest-time component that breaks a feature prompt into tasks and infers dependencies |
 | **alignment loop** | The interactive Q&A phase during manual ingest that resolves design parameters |
-| **context collision** | Conflict when an automated task claims files already locked by a pending manual task |
+| **integration branch** | The queue's running trunk; completed task branches merge back into it |
+| **task branch** | The per-task branch, cut from the integration tip and checked out in the task's worktree |
+| **worktree** | A disposable git checkout (one per running task) sharing the repo's object database |
+| **merge-back** | Merging a completed task branch into the integration branch |
+| **context collision** | Conflict when an automated task claims files already claimed by a pending manual task |
+| **context lock** | Implicit claim on `contextFiles` held by a `pending` or `running` manual task |
 | **origin** | How a task entered the queue: `"manual"` or `"automated/routine/<subtype>"` |
-| **context lock** | Implicit exclusive claim on `contextFiles` held by a `pending` or `running` manual task |
 
 ---
 
@@ -78,13 +120,18 @@ ships as a scaffold skill following the standard harness format.
   "contextFiles": ["src/telemetry/index.ts", "src/telemetry/types.ts"],
   "command": "npm test",
   "validationScript": "scripts/validate-telemetry.sh",
-  "activeAgentPid": null,
+  "branch": null,
+  "worktreePath": null,
   "result": {
-    "commitHash": null,
+    "mergeCommit": null,
     "outputLog": null
   }
 }
 ```
+
+`branch` and `worktreePath` are populated when the task enters `"running"` and
+the worktree is created. `result.mergeCommit` records the integration-branch
+commit produced by merge-back on success.
 
 **Status transitions:** `pending` → `running` → `completed` | `failed`
 
@@ -139,13 +186,16 @@ all `dependsOn` entries are `"completed"`. Returns that task block.
 
 ### `/queue step <task_id>`
 
-1. Set task `status = "running"`, record `activeAgentPid`.
+1. Set task `status = "running"`. Cut a `task branch` from the integration tip
+   and `git worktree add` a fresh worktree; record `branch` and `worktreePath`.
 2. Load only the task's `contextFiles` — no other session state.
 3. Apply code changes to satisfy the task requirements.
 4. Run `command` then `validationScript`.
-5. **Success (exit 0):** commit, set `status = "completed"`, clear `activeAgentPid`.
-6. **Failure:** `git reset --hard <pre-step-commit>`, set `status = "failed"`,
-   write trace to `result.outputLog`, clear `activeAgentPid`.
+5. **Success (exit 0):** commit on the task branch, merge it into the
+   integration branch (record `result.mergeCommit`), delete the worktree, set
+   `status = "completed"`.
+6. **Failure:** delete the worktree (no reset needed — the integration branch was
+   never touched), set `status = "failed"`, write trace to `result.outputLog`.
 
 ### `/queue run-all`
 
@@ -168,6 +218,20 @@ implementing the slicer.
 "Drop or defer" is underspecified. Defer to when? On the next watcher cycle?
 After the conflicting manual task completes? Needs a concrete rule.
 
+Note: the worktree + merge-back model (D6) lessens the need for upfront
+collision-locking — sibling conflicts now surface at merge-back time, where git
+resolves them, rather than requiring pre-emptive file locks. Whether to keep the
+collision check at all (vs. letting all conflicts surface at merge) is itself
+open and tied to OQ5.
+
+### OQ5 — Merge-back conflict handling
+
+When a completed task branch fails to merge cleanly into the integration branch
+(a sibling task touched the same lines), what happens? Options: mark the task
+`"failed"` and requeue for a re-run against the updated integration tip; pause
+the queue for manual resolution; or attempt an automated 3-way merge and only
+fail on genuine conflict. Decision needed before building merge-back.
+
 ### OQ3 — Skill harness target
 
 Which harnesses does `/queue` ship to: Claude only, or also Cursor / Antigravity?
@@ -176,5 +240,11 @@ Determines the emit targets for `hoist-skill`.
 ### OQ4 — `run-all` failure behavior
 
 Does a single task failure in `run-all` halt the whole queue, or does it skip
-and continue with the next non-dependent task? Spec says "halts instantly" —
-confirm this is the intended behavior even when unrelated tasks remain pending.
+and continue with the next non-dependent task? Spec says "halts instantly."
+
+The worktree model makes "skip and continue" safer than it was under
+`reset --hard`: a failed task's worktree is discarded with the integration
+branch untouched, so unrelated pending tasks could still run cleanly. A failed
+task's *dependents*, however, must be skipped (their base never landed). Confirm
+whether v1 halts on first failure (simpler) or continues with the independent
+remainder (better throughput, requires dependent-skipping logic).
