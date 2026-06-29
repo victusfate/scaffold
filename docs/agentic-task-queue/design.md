@@ -31,6 +31,11 @@ never starts a task until all declared dependencies are `"completed"`. The
 slicer that produces tasks is responsible for inferring these relationships
 at ingest time — the executor is stateless with respect to ordering logic.
 
+Among tasks that are all dependency-eligible, selection is **FIFO (insertion
+order)**. The `dependsOn` gate does the real ordering work; an explicit
+`priority` field is intentionally omitted from v1 and can be added later without
+schema disruption.
+
 ### D3 — Dual ingestion paths
 
 Manual ingestion (`/queue ingest`) runs an interactive alignment loop before
@@ -56,10 +61,12 @@ forced serial execution and risked clobbering unrelated uncommitted work;
 disposable worktrees give real isolation and make rollback a no-op (throw the
 tree away).
 
-### D5 — Skill home
+### D5 — Skill home and harness targets
 
 The `/queue` skill lives in the `system/agentic/queue-manager` namespace. It
-ships as a scaffold skill following the standard harness format.
+ships as a scaffold skill following the standard harness format, emitted to
+**all three harnesses — Claude, Cursor, and Antigravity** — via `hoist-skill`,
+consistent with the rest of the scaffold skill set.
 
 ### D6 — Merge-back machinery: integration branch
 
@@ -87,6 +94,46 @@ Two consequences:
   task branch and merging exactly the parent branches — is possible when genuine
   isolation between unrelated tasks is required, at the cost of more merge
   machinery. Default is the integration model; strict mode is deferred.
+
+### D7 — Merge-back conflict: replay, don't re-run
+
+When a completed task branch fails to merge cleanly (a sibling landed on
+integration first and touched adjacent lines), the queue **never re-executes the
+task** — the worker already did valid work that may have cost minutes. Instead it
+**replays the existing commits** onto the updated integration tip:
+
+1. **Rebase** the task branch onto the current integration tip. Git replays the
+   worker's commits; non-overlapping changes auto-resolve. No agent involvement,
+   no re-execution.
+2. **Clean rebase →** re-run `validationScript` only (cheap relative to redoing
+   the work) to confirm the combined state still passes, then merge. Done.
+3. **Rebase conflict, or post-rebase validation failure →** spawn a scoped
+   **reconciliation step** that receives the task's full context (task spec, the
+   branch diff, the conflicting hunks or failing test) and resolves *only the
+   delta* — the conflicting hunks or the broken assertion — not the whole task.
+
+The worker's commits are the preserved context: re-running is the last resort,
+reserved for genuine semantic conflict, and even then it is scoped to the
+conflict rather than the entire task. Re-execution of the full task from scratch
+is never the default path.
+
+### D8 — `run-all` failure policy: continue on independent work
+
+A task failure does **not** halt the queue. The failed worktree is discarded and
+the integration branch is untouched, so every remaining dependency-eligible task
+still runs. Only the failed task's **transitive dependents** are skipped — their
+base never landed — and they are reported in the run summary. This maximizes
+throughput of an unattended drain; halting on first failure would strand ready
+independent work.
+
+### D9 — Automated ingestion is in scope for v1
+
+Both ingestion paths ship in v1 (D3). Automated ingestion keeps the
+context-collision check: a proposed automated task whose `contextFiles` overlap
+a `pending` or `running` manual task's `contextFiles` is **deferred, re-evaluated
+on the next watcher cycle**, and only dropped after a bounded number of deferrals
+(configurable; default 3) to avoid an indefinitely starved automated task. Manual
+work always wins the lock; automated maintenance yields.
 
 ---
 
@@ -122,6 +169,7 @@ Two consequences:
   "validationScript": "scripts/validate-telemetry.sh",
   "branch": null,
   "worktreePath": null,
+  "deferrals": 0,
   "result": {
     "mergeCommit": null,
     "outputLog": null
@@ -131,9 +179,19 @@ Two consequences:
 
 `branch` and `worktreePath` are populated when the task enters `"running"` and
 the worktree is created. `result.mergeCommit` records the integration-branch
-commit produced by merge-back on success.
+commit produced by merge-back on success. `deferrals` counts collision-check
+deferrals for automated tasks (D9); manual tasks leave it at `0`.
 
-**Status transitions:** `pending` → `running` → `completed` | `failed`
+**Status transitions:**
+
+```
+pending → running → completed
+                  ↘ reconciling → completed | failed   (merge-back conflict, D7)
+                  ↘ failed                              (task or validation failure)
+```
+
+`reconciling` is the transient state while a completed task branch is being
+rebase-replayed and, if needed, reconciled against the integration tip.
 
 ---
 
@@ -191,60 +249,47 @@ all `dependsOn` entries are `"completed"`. Returns that task block.
 2. Load only the task's `contextFiles` — no other session state.
 3. Apply code changes to satisfy the task requirements.
 4. Run `command` then `validationScript`.
-5. **Success (exit 0):** commit on the task branch, merge it into the
-   integration branch (record `result.mergeCommit`), delete the worktree, set
-   `status = "completed"`.
+5. **Success (exit 0):** commit on the task branch, then merge-back per D6/D7:
+   - Clean merge → record `result.mergeCommit`, delete the worktree, set
+     `status = "completed"`.
+   - Merge conflict → **rebase the task branch** onto the integration tip and
+     replay (D7). Clean rebase + passing validation → merge and complete.
+     Otherwise enter scoped reconciliation; only genuine semantic conflict
+     re-engages the worker, scoped to the delta.
 6. **Failure:** delete the worktree (no reset needed — the integration branch was
    never touched), set `status = "failed"`, write trace to `result.outputLog`.
 
 ### `/queue run-all`
 
-Loop: `/queue next` → `/queue step` until queue empty or a step fails.
-On termination emit: `<queue_engine_state>TERMINATED_CLEANLY</queue_engine_state>`
+Loop: `/queue next` → `/queue step`. On a task **failure, continue** with the
+remaining dependency-eligible tasks — the failed worktree is discarded and the
+integration branch is untouched, so independent work still runs (D8). The failed
+task's **dependents are skipped** (their base never landed) and reported.
+Terminate when no eligible task remains; emit:
+`<queue_engine_state>TERMINATED_CLEANLY</queue_engine_state>`
 
 ---
 
-## Open Questions
+## Resolved Decisions
 
-### OQ1 — Priority ordering
+All open questions from the prior revision are resolved:
 
-The spec references "highest-priority" in `/queue next` but does not define a
-priority field or ordering rule. Options: insertion order (FIFO), explicit
-`priority` integer, or dependency-depth ordering. Decision needed before
-implementing the slicer.
+| # | Question | Resolution | Encoded in |
+|---|----------|------------|------------|
+| OQ1 | Priority ordering | FIFO among dependency-eligible tasks; no `priority` field in v1 | D2 |
+| OQ2 | Collision resolution for automated tasks | Defer and re-evaluate next watcher cycle; drop after N deferrals (default 3); manual work wins the lock | D9 |
+| OQ3 | Harness target | Ship to all three: Claude, Cursor, Antigravity | D5 |
+| OQ4 | `run-all` failure behavior | Continue with independent tasks; skip the failed task's transitive dependents | D8 |
+| OQ5 | Merge-back conflict handling | Rebase-replay existing commits, never re-run the task; scoped reconciliation only on genuine conflict | D7 |
 
-### OQ2 — Collision resolution for automated tasks
+## Remaining Implementation Notes
 
-"Drop or defer" is underspecified. Defer to when? On the next watcher cycle?
-After the conflicting manual task completes? Needs a concrete rule.
+These are sequencing details for the plan phase, not open design questions:
 
-Note: the worktree + merge-back model (D6) lessens the need for upfront
-collision-locking — sibling conflicts now surface at merge-back time, where git
-resolves them, rather than requiring pre-emptive file locks. Whether to keep the
-collision check at all (vs. letting all conflicts surface at merge) is itself
-open and tied to OQ5.
-
-### OQ5 — Merge-back conflict handling
-
-When a completed task branch fails to merge cleanly into the integration branch
-(a sibling task touched the same lines), what happens? Options: mark the task
-`"failed"` and requeue for a re-run against the updated integration tip; pause
-the queue for manual resolution; or attempt an automated 3-way merge and only
-fail on genuine conflict. Decision needed before building merge-back.
-
-### OQ3 — Skill harness target
-
-Which harnesses does `/queue` ship to: Claude only, or also Cursor / Antigravity?
-Determines the emit targets for `hoist-skill`.
-
-### OQ4 — `run-all` failure behavior
-
-Does a single task failure in `run-all` halt the whole queue, or does it skip
-and continue with the next non-dependent task? Spec says "halts instantly."
-
-The worktree model makes "skip and continue" safer than it was under
-`reset --hard`: a failed task's worktree is discarded with the integration
-branch untouched, so unrelated pending tasks could still run cleanly. A failed
-task's *dependents*, however, must be skipped (their base never landed). Confirm
-whether v1 halts on first failure (simpler) or continues with the independent
-remainder (better throughput, requires dependent-skipping logic).
+- **Concurrency cap** — how many worktrees run in parallel. A simple fixed cap
+  (e.g. CPU-bound) is fine for v1; tune later.
+- **Reconciliation worker context** — exact payload handed to the D7
+  reconciliation step (diff format, how the failing assertion is surfaced).
+  A plan-phase concern.
+- **Strict "only my deps" base** (D6) — deferred; default integration model
+  ships in v1.
