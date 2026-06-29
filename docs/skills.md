@@ -7,7 +7,7 @@
 <!-- BEGIN_SKILLS_INVOCATION -->
 Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/code-quality-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/code-review`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`.
 
-Bundled skills (self-contained Anthropic Agent Skills, Claude harness; loaded by description rather than a slash command): `drawio-skill`, `improve`.
+Bundled skills (self-contained Anthropic Agent Skills, Claude harness; loaded by description rather than a slash command): `improve`.
 <!-- END_SKILLS_INVOCATION -->
 
 ## Structure
@@ -58,7 +58,6 @@ tools/
     add-linter/SKILL.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail/SKILL.md             # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
     diagram/SKILL.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
-    drawio-skill/SKILL.md         # (bundled) Generate `.drawio` diagrams and export PNG/SVG/PDF/JPG via the draw.io desktop CLI
     improve/SKILL.md              # (bundled) Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind

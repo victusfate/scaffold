@@ -59,5 +59,4 @@ prompt-skill wrapper contract: no canonical `skills/<slug>.md`, no
 
 | Skill | Source (license) | Purpose |
 |---|---|---|
-| drawio-skill | github.com/Agents365-ai/drawio-skill (MIT) | Generate `.drawio` diagrams and export PNG/SVG/PDF/JPG via the draw.io desktop CLI |
 | improve | github.com/shadcn/improve (MIT) | Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute |
