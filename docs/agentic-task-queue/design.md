@@ -31,10 +31,13 @@ never starts a task until all declared dependencies are `"completed"`. The
 slicer that produces tasks is responsible for inferring these relationships
 at ingest time — the executor is stateless with respect to ordering logic.
 
-Among tasks that are all dependency-eligible, selection is **FIFO (insertion
-order)**. The `dependsOn` gate does the real ordering work; an explicit
-`priority` field is intentionally omitted from v1 and can be added later without
-schema disruption.
+Among tasks that are all dependency-eligible, selection is **priority-tiered,
+FIFO within a tier**. There are two tiers: `"high"` and `"default"`. Every
+eligible `"high"` task is selected before any `"default"` task; within a tier,
+insertion order breaks ties. The `dependsOn` gate still bounds everything — a
+high-priority task does not run before its dependencies, regardless of tier.
+Tiers are intentionally limited to two; arbitrary integer priorities are not in
+v1.
 
 ### D3 — Dual ingestion paths
 
@@ -152,6 +155,7 @@ work always wins the lock; automated maintenance yields.
 | **context collision** | Conflict when an automated task claims files already claimed by a pending manual task |
 | **context lock** | Implicit claim on `contextFiles` held by a `pending` or `running` manual task |
 | **origin** | How a task entered the queue: `"manual"` or `"automated/routine/<subtype>"` |
+| **priority** | Selection tier: `"high"` (drained first) or `"default"`; FIFO within a tier |
 
 ---
 
@@ -163,6 +167,7 @@ work always wins the lock; automated maintenance yields.
   "title": "Build native telemetry metrics interface",
   "status": "pending",
   "origin": "manual",
+  "priority": "default",
   "dependsOn": [],
   "contextFiles": ["src/telemetry/index.ts", "src/telemetry/types.ts"],
   "command": "npm test",
@@ -180,7 +185,8 @@ work always wins the lock; automated maintenance yields.
 `branch` and `worktreePath` are populated when the task enters `"running"` and
 the worktree is created. `result.mergeCommit` records the integration-branch
 commit produced by merge-back on success. `deferrals` counts collision-check
-deferrals for automated tasks (D9); manual tasks leave it at `0`.
+deferrals for automated tasks (D9); manual tasks leave it at `0`. `priority` is
+`"high"` or `"default"` (default `"default"`); see D2.
 
 **Status transitions:**
 
@@ -239,8 +245,10 @@ Enters the alignment loop. On completion, slices and appends tasks to the regist
 
 ### `/queue next`
 
-Scans the registry for the highest-priority task where `status == "pending"` and
-all `dependsOn` entries are `"completed"`. Returns that task block.
+Scans the registry for the next eligible task: `status == "pending"` and all
+`dependsOn` entries `"completed"`. Among eligible tasks, every `"high"` priority
+task is returned before any `"default"` task; within a tier, lowest insertion
+order wins (D2). Returns that task block.
 
 ### `/queue step <task_id>`
 
@@ -276,7 +284,7 @@ All open questions from the prior revision are resolved:
 
 | # | Question | Resolution | Encoded in |
 |---|----------|------------|------------|
-| OQ1 | Priority ordering | FIFO among dependency-eligible tasks; no `priority` field in v1 | D2 |
+| OQ1 | Priority ordering | Two tiers (`high`/`default`); all eligible high tasks before any default, FIFO within a tier | D2 |
 | OQ2 | Collision resolution for automated tasks | Defer and re-evaluate next watcher cycle; drop after N deferrals (default 3); manual work wins the lock | D9 |
 | OQ3 | Harness target | Ship to all three: Claude, Cursor, Antigravity | D5 |
 | OQ4 | `run-all` failure behavior | Continue with independent tasks; skip the failed task's transitive dependents | D8 |
