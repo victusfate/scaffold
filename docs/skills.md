@@ -57,7 +57,7 @@ tools/
     audit/SKILL.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail/SKILL.md             # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
-    diagram/SKILL.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, render to SVG locally, and emit a mermaid.live edit URL
+    diagram/SKILL.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, render to SVG locally by default, live-preview in VS Code, and publish a mermaid.live URL only on request
     drawio-skill/SKILL.md         # (bundled) Generate `.drawio` diagrams and export PNG/SVG/PDF/JPG via the draw.io desktop CLI
     improve/SKILL.md              # (bundled) Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute
   session-start/
@@ -112,7 +112,7 @@ tools/
     audit/SKILL.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail/SKILL.md             # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
-    diagram/SKILL.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, render to SVG locally, and emit a mermaid.live edit URL
+    diagram/SKILL.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, render to SVG locally by default, live-preview in VS Code, and publish a mermaid.live URL only on request
 .agent/
   rules/
     agents.md               # thin pointer to AGENTS.md (always-on)
@@ -137,7 +137,7 @@ tools/
     audit.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail.md             # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
-    diagram.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, render to SVG locally, and emit a mermaid.live edit URL
+    diagram.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, render to SVG locally by default, live-preview in VS Code, and publish a mermaid.live URL only on request
 scripts/
   check-resolvable.ts            # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-skills-doc.ts           # regenerate docs/skills.md skill sections from RESOLVER.md

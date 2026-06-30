@@ -46,25 +46,48 @@ const { mermaidLiveUrl } = await import('./mermaid-render.ts');
   assert('URL is deterministic', mermaidLiveUrl(mmd) === mermaidLiveUrl(mmd));
 }
 
-// CLI smoke: --url-only prints a live URL and renders nothing
+// CLI smoke: --publish --no-render prints a live URL and renders nothing
 {
   const dir = mkdtempSync(join(tmpdir(), 'mermaid-render-'));
   try {
     const mmd = join(dir, 'demo.mmd');
     writeFileSync(mmd, 'flowchart TD\n  X --> Y\n');
-    const out = execFileSync('node', [SCRIPT, mmd, '--url-only'], { encoding: 'utf8' });
-    assert('CLI --url-only prints a live URL', out.includes('https://mermaid.live/edit#pako:'), out);
-    assert('CLI --url-only skips render', !out.includes('rendered:'), out);
+    const out = execFileSync('node', [SCRIPT, mmd, '--publish', '--no-render'], { encoding: 'utf8' });
+    assert('CLI --publish prints a live URL', out.includes('https://mermaid.live/edit#pako:'), out);
+    assert('CLI --no-render skips render', !out.includes('rendered:'), out);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+}
+
+// CLI smoke: default (no flags) emits nothing remote — no mermaid.live URL
+// (render itself needs mmdc/Chromium, so assert via --no-render guard instead)
+{
+  const dir = mkdtempSync(join(tmpdir(), 'mermaid-render-'));
+  let stderr = '';
+  let exited = 0;
+  try {
+    const mmd = join(dir, 'demo.mmd');
+    writeFileSync(mmd, 'flowchart TD\n  X --> Y\n');
+    // --no-render alone has no output to produce and must refuse, proving the
+    // default path never reaches the publish/URL branch without --publish.
+    execFileSync('node', [SCRIPT, mmd, '--no-render'], { encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] });
+  } catch (e: unknown) {
+    const err = e as { status?: number; stderr?: Buffer };
+    exited = err.status ?? 1;
+    stderr = err.stderr?.toString() ?? '';
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert('CLI --no-render without --publish exits non-zero', exited !== 0, String(exited));
+  assert('CLI --no-render without --publish explains why', stderr.includes('--publish'), stderr);
 }
 
 // CLI smoke: missing input exits non-zero
 {
   let exited = 0;
   try {
-    execFileSync('node', [SCRIPT, join(tmpdir(), 'does-not-exist.mmd'), '--url-only'], { stdio: 'ignore' });
+    execFileSync('node', [SCRIPT, join(tmpdir(), 'does-not-exist.mmd'), '--publish', '--no-render'], { stdio: 'ignore' });
   } catch (e: unknown) {
     exited = (e as { status?: number }).status ?? 1;
   }

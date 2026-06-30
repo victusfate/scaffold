@@ -27,7 +27,7 @@ the first match.
 | audit | `/(?:^\/audit\b)\|(?:score\|audit)\s+(?:the\s+)?(?:codebase\|repo\|source\s+files)/i` | `skills/audit.md` | Score source files ranked worst-first across all four rubric dimensions with cited violations |
 | add-linter | `/(?:^\/add-linter\b)\|(?:add\|set\s+up\|configure)\s+(?:a\s+)?linter/i` | `skills/add-linter.md` | Add linter configs and GitHub Actions workflows for languages detected in the current repo |
 | ponytail | `/(?:^\/ponytail\b)|lazy\s+senior\s+dev\s+mode/i` | `skills/ponytail.md` | Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions) |
-| diagram | `/(?:^\/diagram\b)|(?:diagram\s+this|draw\s+the\s+architecture|make\s+(?:a\s+)?mermaid|render\s+(?:this\s+)?mermaid|sequence\s+diagram\s+for)/i` | `skills/diagram.md` | Generate or update a mermaid diagram as `.mmd` text-source-of-truth, render to SVG locally, and emit a mermaid.live edit URL |
+| diagram | `/(?:^\/diagram\b)|(?:diagram\s+this|draw\s+the\s+architecture|make\s+(?:a\s+)?mermaid|render\s+(?:this\s+)?mermaid|sequence\s+diagram\s+for)/i` | `skills/diagram.md` | Generate or update a mermaid diagram as `.mmd` text-source-of-truth, render to SVG locally by default, live-preview in VS Code, and publish a mermaid.live URL only on request |
 
 ## Column contract
 
