@@ -7,9 +7,10 @@ convert to a lossy shape format (excalidraw, draw.io, hand-tuned SVG).
 **Canonical rule:** mermaid `.mmd` text is the source; the rendered image is a
 derived artifact. All edits happen in text and re-render.
 
-**Local by default.** Render locally and keep the diagram on the machine.
-Never send it to a remote renderer unless the user asks to **publish** — that is
-the one explicit remote action.
+**Local by default.** Render locally and view it; the diagram leaves the machine
+only when the user asks to **publish** (the one explicit remote action). View
+priority: (1) render + open in the system default viewer, (2) VS Code live
+preview for side-by-side editing, (3) publish to mermaid.live.
 
 The render and URL logic lives in `scripts/mermaid-render.ts` — call it, do not
 reimplement it.
@@ -37,91 +38,100 @@ slug before writing so the user can correct it. **Same slug → overwrite the sa
 file** (it is the source of truth, and git holds its history); pick a new slug
 only for a genuinely different diagram. This file is diffable — commit it.
 
-### Step 4 — render locally (default)
+### Step 4 — choose how to view (default: render + open in system viewer)
 
-Render the SVG locally. Nothing leaves the machine.
+Offer the three ways to view, **in this priority order**. Default to Mode A;
+proceed with it unless the user prefers another.
+
+- **(a) System default viewer** — *default*. Render the SVG and open it in the
+  OS default app. Zero config, fast. (Mode A.)
+- **(b) VS Code live preview** — side-by-side text + live-refresh + zoom, for
+  iterative editing. (Mode B.)
+- **(c) Publish to mermaid.live** — shareable URL; sends the diagram text
+  remotely, so flag it for confidential diagrams. (Mode C.)
+
+#### Mode A — render + open in the system default viewer (default)
 
 ```bash
-node scripts/mermaid-render.ts diagrams/<slug>.mmd
+node scripts/mermaid-render.ts diagrams/<slug>.mmd --open
 ```
 
-- `--out <file.svg>` — override the output path (default: `<slug>.svg`).
-- Shells out to `npx -y @mermaid-js/mermaid-cli` on demand (not vendored). The
-  **first** run pulls a headless Chromium via puppeteer — heavy, one time.
-  Mention this if it's the first render.
-- In a sandboxed/CI env that needs `--no-sandbox`, render with a puppeteer
-  config: `npx -y @mermaid-js/mermaid-cli -p puppeteer-config.json -i in.mmd -o out.svg`
-  where `puppeteer-config.json` is `{"args":["--no-sandbox"]}`.
+- Renders `<slug>.svg`, then hands it to the OS opener (`open` / `xdg-open` /
+  `start`). **Which app opens depends on the OS `.svg` file association** — for
+  crisp vector zoom a browser is best; macOS Preview rasterizes SVG and is
+  unreliable for dense diagrams.
+- `--out <file.svg>` overrides the output path.
+- First render pulls a headless Chromium via `npx mmdc` (heavy, one time);
+  mention this. In a sandboxed/CI env needing `--no-sandbox`, pass
+  `-p puppeteer-config.json` (`{"args":["--no-sandbox"]}`) to `mmdc`.
+- Render without opening by dropping `--open`.
 
-### Step 5 — live preview in VS Code (for iterative editing)
+#### Mode B — VS Code live preview (iterative editing)
 
-For the side-by-side experience (edit the text, watch the diagram update), use
-VS Code's built-in Markdown preview. Fully local — nothing is published.
+Side-by-side editing with live-refresh + zoom. Requires VS Code:
 
-1. **Check VS Code is installed:**
+1. **Check VS Code:** `command -v code`. If missing, prompt the user to install
+   it (macOS: `brew install --cask visual-studio-code`; else
+   <https://code.visualstudio.com/download>; or run **Shell Command: Install
+   'code' command in PATH**). Do not auto-install; if they decline, use Mode A.
 
-   ```bash
-   command -v code
-   ```
+   Note: `code` may resolve to a VS Code fork (Windsurf, Cursor). Confirm with
+   `readlink -f "$(command -v code)"` if behavior looks off.
 
-   If `code` is **not** found, prompt the user to install VS Code before
-   continuing the preview path:
-   - macOS: `brew install --cask visual-studio-code`
-   - else: download from <https://code.visualstudio.com/download>
-   - already installed but `code` missing: in VS Code run **Shell Command:
-     Install 'code' command in PATH** from the Command Palette.
+2. **Pick a preview style:**
 
-   Do not auto-install. Ask first, then fall back to Step 4 (local SVG) if they
-   decline.
+   - **Markdown preview (recommended)** — needs `bierner.markdown-mermaid`
+     (~5M installs, the common one). Check / install:
 
-2. **Check the mermaid plugin, offer to install it:**
+     ```bash
+     code --list-extensions | grep -q bierner.markdown-mermaid \
+       || code --install-extension bierner.markdown-mermaid   # confirm first
+     node scripts/mermaid-render.ts diagrams/<slug>.mmd --wrap --no-render
+     code diagrams/<slug>.md
+     ```
 
-   ```bash
-   code --list-extensions | grep -q bierner.markdown-mermaid
-   ```
+     `--wrap` (re)writes `<slug>.md` (the `.mmd` inside a ` ```mermaid ` block).
+     Open **Preview to the Side** (`Cmd+K V` / `Ctrl+K V`). On each edit, re-run
+     `--wrap` and the open preview auto-refreshes. Fixed fit (no zoom).
 
-   If absent, offer to install (this is the one user-facing install — confirm
-   first):
+   - **SVG image preview (zoomable)** — re-render the SVG and view it in VS
+     Code's image preview, which zooms (`Cmd`+scroll) and auto-refreshes:
 
-   ```bash
-   code --install-extension bierner.markdown-mermaid
-   ```
+     ```bash
+     node scripts/mermaid-render.ts diagrams/<slug>.mmd   # overwrites the .svg
+     code diagrams/<slug>.svg                              # Reopen With → Image Preview
+     ```
 
-   `bierner.markdown-mermaid` renders mermaid live inside VS Code's built-in
-   Markdown preview. For previewing a raw `.mmd` instead of a Markdown doc, the
-   `.mmd`-native alternative is `vstirbu.vscode-mermaid-preview` — offer it if
-   the user prefers to edit the `.mmd` directly.
+     To make `.svg` open as image preview automatically, set the workspace
+     association `"workbench.editorAssociations": {"*.svg": "imagePreview.previewEditor"}`.
 
-3. **Open the diagram and the preview side by side.** The built-in preview
-   renders Markdown, so embed the diagram in a Markdown doc (this doubles as the
-   embed-in-docs deliverable):
+3. **Iterate:** the user describes a change, edit the `.mmd`, re-render (and
+   `--wrap` for the markdown style). The open viewer refreshes in place.
 
-   ```bash
-   code diagrams/<slug>.md
-   ```
+#### Mode C — publish to mermaid.live (only when the user asks)
 
-   Then **Open Preview to the Side** (`Cmd+K V` on macOS / `Ctrl+K V`
-   elsewhere). Editing the ` ```mermaid ` block updates the preview live. Keep
-   `diagrams/<slug>.mmd` as the committed source and re-render its SVG from
-   Step 4 when done.
-
-### Step 6 — publish (only when the user asks)
-
-Only when the user asks to **publish / share**, emit a `mermaid.live` edit URL.
-This is the single remote action and it sends the diagram text to mermaid.live —
-flag that before doing it for any confidential diagram.
+Emit a `mermaid.live` edit URL. This is the single remote action and it sends
+the diagram text to mermaid.live — flag that before doing it for any
+confidential diagram.
 
 ```bash
 node scripts/mermaid-render.ts diagrams/<slug>.mmd --publish            # render + URL
 node scripts/mermaid-render.ts diagrams/<slug>.mmd --publish --no-render # URL only
+node scripts/mermaid-render.ts diagrams/<slug>.mmd --short --no-render   # shortened URL
 ```
 
-### Step 7 — embed in docs (when asked)
+- The URL opens the mermaid.live **editor** with the diagram pre-loaded and
+  editable, but it is **stateless** — edits there do not sync back to the
+  `.mmd`. Keep editing locally and re-publish.
+- `--short` runs the (long, content-encoding) URL through is.gd, so the diagram
+  reaches a **second** service. Opt-in; flag it for confidential diagrams.
+
+### Step 5 — embed in docs (when asked)
 
 To embed in a Markdown doc, prefer a fenced ` ```mermaid ` block (GitHub renders
 it inline) or reference the rendered SVG: `![<title>](diagrams/<slug>.svg)`.
 
-### Step 8 — iterate in text
+### Step 6 — iterate in text
 
 The user critiques in words ("split the cache out", "the worker should call the
 queue, not the DB"). Edit the `.mmd` text and re-render. Stay in text. Keep

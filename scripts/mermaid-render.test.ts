@@ -3,7 +3,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { inflateSync } from 'node:zlib';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,7 +24,28 @@ function decode(url: string): { code: string; mermaid: { theme: string } } {
   return JSON.parse(json) as { code: string; mermaid: { theme: string } };
 }
 
-const { mermaidLiveUrl } = await import('./mermaid-render.ts');
+const { mermaidLiveUrl, wrapMarkdown, titleFromPath, openerArgs } = await import('./mermaid-render.ts');
+
+// OS default-viewer command per platform
+{
+  assert('macOS uses open', JSON.stringify(openerArgs('darwin', 'a.svg')) === JSON.stringify({ cmd: 'open', args: ['a.svg'] }));
+  assert('Linux uses xdg-open', openerArgs('linux', 'a.svg').cmd === 'xdg-open');
+  assert('Windows uses start', JSON.stringify(openerArgs('win32', 'a.svg').args) === JSON.stringify(['/c', 'start', '', 'a.svg']));
+}
+
+// title is derived from the file stem
+{
+  assert('titleFromPath title-cases the slug', titleFromPath('diagrams/product-photo-service.mmd') === 'Product Photo Service', titleFromPath('diagrams/product-photo-service.mmd'));
+}
+
+// wrapper embeds the source inside a mermaid fence
+{
+  const mmd = 'flowchart LR\n  A --> B';
+  const md = wrapMarkdown(mmd, 'diagrams/demo-flow.mmd');
+  assert('wrapper has an H1 title', md.startsWith('# Demo Flow'));
+  assert('wrapper fences the mermaid', md.includes('```mermaid\n' + mmd + '\n```'), md);
+  assert('wrapper names the .mmd source', md.includes('`demo-flow.mmd`'));
+}
 
 // round-trips the mermaid source through deflate/base64url
 {
@@ -81,6 +102,22 @@ const { mermaidLiveUrl } = await import('./mermaid-render.ts');
   }
   assert('CLI --no-render without --publish exits non-zero', exited !== 0, String(exited));
   assert('CLI --no-render without --publish explains why', stderr.includes('--publish'), stderr);
+}
+
+// CLI smoke: --wrap --no-render writes the .md wrapper and nothing else
+{
+  const dir = mkdtempSync(join(tmpdir(), 'mermaid-render-'));
+  try {
+    const mmd = join(dir, 'demo-flow.mmd');
+    writeFileSync(mmd, 'flowchart TD\n  X --> Y\n');
+    const out = execFileSync('node', [SCRIPT, mmd, '--wrap', '--no-render'], { encoding: 'utf8' });
+    assert('CLI --wrap reports the wrapper path', out.includes('wrapped:') && out.includes('demo-flow.md'), out);
+    assert('CLI --wrap skips render', !out.includes('rendered:'), out);
+    const md = readFileSync(join(dir, 'demo-flow.md'), 'utf8');
+    assert('wrapper file fences the source', md.includes('```mermaid') && md.includes('X --> Y'), md);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 // CLI smoke: missing input exits non-zero
