@@ -7,10 +7,11 @@ convert to a lossy shape format (excalidraw, draw.io, hand-tuned SVG).
 **Canonical rule:** mermaid `.mmd` text is the source; the rendered image is a
 derived artifact. All edits happen in text and re-render.
 
-**Local by default.** Render locally and view it; the diagram leaves the machine
+**Local by default.** Render and view locally; the diagram leaves the machine
 only when the user asks to **publish** (the one explicit remote action). View
-priority: (1) render + open in the system default viewer, (2) VS Code live
-preview for side-by-side editing, (3) publish to mermaid.live.
+priority: (1) local mermaid.live editor self-hosted via Docker (full editor,
+offline), (2) render + open in the system default viewer, (3) VS Code live
+preview, (4) publish to the public mermaid.live.
 
 The render and URL logic lives in `scripts/mermaid-render.ts` — call it, do not
 reimplement it.
@@ -38,19 +39,53 @@ slug before writing so the user can correct it. **Same slug → overwrite the sa
 file** (it is the source of truth, and git holds its history); pick a new slug
 only for a genuinely different diagram. This file is diffable — commit it.
 
-### Step 4 — choose how to view (default: render + open in system viewer)
+### Step 4 — choose how to view (default: local mermaid.live editor)
 
-Offer the three ways to view, **in this priority order**. Default to Mode A;
+Offer the four ways to view, **in this priority order**. Default to Mode A;
 proceed with it unless the user prefers another.
 
-- **(a) System default viewer** — *default*. Render the SVG and open it in the
-  OS default app. Zero config, fast. (Mode A.)
-- **(b) VS Code live preview** — side-by-side text + live-refresh + zoom, for
-  iterative editing. (Mode B.)
-- **(c) Publish to mermaid.live** — shareable URL; sends the diagram text
-  remotely, so flag it for confidential diagrams. (Mode C.)
+- **(a) Local mermaid.live editor (Docker)** — *default*. The full split-pane
+  editor (live edit, pan, zoom) self-hosted on localhost — offline, nothing
+  leaves the machine. Falls back to Mode B if Docker is unavailable. (Mode A.)
+- **(b) System default viewer** — render the SVG and open it in the OS default
+  app. Zero config, no Docker. (Mode B.)
+- **(c) VS Code live preview** — side-by-side text + live-refresh + zoom, for
+  editing inside the editor. (Mode C.)
+- **(d) Publish to mermaid.live** — shareable URL; sends the diagram text
+  remotely, so flag it for confidential diagrams. (Mode D.)
 
-#### Mode A — render + open in the system default viewer (default)
+#### Mode A — local mermaid.live editor via Docker (default)
+
+The same mermaid.live editor, self-hosted and offline. The `#pako:` encoding is
+identical, so the diagram opens pre-loaded with full live edit + pan + zoom.
+
+1. **Check Docker:** `docker info >/dev/null 2>&1`. If it fails (Docker absent
+   or daemon stopped), say so and fall back to Mode B (no install pushed).
+
+2. **Ensure the container (idempotent):**
+
+   ```bash
+   docker ps --filter "name=mermaid-live" --format '{{.Names}}' | grep -q mermaid-live \
+     || docker run -d --name mermaid-live -p 8080:8080 ghcr.io/mermaid-js/mermaid-live-editor
+   ```
+
+   First run pulls the image (~27 MB compressed, one time; nginx + static SPA).
+   It persists across runs; stop with `docker stop mermaid-live`.
+
+3. **Open the diagram in the local editor:**
+
+   ```bash
+   node scripts/mermaid-render.ts diagrams/<slug>.mmd --local --no-render
+   ```
+
+   Open the printed `http://localhost:8080/edit#pako:…` URL. Use `--port <n>` if
+   8080 is taken (match the `docker run -p`).
+
+4. **Iterate:** the editor is stateless (edits there do not sync back to the
+   `.mmd`). Keep the `.mmd` as source — on each change, edit it and re-run
+   `--local` for a fresh pre-loaded URL.
+
+#### Mode B — render + open in the system default viewer
 
 ```bash
 node scripts/mermaid-render.ts diagrams/<slug>.mmd --open
@@ -66,14 +101,14 @@ node scripts/mermaid-render.ts diagrams/<slug>.mmd --open
   `-p puppeteer-config.json` (`{"args":["--no-sandbox"]}`) to `mmdc`.
 - Render without opening by dropping `--open`.
 
-#### Mode B — VS Code live preview (iterative editing)
+#### Mode C — VS Code live preview (iterative editing)
 
 Side-by-side editing with live-refresh + zoom. Requires VS Code:
 
 1. **Check VS Code:** `command -v code`. If missing, prompt the user to install
    it (macOS: `brew install --cask visual-studio-code`; else
    <https://code.visualstudio.com/download>; or run **Shell Command: Install
-   'code' command in PATH**). Do not auto-install; if they decline, use Mode A.
+   'code' command in PATH**). Do not auto-install; if they decline, use Mode B.
 
    Note: `code` may resolve to a VS Code fork (Windsurf, Cursor). Confirm with
    `readlink -f "$(command -v code)"` if behavior looks off.
@@ -108,7 +143,7 @@ Side-by-side editing with live-refresh + zoom. Requires VS Code:
 3. **Iterate:** the user describes a change, edit the `.mmd`, re-render (and
    `--wrap` for the markdown style). The open viewer refreshes in place.
 
-#### Mode C — publish to mermaid.live (only when the user asks)
+#### Mode D — publish to mermaid.live (only when the user asks)
 
 Emit a `mermaid.live` edit URL. This is the single remote action and it sends
 the diagram text to mermaid.live — flag that before doing it for any

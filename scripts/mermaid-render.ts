@@ -7,16 +7,19 @@
 // default. `--publish` is the one explicit remote action (a mermaid.live URL
 // the user chooses to open).
 // Usage:
-//   node scripts/mermaid-render.ts <input.mmd> [--out <file.svg>] [--wrap] [--publish] [--no-render]
+//   node scripts/mermaid-render.ts <input.mmd> [--out <file.svg>] [--wrap] [--local] [--open] [--publish] [--no-render]
 //     (default)     render <input>.svg locally, nothing remote
 //     --wrap        (re)write <input>.md — the .mmd inside a ```mermaid block —
 //                   for VS Code live preview; the open preview auto-refreshes
+//     --local       print a self-hosted editor URL (the mermaid-live-editor
+//                   Docker container on localhost) — the full editor, offline
+//     --port <n>    port for --local (default 8080)
 //     --open        open the rendered SVG in the OS default viewer (re-render
 //                   overwrites it in place, so the viewer refreshes)
 //     --publish     also print a mermaid.live edit URL (opt-in remote share)
 //     --short       shorten the published URL via is.gd (implies --publish;
 //                   sends the diagram to a second service — opt-in)
-//     --no-render   skip the local SVG (use with --wrap or --publish)
+//     --no-render   skip the local SVG (use with --wrap, --local, or --publish)
 //     --out <file>  override the output path (default: <input>.svg)
 // Idempotent: the same `.mmd` reproduces the same SVG / wrapper.
 
@@ -26,15 +29,17 @@ import { execFileSync, spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { basename } from 'node:path';
 
-// mermaid.live encodes editor state as base64url(zlib-deflate(JSON)) after
-// `#pako:`. Pure and deterministic — the unit-tested core.
-export function mermaidLiveUrl(mmd: string, theme = 'default'): string {
+// The mermaid editor (mermaid.live or a self-hosted mermaid-live-editor) encodes
+// its state as base64url(zlib-deflate(JSON)) after `#pako:`. The same encoding
+// works against any host, so `base` selects mermaid.live or a localhost
+// container. Pure and deterministic — the unit-tested core.
+export function mermaidLiveUrl(mmd: string, theme = 'default', base = 'https://mermaid.live'): string {
   const state = { code: mmd, mermaid: { theme }, autoSync: true, updateDiagram: true };
   const pako = deflateSync(Buffer.from(JSON.stringify(state), 'utf8'))
     .toString('base64')
     .replace(/\+/g, '-')
     .replace(/\//g, '_');
-  return `https://mermaid.live/edit#pako:${pako}`;
+  return `${base}/edit#pako:${pako}`;
 }
 
 // Build the title shown atop the live-preview wrapper from the file stem:
@@ -89,10 +94,14 @@ function die(msg: string): never {
   process.exit(1);
 }
 
-function parseArgs(argv: string[]): { input?: string; out?: string; wrap: boolean; open: boolean; publish: boolean; short: boolean; noRender: boolean } {
-  const opts: { input?: string; out?: string; wrap: boolean; open: boolean; publish: boolean; short: boolean; noRender: boolean } = { wrap: false, open: false, publish: false, short: false, noRender: false };
+interface Opts { input?: string; out?: string; wrap: boolean; local: boolean; port: string; open: boolean; publish: boolean; short: boolean; noRender: boolean }
+
+function parseArgs(argv: string[]): Opts {
+  const opts: Opts = { wrap: false, local: false, port: '8080', open: false, publish: false, short: false, noRender: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--wrap') opts.wrap = true;
+    else if (argv[i] === '--local') opts.local = true;
+    else if (argv[i] === '--port') opts.port = argv[++i];
     else if (argv[i] === '--open') opts.open = true;
     else if (argv[i] === '--publish') opts.publish = true;
     else if (argv[i] === '--short') { opts.short = true; opts.publish = true; }
@@ -105,10 +114,10 @@ function parseArgs(argv: string[]): { input?: string; out?: string; wrap: boolea
 }
 
 async function main(argv: string[]): Promise<void> {
-  const { input, out, wrap, open, publish, short, noRender } = parseArgs(argv);
-  if (!input) die('usage: node scripts/mermaid-render.ts <input.mmd> [--out <file.svg>] [--wrap] [--open] [--publish] [--short] [--no-render]');
+  const { input, out, wrap, local, port, open, publish, short, noRender } = parseArgs(argv);
+  if (!input) die('usage: node scripts/mermaid-render.ts <input.mmd> [--out <file.svg>] [--wrap] [--local] [--open] [--publish] [--short] [--no-render]');
   if (!existsSync(input)) die(`input not found: ${input}`);
-  if (noRender && !publish && !wrap && !open) die('--no-render skips the only output; add --wrap, --open, or --publish, or drop --no-render');
+  if (noRender && !publish && !wrap && !open && !local) die('--no-render skips the only output; add --wrap, --local, --open, or --publish, or drop --no-render');
 
   const mmd = readFileSync(input, 'utf8');
   if (!mmd.trim()) die(`input is empty: ${input}`);
@@ -132,6 +141,9 @@ async function main(argv: string[]): Promise<void> {
       die('local render failed via mmdc — ensure network access for the one-time Chromium pull, or use --no-render --publish');
     }
     process.stdout.write(`rendered: ${svg}\n`);
+  }
+  if (local) {
+    process.stdout.write(`local editor URL: ${mermaidLiveUrl(mmd, 'default', `http://localhost:${port}`)}\n`);
   }
   if (open) {
     if (!existsSync(svg)) die(`nothing to open at ${svg} — render first (drop --no-render)`);

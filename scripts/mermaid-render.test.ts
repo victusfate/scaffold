@@ -67,6 +67,16 @@ const { mermaidLiveUrl, wrapMarkdown, titleFromPath, openerArgs } = await import
   assert('URL is deterministic', mermaidLiveUrl(mmd) === mermaidLiveUrl(mmd));
 }
 
+// base host is selectable (self-hosted localhost editor) and shares encoding
+{
+  const mmd = 'flowchart LR\n  A --> B';
+  const remote = mermaidLiveUrl(mmd);
+  const localUrl = mermaidLiveUrl(mmd, 'default', 'http://localhost:8080');
+  assert('default base is mermaid.live', remote.startsWith('https://mermaid.live/edit#pako:'));
+  assert('local base targets localhost', localUrl.startsWith('http://localhost:8080/edit#pako:'));
+  assert('same pako across hosts', remote.split('#pako:')[1] === localUrl.split('#pako:')[1]);
+}
+
 // CLI smoke: --publish --no-render prints a live URL and renders nothing
 {
   const dir = mkdtempSync(join(tmpdir(), 'mermaid-render-'));
