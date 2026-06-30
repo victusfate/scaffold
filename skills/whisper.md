@@ -44,15 +44,17 @@ bash scripts/whisper-setup.sh [--model base.en]
 
   Streams transcription word-by-word via `whisper-stream`. Ctrl-C to stop.
 
-- **Push-to-talk into any prompt (record → transcribe → clipboard):**
+- **Voice-activated dictation into any prompt (talk → transcribe → clipboard):**
 
   ```bash
-  bash scripts/whisper-dictate.sh [--seconds 8] [--model base.en]
+  bash scripts/whisper-dictate.sh [--silence 1.5] [--threshold 2%] [--model base.en]
   ```
 
-  Records a short clip, transcribes locally, prints the text and copies it to
-  the clipboard (`pbcopy` / `wl-copy` / `xclip` / `clip.exe`). Paste it into the
-  prompt.
+  No fixed timer — it listens, starts recording when you speak, and **auto-stops
+  after a beat of silence** (sox VAD). Transcribes locally, prints the text and
+  copies it to the clipboard (`pbcopy` / `wl-copy` / `xclip` / `clip.exe`).
+  Tune `--silence` (trailing-silence seconds) and `--threshold` (noise floor)
+  for your mic; `--max <sec>` adds a hard cap.
 
 ### Step 4 — cross-platform notes
 

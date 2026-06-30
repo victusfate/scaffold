@@ -1,16 +1,27 @@
 #!/usr/bin/env bash
-# whisper-dictate — record a short clip, transcribe it locally with whisper.cpp,
-# print the text and copy it to the clipboard (paste into any prompt).
-# Why: push-to-talk dictation for the agent loop; run `bash scripts/whisper-setup.sh`
-# first (it installs sox for recording).
-# Usage: bash scripts/whisper-dictate.sh [--seconds 8] [--model base.en]
+# whisper-dictate — voice-activated dictation: listen, record while you speak,
+# auto-stop after a beat of silence, transcribe locally with whisper.cpp, print
+# the text and copy it to the clipboard (paste into any prompt).
+# Why: no fixed timer — start talking when ready, stop when you stop. Uses sox's
+# built-in silence detection (VAD), no extra deps. Run `bash scripts/whisper-setup.sh`
+# first (it installs sox).
+# Usage:
+#   bash scripts/whisper-dictate.sh [--silence 1.5] [--threshold 2%] [--max 0] [--model base.en]
+#     --silence <sec>   trailing silence that ends the take (default 1.5)
+#     --threshold <pct> loudness floor counted as silence (default 2%)
+#     --max <sec>       hard cap; 0 = none (default)
+#     --model <name>    ggml model (default base.en)
 set -euo pipefail
 
-SECS=8
+SIL=1.5
+THRESH="2%"
+MAX=0
 MODEL="base.en"
 for ((i = 1; i <= $#; i++)); do
   case "${!i}" in
-    --seconds) i=$((i + 1)); SECS="${!i}" ;;
+    --silence) i=$((i + 1)); SIL="${!i}" ;;
+    --threshold) i=$((i + 1)); THRESH="${!i}" ;;
+    --max) i=$((i + 1)); MAX="${!i}" ;;
     --model) i=$((i + 1)); MODEL="${!i}" ;;
     *) echo "whisper-dictate: unknown option: ${!i}" >&2; exit 2 ;;
   esac
@@ -27,10 +38,15 @@ have sox || { echo "whisper-dictate: sox not found — run: bash scripts/whisper
 
 clip="$(mktemp -t whisper-dictate).wav"
 trap 'rm -f "$clip"' EXIT
-echo "whisper-dictate: recording ${SECS}s — speak now..." >&2
-sox -d -r 16000 -c 1 "$clip" trim 0 "$SECS" >/dev/null 2>&1
 
-# whisper-cli prints the transcript to stdout; -nt drops timestamps.
+echo "whisper-dictate: listening — start speaking; stops after ${SIL}s of silence (Ctrl-C to cancel)" >&2
+# sox VAD: first `silence 1 0.1 THRESH` trims leading silence and starts the take
+# on speech; the trailing `1 SIL THRESH` stops after SIL seconds below THRESH.
+cap=""
+[ "$MAX" != "0" ] && cap="trim 0 $MAX"
+# shellcheck disable=SC2086
+sox -d -r 16000 -c 1 "$clip" silence 1 0.1 "$THRESH" 1 "$SIL" "$THRESH" $cap >/dev/null 2>&1
+
 text="$("$CLI" -m "$MODEL_FILE" -f "$clip" -nt 2>/dev/null | tr '\n' ' ' | sed -E 's/^ +//; s/ +$//; s/  +/ /g')"
 [ -n "$text" ] || { echo "whisper-dictate: (no speech detected)" >&2; exit 0; }
 
