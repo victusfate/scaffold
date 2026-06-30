@@ -36,13 +36,19 @@ bash scripts/whisper-setup.sh [--model base.en]
 
 ### Step 3 — use it
 
-- **Live (see it as you speak), in the terminal:**
+When the user invokes `/whisper` (or asks to start live dictation) and it is
+already installed, **run it for them** — do not just print the command.
+
+- **Live (see it as you speak)** — *default action on `/whisper`*. Launch it in
+  its own terminal window so the user gets the live stream + Ctrl-C:
 
   ```bash
-  bash scripts/whisper-live.sh [--model base.en]
+  bash scripts/whisper-live.sh --terminal
   ```
 
-  Streams transcription word-by-word via `whisper-stream`. Ctrl-C to stop.
+  `--terminal` opens a new terminal (macOS Terminal via osascript; Linux
+  gnome-terminal/konsole/xterm) running `whisper-stream` word-by-word. Without
+  `--terminal` it streams in the current terminal.
 
 - **Voice-activated dictation into any prompt (talk → transcribe → clipboard):**
 
