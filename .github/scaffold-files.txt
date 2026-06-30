@@ -21,6 +21,8 @@ scripts/check-resolvable.ts
 scripts/check-quality-mechanical.sh
 scripts/compute-bump.ts
 scripts/compute-bump.test.ts
+scripts/mermaid-render.ts
+scripts/mermaid-render.test.ts
 scripts/resolver-phases.ts
 scripts/resolver-utils.ts
 scripts/update-skills-doc.ts
@@ -193,6 +195,11 @@ skills/ponytail.md
 .cursor/rules/ponytail.mdc
 .agents/skills/ponytail/SKILL.md
 .agent/workflows/ponytail.md
+skills/diagram.md
+.claude/skills/diagram/SKILL.md
+.cursor/rules/diagram.mdc
+.agents/skills/diagram/SKILL.md
+.agent/workflows/diagram.md
 .claude/skills/improve/LICENSE
 .claude/skills/improve/references/audit-playbook.md
 .claude/skills/improve/references/closing-the-loop.md
