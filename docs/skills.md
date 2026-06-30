@@ -57,7 +57,7 @@ tools/
     audit/SKILL.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail/SKILL.md             # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
-    diagram/SKILL.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to the mermaid.live editor self-hosted via Docker (offline), with system-viewer SVG, VS Code live preview, or a public mermaid.live publish URL as alternatives
+    diagram/SKILL.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     drawio-skill/SKILL.md         # (bundled) Generate `.drawio` diagrams and export PNG/SVG/PDF/JPG via the draw.io desktop CLI
     improve/SKILL.md              # (bundled) Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute
   session-start/
@@ -112,7 +112,7 @@ tools/
     audit/SKILL.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail/SKILL.md             # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
-    diagram/SKILL.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to the mermaid.live editor self-hosted via Docker (offline), with system-viewer SVG, VS Code live preview, or a public mermaid.live publish URL as alternatives
+    diagram/SKILL.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
 .agent/
   rules/
     agents.md               # thin pointer to AGENTS.md (always-on)
@@ -137,7 +137,7 @@ tools/
     audit.md                # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter.md           # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail.md             # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
-    diagram.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to the mermaid.live editor self-hosted via Docker (offline), with system-viewer SVG, VS Code live preview, or a public mermaid.live publish URL as alternatives
+    diagram.md              # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
 scripts/
   check-resolvable.ts            # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-skills-doc.ts           # regenerate docs/skills.md skill sections from RESOLVER.md

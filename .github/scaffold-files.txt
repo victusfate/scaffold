@@ -23,6 +23,8 @@ scripts/compute-bump.ts
 scripts/compute-bump.test.ts
 scripts/mermaid-render.ts
 scripts/mermaid-render.test.ts
+scripts/mermaid-watch.mjs
+scripts/mermaid-watch.test.mjs
 scripts/resolver-phases.ts
 scripts/resolver-utils.ts
 scripts/update-skills-doc.ts
