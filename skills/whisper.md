@@ -47,7 +47,7 @@ bash scripts/whisper-setup.sh [--model base.en]
 - **Voice-activated dictation into any prompt (talk → transcribe → clipboard):**
 
   ```bash
-  bash scripts/whisper-dictate.sh [--silence 1.5] [--threshold 2%] [--model base.en]
+  bash scripts/whisper-dictate.sh [--silence 0.8] [--threshold 2%] [--model base.en]
   ```
 
   No fixed timer — it listens, starts recording when you speak, and **auto-stops

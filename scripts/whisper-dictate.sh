@@ -7,13 +7,13 @@
 # first (it installs sox).
 # Usage:
 #   bash scripts/whisper-dictate.sh [--silence 1.5] [--threshold 2%] [--max 0] [--model base.en]
-#     --silence <sec>   trailing silence that ends the take (default 1.5)
+#     --silence <sec>   trailing silence that ends the take (default 0.8)
 #     --threshold <pct> loudness floor counted as silence (default 2%)
 #     --max <sec>       hard cap; 0 = none (default)
 #     --model <name>    ggml model (default base.en)
 set -euo pipefail
 
-SIL=1.5
+SIL=0.8
 THRESH="2%"
 MAX=0
 MODEL="base.en"
@@ -47,7 +47,8 @@ cap=""
 # shellcheck disable=SC2086
 sox -d -r 16000 -c 1 "$clip" silence 1 0.1 "$THRESH" 1 "$SIL" "$THRESH" $cap >/dev/null 2>&1
 
-text="$("$CLI" -m "$MODEL_FILE" -f "$clip" -nt 2>/dev/null | tr '\n' ' ' | sed -E 's/^ +//; s/ +$//; s/  +/ /g')"
+THREADS="$( (command -v nproc >/dev/null 2>&1 && nproc) || sysctl -n hw.ncpu 2>/dev/null || echo 4)"
+text="$("$CLI" -m "$MODEL_FILE" -f "$clip" -nt -t "$THREADS" 2>/dev/null | tr '\n' ' ' | sed -E 's/^ +//; s/ +$//; s/  +/ /g')"
 [ -n "$text" ] || { echo "whisper-dictate: (no speech detected)" >&2; exit 0; }
 
 # Copy to the clipboard using whatever the platform provides.
