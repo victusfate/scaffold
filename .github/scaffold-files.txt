@@ -25,10 +25,6 @@ scripts/mermaid-render.ts
 scripts/mermaid-render.test.ts
 scripts/mermaid-watch.mjs
 scripts/mermaid-watch.test.mjs
-scripts/whisper-setup.sh
-scripts/whisper-live.sh
-scripts/whisper-dictate.sh
-scripts/whisper-setup.test.sh
 scripts/resolver-phases.ts
 scripts/resolver-utils.ts
 scripts/update-skills-doc.ts
@@ -206,11 +202,6 @@ skills/diagram.md
 .cursor/rules/diagram.mdc
 .agents/skills/diagram/SKILL.md
 .agent/workflows/diagram.md
-skills/whisper.md
-.claude/skills/whisper/SKILL.md
-.cursor/rules/whisper.mdc
-.agents/skills/whisper/SKILL.md
-.agent/workflows/whisper.md
 .claude/skills/improve/LICENSE
 .claude/skills/improve/references/audit-playbook.md
 .claude/skills/improve/references/closing-the-loop.md
