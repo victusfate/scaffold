@@ -37,24 +37,55 @@ function parseArgs(argv) {
 // The preview page: fetches /raw and renders it client-side, re-rendering on
 // each Server-Sent "reload" event. svg-pan-zoom adds wheel-zoom + drag-pan.
 // Pure (no I/O) so it is unit-testable.
+// A cohesive light palette (indigo accent on a cool canvas) applied as the
+// default; a named --theme (dark/forest/neutral) bypasses it.
+const FONT = '"Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+const THEME_VARS = {
+  background: '#f7f9fc',
+  primaryColor: '#ffffff',        // node fill
+  primaryBorderColor: '#4f46e5',  // node border (indigo-600)
+  primaryTextColor: '#1e293b',    // node text (slate-800)
+  secondaryColor: '#eef2fb',
+  secondaryBorderColor: '#c7d2fe',
+  tertiaryColor: '#f1f5f9',
+  tertiaryBorderColor: '#e2e8f0',
+  lineColor: '#64748b',           // edges (slate-500)
+  textColor: '#1e293b',
+  nodeTextColor: '#1e293b',
+  clusterBkg: '#eef2fb',          // subgraph fill
+  clusterBorder: '#c7d2fe',       // subgraph border
+  titleColor: '#3730a3',          // subgraph title (indigo-800)
+  edgeLabelBackground: '#f7f9fc',
+  fontFamily: FONT,
+  fontSize: '15px',
+};
+
 export function pageHtml(file, theme) {
+  const useCustom = theme === 'default';
+  const pageBg = useCustom ? '#f7f9fc' : (theme === 'dark' ? '#1e1e1e' : '#ffffff');
+  const pageFg = useCustom || theme !== 'dark' ? '#1e293b' : '#ddd';
+  const init = useCustom
+    ? `{ startOnLoad:false, theme:'base', fontFamily:${JSON.stringify(FONT)}, themeVariables:${JSON.stringify(THEME_VARS)} }`
+    : `{ startOnLoad:false, theme:${JSON.stringify(theme)} }`;
   return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <title>mermaid-watch: ${file}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    html,body { margin:0; height:100%; background:#1e1e1e; color:#ddd; font:14px system-ui; }
+    html,body { margin:0; height:100%; background:${pageBg}; color:${pageFg}; font:14px ${FONT}; }
     #wrap { position:fixed; inset:0; }
     #diagram { width:100%; height:100%; }
     #diagram svg { max-width:none !important; width:100%; height:100%; }
-    #bar { position:fixed; top:8px; left:10px; opacity:.7; }
-    #err { position:fixed; bottom:8px; left:10px; right:10px; color:#f88; white-space:pre-wrap; font-family:monospace; }
+    #bar { position:fixed; top:10px; left:12px; opacity:.55; font-size:12px; letter-spacing:.02em; }
+    #err { position:fixed; bottom:8px; left:10px; right:10px; color:#dc2626; white-space:pre-wrap; font-family:ui-monospace,monospace; }
   </style>
   <script src="${PANZOOM_CDN}"></script>
   <script type="module">
     import mermaid from '${MERMAID_CDN}';
-    mermaid.initialize({ startOnLoad:false, theme:${JSON.stringify(theme)} });
+    mermaid.initialize(${init});
     const host = document.getElementById('diagram');
     const err = document.getElementById('err');
     let n = 0;
