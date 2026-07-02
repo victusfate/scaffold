@@ -1,8 +1,14 @@
 ## Purpose
 
-Review code for correctness bugs and reuse/simplification/efficiency cleanups. Default scope is the current branch diff; `--full` scans the entire codebase to catch issues before CI.
+Validate that a change is **correct** — hunt for bugs. Default scope is the current
+branch diff; `--full` scans the entire codebase to catch issues before CI.
 
-**Args (pass after `/code-review`):**
+Correctness only. Structural quality (reuse, simplification, abstraction,
+readability scoring) belongs to `/simplify`; a full-repo quality survey belongs
+to `/audit`. This skill defers all three to those skills rather than duplicating
+them.
+
+**Args (pass after `/validate`):**
 - `--effort low|medium|high|max` — scope of findings (default: `medium`)
 - `--full` — review all tracked source files instead of just the branch diff
 - `--comment` — post findings as inline PR review comments via GitHub MCP tools
@@ -29,7 +35,7 @@ In both cases: pass the effort level, flags, and scope (`diff` or `full`) so the
 
 **Phase 2 — review (reviewer Agent, isolated context):**
 
-For each changed file apply:
+For each file apply:
 
 **Pass 1 — Correctness** (all effort levels):
 - Logic errors, off-by-ones, wrong comparisons
@@ -37,16 +43,21 @@ For each changed file apply:
 - Race conditions, resource leaks
 - Incorrect types or API misuse
 
-**Pass 2 — Quality** (medium and above):
-- Duplicated logic that should be extracted
-- Over-engineered solutions where a simpler approach works
-- Inefficient constructs with obvious alternatives
-- Altitude mismatches (domain logic in infrastructure layers, etc.)
+**Pass 2 — Test integrity** (diff scope only; skipped under `--full`, which has no diff):
+A test weakened to make it pass is a **defect**, not a simplification — and the
+one failure mode isolated review exists to catch. Flag any test in the diff that
+was:
+- stripped of assertions, or had them softened (e.g. an exact check turned into
+  `assert True` / `expect(x).toBeDefined()`),
+- made vacuous or narrowed so it no longer exercises the behavior it named,
+- skipped, `xit`/`it.skip`-ed, or deleted while the code it covered remains.
+Removing test behavior to reach green is a bug. If the covered behavior was
+genuinely deleted, confirm the test's removal matches — otherwise flag it.
 
 **Pass 3 — Callable-unit checklist** (when the scope includes a tool, script, skill, or bin command):
 Check each item in `docs/agent-authoring-requirements.md` §6. A missing descriptor, test, guard, or index entry is a finding even at `low` effort.
 
-At `high`/`max`: expand to lower-confidence findings; tag these `[uncertain]`.
+At `high`/`max`: expand to lower-confidence correctness findings; tag these `[uncertain]`.
 
 Deduplicate and rank by confidence then severity. Return findings as plain text in the format below — the main agent acts on them.
 
@@ -67,14 +78,16 @@ Receive the reviewer's findings, then:
 
 | Level | Coverage |
 |---|---|
-| `low` | Correctness only, high confidence |
-| `medium` | Correctness + obvious quality issues, high confidence |
-| `high` | Correctness + quality, includes lower-confidence findings (tagged `[uncertain]`) |
-| `max` | All of `high`, plus speculative simplifications |
+| `low` | High-confidence correctness only |
+| `medium` | Correctness + test integrity, high confidence |
+| `high` | Correctness + test integrity, includes lower-confidence findings (tagged `[uncertain]`) |
+| `max` | All of `high`, plus subtle correctness edge cases |
 
 ## Rules
 
 - Without `--full`: the reviewer Agent must not read files outside the changed set.
 - `--comment` is only valid without `--full` (there is no single PR to comment on when reviewing the whole codebase); warn and skip if both are passed.
+- Test integrity (Pass 2) needs a diff — skip it under `--full`.
 - At `low`/`medium`: omit uncertain findings rather than flagging them.
 - `--fix` applies only what was identified as a finding — no opportunistic extras.
+- Structural quality is out of scope — route it to `/simplify` (apply) or `/audit` (survey).

@@ -85,7 +85,7 @@ Run `/feature-chain` to execute all phases automatically. Or invoke individually
    once before coding.
 
 4. **TDD** — `/tdd`. Execute `plan.md` one slice at a time: RED → GREEN →
-   REFACTOR. When all slices pass, run `/code-quality-review` (auto-fix mode)
+   REFACTOR. When all slices pass, run `/simplify` (auto-fix mode)
    — patches source files directly before advancing to the review summary.
    Maintain `tdd-log.md` with per-slice status.
 

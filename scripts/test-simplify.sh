@@ -4,7 +4,7 @@ PASS=0; FAIL=0
 ok()  { echo "  ✓ $1"; PASS=$((PASS + 1)); }
 fail(){ echo "  ✗ $1"; FAIL=$((FAIL + 1)); }
 
-FILE=skills/code-quality-review.md
+FILE=skills/simplify.md
 
 [ -f "$FILE" ] || { echo "MISSING: $FILE"; exit 1; }
 

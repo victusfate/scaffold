@@ -66,7 +66,7 @@ one-time granularity confirmation), the RED → GREEN → REFACTOR loop, per-sli
 commits, and `tdd-log.md`.
 
 **When all slices are complete and the full test suite passes:** run
-`/code-quality-review` in auto-fix mode — it will patch source files and
+`/simplify` in auto-fix mode — it will patch source files and
 resolve any blockers. Then proceed to Phase 4.
 
 ---

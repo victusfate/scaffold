@@ -121,7 +121,7 @@ If the push fails, report the error and stop.
 
 ### Step 5 — quality gate
 
-Run `/code-quality-review` in review mode (standalone invocation) against the changed files. This produces the Quality Scores table.
+Run `/simplify` in review mode (standalone invocation) against the changed files. This produces the Quality Scores table.
 
 **All files must score 10/10 on all four dimensions before continuing.** Any score below 10 blocks PR creation — surface the violations and wait for the user to fix them or add `quality-override` annotations.
 

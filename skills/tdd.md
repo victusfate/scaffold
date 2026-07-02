@@ -108,7 +108,7 @@ Add a `test-integration` entry to `tool.yaml` when one exists. The pre-commit ho
 
 ### When all slices pass
 
-When the full test suite is green, run `/code-quality-review` in auto-fix mode — it will patch source files directly and resolve any blockers. Then present a summary and stop for review:
+When the full test suite is green, run `/simplify` in auto-fix mode — it will patch source files directly and resolve any blockers. Then present a summary and stop for review:
 
 ```
 ## Feature complete: <feature-slug>
