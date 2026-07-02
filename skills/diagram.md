@@ -55,6 +55,10 @@ with it unless the user prefers another.
 - **(d) VS Code live preview** — side-by-side inside the editor. (Mode D.)
 - **(e) Publish to mermaid.live** — shareable URL; sends the diagram text
   remotely, so flag it for confidential diagrams. (Mode E.)
+- **(f) Mobile viewing (PNG + interactive HTML)** — a high-res PNG for the
+  phone photo viewer's native pinch-zoom, and/or a self-contained interactive
+  HTML viewer (inline SVG + touch pan/zoom, no server, no CDN). Best when the
+  reader is on a phone. (Mode F.)
 
 #### Mode A — lightweight live preview via the Node watcher (default)
 
@@ -182,6 +186,33 @@ node scripts/mermaid-render.ts diagrams/<slug>.mmd --short --no-render   # short
 - `--short` runs the (long, content-encoding) URL through is.gd, so the diagram
   reaches a **second** service. Opt-in; flag it for confidential diagrams.
 
+#### Mode F — mobile viewing (PNG + interactive HTML)
+
+For a reader on a phone, two portable artifacts beat a live server (localhost is
+awkward to reach from a phone, and a code-editor SVG preview clips and cannot
+pan/zoom well):
+
+```bash
+# high-res opaque PNG — opens in the photo viewer with native pinch-zoom/pan
+node scripts/mermaid-render.ts diagrams/<slug>.mmd --png [--scale <n>]
+
+# self-contained interactive viewer — inline SVG + dependency-free touch
+# pan/zoom, opens in any mobile browser; no server, no CDN, no external fetch
+node scripts/mermaid-render.ts diagrams/<slug>.mmd --html
+
+# both at once, alongside the SVG
+node scripts/mermaid-render.ts diagrams/<slug>.mmd --png --html
+```
+
+- `--png` renders `<slug>.png` at `--scale 3` by default (crisp when zoomed).
+- `--html` writes `<slug>.html` with the SVG inlined and a few lines of pointer/
+  wheel/pinch handling — deliver it, open it in a browser, pinch to zoom.
+- **`--portable`** renders labels as SVG `<text>` instead of HTML labels, so text
+  does not clip in non-browser / mobile SVG viewers (mermaid's default HTML
+  labels reflow to the viewer's fonts and overflow their boxes). Add it whenever
+  the artifact will be viewed outside a browser. Authors can still opt back into
+  HTML labels via the `.mmd` init block when a node needs rich HTML.
+
 ### Step 5 — embed in docs (when asked)
 
 To embed in a Markdown doc, prefer a fenced ` ```mermaid ` block (GitHub renders
@@ -199,6 +230,8 @@ turns tight.
 diagrams/
   <slug>.mmd     # source of truth — commit this, it's diffable
   <slug>.svg     # rendered artifact — commit or gitignore per repo preference
+  <slug>.png     # optional — high-res raster for phone photo-viewer pinch-zoom
+  <slug>.html    # optional — self-contained interactive pan/zoom viewer
   <slug>.md      # optional — Markdown wrapper for live VS Code preview / embedding
 ```
 

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<title>%%TITLE%%</title>
+<style>
+  html,body{margin:0;height:100%;background:#fff;overflow:hidden;font-family:system-ui,sans-serif}
+  #stage{position:fixed;inset:0;touch-action:none;cursor:grab}
+  #stage.grabbing{cursor:grabbing}
+  #stage svg{position:absolute;top:0;left:0;transform-origin:0 0;max-width:none!important}
+  #hint{position:fixed;left:8px;bottom:8px;font-size:12px;color:#555;background:rgba(255,255,255,.85);padding:4px 8px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.15)}
+</style>
+</head>
+<body>
+<div id="stage">%%SVG%%</div>
+<div id="hint">drag to pan &middot; pinch / wheel to zoom &middot; double-tap to reset</div>
+<script>
+// Dependency-free pan/zoom: pointer events for drag + two-finger pinch, wheel
+// for desktop zoom, double-tap/click to fit. No external library, no network.
+(function(){
+  var stage=document.getElementById('stage'),svg=stage.querySelector('svg');
+  var vb=svg.viewBox&&svg.viewBox.baseVal,w=(vb&&vb.width)||svg.clientWidth||800,h=(vb&&vb.height)||svg.clientHeight||600;
+  svg.removeAttribute('width');svg.removeAttribute('height');
+  svg.style.width=w+'px';svg.style.height=h+'px';
+  var scale=1,tx=0,ty=0;
+  function apply(){svg.style.transform='translate('+tx+'px,'+ty+'px) scale('+scale+')';}
+  function fit(){var r=stage.getBoundingClientRect();scale=Math.min(r.width/w,r.height/h)*0.95;tx=(r.width-w*scale)/2;ty=(r.height-h*scale)/2;apply();}
+  function zoomAt(cx,cy,f){var ns=Math.min(20,Math.max(0.05,scale*f)),k=ns/scale;tx=cx-(cx-tx)*k;ty=cy-(cy-ty)*k;scale=ns;apply();}
+  var pts=new Map(),lastDist=0,px=0,py=0,pan=false,lastTap=0;
+  stage.addEventListener('pointerdown',function(e){
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(pts.size===1){pan=true;px=e.clientX;py=e.clientY;stage.classList.add('grabbing');}
+    var now=Date.now();if(now-lastTap<300){fit();}lastTap=now;
+  });
+  stage.addEventListener('pointermove',function(e){
+    if(!pts.has(e.pointerId))return;
+    pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    var a=Array.from(pts.values());
+    if(a.length===2){var dx=a[0].x-a[1].x,dy=a[0].y-a[1].y,d=Math.hypot(dx,dy);
+      if(lastDist)zoomAt((a[0].x+a[1].x)/2,(a[0].y+a[1].y)/2,d/lastDist);lastDist=d;pan=false;}
+    else if(pan){tx+=e.clientX-px;ty+=e.clientY-py;px=e.clientX;py=e.clientY;apply();}
+  });
+  function up(e){pts.delete(e.pointerId);if(pts.size<2)lastDist=0;if(!pts.size){pan=false;stage.classList.remove('grabbing');}}
+  stage.addEventListener('pointerup',up);stage.addEventListener('pointercancel',up);
+  stage.addEventListener('wheel',function(e){e.preventDefault();zoomAt(e.clientX,e.clientY,e.deltaY<0?1.1:0.9);},{passive:false});
+  window.addEventListener('resize',fit);fit();
+})();
+</script>
+</body>
+</html>
