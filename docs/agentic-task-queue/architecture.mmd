@@ -1,48 +1,48 @@
-%%{init: {"theme": "base", "themeVariables": {"fontSize": "14px"}}}%%
+%%{init: {"theme": "base", "flowchart": {"htmlLabels": false, "nodeSpacing": 55, "rankSpacing": 55}, "themeVariables": {"fontSize": "14px"}}}%%
 flowchart TB
     %% ---------------- Ingestion ----------------
     subgraph ING["Ingestion sources"]
         direction LR
-        M["Manual<br/>/queue ingest<br/>(alignment loop → slice)"]
-        A["Automated<br/>watchers · cron · telemetry<br/>(collision check)"]
+        M["Manual /queue ingest<br/>(alignment loop then slice)"]
+        A["Automated<br/>watchers / cron / telemetry"]
         P["Assistant library<br/>proposals"]
     end
 
     %% ---------------- Dispatch layer ----------------
-    subgraph DISP["DISPATCH LAYER — shared, cross-project"]
+    subgraph DISP["DISPATCH LAYER  (shared, cross-project)"]
         direction TB
-        Q[("GitHub Issues queue store<br/>1 task = 1 issue<br/>labels: status · priority · project")]
+        Q[("GitHub Issues queue store<br/>1 task = 1 issue<br/>labels: status / priority / project")]
         subgraph DISTRIB["Distribution"]
             direction LR
-            CRON["Cron / routine<br/>(pull: ask for top eligible)"]
-            PUSH["Push<br/>(issue/label event)"]
+            CRON["Cron / routine<br/>pull: ask for top eligible"]
+            PUSH["Push<br/>issue / label event"]
         end
-        CLAIM{"Claim<br/>assign + verify<br/>+ lease heartbeat"}
+        CLAIM{"Claim<br/>assign · verify · lease"}
     end
 
     %% ---------------- Workers ----------------
     subgraph WORK["Workers"]
         direction LR
-        W1["Phase 1<br/>Claude routines<br/>+ manual pulls"]
-        W2["Phase 2 (later)<br/>GitHub Action crons<br/>headless Claude Code"]
+        W1["Phase 1<br/>Claude routines + manual pulls"]
+        W2["Phase 2 (later)<br/>GitHub Action crons"]
     end
 
     %% ---------------- Execution layer ----------------
-    subgraph EXEC["EXECUTION LAYER — per target repo"]
+    subgraph EXEC["EXECUTION LAYER  (per target repo)"]
         direction TB
-        CO["Check out target repo<br/>(project label → repo)"]
+        CO["Check out target repo<br/>project label to repo"]
         WT["Worktree per task<br/>branch off integration tip"]
         RUN["Apply changes<br/>run command + validationScript"]
-        MB{"Merge-back<br/>into integration branch"}
+        MB{"Merge-back<br/>into integration"}
         DONE(["completed"])
-        REC["Reconciliation task<br/>agent-driven, preserves commits"]
+        REC["Reconciliation task<br/>agent-driven, keeps commits"]
         FAIL(["failed<br/>held for later"])
     end
 
     %% ---------------- Flows ----------------
     M --> Q
     A --> Q
-    P -. "proposed → human selects → pending" .-> Q
+    P -. "proposed then human selects" .-> Q
 
     Q --> CRON
     Q --> PUSH
@@ -55,8 +55,8 @@ flowchart TB
     W2 --> CO
 
     CO --> WT --> RUN --> MB
-    MB -- "clean + validation passes" --> DONE
-    MB -- "conflict / validation fails" --> REC
+    MB -- "clean + validation ok" --> DONE
+    MB -- "conflict / fails" --> REC
     REC -- "clean validated merge" --> DONE
     REC -- "cannot merge safely" --> FAIL
 
