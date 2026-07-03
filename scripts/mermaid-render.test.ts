@@ -110,6 +110,25 @@ const { mermaidLiveUrl, wrapMarkdown, titleFromPath, openerArgs, interactiveHtml
   assert('CLI --no-render --png explains the conflict', stderr.includes('--png'), stderr);
 }
 
+// CLI smoke: a non-.mmd input is refused — output paths derive from it, so a
+// wrong extension could overwrite the source file.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'mermaid-render-'));
+  let exited = 0, stderr = '';
+  try {
+    const bad = join(dir, 'demo.mermaid');
+    writeFileSync(bad, 'flowchart TD\n  X --> Y\n');
+    execFileSync('node', [SCRIPT, bad, '--publish', '--no-render'], { encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] });
+  } catch (e: unknown) {
+    const err = e as { status?: number; stderr?: Buffer };
+    exited = err.status ?? 1; stderr = err.stderr?.toString() ?? '';
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert('CLI refuses non-.mmd input', exited !== 0, String(exited));
+  assert('CLI explains the .mmd requirement', stderr.includes('.mmd'), stderr);
+}
+
 // CLI smoke: --publish --no-render prints a live URL and renders nothing
 {
   const dir = mkdtempSync(join(tmpdir(), 'mermaid-render-'));

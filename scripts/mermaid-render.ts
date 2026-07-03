@@ -169,6 +169,8 @@ async function main(argv: string[]): Promise<void> {
   const { input, out, wrap, png, html, portable, scale, local, port, open, publish, short, noRender } = parseArgs(argv);
   if (!input) die('usage: node scripts/mermaid-render.ts <input.mmd> [--out <file.svg>] [--png] [--html] [--portable] [--scale <n>] [--wrap] [--local] [--open] [--publish] [--short] [--no-render]');
   if (!existsSync(input)) die(`input not found: ${input}`);
+  if (!input.endsWith('.mmd')) die(`input must be a .mmd file (output paths derive from it): ${input}`);
+  if (png && !(Number(scale) > 0)) die(`--scale must be a positive number: ${scale}`);
   if (noRender && (png || html)) die('--no-render conflicts with --png/--html, which are renders');
   if (noRender && !publish && !wrap && !open && !local) die('--no-render skips the only output; add --wrap, --local, --open, or --publish, or drop --no-render');
 

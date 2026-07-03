@@ -64,7 +64,12 @@ function main(argv: string[]): void {
   if (!file) die('usage: node scripts/mermaid-watch.ts <file.mmd> [--port 8080] [--portable]');
   if (!existsSync(file)) die(`file not found: ${file}`);
 
-  let page = renderPage(file, portable);
+  let page: string;
+  try {
+    page = renderPage(file, portable);
+  } catch {
+    die(`initial render failed for ${file} — ensure the mmdc/Chromium render works`);
+  }
   const clients = new Set<http.ServerResponse>();
   const server = http.createServer((req, res) => {
     if (req.url === '/') {
@@ -84,7 +89,9 @@ function main(argv: string[]): void {
   watchFile(file, { interval: POLL_INTERVAL_MS }, (curr, prev) => {
     if (curr.mtimeMs === prev.mtimeMs) return;
     try { page = renderPage(file, portable); } catch { /* keep the last good page on a render error */ }
-    for (const res of clients) res.write('data: reload\n\n');
+    for (const res of clients) {
+      try { res.write('data: reload\n\n'); } catch { clients.delete(res); }
+    }
   });
 
   server.listen(port, () => {
