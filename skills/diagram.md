@@ -46,8 +46,9 @@ Offer the ways to view, **in this priority order**. Default to Mode A; proceed
 with it unless the user prefers another.
 
 - **(a) Lightweight live preview (Node)** — *default*. A zero-dependency local
-  server watches the `.mmd` and hot-reloads a browser tab on save; pan + zoom.
-  No Docker. Edit the text in any editor; the picture follows. (Mode A.)
+  server regenerates the **self-contained** static viewer (inline SVG + pan/zoom,
+  no CDN) on each `.mmd` save and hot-reloads the browser tab. Edit the text in
+  any editor; the picture follows. (Mode A.)
 - **(b) Local mermaid.live editor (Docker)** — the full split-pane editor,
   fully offline (edit in the browser). Heavier (needs Docker). (Mode B.)
 - **(c) System default viewer** — render the SVG and open it in the OS default
@@ -63,19 +64,22 @@ with it unless the user prefers another.
 #### Mode A — lightweight live preview via the Node watcher (default)
 
 Keeps the `.mmd` the source of truth: edit it in any editor and a browser tab
-re-renders on save. Zero dependencies (built-in `http` + `fs.watchFile` + SSE).
+reloads on save. On each change the watcher regenerates the **same
+self-contained artifact `--html` produces** (inline SVG + dependency-free touch
+pan/zoom, no CDN) and pushes an SSE reload. Built-ins only (`http` +
+`fs.watchFile` + SSE).
 
 ```bash
-node scripts/mermaid-watch.mjs diagrams/<slug>.mmd [--port 8080] [--theme dark]
+node scripts/mermaid-watch.ts diagrams/<slug>.mmd [--port 8080] [--portable]
 ```
 
-Then open the printed `http://localhost:<port>`. The page hot-reloads on every
-save; `svg-pan-zoom` gives wheel-zoom + drag-pan. Run it in the background and
-keep editing the `.mmd` through the chat loop — the tab follows each change.
+Then open the printed `http://localhost:<port>`. Run it in the background and
+keep editing the `.mmd` — the tab follows each change. `--portable` renders
+SVG-text labels (see below) so nothing clips.
 
-- Caveat: the mermaid runtime loads from the jsdelivr CDN (one-time, then
-  browser-cached), so the **first** load needs network. For a fully-offline
-  editor use Mode B (Docker).
+- Each save re-renders via `mmdc` (a couple seconds) — the cost of producing the
+  real offline artifact rather than a CDN client render. Fully self-contained: no
+  network after the one-time `mmdc` Chromium fetch.
 - Stop it with Ctrl-C (or kill the backgrounded process).
 
 #### Mode B — local mermaid.live editor via Docker (fully offline)
