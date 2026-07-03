@@ -108,7 +108,7 @@ Add a `test-integration` entry to `tool.yaml` when one exists. The pre-commit ho
 
 ### When all slices pass
 
-When the full test suite is green, run `/code-quality-review` in auto-fix mode — it will patch source files directly and resolve any blockers. Then present a summary and stop for review:
+When the full test suite is green, run `/code-refiner` in auto-fix mode. It reviews the diff on two parallel isolated tracks — correctness + test-integrity (`validate`) and structural quality (`simplify`) — merges the findings, applies them in one coherent pass, and re-verifies (correctness clear, all rubric dimensions 10/10). Green tests only prove what the author thought to test and can be weakened during GREEN, which the correctness track catches. Then present a summary and stop for review:
 
 ```
 ## Feature complete: <feature-slug>

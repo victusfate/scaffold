@@ -66,8 +66,13 @@ one-time granularity confirmation), the RED → GREEN → REFACTOR loop, per-sli
 commits, and `tdd-log.md`.
 
 **When all slices are complete and the full test suite passes:** run
-`/code-quality-review` in auto-fix mode — it will patch source files and
-resolve any blockers. Then proceed to Phase 4.
+`/code-refiner` in auto-fix mode. It reviews the diff on two isolated,
+parallel tracks — correctness + test-integrity (`validate`) and structural
+quality (`simplify`) — merges the findings, applies them in a single coherent
+pass, and re-verifies (correctness clear, all rubric dimensions 10/10). Passing
+tests alone are not enough: they cover only what the author imagined and can be
+weakened during GREEN, which the correctness track catches. Then proceed to
+Phase 4.
 
 ---
 

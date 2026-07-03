@@ -1,6 +1,6 @@
 ## Purpose
 
-Run every quality lens on the current branch — correctness review, structural quality, and simplification — then funnel all findings into a full feature chain (design → PRD → TDD → PR) to fix them systematically.
+Run every quality lens on the current branch — correctness validation and structural quality — then funnel all findings into a full feature chain (design → PRD → TDD → PR) to fix them systematically.
 
 Use this when fixes are too large for a one-shot apply: the findings need a plan, tests, and a proper PR.
 
@@ -8,7 +8,7 @@ Use this when fixes are too large for a one-shot apply: the findings need a plan
 
 - After a long feature sprint to clean up accumulated debt
 - When taking over code that needs a full quality pass before further development
-- When `/code-quality-review` + `/simplify` alone aren't enough — the improvements warrant a structured plan
+- When `/simplify` alone isn't enough — the improvements warrant a structured plan
 
 ## Pipeline
 
@@ -20,17 +20,14 @@ Do not pause between phases. The only pause is at the end of Phase 4 (feature-ch
 
 Collect findings only — nothing is fixed until the chain's TDD phase.
 
-1. **`/code-review --effort max`** (no `--fix` flag — its default prints
+1. **`/validate --effort max`** (no `--fix` flag — its default prints
    findings and waits). Record as `FINDINGS_REVIEW`.
-2. **Structural-quality lens** — apply the `/code-quality-review` checklist
-   (file size, spaghetti, abstractions, types, canonical reuse) as a read-only
-   audit. Do not invoke the skill itself: invoked from this chain it would
-   auto-fix. Record as `FINDINGS_QUALITY`.
-3. **Simplification lens** — apply the `/simplify` dimensions (reuse,
-   simplification, efficiency, altitude) the same way; `/simplify` itself has
-   no list-only mode. Record as `FINDINGS_SIMPLIFY`.
+2. **Structural-quality lens** — apply the `/simplify` checklist (the rubric
+   dimensions plus reuse, simplification, efficiency, altitude, and the
+   diff-economy lens) as a read-only audit. Do not invoke the skill itself:
+   invoked from this chain it would auto-fix. Record as `FINDINGS_QUALITY`.
 
-Produce a consolidated findings table with source tags: `[review]`, `[quality]`, `[simplify]`.
+Produce a consolidated findings table with source tags: `[validate]`, `[quality]`.
 
 ---
 
@@ -87,7 +84,7 @@ Proceed immediately to Phase 4.
 
 Run `/tdd` from `prd.md`. Each vertical slice should correspond to one cohesive group of fixes (e.g., "extract duplicated helpers", "fix correctness bugs in module X").
 
-After all slices pass, run `/code-quality-review` in auto-fix mode. Then proceed to Phase 5.
+After all slices pass, run `/simplify` in auto-fix mode. Then proceed to Phase 5.
 
 ---
 

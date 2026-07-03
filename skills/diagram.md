@@ -46,8 +46,9 @@ Offer the ways to view, **in this priority order**. Default to Mode A; proceed
 with it unless the user prefers another.
 
 - **(a) Lightweight live preview (Node)** — *default*. A zero-dependency local
-  server watches the `.mmd` and hot-reloads a browser tab on save; pan + zoom.
-  No Docker. Edit the text in any editor; the picture follows. (Mode A.)
+  server regenerates the **self-contained** static viewer (inline SVG + pan/zoom,
+  no CDN) on each `.mmd` save and hot-reloads the browser tab. Edit the text in
+  any editor; the picture follows. (Mode A.)
 - **(b) Local mermaid.live editor (Docker)** — the full split-pane editor,
   fully offline (edit in the browser). Heavier (needs Docker). (Mode B.)
 - **(c) System default viewer** — render the SVG and open it in the OS default
@@ -55,23 +56,30 @@ with it unless the user prefers another.
 - **(d) VS Code live preview** — side-by-side inside the editor. (Mode D.)
 - **(e) Publish to mermaid.live** — shareable URL; sends the diagram text
   remotely, so flag it for confidential diagrams. (Mode E.)
+- **(f) Mobile viewing (PNG + interactive HTML)** — a high-res PNG for the
+  phone photo viewer's native pinch-zoom, and/or a self-contained interactive
+  HTML viewer (inline SVG + touch pan/zoom, no server, no CDN). Best when the
+  reader is on a phone. (Mode F.)
 
 #### Mode A — lightweight live preview via the Node watcher (default)
 
 Keeps the `.mmd` the source of truth: edit it in any editor and a browser tab
-re-renders on save. Zero dependencies (built-in `http` + `fs.watchFile` + SSE).
+reloads on save. On each change the watcher regenerates the **same
+self-contained artifact `--html` produces** (inline SVG + dependency-free touch
+pan/zoom, no CDN) and pushes an SSE reload. Built-ins only (`http` +
+`fs.watchFile` + SSE).
 
 ```bash
-node scripts/mermaid-watch.mjs diagrams/<slug>.mmd [--port 8080] [--theme dark]
+node scripts/mermaid-watch.ts diagrams/<slug>.mmd [--port 8080] [--portable]
 ```
 
-Then open the printed `http://localhost:<port>`. The page hot-reloads on every
-save; `svg-pan-zoom` gives wheel-zoom + drag-pan. Run it in the background and
-keep editing the `.mmd` through the chat loop — the tab follows each change.
+Then open the printed `http://localhost:<port>`. Run it in the background and
+keep editing the `.mmd` — the tab follows each change. `--portable` renders
+SVG-text labels (see below) so nothing clips.
 
-- Caveat: the mermaid runtime loads from the jsdelivr CDN (one-time, then
-  browser-cached), so the **first** load needs network. For a fully-offline
-  editor use Mode B (Docker).
+- Each save re-renders via `mmdc` (a couple seconds) — the cost of producing the
+  real offline artifact rather than a CDN client render. Fully self-contained: no
+  network after the one-time `mmdc` Chromium fetch.
 - Stop it with Ctrl-C (or kill the backgrounded process).
 
 #### Mode B — local mermaid.live editor via Docker (fully offline)
@@ -182,6 +190,33 @@ node scripts/mermaid-render.ts diagrams/<slug>.mmd --short --no-render   # short
 - `--short` runs the (long, content-encoding) URL through is.gd, so the diagram
   reaches a **second** service. Opt-in; flag it for confidential diagrams.
 
+#### Mode F — mobile viewing (PNG + interactive HTML)
+
+For a reader on a phone, two portable artifacts beat a live server (localhost is
+awkward to reach from a phone, and a code-editor SVG preview clips and cannot
+pan/zoom well):
+
+```bash
+# high-res opaque PNG — opens in the photo viewer with native pinch-zoom/pan
+node scripts/mermaid-render.ts diagrams/<slug>.mmd --png [--scale <n>]
+
+# self-contained interactive viewer — inline SVG + dependency-free touch
+# pan/zoom, opens in any mobile browser; no server, no CDN, no external fetch
+node scripts/mermaid-render.ts diagrams/<slug>.mmd --html
+
+# both at once, alongside the SVG
+node scripts/mermaid-render.ts diagrams/<slug>.mmd --png --html
+```
+
+- `--png` renders `<slug>.png` at `--scale 3` by default (crisp when zoomed).
+- `--html` writes `<slug>.html` with the SVG inlined and a few lines of pointer/
+  wheel/pinch handling — deliver it, open it in a browser, pinch to zoom.
+- **`--portable`** renders labels as SVG `<text>` instead of HTML labels, so text
+  does not clip in non-browser / mobile SVG viewers (mermaid's default HTML
+  labels reflow to the viewer's fonts and overflow their boxes). Add it whenever
+  the artifact will be viewed outside a browser. Authors can still opt back into
+  HTML labels via the `.mmd` init block when a node needs rich HTML.
+
 ### Step 5 — embed in docs (when asked)
 
 To embed in a Markdown doc, prefer a fenced ` ```mermaid ` block (GitHub renders
@@ -199,6 +234,8 @@ turns tight.
 diagrams/
   <slug>.mmd     # source of truth — commit this, it's diffable
   <slug>.svg     # rendered artifact — commit or gitignore per repo preference
+  <slug>.png     # optional — high-res raster for phone photo-viewer pinch-zoom
+  <slug>.html    # optional — self-contained interactive pan/zoom viewer
   <slug>.md      # optional — Markdown wrapper for live VS Code preview / embedding
 ```
 

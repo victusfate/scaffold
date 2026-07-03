@@ -2,7 +2,7 @@
 
 [![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?style=for-the-badge&logo=github)](https://github.com/victusfate/scaffold/generate)
 
-A minimal, cross-harness project scaffold for AI-assisted development. Drop it into any new project to get a consistent design → PRD → TDD workflow whether you're using Claude Code, Cursor, or Gemini CLI.
+An opinionated, cross-harness project scaffold for AI-assisted development. Drop it into any new project to get a consistent design → PRD → TDD workflow with scored quality gates, whether you're using Claude Code, Cursor, or Gemini CLI.
 
 ## Usage
 
@@ -34,7 +34,7 @@ grill-with-docs → to-prd → tdd → review
 1. **grill-with-docs** — Agent interviews you one question at a time, sharpens terminology, stress-tests against the codebase, and produces `./docs/<slug>/design.md` with a canonical vocabulary and Mermaid/ASCII diagrams as structure becomes clear.
 2. **to-prd** — Synthesizes the conversation and codebase into `./docs/<slug>/prd.md` automatically. No re-interviewing.
 3. **tdd** — Derives `plan.md` from the PRD, then executes RED → GREEN → REFACTOR one vertical slice at a time, scoring each slice against the quality rubric as it goes. Commits per slice.
-4. **Review** — Once the slices pass, `code-quality-review` brings every changed file to 10/10 on all four rubric dimensions, then the chain presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
+4. **Review** — Once the slices pass, `simplify` brings every changed file to 10/10 on all four rubric dimensions, then the chain presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
 
 Skills can also be invoked individually. See [`docs/skills.md`](docs/skills.md) for the full skill list and repo layout.
 
@@ -51,7 +51,7 @@ The rubric is woven through the chain, not bolted on at the end:
 
 - **tdd** loads the rubric as the *generative voice* — code that would violate it
   is never written, and REFACTOR is a confirmation pass.
-- **`/code-quality-review`** scores the changed files once the slices pass
+- **`/simplify`** scores the changed files once the slices pass
   (auto-fix in the chain, review mode standalone). All files must reach 10/10
   before a PR is opened, and `create-pr` re-runs it as a gate.
 - **`/audit`** is the standalone counterpart — score any scope of files, ranked

@@ -1,0 +1,74 @@
+%%{init: {"theme": "base", "flowchart": {"htmlLabels": false, "nodeSpacing": 55, "rankSpacing": 55}, "themeVariables": {"fontSize": "14px"}}}%%
+flowchart TB
+    %% ---------------- Ingestion ----------------
+    subgraph ING["Ingestion sources"]
+        direction LR
+        M["Manual /queue ingest<br/>(alignment loop then slice)"]
+        A["Automated<br/>watchers / cron / telemetry"]
+        P["Assistant library<br/>proposals"]
+    end
+
+    %% ---------------- Dispatch layer ----------------
+    subgraph DISP["DISPATCH LAYER  (shared, cross-project)"]
+        direction TB
+        Q[("GitHub Issues queue store<br/>1 task = 1 issue<br/>labels: status / priority / project")]
+        subgraph DISTRIB["Distribution"]
+            direction LR
+            CRON["Cron / routine<br/>pull: ask for top eligible"]
+            PUSH["Push<br/>issue / label event"]
+        end
+        CLAIM{"Claim<br/>assign · verify · lease"}
+    end
+
+    %% ---------------- Workers ----------------
+    subgraph WORK["Workers"]
+        direction LR
+        W1["Phase 1<br/>Claude routines + manual pulls"]
+        W2["Phase 2 (later)<br/>GitHub Action crons"]
+    end
+
+    %% ---------------- Execution layer ----------------
+    subgraph EXEC["EXECUTION LAYER  (per target repo)"]
+        direction TB
+        CO["Check out target repo<br/>project label to repo"]
+        WT["Worktree per task<br/>branch off integration tip"]
+        RUN["Apply changes<br/>run command + validationScript"]
+        MB{"Merge-back<br/>into integration"}
+        DONE(["completed"])
+        REC["Reconciliation task<br/>agent-driven, keeps commits"]
+        FAIL(["failed<br/>held for later"])
+    end
+
+    %% ---------------- Flows ----------------
+    M --> Q
+    A --> Q
+    P -. "proposed then human selects" .-> Q
+
+    Q --> CRON
+    Q --> PUSH
+    CRON --> CLAIM
+    PUSH --> CLAIM
+
+    CLAIM --> W1
+    CLAIM --> W2
+    W1 --> CO
+    W2 --> CO
+
+    CO --> WT --> RUN --> MB
+    MB -- "clean + validation ok" --> DONE
+    MB -- "conflict / fails" --> REC
+    REC -- "clean validated merge" --> DONE
+    REC -- "cannot merge safely" --> FAIL
+
+    DONE -. "close issue" .-> Q
+    FAIL -. "label failed" .-> Q
+
+    %% ---------------- Styling ----------------
+    classDef store fill:#2563eb,stroke:#1e3a8a,color:#ffffff;
+    classDef gate fill:#f59e0b,stroke:#92400e,color:#1f2937;
+    classDef done fill:#16a34a,stroke:#14532d,color:#ffffff;
+    classDef fail fill:#dc2626,stroke:#7f1d1d,color:#ffffff;
+    class Q store;
+    class CLAIM,MB gate;
+    class DONE done;
+    class FAIL fail;

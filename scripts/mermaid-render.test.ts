@@ -24,7 +24,7 @@ function decode(url: string): { code: string; mermaid: { theme: string } } {
   return JSON.parse(json) as { code: string; mermaid: { theme: string } };
 }
 
-const { mermaidLiveUrl, wrapMarkdown, titleFromPath, openerArgs } = await import('./mermaid-render.ts');
+const { mermaidLiveUrl, wrapMarkdown, titleFromPath, openerArgs, interactiveHtml } = await import('./mermaid-render.ts');
 
 // OS default-viewer command per platform
 {
@@ -75,6 +75,58 @@ const { mermaidLiveUrl, wrapMarkdown, titleFromPath, openerArgs } = await import
   assert('default base is mermaid.live', remote.startsWith('https://mermaid.live/edit#pako:'));
   assert('local base targets localhost', localUrl.startsWith('http://localhost:8080/edit#pako:'));
   assert('same pako across hosts', remote.split('#pako:')[1] === localUrl.split('#pako:')[1]);
+}
+
+// interactive HTML viewer fills the template with the SVG + title
+{
+  const template = readFileSync(join(HERE, 'mermaid-viewer.template.html'), 'utf8');
+  const svg = '<svg viewBox="0 0 100 50"><rect width="100" height="50"/></svg>';
+  const html = interactiveHtml(svg, 'Demo Flow', template);
+  assert('HTML inlines the SVG', html.includes(svg));
+  assert('HTML carries the title', html.includes('<title>Demo Flow</title>'));
+  assert('HTML has pan/zoom script', html.includes('addEventListener') && html.includes('wheel'));
+  assert('HTML is self-contained (no external http refs)', !/(src|href)\s*=\s*["']https?:/i.test(html), html.slice(0, 200));
+  assert('HTML strips any XML prolog', !interactiveHtml('<?xml version="1.0"?>\n' + svg, 'X', template).includes('<?xml'));
+  assert('template placeholders are consumed', !html.includes('%%SVG%%') && !html.includes('%%TITLE%%'));
+  assert('$ in SVG is not treated as a replacement pattern', interactiveHtml('<svg>$&$1 cost</svg>', 'T', template).includes('$&$1 cost'));
+}
+
+// CLI smoke: --no-render conflicts with --png (a render) and refuses
+{
+  const dir = mkdtempSync(join(tmpdir(), 'mermaid-render-'));
+  let stderr = '', exited = 0;
+  try {
+    const mmd = join(dir, 'demo.mmd');
+    writeFileSync(mmd, 'flowchart TD\n  X --> Y\n');
+    execFileSync('node', [SCRIPT, mmd, '--no-render', '--png'], { encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] });
+  } catch (e: unknown) {
+    const err = e as { status?: number; stderr?: Buffer };
+    exited = err.status ?? 1;
+    stderr = err.stderr?.toString() ?? '';
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert('CLI --no-render --png exits non-zero', exited !== 0, String(exited));
+  assert('CLI --no-render --png explains the conflict', stderr.includes('--png'), stderr);
+}
+
+// CLI smoke: a non-.mmd input is refused — output paths derive from it, so a
+// wrong extension could overwrite the source file.
+{
+  const dir = mkdtempSync(join(tmpdir(), 'mermaid-render-'));
+  let exited = 0, stderr = '';
+  try {
+    const bad = join(dir, 'demo.mermaid');
+    writeFileSync(bad, 'flowchart TD\n  X --> Y\n');
+    execFileSync('node', [SCRIPT, bad, '--publish', '--no-render'], { encoding: 'utf8', stdio: ['ignore', 'ignore', 'pipe'] });
+  } catch (e: unknown) {
+    const err = e as { status?: number; stderr?: Buffer };
+    exited = err.status ?? 1; stderr = err.stderr?.toString() ?? '';
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+  assert('CLI refuses non-.mmd input', exited !== 0, String(exited));
+  assert('CLI explains the .mmd requirement', stderr.includes('.mmd'), stderr);
 }
 
 // CLI smoke: --publish --no-render prints a live URL and renders nothing
