@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`.
+Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`.
 
 Bundled skills (self-contained Anthropic Agent Skills, Claude harness; loaded by description rather than a slash command): `improve`.
 <!-- END_SKILLS_INVOCATION -->
@@ -47,6 +47,7 @@ tools/
     create-pr/SKILL.md        # Create a PR for the current branch and immediately subscribe to its activity
     validate/SKILL.md         # Validate the current diff for correctness bugs and test-integrity regressions at a configurable effort level
     simplify/SKILL.md         # Structural-quality review of changed code: score against the rubric, gate at 10/10, and apply reuse/simplification/efficiency/altitude cleanups
+    code-refiner/SKILL.md     # Composite review-and-fix: parallel validate + simplify reviews, merged findings, then a single serial fixer with re-verify
     prune/SKILL.md            # Run all quality review skills and funnel findings into design→PRD→TDD→PR
     pause/SKILL.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume/SKILL.md           # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
@@ -77,6 +78,7 @@ tools/
     create-pr.mdc        # mirrors create-pr for Cursor
     validate.mdc         # mirrors validate for Cursor
     simplify.mdc         # mirrors simplify for Cursor
+    code-refiner.mdc     # mirrors code-refiner for Cursor
     prune.mdc            # mirrors prune for Cursor
     pause.mdc            # mirrors pause for Cursor
     resume.mdc           # mirrors resume for Cursor
@@ -99,6 +101,7 @@ tools/
     create-pr/SKILL.md        # Create a PR for the current branch and immediately subscribe to its activity
     validate/SKILL.md         # Validate the current diff for correctness bugs and test-integrity regressions at a configurable effort level
     simplify/SKILL.md         # Structural-quality review of changed code: score against the rubric, gate at 10/10, and apply reuse/simplification/efficiency/altitude cleanups
+    code-refiner/SKILL.md     # Composite review-and-fix: parallel validate + simplify reviews, merged findings, then a single serial fixer with re-verify
     prune/SKILL.md            # Run all quality review skills and funnel findings into design→PRD→TDD→PR
     pause/SKILL.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume/SKILL.md           # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
@@ -123,6 +126,7 @@ tools/
     create-pr.md        # Create a PR for the current branch and immediately subscribe to its activity
     validate.md         # Validate the current diff for correctness bugs and test-integrity regressions at a configurable effort level
     simplify.md         # Structural-quality review of changed code: score against the rubric, gate at 10/10, and apply reuse/simplification/efficiency/altitude cleanups
+    code-refiner.md     # Composite review-and-fix: parallel validate + simplify reviews, merged findings, then a single serial fixer with re-verify
     prune.md            # Run all quality review skills and funnel findings into design→PRD→TDD→PR
     pause.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume.md           # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
