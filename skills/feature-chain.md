@@ -65,9 +65,16 @@ Run `/tdd` — it owns plan creation (vertical slices from `prd.md`, with its
 one-time granularity confirmation), the RED → GREEN → REFACTOR loop, per-slice
 commits, and `tdd-log.md`.
 
-**When all slices are complete and the full test suite passes:** run
-`/simplify` in auto-fix mode — it will patch source files and
-resolve any blockers. Then proceed to Phase 4.
+**When all slices are complete and the full test suite passes:**
+
+1. Run `/validate` — an isolated correctness review of the diff. Passing tests
+   are not enough: they only cover what the author imagined, and a test can be
+   weakened during GREEN. `validate` catches correctness bugs the slices' own
+   tests missed and flags any test that was gutted to pass. Apply its findings.
+2. Run `/simplify` in auto-fix mode — the structural-quality gate; it patches
+   source files to 10/10 and resolves any blockers.
+
+Then proceed to Phase 4.
 
 ---
 

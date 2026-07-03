@@ -108,7 +108,12 @@ Add a `test-integration` entry to `tool.yaml` when one exists. The pre-commit ho
 
 ### When all slices pass
 
-When the full test suite is green, run `/simplify` in auto-fix mode — it will patch source files directly and resolve any blockers. Then present a summary and stop for review:
+When the full test suite is green, run two isolated reviews before the summary:
+
+1. `/validate` — correctness review of the diff. Green tests only prove what the author thought to test, and a test can be weakened during GREEN; `validate` catches bugs the tests missed and flags any test gutted to pass. Apply its findings.
+2. `/simplify` in auto-fix mode — patches source files to 10/10 on the rubric and resolves any blockers.
+
+Then present a summary and stop for review:
 
 ```
 ## Feature complete: <feature-slug>
