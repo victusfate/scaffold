@@ -176,6 +176,11 @@ skills/diagram.md
 .cursor/rules/diagram.mdc
 .agents/skills/diagram/SKILL.md
 .agent/workflows/diagram.md
+skills/council.md
+.claude/skills/council/SKILL.md
+.cursor/rules/council.mdc
+.agents/skills/council/SKILL.md
+.agent/workflows/council.md
 .claude/skills/improve/LICENSE
 .claude/skills/improve/references/audit-playbook.md
 .claude/skills/improve/references/closing-the-loop.md
