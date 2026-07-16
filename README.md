@@ -63,6 +63,11 @@ A mechanical pre-flight runs in CI on every PR via
 commented-out code, each emitting `filename:line` citations and failing the build
 on any hit.
 
+**Generated files:** put `@generated` in the first 5 lines of any
+machine-produced/data file (geometry, fixtures, compiled tables) to exclude it
+from mechanical checks — the same convention ESLint/Prettier use. Do not use it
+on hand-maintained logic.
+
 **Overrides (model-driven criteria only).** A genuinely irreducible violation can
 be exempted two ways — both require a reason and appear in the report at zero
 score weight:
