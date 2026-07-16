@@ -36,6 +36,7 @@ A score of 9 means exactly one minor violation, cited.
 - *`return`/`exit` values* — protocol-defined (HTTP status codes, shell exit codes).
 - *Named constants* — `const NAME = N`, `UPPER_CASE = N`, etc.
 - *String-literal contents* — numbers inside quoted strings are data.
+- *`@generated` files* — a file with `@generated` in its first 5 lines is skipped whole (the same convention ESLint/Prettier honor). Use only for genuinely machine-produced/data files (geometry, fixtures, compiled tables) — never to silence a lint on hand-maintained logic.
 
 When a bare literal survives those exclusions and is genuinely self-documenting (e.g. `86400` where the context makes "seconds in a day" obvious), place `# quality-ok: magic-number — <reason>` (or `//` for JS/TS) on the **immediately preceding line**. The `<reason>` is required. File-length and commented-out-code cannot be overridden inline or via PR body — those violations must be fixed in the code.
 

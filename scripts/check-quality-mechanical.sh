@@ -14,6 +14,17 @@ check_file() {
   [ -f "$file" ] || return 0
   local ext="${file##*.}"
 
+  # Generated / machine-authored files are skipped whole — the same convention
+  # ESLint and Prettier honor. A mechanical CODE-quality check has nothing to say
+  # about machine-produced OUTPUT: e.g. a procedural geometry catalog is tens of
+  # thousands of lines of raw vertex-coordinate arrays where every number is a
+  # coordinate and "extract to a named constant" is meaningless. Mark such a file
+  # with `@generated` in its first 5 lines. Use ONLY for genuinely generated/data
+  # files — never to silence a lint on hand-maintained logic.
+  if head -5 "$file" 2>/dev/null | grep -q '@generated'; then
+    return 0
+  fi
+
   # File length
   local count
   count=$(wc -l < "$file")
