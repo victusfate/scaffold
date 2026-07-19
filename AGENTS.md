@@ -146,7 +146,23 @@ Skip the chain for:
 3. Do the work, verify with build/tests
 4. Commit, push: `git push -u origin <branch>`
 5. When changes are ready for review, run `/create-pr` — it creates the PR and subscribes to activity atomically. Do not split these steps.
-6. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
+6. Before merging, verify the green is **real** (see below).
+7. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
+
+**A green PR is not always green — required checks can fail *open*.** GitHub treats
+a **skipped** required status check as **satisfied**. So a required check that is an
+aggregate roll-up job (`needs:` a matrix/shard set, no `if: always()`) *skips* when
+a dependency fails — and the gate passes silently. (Same for path-filtered or
+`if:`-gated required jobs that never run.) Before merging:
+
+- **Read the actual check conclusions, not the merge button.** Treat a lingering
+  `skipping` on a *required* check as suspect, not as a pass.
+- **Capture the watch command's own exit**, not a wrapper's:
+  `gh pr checks <pr> --watch; echo "EXIT=$?"` — a surrounding shell/echo can mask a
+  failure with exit 0.
+- **If you own the CI, make roll-ups fail *closed*:** `if: ${{ always() }}` forces
+  the job to run, plus a guard step that exits non-zero unless every dependency
+  succeeded (`needs.*.result != 'success'`).
 
 Never commit directly to main for feature work.
 A session spans the full lifetime of a branch — from creation until it is merged or discarded. Only switch branches after the current feature branch is merged or the user explicitly asks; keep committing to the current branch until then. The one permitted exception is checking out main solely to pull and immediately create a new feature branch.
