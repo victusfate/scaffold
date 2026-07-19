@@ -194,6 +194,25 @@ Without pausing or asking, call `mcp__github__subscribe_pr_activity` (or equival
 
 Return the PR URL and confirm subscription is active. One line each.
 
+### Verifying a real green (before any merge)
+
+If you go on to merge this PR, confirm the green is **real** first — a required
+status check can fail *open*. GitHub treats a **skipped** required check as
+**satisfied**, so a required roll-up job (`needs:` a matrix/shard set with no
+`if: always()`), or any required job gated by a path filter / `if:` that never
+runs, **skips** on failure and the gate passes silently.
+
+- **Read the actual check conclusions, not the merge button** (`mcp__github__…get_check_runs`
+  or `gh pr checks <pr>`). Treat a lingering `skipping` on a *required* check as
+  suspect, not a pass.
+- **Capture the watch's own exit**, not a wrapper's:
+  `gh pr checks <pr> --watch; echo "EXIT=$?"` — a surrounding shell/echo can mask a
+  failure with exit 0.
+- **Fix at the source** (if you own the CI): make roll-ups fail *closed* with
+  `if: ${{ always() }}` + a guard step that exits non-zero unless every dependency
+  succeeded (`needs.*.result != 'success'`). No ruleset change needed — the check
+  was already required, it just needed to fail closed.
+
 ### Error handling
 
 - Merge conflicts or branch divergence → rebase first, then retry.
