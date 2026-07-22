@@ -6,6 +6,7 @@ docs/agent-authoring-requirements.md
 docs/skills.md
 .claudeignore
 .claude/settings.json
+.claude/statusline.sh
 .claude/session-start/hook.sh
 .claude/read-once/hook.sh
 .claude/read-once/compact.sh
@@ -13,6 +14,7 @@ bin/bootstrap.sh
 bin/sync-from-scaffold.sh
 bin/globalize-skill.sh
 bin/install-skills.sh
+bin/install-statusline.sh
 bin/repo-bound-skills.txt
 .github/scaffold-files.txt
 .github/workflows/release.yml
@@ -181,6 +183,11 @@ skills/council.md
 .cursor/rules/council.mdc
 .agents/skills/council/SKILL.md
 .agent/workflows/council.md
+skills/statusline.md
+.claude/skills/statusline/SKILL.md
+.cursor/rules/statusline.mdc
+.agents/skills/statusline/SKILL.md
+.agent/workflows/statusline.md
 .claude/skills/improve/LICENSE
 .claude/skills/improve/references/audit-playbook.md
 .claude/skills/improve/references/closing-the-loop.md
