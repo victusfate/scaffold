@@ -138,3 +138,57 @@ A file scores 10 when:
 | Reader must hold >1 concept | Readability | major | Extract named intermediate or simplify |
 | Duplicate implementation (within file) | Quality | major | Extract shared logic into a helper |
 | Duplicate implementation (cross-file) | Quality | major | Import from canonical source; delete local copy |
+| Soft-deleted / neutered path (never executes) | Quality | major | Delete it — don't flag it off (R1) |
+| Domain module imports a mode/feature module | Encapsulation | major | Invert: mode → domain, never the reverse (R2) |
+| Discriminator field carrying two concepts | Quality, Clarity | major | Split into separate fields (R3) |
+| Same symbol exported by two modules | Quality | major | Finish the migration — delete/quarantine the old (R4) |
+| "Live" function with only test callers | Quality | major | It's dead — remove or rewire to a live entry point (R5) |
+
+---
+
+## Vestige & Layering
+
+Subsystems get replaced incrementally, and the failure mode is that the **old
+system is neutered instead of removed** — it stays load-bearing through shared
+modules and becomes invisible ("looks live, isn't"). These rules keep
+replacements clean; apply them with extra weight on any PR touching a
+replaced or legacy subsystem.
+
+- **R1 — No soft-deletes. Delete disabled paths; don't neuter them.** *(Quality, major)*
+  A code path that can never execute must be removed, not flagged off. Flag
+  identity/all-ones lookup tables (e.g. `ARMOR = {a:1, b:1, …}`), constant-false
+  guards, feature flags with no true-path, and — statically — union/enum members
+  with **no producer** (compared against but never assigned) or **no consumer**
+  (assigned but never read). A neutered branch keeps compiling and keeps its
+  imports alive; that is how vestige anchors itself into live code.
+- **R2 — Dependency direction: mode → domain, never domain → mode.** *(Encapsulation, major — highest leverage)*
+  Separate what a thing **is** (domain: geometry, identity, catalog data) from how
+  it **behaves under a mode/feature** (rules: combat, mounts, scoring). Feature/mode
+  modules import domain modules, never the reverse. Flag a core/domain module
+  importing a mode/feature/legacy module, and import cycles across the layer
+  boundary. When mode data lives inside shared domain modules, changing modes
+  can't remove it — the root cause of entanglement.
+- **R3 — One field, one concept.** *(Quality/Clarity, major)*
+  A discriminator field must carry a single semantic axis. Flag an enum/union whose
+  values fall into unrelated groups (e.g. `arc: fore | broadside` [geometry] mixed
+  with `point-defense | support` [role]). Overloaded fields can't be partially
+  retired — split them so each concept lives and dies independently.
+- **R4 — One system, one name. Replace, don't co-locate.** *(Quality, major)*
+  Flag the same symbol name exported by two modules (a tell of a parallel/duplicate
+  system). A migration is "done" only when the replaced system is **deleted** or
+  quarantined behind an explicit boundary — never left co-resident sharing types
+  with its successor. Every "add the new path" change must schedule "remove the old."
+- **R5 — Liveness is the call graph, not tests or comments.** *(Quality, major)*
+  Flag production functions whose only references are tests (green tests make dead
+  code look load-bearing — pin them to a live entry point instead), and comments
+  asserting current behavior for code with no live caller (a stale claim, not
+  documentation). Verify "is this used?" against producers/consumers in the graph,
+  never against prose.
+
+**Reviewer prompt** — on any PR touching a replaced/legacy subsystem, ask:
+
+- Does anything here only exist to keep an old path compiling? Delete it.
+- Does a domain module import a mode/feature module? Invert or move it.
+- Is any field carrying two unrelated meanings? Split it.
+- Is the replaced system fully gone, or still co-resident? Finish the removal.
+- Does any "live" function have only test callers? It's dead — remove or rewire.
