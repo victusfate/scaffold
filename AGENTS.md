@@ -44,6 +44,10 @@ paying for expensive autocomplete.
   user can veto at the cheap moment instead of after a rebuild.
 - **Flag your own over-engineering.** If a simpler path exists, name it first —
   don't make the user catch it.
+- For a **multidimensional tradeoff**, first isolate the *shape* of the trade
+  space — the axes being balanced and where the frontier sits — before
+  recommending. Balance work goes wrong when it's flattened to one dimension.
+  (`/council` does this in its framing step.)
 - Prefer **reversible moves** so course-correcting costs a sentence, not a redo.
 
 ### The user's judgment is the tiebreaker

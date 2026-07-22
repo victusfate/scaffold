@@ -31,6 +31,13 @@ fold in what makes the analysis specific rather than generic. State the decision
 the options on the table, the constraints, and what "success" means. Keep it
 even-handed — do not tip the advisors toward an answer.
 
+**Map the shape of the trade space.** Before the advisors weigh in, name the
+dimensions the decision actually balances (cost vs speed vs risk vs reversibility
+vs …), where the real tension lives, and roughly where the frontier sits — which
+options are Pareto-dominated and which are genuine tradeoffs. Include this in the
+brief so the council reasons about the real multidimensional space, not a flat
+pro/con list. Complex balance work goes wrong when it's flattened to one axis.
+
 **Phase 2 — Advisors (5 isolated subagents, parallel).**
 Spawn all five **in a single message** so they run concurrently. Each receives
 its lens definition (below) + the framed brief, and is told: respond
