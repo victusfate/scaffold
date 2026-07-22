@@ -83,7 +83,7 @@ A file scores 10 when:
 
 A file scores 10 when:
 
-- **Fits in one mental model** — a reader holds the whole file after one pass. All file types: ≤500 lines. *[mechanical: check with `wc -l`]* (major)
+- **Fits in one mental model** — a reader holds the whole file after one pass. All file types: ≤500 lines. *[mechanical: check with `wc -l`]* (major) — **the remedy for a long or growing file is always to split it into cohesive modules, never to cram**: do not strip comments, densify code, or hold back edits to fit under the limit. Cramming to hit a line count trades readability for the metric and defeats this criterion's intent.
 - **Top-to-bottom narrative** — declarations, derived state, effects, return appear in that order with no backtracking. (minor)
 - **No destructuring walls** — when a hook or function returns >8 names, callers group them or the hook is split. *[mechanical: count destructured names at call site]* (minor)
 - **No surprise control flow** — early returns are fine; deeply nested conditionals in JSX or effects are not. (major)
