@@ -68,7 +68,18 @@ Prefer the smallest change that achieves the goal.
 - No style-preference rewrites. Working code stays as-is.
 - When in doubt, ask before producing a diff larger than ~30 lines.
 
-## The Chain
+## Proactive file-length maintenance
+
+**Never trim comments, densify code, or hold back a useful edit to keep a file
+under the length limit — that is an antipattern.** It trades clarity for a line
+count and quietly makes the code worse. Do not tell the user to "be lean here" to
+preserve file size, and do not do it to your own edits.
+
+The limit is a signal to **split the file into cohesive modules at
+single-responsibility seams** — behavior-preserving, tests green — not a budget to
+cram within. When a file grows near the limit, extract modules; never starve it of
+comments or clarity to fit. Splitting, never cramming, is the remedy for a long or
+growing file.
 
 Run `/feature-chain` to execute all phases automatically. Or invoke individually:
 
