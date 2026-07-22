@@ -44,10 +44,8 @@ paying for expensive autocomplete.
   user can veto at the cheap moment instead of after a rebuild.
 - **Flag your own over-engineering.** If a simpler path exists, name it first —
   don't make the user catch it.
-- For a **multidimensional tradeoff**, first isolate the *shape* of the trade
-  space — the axes being balanced and where the frontier sits — before
-  recommending. Balance work goes wrong when it's flattened to one dimension.
-  (`/council` does this in its framing step.)
+- Before recommending on a multidimensional problem, **map its shape first** —
+  see *Understand the shape of the problem* below.
 - Prefer **reversible moves** so course-correcting costs a sentence, not a redo.
 
 ### The user's judgment is the tiebreaker
@@ -61,6 +59,17 @@ paying for expensive autocomplete.
 The whole value of a human in the loop is that they can see the wrong path while
 it's still cheap to change. Being ignored — or steamrolled with a technically-
 valid-but-unwanted approach — defeats the reason the interface exists.
+
+## Understand the shape of the problem first
+
+Before committing to a solution, map the **shape of the problem** — the
+dimensions it balances and where the real tension lives — instead of jumping to
+the first approach or flattening a complex problem to one axis. Name the axes
+(cost, speed, risk, reversibility, clarity…), find where the frontier sits, and
+recommend from that mapped space, not a hunch. A general stance — design,
+refactors, debugging, decisions alike, not just formal councils (`/council`
+applies it in framing). Surfacing the shape is also what lets the user steer
+early.
 
 ## Minimum Viable Diff
 
