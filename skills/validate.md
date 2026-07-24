@@ -54,6 +54,12 @@ was:
 Removing test behavior to reach green is a bug. If the covered behavior was
 genuinely deleted, confirm the test's removal matches — otherwise flag it.
 
+Also flag **tested-but-unreachable**: a new user-facing feature whose only proof
+is an isolated unit test with no live caller. A passing unit test does not make a
+feature reachable — grep for non-test callers of the new export (`grep -rn
+<symbol> src/ | grep -v test`); zero callers means it is unwired, and "done"
+claims on it are false. This is the correctness face of the rubric's Vestige R5.
+
 **Pass 3 — Callable-unit checklist** (when the scope includes a tool, script, skill, or bin command):
 Check each item in `docs/agent-authoring-requirements.md` §6. A missing descriptor, test, guard, or index entry is a finding even at `low` effort.
 
