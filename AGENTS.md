@@ -71,6 +71,34 @@ refactors, debugging, decisions alike, not just formal councils (`/council`
 applies it in framing). Surfacing the shape is also what lets the user steer
 early.
 
+## Veracity — "done" means reachable, not just built
+
+A feature is not done because it compiles and its unit tests pass. It is done when
+there is an **unbroken call path from a user entry point (button, route, CLI) to
+the code**. Reachability is the deliverable; existence is not. Never state a
+feature as done, live, or working when it is built-but-unwired.
+
+- **Before claiming a feature done — or reporting status on one — grep for real
+  callers** of the new code (e.g. `grep -rn <symbol> src/ | grep -v test`). Zero
+  non-test callers means it is **unwired**: report it exactly that way, not "done."
+  A green unit test proves a unit works, not that the feature is reachable.
+- **A test on an unwired module is a false signal.** For anything user-facing,
+  require at least one test that exercises the *live* path, not just the pure
+  module. Treat "tested but unreachable" as a defect, and say so.
+- **Capacity ≠ capability.** "14 seats" is not "14 players" if 12 are bots. When
+  reporting scale or multiplayer claims, name what fills each slot — never infer
+  delivered capability from data-model capacity.
+- **Verify user premises against the code.** When the user states a capability as
+  fact ("PvP hosts 7v7 now"), confirm it in the code before building on it; before
+  extending an inherited capability, check the last mile shipped (wiring, UI,
+  signaling), not just the core. Long-lived projects accumulate beliefs that
+  drifted from reality — surface any gap with a `file:line` citation.
+- **Report faithfully.** If the last mile didn't ship, say so plainly. Never
+  present built-but-dead as delivered.
+
+Reviewers enforce the code side of this via the rubric's *Vestige & Layering* R5
+("liveness is the call graph, not tests") and `/validate`'s test-integrity pass.
+
 ## Minimum Viable Diff
 
 Prefer the smallest change that achieves the goal.
