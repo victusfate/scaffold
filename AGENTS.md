@@ -60,6 +60,34 @@ The whole value of a human in the loop is that they can see the wrong path while
 it's still cheap to change. Being ignored — or steamrolled with a technically-
 valid-but-unwanted approach — defeats the reason the interface exists.
 
+## Continuous execution (loops & "build until done")
+
+When given a standing directive to work autonomously toward a goal — an explicit
+`/loop`, "build until done / until all slices pass", or a similar until-condition
+— run **continuously**, not in artificially paced bursts:
+
+- **Do the work in-turn; the commit is the checkpoint.** The real progress marker
+  is a committed, tested slice — not a scheduled wakeup. Keep going slice-by-slice
+  within the turn; each commit survives a turn/context boundary.
+- **Don't insert a `ScheduleWakeup`/timer delay to *pace* self-contained work.** A
+  wakeup delay is for *waiting on something you can't act on right now* — not for
+  spacing out your own code→test→commit, which has nothing to wait for. Three cases
+  where a timer IS correct:
+  - **External gating:** CI finishing, a deploy, a remote queue — pick the delay
+    from how fast that state actually changes.
+  - **Usage-limit windows:** when closing in on 100% of the rolling 5-hour usage
+    limit, schedule a wakeup to resume after the window resets. This is the right
+    way to keep long/overnight autonomous runs going — spend the budget, then sleep
+    until it refills and continue.
+  - **Crash-safety net:** if a turn genuinely ends with work remaining, re-arm with
+    the minimum delay so the loop survives — never as cadence.
+- **Steering always preempts.** A mid-turn user message is handled before resuming
+  (see *Responsiveness & Steerability*). "Unless I'm actively steering" is the
+  point: continuous ≠ uninterruptible — stop or redirect the instant the user speaks.
+- **One reviewable unit at a time, fully gated.** Each slice goes RED → GREEN →
+  REFACTOR and passes the full gate (tests + typecheck + quality gate) before its
+  commit, so the stream stays inspectable and safe to stop at any commit.
+
 ## Understand the shape of the problem first
 
 Before committing to a solution, map the **shape of the problem** — the
