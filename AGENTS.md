@@ -127,6 +127,22 @@ feature as done, live, or working when it is built-but-unwired.
 Reviewers enforce the code side of this via the rubric's *Vestige & Layering* R5
 ("liveness is the call graph, not tests") and `/validate`'s test-integrity pass.
 
+## Default language: TypeScript
+
+New code in this repo — source, scripts, and tooling — is **TypeScript (`.ts`)**,
+run via Node's native type-stripping (`node script.ts`, Node ≥23.6.0 — see the
+`engines` floor in `package.json` and the note in `.npmrc`). Do not reach for
+another language or file format by default. When a task could be done in several
+languages, choose TypeScript; do not introduce `.js`, `.mjs`, `.cjs` or a second
+runtime just because it's conventional elsewhere.
+
+The only exception is a **hard blocking need** — a tool whose own loader or runtime
+*requires* another language/format (e.g. `eslint.config.mjs`: ESLint's flat-config
+loader resolves the config as an ES module and can't load a `.ts` file directly).
+When you hit one, **stop and get explicit approval before adding the off-language
+file**, and note the reason in a comment at the top of it. "It's a script, `.mjs`
+is conventional" is not a blocking need — use TypeScript.
+
 ## Minimum Viable Diff
 
 Prefer the smallest change that achieves the goal.
