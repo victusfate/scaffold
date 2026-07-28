@@ -127,6 +127,33 @@ feature as done, live, or working when it is built-but-unwired.
 Reviewers enforce the code side of this via the rubric's *Vestige & Layering* R5
 ("liveness is the call graph, not tests") and `/validate`'s test-integrity pass.
 
+## Default language
+
+This repo's default language for new code — source, scripts, and tooling — is
+declared in **`.agent/default-language.md`**. Read that file at the start of any
+task that writes code and honor it:
+
+- **When it names a language,** write new code in that language and file format by
+  default. When a task could be done in several languages, choose the declared
+  one; do not introduce another language, extension, or a second runtime just
+  because it's conventional elsewhere.
+- **When the file is absent, or declares the language `unset`,** there is no repo
+  default — infer the language from the existing codebase and match what's already
+  there.
+
+The only exception is a **hard blocking need** — a tool whose own loader or runtime
+*requires* a different language/format (e.g. `eslint.config.mjs`: ESLint's
+flat-config loader resolves the config as an ES module and can't load a `.ts` file
+directly). When you hit one, **stop and get explicit approval before adding the
+off-language file**, and note the reason in a comment at the top of it. "It's a
+script, X is conventional" is not a blocking need — use the declared language.
+
+**Setting the default (per repo).** `.agent/default-language.md` is
+consumer-owned — scaffold does not sync or overwrite it, so each repo sets its own.
+Create it with a level-1 heading naming the language, then a sentence or two on the
+file extension, how code runs, and any formats to avoid. To opt out of a repo
+default, omit the file or write `# Default language: unset`.
+
 ## Minimum Viable Diff
 
 Prefer the smallest change that achieves the goal.
