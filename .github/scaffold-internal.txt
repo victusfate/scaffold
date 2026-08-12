@@ -54,3 +54,11 @@ scripts/test-*.sh
 tools/README.md
 tools/hoist-skill/test-integration
 tools/sync
+
+# Consumer-owned per AGENTS.md ("scaffold does not sync or overwrite it") — each
+# repo sets its own default language; scaffold's own copy is never shipped.
+.agent/default-language.md
+
+# Per-repo work-queue state (see skills/queue.md). Each repo owns its own queue;
+# scaffold ships the /queue skill + scripts/queue.ts, not this runtime file.
+.agent/queue/queue.md
