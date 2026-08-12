@@ -78,6 +78,7 @@ export const DEFAULT_CONFIG: QueueConfig = {
   status: 'running',
   interval: '6m',
   maxFailures: 3,
+  // quality-ok: magic-number — default lease is 30 minutes before a crashed worker is reclaimed
   leaseMinutes: 30,
   maxParallel: 1,
   integrationBranch: '',

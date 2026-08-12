@@ -3,7 +3,6 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-QUEUE_TS="$HERE/queue.ts"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
@@ -19,6 +18,7 @@ mkdir scripts
 cp "$HERE/queue.ts" "$HERE/queue-model.ts" scripts/
 echo "seed" > file.txt
 git add -A; git commit -qm init
+# shellcheck disable=SC2034  # used inside the single-quoted predicates eval'd by check()
 BASE="$(git rev-parse --abbrev-ref HEAD)"
 
 run() { node scripts/queue.ts "$@"; }

@@ -20,12 +20,12 @@ echo "== tick exit codes =="
 check "empty running → idle"     "$(code tick)" 3
 Q add "first task" >/dev/null
 check "with work → dispatched"   "$(code tick)" 0
-Q done task-001 >/dev/null
+Q "done" task-001 >/dev/null
 check "drained → idle"           "$(code tick)" 3
 
 echo "== enqueue kick hint (running + idle) =="
 grep_check "add hints to start"  "$(Q add 'another')" "start now"
-Q done task-002 >/dev/null
+Q "done" task-002 >/dev/null
 
 echo "== stopped vs paused codes =="
 Q stop >/dev/null
@@ -43,7 +43,7 @@ check "queue now running"        "$(Q list | grep -c 'running')" 1
 
 echo "== ready exit codes under parallel cap =="
 Q start >/dev/null
-Q done task-003 >/dev/null            # finish the one auto-resumed above
+Q "done" task-003 >/dev/null            # finish the one auto-resumed above
 Q add "p1" >/dev/null; Q add "p2" >/dev/null; Q add "p3" >/dev/null  # task-004/005/006
 Q config maxParallel 2 >/dev/null
 check "ready with slots → dispatched" "$(code ready)" 0
