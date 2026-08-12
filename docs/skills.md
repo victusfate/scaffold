@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`.
+Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/queue`.
 
 Bundled skills (self-contained Anthropic Agent Skills, Claude harness; loaded by description rather than a slash command): `improve`.
 <!-- END_SKILLS_INVOCATION -->
@@ -60,6 +60,7 @@ tools/
     diagram/SKILL.md          # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council/SKILL.md          # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
     statusline/SKILL.md       # Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing
+    queue/SKILL.md            # Manage a visible, editable Markdown work queue that loop-driven agents drain one task at a time — list, add, seed from in-memory items, prioritize, stop/restart, and work the next task
     improve/SKILL.md          # (bundled) Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
@@ -93,6 +94,7 @@ tools/
     diagram.mdc          # mirrors diagram for Cursor
     council.mdc          # mirrors council for Cursor
     statusline.mdc       # mirrors statusline for Cursor
+    queue.mdc            # mirrors queue for Cursor
 .agents/
   skills/
     feature-chain/SKILL.md    # Orchestrate design → PRD → TDD → review end to end
@@ -118,6 +120,7 @@ tools/
     diagram/SKILL.md          # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council/SKILL.md          # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
     statusline/SKILL.md       # Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing
+    queue/SKILL.md            # Manage a visible, editable Markdown work queue that loop-driven agents drain one task at a time — list, add, seed from in-memory items, prioritize, stop/restart, and work the next task
 .agent/
   rules/
     agents.md           # thin pointer to AGENTS.md (always-on)
@@ -145,6 +148,7 @@ tools/
     diagram.md          # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council.md          # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
     statusline.md       # Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing
+    queue.md            # Manage a visible, editable Markdown work queue that loop-driven agents drain one task at a time — list, add, seed from in-memory items, prioritize, stop/restart, and work the next task
 scripts/
   check-resolvable.ts            # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-skills-doc.ts           # regenerate docs/skills.md skill sections from RESOLVER.md
