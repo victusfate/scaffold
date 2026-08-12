@@ -189,13 +189,15 @@ do.
 | `tick` / `ready` exit | Meaning | Next action |
 |---|---|---|
 | `0` | a task was dispatched | do it, then loop **immediately** |
-| `3` | idle — nothing eligible | re-arm a **long** fallback (~20–30 min) to catch newly-added work |
-| `4` | paused for a usage window | slow-poll at `pausePoll`; auto-resumes when the window reopens |
+| `3` | idle — nothing eligible | re-arm the fallback at config **`idlePoll`** (default 20m) to catch newly-added work |
+| `4` | paused for a usage window | slow-poll at config **`pausePoll`** (default 30m); auto-resumes when the window reopens |
 | `5` | stopped (manual) | halt until `queue start` |
 
-Use dynamic `/loop` (`ScheduleWakeup`) with those delays rather than a constant
-`/loop 6m`. `node scripts/queue.ts loop` prints an invocation for the current state
-(fast drain, or slow-poll while paused).
+The three fallback cadences are all editable config: `interval` (fixed one-tick
+loops), `idlePoll` (continuous-drainer idle fallback), `pausePoll` (paused). Set
+them with `queue config idlePoll 20m` etc. `node scripts/queue.ts loop` prints the
+invocation for the current state — it wakes at `idlePoll` and drains continuously
+each wake — so you never hardcode a delay.
 
 **Enqueue kicks the drain.** After `add`/`add-many` on a running, idle queue the CLI
 hints to start now — so newly-added work begins in seconds, not on the next poll.

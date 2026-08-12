@@ -81,6 +81,10 @@ integrationBranch: queue/integration
   const e = parseQueue('');
   assert('empty defaults', e.config.status === 'running' && e.tasks.length === 0
     && e.config.maxParallel === 1);
+  assert('cadence defaults', e.config.interval === '6m' && e.config.idlePoll === '20m'
+    && e.config.pausePoll === '30m');
+  assert('idlePoll round-trips',
+    parseQueue(serializeQueue(setConfig(e, { idlePoll: '15m' }))).config.idlePoll === '15m');
 }
 
 // ---- addTask with metadata + addMany ----

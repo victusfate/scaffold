@@ -52,6 +52,13 @@ Q claim task-005 >/dev/null 2>&1
 # two active at cap 2 → nothing more ready
 check "ready at cap → idle"      "$(code ready)" 3
 
+echo "== idle fallback cadence is config-driven =="
+Q stop >/dev/null; Q start >/dev/null
+grep_check "loop emits default idlePoll 20m" "$(Q loop)" "/loop 20m"
+Q config idlePoll 15m >/dev/null
+grep_check "loop reflects idlePoll change" "$(Q loop)" "/loop 15m"
+grep_check "loop names all cadences"        "$(Q loop)" "busy → continue immediately"
+
 echo
 echo "queue-loop: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

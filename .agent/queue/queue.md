@@ -8,6 +8,7 @@ leaseMinutes: 30
 maxParallel: 1
 integrationBranch: 
 resumeAt: 
+idlePoll: 20m
 pausePoll: 30m
 -->
 

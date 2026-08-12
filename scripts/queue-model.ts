@@ -63,6 +63,8 @@ export interface QueueConfig {
   integrationBranch: string;
   /** ISO time to auto-resume a usage-limit pause; empty = not paused-until. */
   resumeAt: string;
+  /** Fallback cadence the loop re-checks at when idle (nothing eligible to run). */
+  idlePoll: string;
   /** Slow cadence the loop backs off to while paused (poll until the window reopens). */
   pausePoll: string;
 }
@@ -80,6 +82,7 @@ export const DEFAULT_CONFIG: QueueConfig = {
   maxParallel: 1,
   integrationBranch: '',
   resumeAt: '',
+  idlePoll: '20m',
   pausePoll: '30m',
 };
 
@@ -119,6 +122,7 @@ function applyConfig(config: QueueConfig, key: string, val: string): void {
     case 'maxParallel': config.maxParallel = Math.max(1, Number(val) || 1); break;
     case 'integrationBranch': config.integrationBranch = val; break;
     case 'resumeAt': config.resumeAt = val; break;
+    case 'idlePoll': config.idlePoll = val || DEFAULT_CONFIG.idlePoll; break;
     case 'pausePoll': config.pausePoll = val || DEFAULT_CONFIG.pausePoll; break;
     default: break;
   }
@@ -230,6 +234,7 @@ export function serializeQueue(q: Queue): string {
     `maxParallel: ${c.maxParallel}`,
     `integrationBranch: ${c.integrationBranch}`,
     `resumeAt: ${c.resumeAt}`,
+    `idlePoll: ${c.idlePoll}`,
     `pausePoll: ${c.pausePoll}`,
     '-->', '',
     ...HEADER, '',

@@ -225,9 +225,14 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
 
 function cmdConfig(q: Queue, key: string, val: string): number {
   const numKeys: (keyof QueueConfig)[] = ['maxFailures', 'leaseMinutes', 'maxParallel'];
-  if (key === 'integrationBranch') save(setConfig(q, { integrationBranch: val }));
+  const strKeys: (keyof QueueConfig)[] = ['integrationBranch', 'idlePoll', 'pausePoll'];
+  if (strKeys.includes(key as keyof QueueConfig)) save(setConfig(q, { [key]: val } as Partial<QueueConfig>));
   else if (numKeys.includes(key as keyof QueueConfig)) save(setConfig(q, { [key]: Number(val) } as Partial<QueueConfig>));
-  else { console.error(`config: unknown key ${key} (maxFailures|leaseMinutes|maxParallel|integrationBranch)`); return 1; }
+  else {
+    console.error(`config: unknown key ${key} `
+      + '(maxFailures|leaseMinutes|maxParallel|integrationBranch|idlePoll|pausePoll)');
+    return 1;
+  }
   console.log(`config ${key} = ${val}`);
   return 0;
 }
@@ -306,9 +311,13 @@ function cmdLoop(q: Queue): number {
     return 0;
   }
   const drain = q.config.maxParallel > 1
-    ? 'run `node scripts/queue.ts ready`, dispatch each returned task in its own worktree, then done/fail each'
-    : 'run `node scripts/queue.ts tick`, do the one task it prints, then `done <id>` or `fail <id>`';
-  console.log(`/loop ${q.config.interval} drain the work queue: ${drain}`);
+    ? 'run `node scripts/queue.ts ready` and dispatch each returned task in its own worktree, then done/fail each'
+    : 'run `node scripts/queue.ts tick` and do the task it prints, then `done <id>` or `fail <id>`';
+  // The loop wakes at idlePoll: each wake drains continuously until idle (tick exits
+  // 3), so idlePoll is the fallback re-check cadence, not a per-task delay.
+  console.log(`/loop ${q.config.idlePoll} drain the work queue: repeatedly ${drain} — `
+    + `keep going while tick/ready exits 0, stop the turn when it exits 3 (idle). `
+    + `Cadence: busy → continue immediately · idle → ${q.config.idlePoll} · paused → ${q.config.pausePoll}.`);
   return 0;
 }
 
