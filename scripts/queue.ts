@@ -64,6 +64,12 @@ const VALUE_FLAGS = new Set([
 ]);
 const MS_PER_MIN = 60000;
 
+// Exit codes for the loop entry points (tick, ready) so a driver can branch its
+// next cadence without parsing text: 0 = work dispatched → continue immediately;
+// 3 = idle → back off to a long fallback; 4 = paused for a usage window → slow-poll;
+// 5 = stopped → halt. 1 stays a usage error.
+const EXIT = { DISPATCHED: 0, ERROR: 1, IDLE: 3, PAUSED: 4, STOPPED: 5 } as const;
+
 function parse(rest: string[]): Parsed {
   const positionals: string[] = [];
   const flags = new Map<string, string>();
@@ -140,15 +146,28 @@ function taskBlock(t: Task): string {
 
 // ---------------------------------------------------------------- commands
 
-function cmdTick(q: Queue): number {
+/**
+ * Auto-resume a due usage pause, then report whether the queue is drainable.
+ * Returns a blocking EXIT code (STOPPED/PAUSED) or null to proceed.
+ */
+function pauseGate(q: Queue): { queue: Queue; blocked: number | null } {
   const due = resumeIfDue(q, now());
   if (due.resumed) { q = due.queue; save(q); log('auto-resumed (usage window reopened)'); }
   if (q.config.status === 'stopped') {
-    console.log(q.config.resumeAt
-      ? `queue: PAUSED until ${q.config.resumeAt} (usage window) — auto-resumes on the next tick after`
-      : 'queue: STOPPED — run `queue start` to resume');
-    return 0;
+    if (q.config.resumeAt) {
+      console.log(`queue: PAUSED until ${q.config.resumeAt} (usage window) — auto-resumes after`);
+      return { queue: q, blocked: EXIT.PAUSED };
+    }
+    console.log('queue: STOPPED — run `queue start` to resume');
+    return { queue: q, blocked: EXIT.STOPPED };
   }
+  return { queue: q, blocked: null };
+}
+
+function cmdTick(q: Queue): number {
+  const gate = pauseGate(q);
+  if (gate.blocked !== null) return gate.blocked;
+  q = gate.queue;
   const swept = reclaimStale(q, now(), q.config.leaseMinutes);
   if (swept.reclaimed.length) {
     for (const t of swept.reclaimed) log(`reclaimed ${t.id} (stale lease)`);
@@ -161,14 +180,28 @@ function cmdTick(q: Queue): number {
       ? `queue: IDLE — ${stuck.length} task(s) blocked by a failed dependency: ${stuck.map(x => x.id).join(', ')}`
       : 'queue: IDLE — no eligible tasks');
     save(q);
-    return 0;
+    return EXIT.IDLE;
   }
   if (t.status === 'pending') { q = beginTask(q, t.id, now(), t.owner); log(`begin ${t.id}`); }
   save(q);
   const current = q.tasks.find(x => x.id === t.id)!;
   console.log(`queue: working ${t.id}\n${taskBlock(current)}\n`
     + `When finished: node scripts/queue.ts done ${t.id}  (or fail ${t.id} "<reason>")`);
-  return 0;
+  return EXIT.DISPATCHED;
+}
+
+function cmdReady(q: Queue): number {
+  const gate = pauseGate(q);
+  if (gate.blocked !== null) return gate.blocked;
+  q = gate.queue;
+  const r = readyTasks(q);
+  if (!r.length) {
+    console.log(`queue: none ready (maxParallel ${q.config.maxParallel}, `
+      + `${q.tasks.filter(t => t.status === 'active').length} active)`);
+    return EXIT.IDLE;
+  }
+  console.log(r.map(t => `${t.id} — ${t.title}`).join('\n'));
+  return EXIT.DISPATCHED;
 }
 
 function cmdDone(q: Queue, id: string, skip: boolean): number {
@@ -300,7 +333,7 @@ function main(argv: string[]): number {
       q = addTask(q, title, { top: f.bools.has('top'), ...taskOverrides(f) });
       save(q); log(`add ${title}`);
       const t = q.tasks[f.bools.has('top') ? 0 : q.tasks.length - 1];
-      console.log(`added ${t.id}${t.mode === 'chain' ? ' (chain)' : ''} — ${title}`); return 0;
+      console.log(`added ${t.id}${t.mode === 'chain' ? ' (chain)' : ''} — ${title}${drainKick(q)}`); return 0;
     }
     case 'add-many': {
       const raw = f.positionals.length ? f.positionals : readStdin();
@@ -308,7 +341,7 @@ function main(argv: string[]): number {
       if (!items.length) { console.error('add-many: no items (pass args or pipe lines on stdin)'); return 1; }
       q = addMany(q, items, { top: f.bools.has('top') });
       save(q); log(`add-many ${items.length}`);
-      console.log(`added ${items.length} task(s); ${q.tasks.length} total`); return 0;
+      console.log(`added ${items.length} task(s); ${q.tasks.length} total${drainKick(q)}`); return 0;
     }
     case 'set': {
       const [, field, ...v] = f.positionals;
@@ -322,13 +355,7 @@ function main(argv: string[]): number {
       console.log(q.config.status === 'stopped' ? 'queue: STOPPED'
         : t ? `next: ${t.id} — ${t.title}` : 'queue: IDLE'); return 0;
     }
-    case 'ready': {
-      const r = readyTasks(q);
-      console.log(r.length ? r.map(t => `${t.id} — ${t.title}`).join('\n')
-        : `queue: none ready (maxParallel ${q.config.maxParallel}, `
-          + `${q.tasks.filter(t => t.status === 'active').length} active)`);
-      return 0;
-    }
+    case 'ready': return cmdReady(q);
     case 'tick': return cmdTick(q);
 
     case 'claim': {
@@ -395,6 +422,12 @@ function readStdin(): string[] {
 }
 function cleanItem(line: string): string {
   return line.replace(/^\s*[-*]\s*(\[[ >xX!]?\]\s*)?/, '').trim();
+}
+
+/** Nudge toward starting a drain when work was added to a running, idle queue. */
+function drainKick(q: Queue): string {
+  const idle = q.config.status === 'running' && !q.tasks.some(t => t.status === 'active');
+  return idle ? '  → start now: `node scripts/queue.ts tick` (or the loop)' : '';
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

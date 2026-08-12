@@ -167,20 +167,44 @@ Merge-back is intentionally **not** a CLI auto-merge — the queue gives you
 isolation (`worktree add`/`remove`) and leaves integration to a judgment-applying
 agent, per this repo's "liveness/veracity" and D7 principles.
 
-## Running it on a loop (auto-drain)
+## Running it: work-driven, not clock-driven
 
-To keep the queue draining, **invoke the `/loop` skill automatically** — don't make
-the user wire it. The interval's single source of truth is the file, so read it and
-pass it through:
+Keep the queue **continuously busy** — a fixed timer is a fallback, not the pacer.
+The worker that finishes a task is the one that starts the next, so there's nothing
+to guess about when a task ends.
 
-- `node scripts/queue.ts loop` prints the exact `/loop <interval> …` invocation for
-  the current queue (it adapts to serial vs. fan-out). Run that `/loop`.
-- When the user asks to **run/drain/keep working** the queue (or `/queue` with no
-  clear one-shot intent), start the loop yourself: read `interval` from the file
-  and invoke `/loop <interval>` with the tick/ready drain prompt.
+**Drain continuously in-turn.** Don't sleep between tasks — loop until the queue is
+empty:
 
-Change cadence with `queue interval <dur>` (and the loop picks it up); stop with
-`queue stop` (or pausing the loop); resume with `queue start`.
+```
+tick → execute → done → tick → execute → done → …   (no delay between tasks)
+```
+
+This is AGENTS.md's continuous-execution rule: the commit per task is the
+checkpoint, so a crash resumes; the interval only matters when there's nothing to
+do.
+
+**Branch the next cadence on `tick`'s exit code** (so you never pick an interval):
+
+| `tick` / `ready` exit | Meaning | Next action |
+|---|---|---|
+| `0` | a task was dispatched | do it, then loop **immediately** |
+| `3` | idle — nothing eligible | re-arm a **long** fallback (~20–30 min) to catch newly-added work |
+| `4` | paused for a usage window | slow-poll at `pausePoll`; auto-resumes when the window reopens |
+| `5` | stopped (manual) | halt until `queue start` |
+
+Use dynamic `/loop` (`ScheduleWakeup`) with those delays rather than a constant
+`/loop 6m`. `node scripts/queue.ts loop` prints an invocation for the current state
+(fast drain, or slow-poll while paused).
+
+**Enqueue kicks the drain.** After `add`/`add-many` on a running, idle queue the CLI
+hints to start now — so newly-added work begins in seconds, not on the next poll.
+When you add tasks and no drain is running, start one immediately.
+
+**Auto-drain on request.** When the user asks to run/drain/keep working the queue
+(or `/queue` with no clear one-shot intent), start the loop yourself — no need to
+make them wire `/loop`. Change cadence with `queue interval <dur>`; stop with
+`queue stop`; resume with `queue start`.
 
 ## Usage limits — pause and ride out the window
 
