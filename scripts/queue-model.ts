@@ -61,6 +61,10 @@ export interface QueueConfig {
   leaseMinutes: number;
   maxParallel: number;
   integrationBranch: string;
+  /** ISO time to auto-resume a usage-limit pause; empty = not paused-until. */
+  resumeAt: string;
+  /** Slow cadence the loop backs off to while paused (poll until the window reopens). */
+  pausePoll: string;
 }
 
 export interface Queue {
@@ -75,6 +79,8 @@ export const DEFAULT_CONFIG: QueueConfig = {
   leaseMinutes: 30,
   maxParallel: 1,
   integrationBranch: '',
+  resumeAt: '',
+  pausePoll: '30m',
 };
 
 const MS_PER_MIN = 60000;
@@ -112,6 +118,8 @@ function applyConfig(config: QueueConfig, key: string, val: string): void {
     case 'leaseMinutes': config.leaseMinutes = Number(val) || DEFAULT_CONFIG.leaseMinutes; break;
     case 'maxParallel': config.maxParallel = Math.max(1, Number(val) || 1); break;
     case 'integrationBranch': config.integrationBranch = val; break;
+    case 'resumeAt': config.resumeAt = val; break;
+    case 'pausePoll': config.pausePoll = val || DEFAULT_CONFIG.pausePoll; break;
     default: break;
   }
 }
@@ -221,6 +229,8 @@ export function serializeQueue(q: Queue): string {
     `leaseMinutes: ${c.leaseMinutes}`,
     `maxParallel: ${c.maxParallel}`,
     `integrationBranch: ${c.integrationBranch}`,
+    `resumeAt: ${c.resumeAt}`,
+    `pausePoll: ${c.pausePoll}`,
     '-->', '',
     ...HEADER, '',
   ];
@@ -305,6 +315,23 @@ export function recordFailure(
   // terminal keeps position; a retry drops to the back so other work proceeds first.
   const tasks = terminal ? q.tasks.map(t => (t.id === id ? updated : t)) : [...rest, updated];
   return { queue: withTasks(q, tasks), terminal, failures };
+}
+
+/** Pause the queue until an ISO time, to ride out a usage-limit window. */
+export function pauseUntil(q: Queue, resumeAtIso: string): Queue {
+  return setConfig(q, { status: 'stopped', resumeAt: resumeAtIso });
+}
+
+/**
+ * If the queue is paused-until and that time has arrived, resume it (clearing
+ * resumeAt). A plain manual stop (no resumeAt) is left untouched.
+ */
+export function resumeIfDue(q: Queue, nowIso: string): { queue: Queue; resumed: boolean } {
+  const { status, resumeAt } = q.config;
+  if (status === 'stopped' && resumeAt && Date.parse(nowIso) >= Date.parse(resumeAt)) {
+    return { queue: setConfig(q, { status: 'running', resumeAt: '' }), resumed: true };
+  }
+  return { queue: q, resumed: false };
 }
 
 function ageMinutes(fromIso: string | null, nowIso: string): number {

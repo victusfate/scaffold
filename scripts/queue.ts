@@ -29,8 +29,8 @@ import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import {
   parseQueue, serializeQueue, render as renderModel,
-  addTask, addMany, setTaskStatus, setField, moveToTop, removeTask, setConfig,
-  beginTask, markDone, recordFailure, reclaimStale,
+  addTask, addMany, setField, moveToTop, removeTask, setConfig,
+  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
   nextActionable, readyTasks, deadlocked,
   type Queue, type Task, type QueueConfig,
 } from './queue-model.ts';
@@ -59,7 +59,10 @@ function log(msg: string): void {
 
 interface Parsed { positionals: string[]; flags: Map<string, string>; bools: Set<string>; }
 
-const VALUE_FLAGS = new Set(['mode', 'slug', 'deps', 'files', 'validate', 'accept', 'worker', 'note']);
+const VALUE_FLAGS = new Set([
+  'mode', 'slug', 'deps', 'files', 'validate', 'accept', 'worker', 'note', 'until', 'minutes',
+]);
+const MS_PER_MIN = 60000;
 
 function parse(rest: string[]): Parsed {
   const positionals: string[] = [];
@@ -138,7 +141,14 @@ function taskBlock(t: Task): string {
 // ---------------------------------------------------------------- commands
 
 function cmdTick(q: Queue): number {
-  if (q.config.status === 'stopped') { console.log('queue: STOPPED — run `queue start` to resume'); return 0; }
+  const due = resumeIfDue(q, now());
+  if (due.resumed) { q = due.queue; save(q); log('auto-resumed (usage window reopened)'); }
+  if (q.config.status === 'stopped') {
+    console.log(q.config.resumeAt
+      ? `queue: PAUSED until ${q.config.resumeAt} (usage window) — auto-resumes on the next tick after`
+      : 'queue: STOPPED — run `queue start` to resume');
+    return 0;
+  }
   const swept = reclaimStale(q, now(), q.config.leaseMinutes);
   if (swept.reclaimed.length) {
     for (const t of swept.reclaimed) log(`reclaimed ${t.id} (stale lease)`);
@@ -201,10 +211,70 @@ function cmdArchive(q: Queue): number {
   return 0;
 }
 
+// ---------------------------------------------------------------- worktrees
+
+function git(args: string, cwd = ROOT): string {
+  return execSync(`git ${args}`, { cwd, encoding: 'utf8', stdio: 'pipe' }).trim();
+}
+function currentBranch(): string {
+  try { return git('rev-parse --abbrev-ref HEAD'); } catch { return 'main'; }
+}
+function wtRel(id: string): string { return join('.agent', 'queue', 'wt', id); }
+
+/**
+ * Create an isolated git worktree for a task on branch `queue/<id>`, cut from the
+ * integration base (config.integrationBranch, or the current branch). Records the
+ * branch + worktree path on the task. Merge-back is deliberately agent-driven
+ * (see skills/queue.md, aligned with design.md D7) — the CLI never auto-merges.
+ */
+function cmdWorktreeAdd(q: Queue, id: string): number {
+  const t = q.tasks.find(x => x.id === id);
+  if (!t) { console.error(`worktree add: unknown task id ${id}`); return 1; }
+  const base = q.config.integrationBranch || currentBranch();
+  const branch = `queue/${id}`;
+  const rel = wtRel(id);
+  const abs = join(ROOT, rel);
+  try {
+    try { git(`worktree add ${abs} -b ${branch} ${base}`); }
+    catch { git(`worktree add ${abs} ${branch}`); } // branch already exists
+  } catch (e) { console.error(`worktree add failed: ${(e as Error).message}`); return 1; }
+  save(setField(q, id, { branch, worktree: rel }));
+  log(`worktree add ${id} → ${rel} (${branch} off ${base})`);
+  console.log(`worktree ready: ${rel}  on ${branch}  (base ${base})\n`
+    + `cd ${rel} to work in isolation; on success merge ${branch} → ${base}, then `
+    + `\`node scripts/queue.ts worktree remove ${id}\``);
+  return 0;
+}
+
+function cmdWorktreeRemove(q: Queue, id: string): number {
+  const t = q.tasks.find(x => x.id === id);
+  const rel = t?.worktree ?? wtRel(id);
+  try { git(`worktree remove --force ${join(ROOT, rel)}`); } catch { /* already gone */ }
+  if (t) save(setField(q, id, { worktree: null }));
+  log(`worktree remove ${id}`);
+  console.log(`removed worktree for ${id}`);
+  return 0;
+}
+
+function cmdWorktree(q: Queue, sub: string, id: string): number {
+  if (sub === 'add') return cmdWorktreeAdd(q, id);
+  if (sub === 'remove' || sub === 'rm') return cmdWorktreeRemove(q, id);
+  if (sub === 'list') { console.log(git('worktree list')); return 0; }
+  console.error('usage: queue worktree add|remove|list <id>');
+  return 1;
+}
+
 function cmdLoop(q: Queue): number {
+  const paused = q.config.status === 'stopped' && q.config.resumeAt !== '';
+  if (paused) {
+    console.log(`/loop ${q.config.pausePoll} queue is paused for a usage window: run `
+      + '`node scripts/queue.ts tick` — it auto-resumes once the window reopens, then '
+      + 'switch back to the normal interval');
+    return 0;
+  }
   const drain = q.config.maxParallel > 1
-    ? `run \`node scripts/queue.ts ready\`, dispatch each returned task in its own worktree, then done/fail each`
-    : `run \`node scripts/queue.ts tick\`, do the one task it prints, then \`done <id>\` or \`fail <id>\``;
+    ? 'run `node scripts/queue.ts ready`, dispatch each returned task in its own worktree, then done/fail each'
+    : 'run `node scripts/queue.ts tick`, do the one task it prints, then `done <id>` or `fail <id>`';
   console.log(`/loop ${q.config.interval} drain the work queue: ${drain}`);
   return 0;
 }
@@ -290,19 +360,32 @@ function main(argv: string[]): number {
       if (!needId()) { console.error('remove: unknown task id'); return 1; }
       save(removeTask(q, id)); log(`remove ${id}`); console.log(`removed ${id}`); return 0;
 
-    case 'start': case 'stop':
-      save(setConfig(q, { status: cmd === 'start' ? 'running' : 'stopped' }));
-      log(cmd); console.log(`queue: ${cmd === 'start' ? 'running' : 'stopped'}`); return 0;
+    case 'start':
+      save(setConfig(q, { status: 'running', resumeAt: '' }));
+      log('start'); console.log('queue: running'); return 0;
+    case 'stop':
+      save(setConfig(q, { status: 'stopped', resumeAt: '' }));
+      log('stop'); console.log('queue: stopped'); return 0;
+    case 'pause': {
+      let resumeAt = f.flags.get('until') ?? '';
+      if (!resumeAt && f.flags.has('minutes')) {
+        resumeAt = new Date(Date.now() + Number(f.flags.get('minutes')) * MS_PER_MIN).toISOString();
+      }
+      if (!resumeAt) { console.error('usage: queue pause --until <iso> | --minutes <n>'); return 1; }
+      save(pauseUntil(q, resumeAt)); log(`pause until ${resumeAt}`);
+      console.log(`queue: paused until ${resumeAt} (auto-resumes after)`); return 0;
+    }
     case 'interval':
       if (!id) { console.error('usage: queue interval <duration>'); return 1; }
       save(setConfig(q, { interval: id })); console.log(`interval: ${id}`); return 0;
     case 'config': return cmdConfig(q, f.positionals[0], f.positionals.slice(1).join(' '));
     case 'archive': return cmdArchive(q);
     case 'loop': return cmdLoop(q);
+    case 'worktree': case 'wt': return cmdWorktree(q, f.positionals[0] ?? '', f.positionals[1] ?? '');
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
-        + `claim begin done fail top remove start stop interval config archive loop`);
+        + `claim begin done fail top remove start stop pause interval config archive loop worktree`);
       return 1;
   }
 }

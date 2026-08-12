@@ -30,7 +30,7 @@ the first match.
 | diagram | `/(?:^\/diagram\b)|(?:diagram\s+this|draw\s+the\s+architecture|make\s+(?:a\s+)?mermaid|render\s+(?:this\s+)?mermaid|sequence\s+diagram\s+for)/i` | `skills/diagram.md` | Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives |
 | council | `/(?:^\/council\b)|(?:council\|war[-\s]?room\|pressure[-\s]?test\|stress[-\s]?test\|debate)\s+(?:this\|it\|the)\b/i` | `skills/council.md` | Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step |
 | statusline | `/(?:^\/statusline\b)\|(?:enable\|turn\s+on\|show)\s+(?:the\s+)?(?:usage\s+)?status[-\s]?line/i` | `skills/statusline.md` | Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing |
-| queue | `/(?:^\/queue\b)|(?:work\|task)\s+queue\|drain\s+(?:the\s+)?queue/i` | `skills/queue.md` | Manage a visible, editable Markdown work queue that loop-driven agents drain one task at a time — list, add, seed from in-memory items, prioritize, stop/restart, and work the next task |
+| queue | `/(?:^\/queue\b)|(?:work\|task)\s+queue\|drain\s+(?:the\s+)?queue/i` | `skills/queue.md` | Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume |
 
 ## Column contract
 

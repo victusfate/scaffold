@@ -4,7 +4,7 @@
 import {
   parseQueue, serializeQueue, newTask,
   addTask, addMany, setTaskStatus, setField, moveToTop, removeTask, setConfig,
-  beginTask, markDone, recordFailure, reclaimStale,
+  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
   isEligible, deadlocked, nextActionable, readyTasks,
   type Queue,
 } from './queue-model.ts';
@@ -177,6 +177,32 @@ integrationBranch: queue/integration
   q = markDone(q, 'task-001');
   assert('done clears claim', q.tasks[0].status === 'done' && q.tasks[0].owner === null
     && q.tasks[0].startedAt === null);
+}
+
+// ---- usage-limit pause / auto-resume ----
+{
+  const base = parseQueue('- [ ] task-001 — go\n');
+  const paused = pauseUntil(base, '2026-08-12T22:00:00.000Z');
+  assert('pauseUntil stops + sets resumeAt', paused.config.status === 'stopped'
+    && paused.config.resumeAt === '2026-08-12T22:00:00.000Z');
+  assert('paused blocks selection', nextActionable(paused) === null);
+
+  // before the window → stays paused
+  const early = resumeIfDue(paused, '2026-08-12T21:00:00.000Z');
+  assert('not resumed before window', !early.resumed && early.queue.config.status === 'stopped');
+  // at/after the window → auto-resumes and clears resumeAt
+  const late = resumeIfDue(paused, '2026-08-12T22:30:00.000Z');
+  assert('auto-resumed after window', late.resumed && late.queue.config.status === 'running'
+    && late.queue.config.resumeAt === '');
+  assert('resumed queue selects again', nextActionable(late.queue)?.id === 'task-001');
+
+  // a manual stop (no resumeAt) is never auto-resumed
+  const manual = setConfig(base, { status: 'stopped' });
+  assert('manual stop not auto-resumed', !resumeIfDue(manual, '2030-01-01T00:00:00.000Z').resumed);
+
+  // round-trips through the file
+  assert('resumeAt round-trips',
+    parseQueue(serializeQueue(paused)).config.resumeAt === '2026-08-12T22:00:00.000Z');
 }
 
 console.error(`\nqueue.test: ${passed} passed, ${failed} failed`);

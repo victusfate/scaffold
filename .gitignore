@@ -11,3 +11,8 @@ package-lock.json
 .env
 .env.local
 .claude/settings.local.json
+
+# Work-queue runtime sidecars (the visible queue.md is tracked; these are not)
+.agent/queue/log.md
+.agent/queue/archive.md
+.agent/queue/wt/

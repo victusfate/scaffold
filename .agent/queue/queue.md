@@ -7,6 +7,8 @@ maxFailures: 3
 leaseMinutes: 30
 maxParallel: 1
 integrationBranch: 
+resumeAt: 
+pausePoll: 30m
 -->
 
 Order = priority (top first). Checkboxes: `[ ]` pending · `[>]` active · `[x]` done · `[!]` failed.

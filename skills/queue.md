@@ -1,20 +1,25 @@
 ## Purpose
 
-A **visible, editable Markdown work queue** that loop-driven agents drain one task
-at a time. The queue lives in a single file you can open and edit at any moment —
-`.agent/queue/queue.md` — so you can see everything that's pending, reprioritize by
-moving lines, stop or restart the worker, and add or remove work by hand. An agent
-wakes on an interval (default 6 min), works the current task or starts the next
-one, and marks it done — then sleeps until the next wake.
+A **visible, editable Markdown work queue** that agents drain **autonomously** so
+you can augment a long-running project without babysitting it. You stack up work;
+a loop wakes on an interval (default 6 min) and drains it — one task at a time, or
+**fanned out across parallel git worktrees** — running each task either as a quick
+`direct` chore or through the **full feature-chain** (`design → prd → plan → tdd →
+code-refiner`) with **no user input**. The queue lives in one file you can open and
+edit at any moment: `.agent/queue/queue.md`.
 
-The reliable read/mutate layer is `scripts/queue.ts`; never hand-rewrite the file
-programmatically — go through the CLI so the format stays intact. Humans editing
-the file by hand is expected and safe.
+This is the complement to `/feature-chain`: the chain builds *one* feature
+interactively, start to finish; the queue lets you **keep feeding and draining
+many units of work** on an ongoing project, unattended.
+
+The reliable read/mutate layer is `scripts/queue.ts` (pure model in
+`scripts/queue-model.ts`). Humans edit the file freely; agents mutate it **only**
+through the CLI so the format never corrupts.
 
 ## The queue file
 
-One Markdown file, fully human-readable. **Line order is priority** (top runs
-first). A checkbox encodes each task's status:
+One Markdown file. **Line order is priority** (top runs first). A checkbox encodes
+status; indented `- key: value` lines carry each task's spec:
 
 ```markdown
 # Work Queue
@@ -22,97 +27,194 @@ first). A checkbox encodes each task's status:
 <!-- queue:config
 status: running
 interval: 6m
+maxFailures: 3
+leaseMinutes: 30
+maxParallel: 1
+integrationBranch:
 -->
 
-- [ ] task-001 — Add telemetry interface
+- [ ] task-001 — Build the hello endpoint
+  - mode: chain
+  - slug: hello-endpoint
+  - deps: task-000
+  - files: src/api/hello.ts, test/hello.test.ts
+  - validate: npm test
+  - accept: GET /hello returns 200 "hello"
 - [>] task-002 — Refactor the parser
-- [x] task-003 — Fix the login bug
-- [!] task-004 — Broken migration
+  - owner: worker-a
 ```
 
-- `[ ]` pending · `[>]` active (the current task) · `[x]` done · `[!]` failed
-- `status: running | stopped` — a stopped queue makes every `tick` a no-op.
-- `interval` — how often the loop wakes; editable, default `6m`.
+- `[ ]` pending · `[>]` active · `[x]` done · `[!]` failed
+- **config:** `status` run/pause · `interval` wake cadence · `maxFailures` retry cap
+  · `leaseMinutes` stale-lease threshold · `maxParallel` fan-out width ·
+  `integrationBranch` where completed worktree branches merge (blank = current).
+- **Reprioritize** by moving a line up (or `queue top <id>`); **edit/remove** by
+  changing/deleting lines; **pause** with `status: stopped` (or `queue stop`). The
+  worker re-reads the file every tick, so hand edits take effect on the next wake.
 
-To **reprioritize**, move a line up (or run `queue top <id>`). To **edit or
-remove** work, change or delete a line. To **pause**, set `status: stopped` (or run
-`queue stop`). The worker re-reads the file every tick, so hand edits take effect
-on the next wake.
+Task lines and their fields survive worker writes; **freeform prose does not**.
+Runtime sidecars `log.md` (audit trail) and `archive.md` sit alongside and are
+git-ignored; `queue.md` itself is committed so the queue is durable and visible.
 
 ## Command surface (`scripts/queue.ts`)
 
 ```
-node scripts/queue.ts list                    # show the queue
-node scripts/queue.ts add "Do the thing"      # append a pending task (--top to prepend)
-node scripts/queue.ts add-many                # seed many tasks from stdin, one per line
-node scripts/queue.ts next                     # print the next actionable task (no mutation)
-node scripts/queue.ts tick                     # loop entry: begin/continue the current task
-node scripts/queue.ts done <id> | fail <id>    # mark the current task's outcome
-node scripts/queue.ts top <id>                 # reprioritize a task to the top
-node scripts/queue.ts remove <id>              # drop a task
-node scripts/queue.ts start | stop             # run or pause the worker
-node scripts/queue.ts interval 6m              # edit the wake interval
+list | show <id>                       # overview | one task's full spec
+add "<title>" [flags]                  # append a task (flags below); --top to prepend
+add-many                               # seed many tasks from stdin, one per line
+set <id> <field> <value>               # edit a field (mode/slug/deps/files/validate/accept)
+next | ready                           # serial pick | fan-out candidate set (under the cap)
+tick                                    # serial loop entry: reclaim → begin → print task
+claim <id> [--worker w]                # atomic claim for a parallel worker
+done <id> [--skip-validate]            # run the task's validate, then complete
+fail <id> [reason...]                  # record a failure (retries, then terminal)
+top <id> | remove <id>
+start | stop                           # run or pause the whole queue
+interval <dur> | config <key> <value>  # cadence | maxFailures|leaseMinutes|maxParallel|integrationBranch
+worktree add|remove|list <id>          # isolated git worktree per task
+archive | loop                          # sweep done/failed | print the /loop invocation
 ```
 
-Override the file location with `QUEUE_FILE=<path>` (useful for a scratch queue).
+`add`/`set` flags: `--mode chain` · `--slug <s>` · `--deps a,b` · `--files a,b` ·
+`--validate "<cmd>"` · `--accept "<criteria>"` · `--top`. Override the file with
+`QUEUE_FILE=<path>`.
 
 ## Creating a queue from in-memory items
 
-When you (the agent) already hold a list of work items, pipe them straight in —
-one per line — to build or extend the queue in a single call. Leading Markdown
-bullets/checkboxes are stripped, so a pasted list works as-is:
+When you already hold a list of work, pipe it in — one item per line (leading
+bullets/checkboxes are stripped) — to build or extend the queue in one call:
 
 ```bash
 printf 'Write the README\nAdd unit tests\nWire the CI\n' | node scripts/queue.ts add-many
 ```
 
-`add-many` **appends** to any existing queue (it never clobbers), and also accepts
-items as positional args: `node scripts/queue.ts add-many "task a" "task b"`.
+`add-many` **appends** (never clobbers) and also takes positional args.
 
-## The tick cycle (what the worker does on each wake)
+## Two speeds: `direct` vs `chain`
 
-This is the loop body. Keep it tight — one task per wake:
+- **`direct`** (default) — small, self-contained work (bug fixes, chores, config).
+  The worker does it, runs `validate`, and completes. This is the "what the chain
+  doesn't apply to" tier.
+- **`chain`** — a feature. The worker runs the **feature-chain autonomously**, with
+  **no interactive grill**, into `docs/<slug>/`:
+  1. **Design** — if `docs/<slug>/design.md` is missing, *generate it
+     non-interactively* from the task's spec (`title` + `accept` + `files` +
+     `deps`). The grill is skipped because a queued task is a **resolved
+     contract** — enough is specified to design directly.
+  2. **`to-prd`** → `prd.md`  3. **plan** → `plan.md` (vertical slices)
+  4. **`tdd`** → RED→GREEN→REFACTOR per slice, `tdd-log.md`
+  5. **`code-refiner`** (auto-fix) to 10/10
+  6. run `validate`, then `done`.
 
-1. **Read state:** `node scripts/queue.ts tick`.
-   - `queue: STOPPED` → do nothing; end the turn. The user paused it.
-   - `queue: IDLE — no pending tasks` → nothing to do; end the turn.
-   - Otherwise it prints the current task inside a `<queue_task id="…">` block and
-     has marked it `active`. That is your one unit of work for this wake.
-2. **Do the work** described by the task title, in the current repo. Load only what
-   that task needs — don't drag in unrelated context.
-3. **Validate** with the repo's checks (tests / typecheck / lint) as appropriate.
-4. **Record the outcome:**
-   - success → `node scripts/queue.ts done <id>`
-   - failure → `node scripts/queue.ts fail <id>` (leave a note; move on — a failed
-     task never blocks the rest of the queue).
-5. **Commit** the work so each drained task is a reviewable checkpoint.
+  All phase-to-phase confirmations are **auto-accepted** — the queued task is
+  pre-approved, so the worker never pauses for "continue."
 
-On the next wake the queue advances automatically: a resumed `active` task is
-preferred, otherwise the topmost pending task starts.
+## The execution contract — no user input, ever
 
-## Running it on a loop
+An unattended worker **never asks the user a question.** Specification happens at
+**enqueue time** (interactive, with you present — optionally by running a grill for
+one task), so by the time a task is claimed it is self-contained. During execution:
 
-Drive the tick cycle with the `/loop` skill (or any recurring runner). The
-interval is editable in two places — keep them in sync:
+- If a task is **underspecified** and the worker hits genuine ambiguity it cannot
+  resolve from the spec + codebase, it **fails the task with a `needs-spec: <what's
+  missing>` note** (`queue fail <id> "needs-spec: ..."`) and moves on — it does
+  **not** guess, and it does **not** block waiting for input.
+- You see the `needs-spec` note in `queue list`; you refine the task and it
+  re-enters the queue. This is how "no user input during a drain" stays true
+  without silently doing the wrong thing.
 
-- **`/loop <interval> <prompt>`** sets the wake cadence, e.g.
-  `/loop 6m work the next task in the queue: run \`node scripts/queue.ts tick\`, do it, then mark it done or fail`.
-- **`queue interval 6m`** records the intended interval in the file so it's visible
-  to anyone reading the queue.
+## The tick cycle (serial — `maxParallel: 1`)
 
-Change the cadence any time with `/loop`'s own interval and `queue interval`; stop
-the drain with `queue stop` (or by pausing the loop), restart with `queue start`.
+The loop body; one task per wake:
+
+1. `node scripts/queue.ts tick` —
+   - `STOPPED` → do nothing (paused). `IDLE` → nothing eligible; end the turn.
+   - otherwise it reclaims any stale lease, marks the current task `active`, and
+     prints a `<queue_task>` block with its `mode` and spec. That's your one unit.
+2. **Execute** per its mode (`direct` or the `chain` sequence above), honoring the
+   no-user-input contract.
+3. **Complete:** `queue done <id>` (runs `validate`; refuses → counts as a failure)
+   or `queue fail <id> "<reason>"`.
+4. **Commit** the work so each drained task is a reviewable checkpoint.
+
+A resumed `active` task is preferred next wake; otherwise the topmost **eligible**
+pending task (all `deps` done) starts. Failures don't halt the queue — a failed
+task retries (dropped to the back) up to `maxFailures`, then goes terminal, and
+independent work keeps flowing.
+
+## Fan-out (parallel — `maxParallel: N`)
+
+Set `queue config maxParallel 3` to run independent tasks concurrently, each in its
+own git worktree. Two patterns, same primitives:
+
+**Pattern A — in-session fan-out (default).** On each wake the dispatcher:
+1. `node scripts/queue.ts ready` → the eligible set under the cap.
+2. For each returned task: `queue worktree add <id>` (isolated checkout on
+   `queue/<id>` off the integration branch), then dispatch a **subagent** to
+   execute it in that worktree under the same contract.
+3. On success: the subagent merges `queue/<id>` → `integrationBranch`
+   **agent-driven** (never a blind auto-merge — a clean textual merge can still be
+   semantically wrong). On conflict or post-merge validation failure, it either
+   reconciles carefully or `fail`s with a note (design.md D7). Then `queue done
+   <id>` and `queue worktree remove <id>`.
+
+**Pattern B — multiple independent workers (scale-out).** Many loop sessions/crons
+each `queue claim <id> --worker <name>` (assign + verify sole owner), work their
+own worktree, and merge back. The `lease`/`reclaimStale` machinery returns a
+crashed worker's task to `pending`. Use this to drain faster or across machines.
+
+Merge-back is intentionally **not** a CLI auto-merge — the queue gives you
+isolation (`worktree add`/`remove`) and leaves integration to a judgment-applying
+agent, per this repo's "liveness/veracity" and D7 principles.
+
+## Running it on a loop (auto-drain)
+
+To keep the queue draining, **invoke the `/loop` skill automatically** — don't make
+the user wire it. The interval's single source of truth is the file, so read it and
+pass it through:
+
+- `node scripts/queue.ts loop` prints the exact `/loop <interval> …` invocation for
+  the current queue (it adapts to serial vs. fan-out). Run that `/loop`.
+- When the user asks to **run/drain/keep working** the queue (or `/queue` with no
+  clear one-shot intent), start the loop yourself: read `interval` from the file
+  and invoke `/loop <interval>` with the tick/ready drain prompt.
+
+Change cadence with `queue interval <dur>` (and the loop picks it up); stop with
+`queue stop` (or pausing the loop); resume with `queue start`.
+
+## Usage limits — pause and ride out the window
+
+A long autonomous drain will eventually hit the rolling 5-hour usage limit. Agents
+**cannot reliably predict** this, so handle it in two ways, reactive first:
+
+- **Reactive (primary).** You find out you're limited when a wake **can't get work
+  through**. When that happens, `node scripts/queue.ts pause` (no time needed) and
+  **re-arm the loop at the slow `pausePoll` cadence** (default 30m) instead of the
+  fast interval — `node scripts/queue.ts loop` prints the slow invocation while
+  paused. Each slow wake just tries `tick`; the first that succeeds means the window
+  reopened → `queue start`, back to the normal interval. No prediction needed: it
+  polls until work flows again.
+- **Proactive (best-effort).** If usage is visibly near 100% (e.g. the statusline's
+  5-hour usage%), pause *before* starting a new task so you don't strand a half-done
+  one. If the reset time is known, `queue pause --until <iso>` for a precise resume;
+  otherwise rely on the slow poll.
+
+`tick` **auto-resumes** on its own once `resumeAt` passes, and a `pause` with no
+`resumeAt` stays paused (slow-polling) until a wake succeeds or you `queue start`.
+A plain `queue stop` is a manual pause and never auto-resumes. This is the same
+"spend the budget, then sleep until it refills" pattern as AGENTS.md's continuous
+execution — applied to the queue so overnight drains survive the window.
 
 ## Critical rules
 
-1. **The file is the source of truth and it's the user's to steer.** Re-read it
-   every tick; honor hand edits (reordering, added/removed lines, `status:
-   stopped`) immediately.
-2. **One task per wake.** Don't batch-drain the whole queue in a single tick unless
-   explicitly asked — small, inspectable steps keep the user able to redirect.
-3. **Never auto-rewrite the file by hand.** Mutate only through `scripts/queue.ts`
-   so the format round-trips; humans may edit freely, the CLI may not corrupt.
-4. **Failures don't halt the queue.** Mark `fail` and continue; a stuck task
-   shouldn't strand independent work behind it.
-5. **Stopped means stopped.** When `status: stopped`, a `tick` does nothing —
-   never resume on your own; wait for `queue start`.
+1. **The file is the source of truth and the user's to steer.** Re-read it every
+   tick; honor hand edits (reorder, add/remove, `status: stopped`) immediately.
+2. **No user input during a drain.** Never ask a question; underspecified → `fail`
+   with a `needs-spec:` note and move on. Spec at enqueue time, not mid-run.
+3. **Chain tasks run the whole chain autonomously** — generate the design from the
+   spec (no grill), auto-accept phase gates, never wait for "continue."
+4. **Mutate only through `scripts/queue.ts`** so the format round-trips; humans may
+   hand-edit, the worker may not corrupt.
+5. **Never blind-merge a worktree.** Merge-back is agent-driven; on conflict,
+   reconcile carefully or fail safe (D7). Failures never halt independent work.
+6. **Stopped means stopped** — a `tick` does nothing until `queue start`.
