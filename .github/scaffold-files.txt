@@ -28,6 +28,7 @@ scripts/mermaid-render.test.ts
 scripts/mermaid-viewer.template.html
 scripts/mermaid-watch.ts
 scripts/mermaid-watch.test.ts
+scripts/queue-model.ts
 scripts/queue.ts
 scripts/queue.test.ts
 scripts/resolver-phases.ts

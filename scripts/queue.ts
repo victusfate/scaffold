@@ -1,325 +1,317 @@
 #!/usr/bin/env node
-// queue.ts — a visible, editable Markdown work queue that loop-driven agents drain.
+// queue.ts — CLI + I/O for the agent work queue. Pure model lives in
+// queue-model.ts; this file owns the filesystem, the clock, git worktrees, the
+// audit log, and running validation commands.
 //
-// The queue lives in a single Markdown file (default .agent/queue/queue.md) that a
-// human can open and edit at any time: line order is priority (top first), and a
-// checkbox encodes each task's status. This module is the reliable read/mutate
-// layer so the loop never corrupts the file by hand-editing it.
+//   node scripts/queue.ts list                       # show the queue
+//   node scripts/queue.ts add "Do it" [flags]        # append a task (see flags below)
+//   node scripts/queue.ts add-many                   # seed tasks from stdin, one per line
+//   node scripts/queue.ts set <id> <field> <value>   # edit a task field
+//   node scripts/queue.ts show <id>                  # print a task's full spec
+//   node scripts/queue.ts next | ready               # serial pick | fan-out candidate set
+//   node scripts/queue.ts tick                       # serial loop entry (reclaim→begin→print)
+//   node scripts/queue.ts claim <id> [--worker w]    # atomic claim for a parallel worker
+//   node scripts/queue.ts done <id> [--skip-validate]# run validate, then complete
+//   node scripts/queue.ts fail <id> [reason...]      # record a failure (retries then terminal)
+//   node scripts/queue.ts top <id> | remove <id>
+//   node scripts/queue.ts start | stop               # run/pause the worker
+//   node scripts/queue.ts interval 6m                # edit the wake interval
+//   node scripts/queue.ts config <key> <value>       # maxFailures|leaseMinutes|maxParallel|integrationBranch
+//   node scripts/queue.ts archive                    # sweep done/failed into archive.md
+//   node scripts/queue.ts loop                       # print the /loop invocation for this queue
 //
-//   node scripts/queue.ts list                 # show the queue
-//   node scripts/queue.ts add "Do the thing"   # append a pending task
-//   node scripts/queue.ts add-many             # seed many tasks from stdin (one per line)
-//   node scripts/queue.ts tick                 # loop entry: begin/continue the current task
-//   node scripts/queue.ts done <id> | fail <id>
-//   node scripts/queue.ts top <id>             # reprioritize to the top
-//   node scripts/queue.ts start | stop         # run/pause the worker
-//   node scripts/queue.ts interval 6m          # edit the wake interval
-//   node scripts/queue.ts remove <id>
-//
-// Checkboxes: `[ ]` pending · `[>]` active · `[x]` done · `[!]` failed.
+// add/set flags: --mode chain --slug <s> --deps a,b --files a,b --validate "<cmd>"
+//   --accept "<criteria>" --top --worker <name>
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execSync } from 'node:child_process';
+import {
+  parseQueue, serializeQueue, render as renderModel,
+  addTask, addMany, setTaskStatus, setField, moveToTop, removeTask, setConfig,
+  beginTask, markDone, recordFailure, reclaimStale,
+  nextActionable, readyTasks, deadlocked,
+  type Queue, type Task, type QueueConfig,
+} from './queue-model.ts';
 
-// ---------------------------------------------------------------- model
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const QUEUE_DIR = join(ROOT, '.agent', 'queue');
 
-export type TaskStatus = 'pending' | 'active' | 'done' | 'failed';
+function queueFile(): string { return process.env.QUEUE_FILE ?? join(QUEUE_DIR, 'queue.md'); }
+function sidecar(name: string): string { return join(dirname(queueFile()), name); }
+function now(): string { return new Date().toISOString(); }
 
-export interface Task {
-  id: string;
-  title: string;
-  status: TaskStatus;
+function load(): Queue {
+  const p = queueFile();
+  return existsSync(p) ? parseQueue(readFileSync(p, 'utf8')) : parseQueue('');
+}
+function save(q: Queue): void {
+  const p = queueFile();
+  mkdirSync(dirname(p), { recursive: true });
+  writeFileSync(p, serializeQueue(q));
+}
+function log(msg: string): void {
+  appendFileSync(sidecar('log.md'), `- ${now()} ${msg}\n`);
 }
 
-export interface QueueConfig {
-  status: 'running' | 'stopped';
-  interval: string;
-}
+// ---------------------------------------------------------------- flags
 
-export interface Queue {
-  config: QueueConfig;
-  tasks: Task[];
-}
+interface Parsed { positionals: string[]; flags: Map<string, string>; bools: Set<string>; }
 
-const MARK: Record<TaskStatus, string> = {
-  pending: ' ', active: '>', done: 'x', failed: '!',
-};
+const VALUE_FLAGS = new Set(['mode', 'slug', 'deps', 'files', 'validate', 'accept', 'worker', 'note']);
 
-const STATUS_OF: Record<string, TaskStatus> = {
-  ' ': 'pending', '': 'pending', '>': 'active', x: 'done', X: 'done', '!': 'failed',
-};
-
-const DEFAULT_CONFIG: QueueConfig = { status: 'running', interval: '6m' };
-
-// ---------------------------------------------------------------- parse
-
-const TASK_RE = /^- \[([ >xX!]?)\]\s+(.*)$/;
-const ID_TITLE_RE = /^(task-\d+)\s+[—:-]+\s+(.*)$/;
-
-/** Parse the Markdown queue file into a model. Forgiving of hand edits. */
-export function parseQueue(md: string): Queue {
-  const config = { ...DEFAULT_CONFIG };
-  const cfgBlock = md.match(/<!--\s*queue:config([\s\S]*?)-->/);
-  if (cfgBlock) {
-    for (const line of cfgBlock[1].split('\n')) {
-      const kv = line.match(/^\s*(\w+)\s*:\s*(.+?)\s*$/);
-      if (!kv) continue;
-      if (kv[1] === 'status') config.status = kv[2] === 'stopped' ? 'stopped' : 'running';
-      else if (kv[1] === 'interval') config.interval = kv[2];
-    }
+function parse(rest: string[]): Parsed {
+  const positionals: string[] = [];
+  const flags = new Map<string, string>();
+  const bools = new Set<string>();
+  for (let i = 0; i < rest.length; i++) {
+    const a = rest[i];
+    if (a.startsWith('--')) {
+      const key = a.slice(2);
+      if (VALUE_FLAGS.has(key)) flags.set(key, rest[++i] ?? '');
+      else bools.add(key);
+    } else positionals.push(a);
   }
+  return { positionals, flags, bools };
+}
 
-  const tasks: Task[] = [];
-  for (const line of md.split('\n')) {
-    const m = line.match(TASK_RE);
-    if (!m) continue;
-    const status = STATUS_OF[m[1]] ?? 'pending';
-    const rest = m[2].trim();
-    const idm = rest.match(ID_TITLE_RE);
-    tasks.push(idm
-      ? { id: idm[1], title: idm[2].trim(), status }
-      : { id: '', title: rest, status });
+function taskOverrides(f: Parsed): Partial<Task> {
+  const o: Partial<Task> = {};
+  if (f.flags.has('mode')) o.mode = f.flags.get('mode') === 'chain' ? 'chain' : 'direct';
+  if (f.flags.has('slug')) o.slug = f.flags.get('slug') || null;
+  if (f.flags.has('deps')) o.dependsOn = (f.flags.get('deps') ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  if (f.flags.has('files')) o.files = (f.flags.get('files') ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  if (f.flags.has('validate')) o.validate = f.flags.get('validate') || null;
+  if (f.flags.has('accept')) o.accept = f.flags.get('accept') || null;
+  return o;
+}
+
+// ---------------------------------------------------------------- validation
+
+/** Run a task's validation command; the worktree (if any) is the working dir. */
+function runValidate(task: Task): { ok: boolean; tail: string } {
+  const cmd = task.validate;
+  if (!cmd) return { ok: true, tail: '' };
+  const cwd = task.worktree ? join(ROOT, task.worktree) : process.cwd();
+  try {
+    execSync(cmd, { cwd, stdio: 'pipe', encoding: 'utf8' });
+    return { ok: true, tail: '' };
+  } catch (e) {
+    const out = String((e as { stdout?: string; stderr?: string }).stderr
+      || (e as { stdout?: string }).stdout || (e as Error).message);
+    return { ok: false, tail: out.trim().split('\n').slice(-3).join(' | ') };
   }
-  return { config, tasks };
-}
-
-// ---------------------------------------------------------------- serialize
-
-function nextIdNum(tasks: Task[]): number {
-  let max = 0;
-  for (const t of tasks) {
-    const n = Number(t.id.match(/^task-(\d+)$/)?.[1] ?? 0);
-    if (n > max) max = n;
-  }
-  return max + 1;
-}
-
-function fmtId(n: number): string {
-  return `task-${String(n).padStart(3, '0')}`;
-}
-
-/** Ensure every task has a stable id (synthesizing ids for hand-added lines). */
-function withIds(tasks: Task[]): Task[] {
-  let n = nextIdNum(tasks);
-  return tasks.map(t => (t.id ? t : { ...t, id: fmtId(n++) }));
-}
-
-/** Render the model back to the canonical Markdown file. */
-export function serializeQueue(q: Queue): string {
-  const tasks = withIds(q.tasks);
-  const lines = [
-    '# Work Queue',
-    '',
-    '<!-- queue:config',
-    `status: ${q.config.status}`,
-    `interval: ${q.config.interval}`,
-    '-->',
-    '',
-    'Order = priority (top first). Checkboxes: `[ ]` pending · `[>]` active · '
-      + '`[x]` done · `[!]` failed.',
-    'Edit this file freely to reprioritize, add, or remove work; the worker '
-      + 'reads it every tick.',
-    '',
-    ...tasks.map(t => `- [${MARK[t.status]}] ${t.id} — ${t.title}`),
-    '',
-  ];
-  return lines.join('\n');
-}
-
-// ---------------------------------------------------------------- pure ops
-
-function withTasks(q: Queue, tasks: Task[]): Queue {
-  return { config: q.config, tasks };
-}
-
-export function addTask(q: Queue, title: string, opts: { top?: boolean } = {}): Queue {
-  const task: Task = { id: fmtId(nextIdNum(q.tasks)), title: title.trim(), status: 'pending' };
-  return withTasks(q, opts.top ? [task, ...q.tasks] : [...q.tasks, task]);
-}
-
-/** Bulk-add tasks — the "create a queue from in-memory items" path. */
-export function addMany(q: Queue, titles: string[], opts: { top?: boolean } = {}): Queue {
-  let n = nextIdNum(q.tasks);
-  const fresh: Task[] = titles
-    .map(t => t.trim())
-    .filter(Boolean)
-    .map(title => ({ id: fmtId(n++), title, status: 'pending' as TaskStatus }));
-  return withTasks(q, opts.top ? [...fresh, ...q.tasks] : [...q.tasks, ...fresh]);
-}
-
-export function setTaskStatus(q: Queue, id: string, status: TaskStatus): Queue {
-  return withTasks(q, q.tasks.map(t => (t.id === id ? { ...t, status } : t)));
-}
-
-export function moveToTop(q: Queue, id: string): Queue {
-  const hit = q.tasks.find(t => t.id === id);
-  if (!hit) return q;
-  return withTasks(q, [hit, ...q.tasks.filter(t => t.id !== id)]);
-}
-
-export function removeTask(q: Queue, id: string): Queue {
-  return withTasks(q, q.tasks.filter(t => t.id !== id));
-}
-
-export function setConfig(q: Queue, patch: Partial<QueueConfig>): Queue {
-  return { config: { ...q.config, ...patch }, tasks: q.tasks };
-}
-
-/**
- * The task a worker should act on now: resume the active task if one exists,
- * else the topmost pending task. Null if the queue is stopped or drained.
- */
-export function nextActionable(q: Queue): Task | null {
-  if (q.config.status === 'stopped') return null;
-  return q.tasks.find(t => t.status === 'active')
-    ?? q.tasks.find(t => t.status === 'pending')
-    ?? null;
 }
 
 // ---------------------------------------------------------------- rendering
 
-export function render(q: Queue): string {
-  const badge: Record<TaskStatus, string> = {
-    pending: '· ', active: '▶ ', done: '✓ ', failed: '✗ ',
-  };
-  const body = q.tasks.length
-    ? withIds(q.tasks).map((t, i) => `  ${i + 1}. ${badge[t.status]}${t.id}  ${t.title}`).join('\n')
-    : '  (empty)';
-  const active = q.tasks.filter(t => t.status === 'active').length;
-  const pending = q.tasks.filter(t => t.status === 'pending').length;
-  return `Work Queue — ${q.config.status} · interval ${q.config.interval} · `
-    + `${pending} pending, ${active} active, ${q.tasks.length} total\n${body}`;
+function showTask(t: Task): string {
+  const rows: string[] = [`${t.id} [${t.status}] — ${t.title}`];
+  const add = (k: string, v: string): void => { rows.push(`  ${k}: ${v}`); };
+  add('mode', t.mode);
+  if (t.slug) add('slug', t.slug);
+  if (t.dependsOn.length) add('deps', t.dependsOn.join(', '));
+  if (t.files.length) add('files', t.files.join(', '));
+  if (t.validate) add('validate', t.validate);
+  if (t.accept) add('accept', t.accept);
+  if (t.failures) add('failures', String(t.failures));
+  if (t.note) add('note', t.note);
+  if (t.owner) add('owner', t.owner);
+  if (t.branch) add('branch', t.branch);
+  if (t.worktree) add('worktree', t.worktree);
+  if (t.startedAt) add('started', t.startedAt);
+  return rows.join('\n');
 }
 
-// ---------------------------------------------------------------- file I/O
-
-function resolveFile(): string {
-  const env = process.env.QUEUE_FILE;
-  if (env) return env;
-  const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-  return join(root, '.agent', 'queue', 'queue.md');
+function taskBlock(t: Task): string {
+  const spec = [
+    t.mode === 'chain' ? 'mode: chain (design→prd→plan→tdd→refine, autonomous, no questions)' : 'mode: direct',
+    t.slug ? `slug: docs/${t.slug}/` : '',
+    t.accept ? `accept: ${t.accept}` : '',
+    t.files.length ? `files: ${t.files.join(', ')}` : '',
+    t.validate ? `validate: ${t.validate}` : '',
+  ].filter(Boolean).join('\n');
+  return `<queue_task id="${t.id}">\n${t.title}\n${spec}\n</queue_task>`;
 }
 
-function load(path: string): Queue {
-  return existsSync(path) ? parseQueue(readFileSync(path, 'utf8')) : parseQueue('');
-}
+// ---------------------------------------------------------------- commands
 
-function save(path: string, q: Queue): void {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, serializeQueue(q));
-}
-
-function readStdin(): string[] {
-  try {
-    return readFileSync(0, 'utf8').split('\n');
-  } catch {
-    return [];
+function cmdTick(q: Queue): number {
+  if (q.config.status === 'stopped') { console.log('queue: STOPPED — run `queue start` to resume'); return 0; }
+  const swept = reclaimStale(q, now(), q.config.leaseMinutes);
+  if (swept.reclaimed.length) {
+    for (const t of swept.reclaimed) log(`reclaimed ${t.id} (stale lease)`);
+    q = swept.queue;
   }
+  const t = nextActionable(q);
+  if (!t) {
+    const stuck = deadlocked(q);
+    console.log(stuck.length
+      ? `queue: IDLE — ${stuck.length} task(s) blocked by a failed dependency: ${stuck.map(x => x.id).join(', ')}`
+      : 'queue: IDLE — no eligible tasks');
+    save(q);
+    return 0;
+  }
+  if (t.status === 'pending') { q = beginTask(q, t.id, now(), t.owner); log(`begin ${t.id}`); }
+  save(q);
+  const current = q.tasks.find(x => x.id === t.id)!;
+  console.log(`queue: working ${t.id}\n${taskBlock(current)}\n`
+    + `When finished: node scripts/queue.ts done ${t.id}  (or fail ${t.id} "<reason>")`);
+  return 0;
 }
 
-/** Strip a leading Markdown bullet/checkbox so pasted lists seed cleanly. */
-function cleanItem(line: string): string {
-  return line.replace(/^\s*[-*]\s*(\[[ >xX!]?\]\s*)?/, '').trim();
+function cmdDone(q: Queue, id: string, skip: boolean): number {
+  const t = q.tasks.find(x => x.id === id);
+  if (!t) { console.error(`done: unknown task id ${id}`); return 1; }
+  if (t.validate && !skip) {
+    const r = runValidate(t);
+    if (!r.ok) {
+      const res = recordFailure(q, id, `validation failed: ${r.tail}`, q.config.maxFailures);
+      save(res.queue);
+      log(`validate-fail ${id} (${res.failures}/${q.config.maxFailures})`);
+      console.log(`✗ validation failed for ${id} → ${res.terminal ? 'failed' : 'retry'} (${r.tail})`);
+      return 1;
+    }
+  }
+  save(markDone(q, id));
+  log(`done ${id}`);
+  console.log(`✓ ${id} done${t.validate && !skip ? ' (validation passed)' : ''}`);
+  return 0;
 }
 
-// ---------------------------------------------------------------- CLI
+function cmdConfig(q: Queue, key: string, val: string): number {
+  const numKeys: (keyof QueueConfig)[] = ['maxFailures', 'leaseMinutes', 'maxParallel'];
+  if (key === 'integrationBranch') save(setConfig(q, { integrationBranch: val }));
+  else if (numKeys.includes(key as keyof QueueConfig)) save(setConfig(q, { [key]: Number(val) } as Partial<QueueConfig>));
+  else { console.error(`config: unknown key ${key} (maxFailures|leaseMinutes|maxParallel|integrationBranch)`); return 1; }
+  console.log(`config ${key} = ${val}`);
+  return 0;
+}
+
+function cmdArchive(q: Queue): number {
+  const gone = q.tasks.filter(t => t.status === 'done' || t.status === 'failed');
+  if (!gone.length) { console.log('archive: nothing to sweep'); return 0; }
+  const block = `\n## Archived ${now()}\n\n`
+    + gone.map(t => `- [${t.status === 'done' ? 'x' : '!'}] ${t.id} — ${t.title}`).join('\n') + '\n';
+  appendFileSync(sidecar('archive.md'), block);
+  save({ config: q.config, tasks: q.tasks.filter(t => t.status !== 'done' && t.status !== 'failed') });
+  log(`archived ${gone.length} task(s)`);
+  console.log(`archived ${gone.length} task(s) → ${sidecar('archive.md')}`);
+  return 0;
+}
+
+function cmdLoop(q: Queue): number {
+  const drain = q.config.maxParallel > 1
+    ? `run \`node scripts/queue.ts ready\`, dispatch each returned task in its own worktree, then done/fail each`
+    : `run \`node scripts/queue.ts tick\`, do the one task it prints, then \`done <id>\` or \`fail <id>\``;
+  console.log(`/loop ${q.config.interval} drain the work queue: ${drain}`);
+  return 0;
+}
+
+// ---------------------------------------------------------------- dispatch
 
 function main(argv: string[]): number {
   const [cmd = 'list', ...rest] = argv;
-  const path = resolveFile();
-  const flags = new Set(rest.filter(a => a.startsWith('--')));
-  const args = rest.filter(a => !a.startsWith('--'));
-  const top = flags.has('--top');
-  let q = load(path);
+  const f = parse(rest);
+  const id = f.positionals[0];
+  const needId = (): boolean => Boolean(id && load().tasks.some(t => t.id === id));
+  let q = load();
 
   switch (cmd) {
-    case 'list': case 'status':
-      console.log(render(q));
-      return 0;
+    case 'list': case 'status': console.log(renderModel(q)); return 0;
+    case 'show':
+      if (!needId()) { console.error('show: unknown task id'); return 1; }
+      console.log(showTask(q.tasks.find(t => t.id === id)!)); return 0;
 
     case 'add': {
-      const title = args.join(' ').trim();
-      if (!title) { console.error('usage: queue add "<title>" [--top]'); return 1; }
-      q = addTask(q, title, { top });
-      save(path, q);
-      console.log(`added: ${q.tasks[top ? 0 : q.tasks.length - 1].id} — ${title}`);
-      return 0;
+      const title = f.positionals.join(' ').trim();
+      if (!title) { console.error('usage: queue add "<title>" [flags]'); return 1; }
+      q = addTask(q, title, { top: f.bools.has('top'), ...taskOverrides(f) });
+      save(q); log(`add ${title}`);
+      const t = q.tasks[f.bools.has('top') ? 0 : q.tasks.length - 1];
+      console.log(`added ${t.id}${t.mode === 'chain' ? ' (chain)' : ''} — ${title}`); return 0;
     }
-
     case 'add-many': {
-      const items = (args.length ? args : readStdin()).map(cleanItem).filter(Boolean);
+      const raw = f.positionals.length ? f.positionals : readStdin();
+      const items = raw.map(cleanItem).filter(Boolean);
       if (!items.length) { console.error('add-many: no items (pass args or pipe lines on stdin)'); return 1; }
-      q = addMany(q, items, { top });
-      save(path, q);
-      console.log(`added ${items.length} task(s); ${q.tasks.length} total`);
-      return 0;
+      q = addMany(q, items, { top: f.bools.has('top') });
+      save(q); log(`add-many ${items.length}`);
+      console.log(`added ${items.length} task(s); ${q.tasks.length} total`); return 0;
+    }
+    case 'set': {
+      const [, field, ...v] = f.positionals;
+      if (!needId() || !field) { console.error('usage: queue set <id> <field> <value>'); return 1; }
+      save(setField(q, id, taskOverrides(parse([`--${field}`, v.join(' ')]))));
+      console.log(`set ${id}.${field}`); return 0;
     }
 
     case 'next': {
       const t = nextActionable(q);
       console.log(q.config.status === 'stopped' ? 'queue: STOPPED'
-        : t ? `next: ${t.id} — ${t.title}` : 'queue: IDLE (no pending tasks)');
+        : t ? `next: ${t.id} — ${t.title}` : 'queue: IDLE'); return 0;
+    }
+    case 'ready': {
+      const r = readyTasks(q);
+      console.log(r.length ? r.map(t => `${t.id} — ${t.title}`).join('\n')
+        : `queue: none ready (maxParallel ${q.config.maxParallel}, `
+          + `${q.tasks.filter(t => t.status === 'active').length} active)`);
+      return 0;
+    }
+    case 'tick': return cmdTick(q);
+
+    case 'claim': {
+      if (!needId()) { console.error('claim: unknown task id'); return 1; }
+      const t = q.tasks.find(x => x.id === id)!;
+      if (t.status !== 'pending') { console.log(`claim: ${id} is ${t.status}, not claimable`); return 1; }
+      const worker = f.flags.get('worker') ?? `worker-${process.pid}`;
+      save(beginTask(q, id, now(), worker)); log(`claim ${id} by ${worker}`);
+      console.log(`claimed ${id} for ${worker}\n${taskBlock({ ...t, owner: worker })}`); return 0;
+    }
+    case 'begin':
+      if (!needId()) { console.error('begin: unknown task id'); return 1; }
+      save(beginTask(q, id, now(), q.tasks.find(t => t.id === id)!.owner));
+      console.log(`${id} → active`); return 0;
+    case 'done': return cmdDone(q, id, f.bools.has('skip-validate'));
+    case 'fail': {
+      if (!needId()) { console.error('fail: unknown task id'); return 1; }
+      const reason = f.positionals.slice(1).join(' ') || null;
+      const r = recordFailure(q, id, reason, q.config.maxFailures);
+      save(r.queue); log(`fail ${id} (${r.failures}/${q.config.maxFailures})${reason ? ': ' + reason : ''}`);
+      console.log(`${id} → ${r.terminal ? 'failed (terminal)' : `retry ${r.failures}/${q.config.maxFailures}`}`);
       return 0;
     }
 
-    case 'tick': {
-      if (q.config.status === 'stopped') {
-        console.log('queue: STOPPED — run `queue start` to resume');
-        return 0;
-      }
-      const t = nextActionable(q);
-      if (!t) { console.log('queue: IDLE — no pending tasks'); return 0; }
-      if (t.status === 'pending') { q = setTaskStatus(q, t.id, 'active'); save(path, q); }
-      console.log(`queue: working ${t.id}\n<queue_task id="${t.id}">\n${t.title}\n</queue_task>\n`
-        + `When finished: node scripts/queue.ts done ${t.id}  (or fail ${t.id})`);
-      return 0;
-    }
+    case 'top': case 'prioritize':
+      if (!needId()) { console.error('top: unknown task id'); return 1; }
+      save(moveToTop(q, id)); console.log(`${id} moved to top`); return 0;
+    case 'remove': case 'rm':
+      if (!needId()) { console.error('remove: unknown task id'); return 1; }
+      save(removeTask(q, id)); log(`remove ${id}`); console.log(`removed ${id}`); return 0;
 
-    case 'begin': case 'done': case 'fail': {
-      const id = args[0];
-      const status: TaskStatus = cmd === 'begin' ? 'active' : cmd === 'done' ? 'done' : 'failed';
-      if (!id || !q.tasks.some(t => t.id === id)) { console.error(`${cmd}: unknown task id`); return 1; }
-      q = setTaskStatus(q, id, status);
-      save(path, q);
-      console.log(`${id} → ${status}`);
-      return 0;
-    }
-
-    case 'top': case 'prioritize': {
-      const id = args[0];
-      if (!id || !q.tasks.some(t => t.id === id)) { console.error('top: unknown task id'); return 1; }
-      save(path, moveToTop(q, id));
-      console.log(`${id} moved to top`);
-      return 0;
-    }
-
-    case 'remove': case 'rm': {
-      const id = args[0];
-      if (!id || !q.tasks.some(t => t.id === id)) { console.error('remove: unknown task id'); return 1; }
-      save(path, removeTask(q, id));
-      console.log(`removed ${id}`);
-      return 0;
-    }
-
-    case 'start': case 'stop': {
-      save(path, setConfig(q, { status: cmd === 'start' ? 'running' : 'stopped' }));
-      console.log(`queue: ${cmd === 'start' ? 'running' : 'stopped'}`);
-      return 0;
-    }
-
-    case 'interval': {
-      if (!args[0]) { console.error('usage: queue interval <duration, e.g. 6m>'); return 1; }
-      save(path, setConfig(q, { interval: args[0] }));
-      console.log(`interval: ${args[0]}`);
-      return 0;
-    }
+    case 'start': case 'stop':
+      save(setConfig(q, { status: cmd === 'start' ? 'running' : 'stopped' }));
+      log(cmd); console.log(`queue: ${cmd === 'start' ? 'running' : 'stopped'}`); return 0;
+    case 'interval':
+      if (!id) { console.error('usage: queue interval <duration>'); return 1; }
+      save(setConfig(q, { interval: id })); console.log(`interval: ${id}`); return 0;
+    case 'config': return cmdConfig(q, f.positionals[0], f.positionals.slice(1).join(' '));
+    case 'archive': return cmdArchive(q);
+    case 'loop': return cmdLoop(q);
 
     default:
-      console.error(`unknown command: ${cmd}\n`
-        + 'commands: list add add-many next tick begin done fail top remove start stop interval');
+      console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
+        + `claim begin done fail top remove start stop interval config archive loop`);
       return 1;
   }
+}
+
+function readStdin(): string[] {
+  try { return readFileSync(0, 'utf8').split('\n'); } catch { return []; }
+}
+function cleanItem(line: string): string {
+  return line.replace(/^\s*[-*]\s*(\[[ >xX!]?\]\s*)?/, '').trim();
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
