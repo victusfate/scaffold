@@ -59,6 +59,19 @@ Q config idlePoll 15m >/dev/null
 grep_check "loop reflects idlePoll change" "$(Q loop)" "/loop 15m"
 grep_check "loop names all cadences"        "$(Q loop)" "busy → continue immediately"
 
+echo "== DRAIN-WANTED marker: non-empty + running ⇒ a driver is wanted =="
+# Self-contained queue so it can't perturb the ID-sequenced sections above.
+D="$TMP/drain.md"
+QD() { QUEUE_FILE="$D" node "$HERE/queue.ts" "$@"; }
+missing_check() { if echo "$2" | grep -q "$3"; then echo "  FAIL  $1"; fail=$((fail+1));
+          else echo "  pass  $1"; pass=$((pass+1)); fi; }
+grep_check "add emits DRAIN-WANTED"    "$(QD add 'd1')" "queue: DRAIN-WANTED 1 pending"
+grep_check "second add updates count"  "$(QD add 'd2')" "queue: DRAIN-WANTED 2 pending"
+grep_check "top re-emits DRAIN-WANTED" "$(QD top task-002)" "queue: DRAIN-WANTED"
+QD stop >/dev/null
+missing_check "stop suppresses marker (operator halt ≠ stall)" "$(QD add 'd3')" "DRAIN-WANTED"
+grep_check "start re-attaches a driver" "$(QD start)" "queue: DRAIN-WANTED 3 pending"
+
 echo
 echo "queue-loop: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

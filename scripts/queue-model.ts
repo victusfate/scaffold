@@ -425,3 +425,23 @@ export function readyTasks(q: Queue): Task[] {
   const slots = Math.max(0, q.config.maxParallel - active);
   return q.tasks.filter(t => isEligible(t, q)).slice(0, slots);
 }
+
+/** Stable prefix a Monitor / cron / agent keys on to (re)start a stalled drain. */
+export const DRAIN_MARKER = 'queue: DRAIN-WANTED';
+
+/**
+ * The machine signal that a running queue has drainable work but no driver
+ * attached — the invariant "non-empty + running ⇒ a driver is attached" made
+ * observable. Returns a stable `queue: DRAIN-WANTED <n> pending` marker when the
+ * queue is running, no task is active (nothing is currently draining), and at
+ * least one pending task is eligible to run now; `null` otherwise (stopped, a
+ * driver already active, or nothing eligible — dep-blocked/empty is genuinely
+ * idle). Emitted on any mutation that can leave a running queue drainable, so a
+ * later add/reprioritize re-attaches a driver instead of stalling until idlePoll.
+ */
+export function drainSignal(q: Queue): string | null {
+  if (q.config.status !== 'running') return null;
+  if (q.tasks.some(t => t.status === 'active')) return null;
+  const ready = q.tasks.filter(t => isEligible(t, q)).length;
+  return ready ? `${DRAIN_MARKER} ${ready} pending` : null;
+}
