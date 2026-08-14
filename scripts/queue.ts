@@ -32,7 +32,7 @@ import {
   parseQueue, serializeQueue, render as renderModel,
   addTask, addMany, setField, moveToTop, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
-  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone,
+  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, splitList,
   type Queue, type Task, type QueueConfig,
 } from './queue-model.ts';
 
@@ -68,8 +68,8 @@ const MS_PER_MIN = 60000;
 // Exit codes for the loop entry points (tick, ready, signal) so a driver can branch
 // its next cadence without parsing text: 0 = work dispatched/wanted → continue;
 // 3 = idle → back off to a long fallback; 4 = paused for a usage window → slow-poll;
-// 5 = stopped → halt. 1 stays a usage error.
-const EXIT = { DISPATCHED: 0, ERROR: 1, IDLE: 3, PAUSED: 4, STOPPED: 5 } as const;
+// 5 = stopped → halt. A bare `return 1` stays the usage/error code.
+const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5 } as const;
 
 function parse(rest: string[]): Parsed {
   const positionals: string[] = [];
@@ -90,8 +90,8 @@ function taskOverrides(f: Parsed): Partial<Task> {
   const o: Partial<Task> = {};
   if (f.flags.has('mode')) o.mode = f.flags.get('mode') === 'chain' ? 'chain' : 'direct';
   if (f.flags.has('slug')) o.slug = f.flags.get('slug') || null;
-  if (f.flags.has('deps')) o.dependsOn = (f.flags.get('deps') ?? '').split(',').map(s => s.trim()).filter(Boolean);
-  if (f.flags.has('files')) o.files = (f.flags.get('files') ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  if (f.flags.has('deps')) o.dependsOn = splitList(f.flags.get('deps') ?? '');
+  if (f.flags.has('files')) o.files = splitList(f.flags.get('files') ?? '');
   if (f.flags.has('validate')) o.validate = f.flags.get('validate') || null;
   if (f.flags.has('accept')) o.accept = f.flags.get('accept') || null;
   return o;

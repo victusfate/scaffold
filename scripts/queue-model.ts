@@ -117,7 +117,8 @@ const TASK_RE = /^- \[([ >xX!]?)\]\s+(.*)$/;
 const FIELD_RE = /^\s+[-*]\s+(\w+):\s*(.*)$/;
 const ID_TITLE_RE = /^(task-\d+)\s+[—:-]+\s+(.*)$/;
 
-function splitList(v: string): string[] {
+/** Split a comma-separated field value into trimmed, non-empty items. */
+export function splitList(v: string): string[] {
   return v.split(',').map(s => s.trim()).filter(Boolean);
 }
 
