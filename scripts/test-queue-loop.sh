@@ -21,7 +21,7 @@ echo "== tick exit codes =="
 check "empty running → idle"     "$(code tick)" 3
 t1=$(add_id "first task")
 check "with work → dispatched"   "$(code tick)" 0
-Q done "$t1" >/dev/null                  # completes → auto-archives out of the queue
+Q "done" "$t1" >/dev/null                # completes → auto-archives out of the queue
 check "drained → idle"           "$(code tick)" 3
 
 echo "== enqueue kick hint (running + idle) =="
@@ -44,7 +44,7 @@ check "queue now running"        "$(Q list | grep -c 'running')" 1
 echo "== ready exit codes under parallel cap =="
 Q start >/dev/null
 # Clear whatever prior sections left pending/active so the cap math is exact.
-for t in $(Q list | grep -o 'task-[0-9][0-9]*'); do Q done "$t" --skip-validate >/dev/null 2>&1; done
+for t in $(Q list | grep -o 'task-[0-9][0-9]*'); do Q "done" "$t" --skip-validate >/dev/null 2>&1; done
 a=$(add_id "p1"); b=$(add_id "p2"); add_id "p3" >/dev/null
 Q config maxParallel 2 >/dev/null
 check "ready with slots → dispatched" "$(code ready)" 0
@@ -81,7 +81,7 @@ grep_check "drainable emits DRAIN-WANTED"  "$(QS signal)" "DRAIN-WANTED 1 pendin
 sid=$(QS next | grep -o 'task-[0-9][0-9]*' | head -1); QS claim "$sid" >/dev/null 2>&1
 check "active driver → signal idle (3)"    "$(codeS signal)" 3
 missS "active driver emits no marker"      "$(QS signal 2>/dev/null)" "DRAIN-WANTED"
-QS done "$sid" --skip-validate >/dev/null
+QS "done" "$sid" --skip-validate >/dev/null
 check "completed task auto-archived"       "$(QS list | grep -c "$sid")" 0
 check "drained → signal idle (3)"          "$(codeS signal)" 3
 
