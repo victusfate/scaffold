@@ -25,11 +25,16 @@ check_file() {
     return 0
   fi
 
-  # File length
+  # File length. A `quality-ok: file-length — <reason>` pragma anywhere in the file
+  # (by convention on the first non-shebang line) blesses a genuinely cohesive file
+  # that reads as one unit and would only be fragmented by a split. Like the
+  # magic-number pragma, the keyword is the gate; the required reason is enforced at
+  # review time, not parsed here. Commented-out-code has no such escape hatch.
   local count
   count=$(wc -l < "$file")
-  if [ "$count" -gt "$MAX_LINES" ]; then
-    emit "${file}:${MAX_LINES} [Readability/major] file is ${count} lines — exceeds ${MAX_LINES}-line limit; extract modules"
+  if [ "$count" -gt "$MAX_LINES" ] \
+     && ! grep -Eq '(#|//)[[:space:]]*quality-ok:[[:space:]]*file-length' "$file"; then
+    emit "${file}:${MAX_LINES} [Readability/major] file is ${count} lines — exceeds ${MAX_LINES}-line limit; split into cohesive modules (or add a 'quality-ok: file-length — <reason>' pragma if it is one cohesive unit)"
   fi
 
   # Magic numbers/strings: bare numeric literals not assigned to a named constant.

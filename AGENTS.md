@@ -177,6 +177,14 @@ cram within. When a file grows near the limit, extract modules; never starve it 
 comments or clarity to fit. Splitting, never cramming, is the remedy for a long or
 growing file.
 
+**Escape hatch, used sparingly.** When a file is genuinely *one cohesive unit* —
+every candidate seam is shallow and a split would scatter one concept across files
+(a model/schema/state-machine over a single type) — an inline `quality-ok:
+file-length — <reason>` pragma on the first non-shebang line is preferable to an
+arbitrary split that fragments the concept. A real seam always wins over the
+override; reach for it only when keeping the file whole aids comprehension more than
+splitting it, and cite why.
+
 Run `/feature-chain` to execute all phases automatically. Or invoke individually:
 
 1. **Design** — `/grill-with-docs`. Interview one question at a time until

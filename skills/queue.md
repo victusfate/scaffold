@@ -55,6 +55,13 @@ integrationBranch:
 Task lines and their fields survive worker writes; **freeform prose does not**.
 Runtime sidecars `log.md` (audit trail) and `archive.md` sit alongside and are
 git-ignored; `queue.md` itself is committed so the queue is durable and visible.
+**Completed tasks auto-archive**: `done` moves a task straight into `archive.md` and
+out of `queue.md`, so the live queue shrinks to empty as work finishes (a `done` task
+still depended on by unfinished work is kept until that dependent completes, so the
+DAG never breaks). Terminal `failed` tasks stay visible; sweep them with `archive`.
+Task **ids are monotonic** — a persisted `nextId` counter means `task-007` is never
+reused once it has existed, even after the queue drains to empty, so archived and live
+ids never collide.
 
 ## Command surface (`scripts/queue.ts`)
 
@@ -65,8 +72,9 @@ add-many                               # seed many tasks from stdin, one per lin
 set <id> <field> <value>               # edit a field (mode/slug/deps/files/validate/accept)
 next | ready                           # serial pick | fan-out candidate set (under the cap)
 tick                                    # serial loop entry: reclaim → begin → print task
+signal                                  # print DRAIN-WANTED iff drainable (Monitor poll; exit 0/3)
 claim <id> [--worker w]                # atomic claim for a parallel worker
-done <id> [--skip-validate]            # run the task's validate, then complete
+done <id> [--skip-validate]            # validate, complete, then auto-archive out of the queue
 fail <id> [reason...]                  # record a failure (retries, then terminal)
 top <id> | remove <id>
 start | stop                           # run or pause the whole queue
@@ -134,7 +142,8 @@ The loop body; one task per wake:
 2. **Execute** per its mode (`direct` or the `chain` sequence above), honoring the
    no-user-input contract.
 3. **Complete:** `queue done <id>` (runs `validate`; refuses → counts as a failure)
-   or `queue fail <id> "<reason>"`.
+   or `queue fail <id> "<reason>"`. A successful `done` **auto-archives** the task
+   out of the live queue, so the queue empties as work finishes.
 4. **Commit** the work so each drained task is a reviewable checkpoint.
 
 A resumed `active` task is preferred next wake; otherwise the topmost **eligible**
@@ -189,36 +198,50 @@ do.
 | `tick` / `ready` exit | Meaning | Next action |
 |---|---|---|
 | `0` | a task was dispatched | do it, then loop **immediately** |
-| `3` | idle — nothing eligible | **re-arm the heartbeat** at config **`idlePoll`** (default 20m) to catch newly-added work — **never** `ScheduleWakeup stop:true` while running |
+| `3` | idle — queue drained, nothing eligible | **terminate the loop** (`ScheduleWakeup stop:true`) **when a signal-polling Monitor is armed** — it re-wakes the loop only when a later `add` makes work drainable, so nothing stalls and **no loop fires on an empty queue**. Only if you could not arm a Monitor, **re-arm the heartbeat** at config **`idlePoll`** (default 20m) as the fallback (it must poll, so it may wake on an empty queue) |
 | `4` | paused for a usage window | slow-poll at config **`pausePoll`** (default 30m); auto-resumes when the window reopens |
-| `5` | stopped (manual) | halt until `queue start` — the only exit that stops the loop |
+| `5` | stopped (manual) | halt until `queue start` |
 
 The three fallback cadences are all editable config: `interval` (fixed one-tick
 loops), `idlePoll` (continuous-drainer idle fallback), `pausePoll` (paused). Set
 them with `queue config idlePoll 20m` etc. `node scripts/queue.ts loop` prints the
-invocation for the current state — it wakes at `idlePoll` and drains continuously
-each wake — so you never hardcode a delay.
+invocation for the current state — arm the Monitor, drain continuously, then
+terminate on idle (the `idlePoll` heartbeat is only the unmonitored fallback) — so
+you never hardcode a delay.
 
-**The stall invariant — "empty" is not "stopped."** While `config.status ==
-running`, the loop is **never fully stopped**, only heartbeating. An idle/empty
-tick (exit `3`) means **re-arm the heartbeat at `idlePoll`** — it does **not** mean
-`ScheduleWakeup stop:true`. `stop:true` is reserved for `status: stopped`/paused
-(exit `5`/`4` — an operator action), never for an empty queue. If the loop stopped
-on an empty tick, a later `add` would leave the queue *logically running with no
-driver attached* — work would stall until a human noticed and re-ran `/loop`. So the
-principle to bake in: **non-empty + running ⇒ a driver is attached; the loop
-heartbeats while running and only `stop:true`s when the operator stops/pauses.** Any
-task added later is then picked up automatically on the next heartbeat.
+**The stall invariant — the driver is what matters, not the loop.** A drained
+queue must never *silently* stall, but that does **not** require the polling loop to
+run forever, and it must **not** fire on an empty queue. The invariant is: **while
+`status: running`, a driver is attached that re-drains when work arrives.** A
+persistent **signal-polling `Monitor`** (above) *is* that driver — so once it is armed,
+an idle/drained tick (exit `3`) **terminates the loop** (`ScheduleWakeup stop:true`):
+the Monitor stays attached and re-wakes the loop the instant `signal` reports drainable
+work, and stays silent otherwise — so an empty queue never wakes the loop. Terminating
+on drain is the intended clean stop (design.md `run-all` — "terminate when no eligible
+task remains"), safe **because** the Monitor covers restart. The only case that re-arms
+the `idlePoll` heartbeat is when **no Monitor could be armed** — then the heartbeat is
+the fallback driver (and, lacking an event source, must poll, so it may wake on an
+empty queue). So: **Monitor armed ⇒ idle terminates the loop, no empty-queue fires;
+unmonitored ⇒ idle re-arms the polling heartbeat.** Either way a later task is picked
+up automatically; `stop:true` on an operator stop/pause (exit `5`/`4`) is unchanged.
 
-**Event-driven restart (preferred over waiting for the heartbeat).** Arm a
-persistent **`Monitor` on the queue state file** (`.agent/queue/queue.md`) as the
-loop's *primary* wake signal. Every `add`/`set`/`top`/`start` rewrites that file
-(bumping its mtime) → the Monitor fires → the loop resumes **immediately** instead
-of waiting up to `idlePoll`. The `idlePoll` heartbeat becomes the fallback, not the
-only path. The mutation also prints a stable machine marker —
-`queue: DRAIN-WANTED <n> pending` — that a Monitor, cron, or agent can key on to
-confirm a driver is wanted (emitted only when running, drainable, and no task is
-active; suppressed when stopped/paused, since an operator halt is not a stall).
+**The Monitor is the primary driver (arm it first, and make it poll the drain
+signal).** At the *start* of the loop, before the first tick, arm a persistent
+**`Monitor`** whose command **polls `node scripts/queue.ts signal`** — e.g. `while
+true; do node scripts/queue.ts signal; sleep <idlePoll>; done`. `signal` prints the
+`queue: DRAIN-WANTED <n> pending` marker (and exits `0`) **only** when the queue is
+running, has eligible work, and has no active driver; otherwise it prints nothing and
+exits `3`. So the Monitor emits an event **only when a drain is genuinely wanted** —
+it stays silent on an empty or idle queue, which is what lets the loop terminate on
+idle **without** any spurious wake on an empty queue, yet re-wake the instant a later
+`add` makes work drainable.
+
+Poll the **`signal`** predicate, not the file's mtime: a raw mtime watch would fire
+on *every* write — including a task completing and auto-archiving itself — and wake
+the loop against an already-empty queue. `signal` is the content-level gate that
+distinguishes "work is waiting with no driver" from "the file just changed." The same
+marker is also printed inline by `add`/`add-many`/`top`/`start` (via `drainKick`) so a
+human or cron sees the restart cue immediately.
 
 **Enqueue kicks the drain.** After `add`/`add-many`/`top`/`start` on a running,
 drainable queue with no active task, the CLI emits `queue: DRAIN-WANTED <n> pending`
@@ -280,6 +303,17 @@ execution — applied to the queue so overnight drains survive the window.
 5. **Never blind-merge a worktree.** Merge-back is agent-driven; on conflict,
    reconcile carefully or fail safe (D7). Failures never halt independent work.
 6. **Stopped means stopped** — a `tick` does nothing until `queue start`.
-7. **A running queue never silently stalls.** Empty ≠ stopped: while
-   `status: running`, an idle tick re-arms the `idlePoll` heartbeat — it never
-   `ScheduleWakeup stop:true`s. Only an operator stop/pause ends the loop.
+7. **A running queue never silently stalls — but a drained one terminates the
+   loop, and no loop fires on an empty queue.** The invariant is *a driver stays
+   attached while running*, not *the loop runs forever*. With a **signal-polling
+   `Monitor` armed** (do this first — it polls `queue signal` and emits only when work
+   is drainable), an idle/drained tick **terminates the loop** (`ScheduleWakeup
+   stop:true`) — the Monitor re-wakes it only when a later `add` makes work drainable,
+   so an empty queue never wakes it. Only when **no Monitor could be armed** does an
+   idle tick re-arm the `idlePoll` heartbeat instead. A registered `CronCreate` drain
+   is an equivalent standing driver. An operator stop/pause always ends the loop.
+8. **Completed tasks auto-archive.** A successful `done` moves the task into
+   `archive.md` and out of the live queue, so the queue empties as work finishes — but
+   a `done` task still depended on by unfinished work is kept until that dependent
+   completes (never break the DAG). Terminal `failed` tasks stay visible; sweep them
+   with `archive`.
