@@ -59,6 +59,9 @@ git-ignored; `queue.md` itself is committed so the queue is durable and visible.
 out of `queue.md`, so the live queue shrinks to empty as work finishes (a `done` task
 still depended on by unfinished work is kept until that dependent completes, so the
 DAG never breaks). Terminal `failed` tasks stay visible; sweep them with `archive`.
+Task **ids are monotonic** — a persisted `nextId` counter means `task-007` is never
+reused once it has existed, even after the queue drains to empty, so archived and live
+ids never collide.
 
 ## Command surface (`scripts/queue.ts`)
 

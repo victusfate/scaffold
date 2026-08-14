@@ -67,6 +67,12 @@ export interface QueueConfig {
   idlePoll: string;
   /** Slow cadence the loop backs off to while paused (poll until the window reopens). */
   pausePoll: string;
+  /**
+   * Monotonic id counter: the next `task-NNN` number to hand out. Persisted so ids
+   * never recycle after a task is archived/removed — once `task-007` has existed, no
+   * later task reuses that id, even when the queue drains to empty.
+   */
+  nextId: number;
 }
 
 export interface Queue {
@@ -85,6 +91,7 @@ export const DEFAULT_CONFIG: QueueConfig = {
   resumeAt: '',
   idlePoll: '20m',
   pausePoll: '30m',
+  nextId: 1,
 };
 
 const MS_PER_MIN = 60000;
@@ -125,6 +132,7 @@ function applyConfig(config: QueueConfig, key: string, val: string): void {
     case 'resumeAt': config.resumeAt = val; break;
     case 'idlePoll': config.idlePoll = val || DEFAULT_CONFIG.idlePoll; break;
     case 'pausePoll': config.pausePoll = val || DEFAULT_CONFIG.pausePoll; break;
+    case 'nextId': config.nextId = Math.max(1, Number(val) || 1); break;
     default: break;
   }
 }
@@ -177,23 +185,38 @@ export function parseQueue(md: string): Queue {
 
 // ---------------------------------------------------------------- serialize
 
-function nextIdNum(tasks: Task[]): number {
+/** The highest `task-NNN` number currently present (0 if none). */
+function maxIdNum(tasks: Task[]): number {
   let max = 0;
   for (const t of tasks) {
     const n = Number(t.id.match(/^task-(\d+)$/)?.[1] ?? 0);
     if (n > max) max = n;
   }
-  return max + 1;
+  return max;
 }
 
 function fmtId(n: number): string {
   return `task-${String(n).padStart(ID_PAD, '0')}`;
 }
 
-/** Give every task a stable id (synthesizing ids for hand-added lines). */
-function withIds(tasks: Task[]): Task[] {
-  let n = nextIdNum(tasks);
-  return tasks.map(t => (t.id ? t : { ...t, id: fmtId(n++) }));
+/**
+ * The next id number to hand out: the monotonic counter, never below the highest id
+ * already present (so a hand-typed high id can't collide, and the counter never goes
+ * backwards even if it was dropped from an old file).
+ */
+function nextIdNum(q: Queue): number {
+  return Math.max(q.config.nextId, maxIdNum(q.tasks) + 1);
+}
+
+/**
+ * Assign monotonic ids to any id-less (hand-added) tasks, advancing the persisted
+ * counter so those ids never recycle either. Returns the id-complete task list and
+ * the counter value to persist.
+ */
+function assignIds(q: Queue): { tasks: Task[]; nextId: number } {
+  let n = nextIdNum(q);
+  const tasks = q.tasks.map(t => (t.id ? t : { ...t, id: fmtId(n++) }));
+  return { tasks, nextId: Math.max(n, maxIdNum(tasks) + 1) };
 }
 
 function fieldLines(t: Task): string[] {
@@ -225,6 +248,7 @@ const HEADER = [
 /** Render the model back to the canonical Markdown file. */
 export function serializeQueue(q: Queue): string {
   const c = q.config;
+  const { tasks, nextId } = assignIds(q);
   const lines = [
     '# Work Queue', '',
     '<!-- queue:config',
@@ -237,10 +261,11 @@ export function serializeQueue(q: Queue): string {
     `resumeAt: ${c.resumeAt}`,
     `idlePoll: ${c.idlePoll}`,
     `pausePoll: ${c.pausePoll}`,
+    `nextId: ${nextId}`,
     '-->', '',
     ...HEADER, '',
   ];
-  for (const t of withIds(q.tasks)) {
+  for (const t of tasks) {
     lines.push(`- [${MARK[t.status]}] ${t.id} — ${t.title}`, ...fieldLines(t));
   }
   lines.push('');
@@ -259,15 +284,18 @@ function mapTask(q: Queue, id: string, fn: (t: Task) => Task): Queue {
 
 export function addTask(q: Queue, title: string, opts: { top?: boolean } & Partial<Task> = {}): Queue {
   const { top, ...over } = opts;
-  const task: Task = { ...newTask(fmtId(nextIdNum(q.tasks)), title.trim()), ...over };
-  return withTasks(q, top ? [task, ...q.tasks] : [...q.tasks, task]);
+  const n = nextIdNum(q);
+  const task: Task = { ...newTask(fmtId(n), title.trim()), ...over };
+  const config = { ...q.config, nextId: n + 1 };
+  return { config, tasks: top ? [task, ...q.tasks] : [...q.tasks, task] };
 }
 
 /** Bulk-add plain-title tasks — the "create a queue from in-memory items" path. */
 export function addMany(q: Queue, titles: string[], opts: { top?: boolean } = {}): Queue {
-  let n = nextIdNum(q.tasks);
+  let n = nextIdNum(q);
   const fresh = titles.map(s => s.trim()).filter(Boolean).map(title => newTask(fmtId(n++), title));
-  return withTasks(q, opts.top ? [...fresh, ...q.tasks] : [...q.tasks, ...fresh]);
+  const config = { ...q.config, nextId: n };
+  return { config, tasks: opts.top ? [...fresh, ...q.tasks] : [...q.tasks, ...fresh] };
 }
 
 export function setTaskStatus(q: Queue, id: string, status: TaskStatus): Queue {
@@ -377,7 +405,7 @@ export function render(q: Queue): string {
     + `${counts('pending')} pending, ${counts('active')} active, ${counts('done')} done, `
     + `${counts('failed')} failed`;
   if (!q.tasks.length) return `${head}\n  (empty)`;
-  const rows = withIds(q.tasks).map((t, i) => {
+  const rows = assignIds(q).tasks.map((t, i) => {
     const tags = [
       t.mode === 'chain' ? 'chain' : '',
       t.dependsOn.length ? `deps:${t.dependsOn.join('+')}` : '',
