@@ -32,7 +32,7 @@ import {
   parseQueue, serializeQueue, render as renderModel,
   addTask, addMany, setField, moveToTop, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
-  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, splitList,
+  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, splitList, taskFields,
   type Queue, type Task, type QueueConfig,
 } from './queue-model.ts';
 
@@ -117,21 +117,8 @@ function runValidate(task: Task): { ok: boolean; tail: string } {
 // ---------------------------------------------------------------- rendering
 
 function showTask(t: Task): string {
-  const rows: string[] = [`${t.id} [${t.status}] — ${t.title}`];
-  const add = (k: string, v: string): void => { rows.push(`  ${k}: ${v}`); };
-  add('mode', t.mode);
-  if (t.slug) add('slug', t.slug);
-  if (t.dependsOn.length) add('deps', t.dependsOn.join(', '));
-  if (t.files.length) add('files', t.files.join(', '));
-  if (t.validate) add('validate', t.validate);
-  if (t.accept) add('accept', t.accept);
-  if (t.failures) add('failures', String(t.failures));
-  if (t.note) add('note', t.note);
-  if (t.owner) add('owner', t.owner);
-  if (t.branch) add('branch', t.branch);
-  if (t.worktree) add('worktree', t.worktree);
-  if (t.startedAt) add('started', t.startedAt);
-  return rows.join('\n');
+  const rows = taskFields(t, true).map(([k, v]) => `  ${k}: ${v}`);
+  return [`${t.id} [${t.status}] — ${t.title}`, ...rows].join('\n');
 }
 
 function taskBlock(t: Task): string {

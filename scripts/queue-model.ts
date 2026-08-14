@@ -220,22 +220,34 @@ function assignIds(q: Queue): { tasks: Task[]; nextId: number } {
   return { tasks, nextId: Math.max(n, maxIdNum(tasks) + 1) };
 }
 
+/**
+ * A task's spec fields as ordered `[label, value]` pairs, in canonical order, empty
+ * ones omitted. The single source of field order/labels/guards that both the file
+ * serializer (`fieldLines`) and the CLI `show` view derive from, so adding a field
+ * touches one place. `alwaysMode` forces the `mode` line even for the default
+ * `direct` — the `show` view lists it explicitly; the serialized file omits the
+ * default to stay terse.
+ */
+export function taskFields(t: Task, alwaysMode = false): Array<[string, string]> {
+  const pairs: Array<[string, string]> = [];
+  if (alwaysMode || t.mode !== 'direct') pairs.push(['mode', t.mode]);
+  const push = (k: string, v: string): void => { if (v) pairs.push([k, v]); };
+  push('slug', t.slug ?? '');
+  push('deps', t.dependsOn.join(', '));
+  push('files', t.files.join(', '));
+  push('validate', t.validate ?? '');
+  push('accept', t.accept ?? '');
+  push('failures', t.failures ? String(t.failures) : '');
+  push('note', t.note ?? '');
+  push('owner', t.owner ?? '');
+  push('branch', t.branch ?? '');
+  push('worktree', t.worktree ?? '');
+  push('started', t.startedAt ?? '');
+  return pairs;
+}
+
 function fieldLines(t: Task): string[] {
-  const out: string[] = [];
-  const add = (k: string, v: string): void => { out.push(`  - ${k}: ${v}`); };
-  if (t.mode !== 'direct') add('mode', t.mode);
-  if (t.slug) add('slug', t.slug);
-  if (t.dependsOn.length) add('deps', t.dependsOn.join(', '));
-  if (t.files.length) add('files', t.files.join(', '));
-  if (t.validate) add('validate', t.validate);
-  if (t.accept) add('accept', t.accept);
-  if (t.failures) add('failures', String(t.failures));
-  if (t.note) add('note', t.note);
-  if (t.owner) add('owner', t.owner);
-  if (t.branch) add('branch', t.branch);
-  if (t.worktree) add('worktree', t.worktree);
-  if (t.startedAt) add('started', t.startedAt);
-  return out;
+  return taskFields(t).map(([k, v]) => `  - ${k}: ${v}`);
 }
 
 const HEADER = [
