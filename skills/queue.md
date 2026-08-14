@@ -189,33 +189,38 @@ do.
 | `tick` / `ready` exit | Meaning | Next action |
 |---|---|---|
 | `0` | a task was dispatched | do it, then loop **immediately** |
-| `3` | idle — nothing eligible | **re-arm the heartbeat** at config **`idlePoll`** (default 20m) to catch newly-added work — **never** `ScheduleWakeup stop:true` while running |
+| `3` | idle — queue drained, nothing eligible | **terminate the loop** (`ScheduleWakeup stop:true`) **when a Monitor on the queue file is armed** — the Monitor is the attached driver and re-drains on the next `add`, so nothing stalls. Only if you could not arm a Monitor, **re-arm the heartbeat** at config **`idlePoll`** (default 20m) as the fallback |
 | `4` | paused for a usage window | slow-poll at config **`pausePoll`** (default 30m); auto-resumes when the window reopens |
-| `5` | stopped (manual) | halt until `queue start` — the only exit that stops the loop |
+| `5` | stopped (manual) | halt until `queue start` |
 
 The three fallback cadences are all editable config: `interval` (fixed one-tick
 loops), `idlePoll` (continuous-drainer idle fallback), `pausePoll` (paused). Set
 them with `queue config idlePoll 20m` etc. `node scripts/queue.ts loop` prints the
-invocation for the current state — it wakes at `idlePoll` and drains continuously
-each wake — so you never hardcode a delay.
+invocation for the current state — arm the Monitor, drain continuously, then
+terminate on idle (the `idlePoll` heartbeat is only the unmonitored fallback) — so
+you never hardcode a delay.
 
-**The stall invariant — "empty" is not "stopped."** While `config.status ==
-running`, the loop is **never fully stopped**, only heartbeating. An idle/empty
-tick (exit `3`) means **re-arm the heartbeat at `idlePoll`** — it does **not** mean
-`ScheduleWakeup stop:true`. `stop:true` is reserved for `status: stopped`/paused
-(exit `5`/`4` — an operator action), never for an empty queue. If the loop stopped
-on an empty tick, a later `add` would leave the queue *logically running with no
-driver attached* — work would stall until a human noticed and re-ran `/loop`. So the
-principle to bake in: **non-empty + running ⇒ a driver is attached; the loop
-heartbeats while running and only `stop:true`s when the operator stops/pauses.** Any
-task added later is then picked up automatically on the next heartbeat.
+**The stall invariant — the driver is what matters, not the loop.** A drained
+queue must never *silently* stall, but that does **not** require the polling loop to
+run forever. The invariant is: **while `status: running`, a driver is attached that
+re-drains when work arrives.** A persistent **`Monitor` on the queue file** *is* that
+driver — so once a Monitor is armed, an idle/drained tick (exit `3`) can **terminate
+the loop** (`ScheduleWakeup stop:true`): the Monitor stays attached and restarts the
+drain the instant work is added. Terminating on drain is the intended clean stop
+(design.md `run-all` — "terminate when no eligible task remains"), safe **because** the
+Monitor covers restart. The only case that still re-arms the `idlePoll` heartbeat is
+when **no Monitor could be armed** — then the heartbeat is the fallback driver and
+`stop:true` would strand a later `add` until a human re-ran `/loop`. So: **Monitor
+armed ⇒ idle terminates the loop; unmonitored ⇒ idle re-arms the heartbeat.** Either
+way a later task is picked up automatically; `stop:true` on an operator stop/pause
+(exit `5`/`4`) is unchanged.
 
-**Event-driven restart (preferred over waiting for the heartbeat).** Arm a
-persistent **`Monitor` on the queue state file** (`.agent/queue/queue.md`) as the
-loop's *primary* wake signal. Every `add`/`set`/`top`/`start` rewrites that file
-(bumping its mtime) → the Monitor fires → the loop resumes **immediately** instead
-of waiting up to `idlePoll`. The `idlePoll` heartbeat becomes the fallback, not the
-only path. The mutation also prints a stable machine marker —
+**The Monitor is the primary driver (arm it first).** Arm a persistent **`Monitor`
+on the queue state file** (`.agent/queue/queue.md`) at the *start* of the loop, before
+the first tick — it is the loop's primary wake signal *and* the standing driver that
+makes idle-termination safe. Every `add`/`set`/`top`/`start` rewrites that file
+(bumping its mtime) → the Monitor fires → the drain resumes **immediately**, with no
+heartbeat left running in between. The mutation also prints a stable machine marker —
 `queue: DRAIN-WANTED <n> pending` — that a Monitor, cron, or agent can key on to
 confirm a driver is wanted (emitted only when running, drainable, and no task is
 active; suppressed when stopped/paused, since an operator halt is not a stall).
@@ -280,6 +285,11 @@ execution — applied to the queue so overnight drains survive the window.
 5. **Never blind-merge a worktree.** Merge-back is agent-driven; on conflict,
    reconcile carefully or fail safe (D7). Failures never halt independent work.
 6. **Stopped means stopped** — a `tick` does nothing until `queue start`.
-7. **A running queue never silently stalls.** Empty ≠ stopped: while
-   `status: running`, an idle tick re-arms the `idlePoll` heartbeat — it never
-   `ScheduleWakeup stop:true`s. Only an operator stop/pause ends the loop.
+7. **A running queue never silently stalls — but a drained one terminates the
+   loop.** The invariant is *a driver stays attached while running*, not *the loop
+   runs forever*. With a **`Monitor` on the queue file armed** (do this first), an
+   idle/drained tick **terminates the loop** (`ScheduleWakeup stop:true`) — the
+   Monitor is the attached driver and re-drains on the next `add`. Only when **no
+   Monitor could be armed** does an idle tick re-arm the `idlePoll` heartbeat instead.
+   A registered `CronCreate` drain is an equivalent standing driver. An operator
+   stop/pause always ends the loop.

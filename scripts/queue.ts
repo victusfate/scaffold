@@ -313,16 +313,22 @@ function cmdLoop(q: Queue): number {
   const drain = q.config.maxParallel > 1
     ? 'run `node scripts/queue.ts ready` and dispatch each returned task in its own worktree, then done/fail each'
     : 'run `node scripts/queue.ts tick` and do the task it prints, then `done <id>` or `fail <id>`';
-  // The loop wakes at idlePoll: each wake drains continuously until idle (tick exits
-  // 3), so idlePoll is the fallback re-check cadence, not a per-task delay. Idle is
-  // NOT terminal while running — re-arm the heartbeat so a later add is picked up;
-  // only exit 5 (operator stop) ends the loop.
-  console.log(`/loop ${q.config.idlePoll} drain the work queue: repeatedly ${drain} — `
-    + `keep going while tick/ready exits 0; on exit 3 (idle) end the turn but RE-ARM the `
-    + `heartbeat at ${q.config.idlePoll} (never ScheduleWakeup stop:true while the queue is `
-    + `running — a non-empty queue must never silently stall). Only exit 5 (operator stop) `
-    + `stops the loop; exit 4 slow-polls at ${q.config.pausePoll}. `
-    + `Cadence: busy → continue immediately · idle → ${q.config.idlePoll} · paused → ${q.config.pausePoll}.`);
+  // Idle (tick exits 3) is a clean stop when an event-driven driver is attached:
+  // arm a Monitor on the queue file first (its mtime bumps on every add/top/start),
+  // and on idle TERMINATE the loop (ScheduleWakeup stop:true) — the Monitor re-drains
+  // on the next enqueue, so a drained queue can't stall. The idlePoll heartbeat is
+  // only the fallback when no Monitor can be armed. Exit 5 (operator stop) always
+  // ends the loop; exit 4 slow-polls a usage window.
+  console.log(`/loop ${q.config.idlePoll} drain the work queue: FIRST arm a Monitor on `
+    + `.agent/queue/queue.md (its mtime bumps on every add/top/start — the primary, `
+    + `event-driven driver), THEN repeatedly ${drain} — keep going while tick/ready exits 0; `
+    + `on exit 3 (idle/drained) TERMINATE the loop with ScheduleWakeup stop:true, because the `
+    + `Monitor restarts the drain on the next add so the queue can't stall. Only if you could `
+    + `NOT arm a Monitor, fall back to re-arming the ${q.config.idlePoll} heartbeat so a later `
+    + `add is still picked up. Exit 5 (operator stop) always stops the loop; exit 4 slow-polls `
+    + `at ${q.config.pausePoll}. `
+    + `Cadence: busy → continue immediately · idle → stop:true (Monitor restarts on add; `
+    + `${q.config.idlePoll} heartbeat only if unmonitored) · paused → ${q.config.pausePoll}.`);
   return 0;
 }
 

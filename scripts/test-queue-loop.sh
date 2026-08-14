@@ -59,6 +59,11 @@ Q config idlePoll 15m >/dev/null
 grep_check "loop reflects idlePoll change" "$(Q loop)" "/loop 15m"
 grep_check "loop names all cadences"        "$(Q loop)" "busy → continue immediately"
 
+echo "== idle terminates the loop when a Monitor is armed =="
+grep_check "loop arms a Monitor first"      "$(Q loop)" "Monitor"
+grep_check "loop terminates on idle"        "$(Q loop)" "stop:true"
+grep_check "heartbeat is only the fallback" "$(Q loop)" "fall back"
+
 echo "== DRAIN-WANTED marker: non-empty + running ⇒ a driver is wanted =="
 # Self-contained queue so it can't perturb the ID-sequenced sections above.
 D="$TMP/drain.md"
