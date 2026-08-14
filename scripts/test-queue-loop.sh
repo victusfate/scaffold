@@ -8,6 +8,7 @@ TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 export QUEUE_FILE="$TMP/queue.md"
 Q() { node "$HERE/queue.ts" "$@"; }
+add_id() { Q add "$1" | grep -o 'task-[0-9][0-9]*' | head -1; }   # add a task, echo its id
 
 pass=0; fail=0
 code() { Q "$@" >/dev/null 2>&1; echo $?; }        # capture exit code of a command
@@ -18,14 +19,13 @@ grep_check() { if echo "$2" | grep -q "$3"; then echo "  pass  $1"; pass=$((pass
 
 echo "== tick exit codes =="
 check "empty running → idle"     "$(code tick)" 3
-Q add "first task" >/dev/null
+t1=$(add_id "first task")
 check "with work → dispatched"   "$(code tick)" 0
-Q "done" task-001 >/dev/null
+Q done "$t1" >/dev/null                  # completes → auto-archives out of the queue
 check "drained → idle"           "$(code tick)" 3
 
 echo "== enqueue kick hint (running + idle) =="
 grep_check "add hints to start"  "$(Q add 'another')" "start now"
-Q "done" task-002 >/dev/null
 
 echo "== stopped vs paused codes =="
 Q stop >/dev/null
@@ -43,12 +43,13 @@ check "queue now running"        "$(Q list | grep -c 'running')" 1
 
 echo "== ready exit codes under parallel cap =="
 Q start >/dev/null
-Q "done" task-003 >/dev/null            # finish the one auto-resumed above
-Q add "p1" >/dev/null; Q add "p2" >/dev/null; Q add "p3" >/dev/null  # task-004/005/006
+# Clear whatever prior sections left pending/active so the cap math is exact.
+for t in $(Q list | grep -o 'task-[0-9][0-9]*'); do Q done "$t" --skip-validate >/dev/null 2>&1; done
+a=$(add_id "p1"); b=$(add_id "p2"); add_id "p3" >/dev/null
 Q config maxParallel 2 >/dev/null
 check "ready with slots → dispatched" "$(code ready)" 0
-Q claim task-004 >/dev/null 2>&1
-Q claim task-005 >/dev/null 2>&1
+Q claim "$a" >/dev/null 2>&1
+Q claim "$b" >/dev/null 2>&1
 # two active at cap 2 → nothing more ready
 check "ready at cap → idle"      "$(code ready)" 3
 
@@ -63,6 +64,26 @@ echo "== idle terminates the loop when a Monitor is armed =="
 grep_check "loop arms a Monitor first"      "$(Q loop)" "Monitor"
 grep_check "loop terminates on idle"        "$(Q loop)" "stop:true"
 grep_check "heartbeat is only the fallback" "$(Q loop)" "fall back"
+grep_check "loop polls the signal command"  "$(Q loop)" "signal"
+grep_check "loop: no fire on empty queue"   "$(Q loop)" "empty queue"
+
+echo "== signal: pollable drain marker, silent on empty (no fire on empty queue) =="
+S="$TMP/signal.md"
+QS() { QUEUE_FILE="$S" node "$HERE/queue.ts" "$@"; }
+codeS() { QS "$@" >/dev/null 2>&1; echo $?; }
+missS() { if echo "$2" | grep -q "$3"; then echo "  FAIL  $1"; fail=$((fail+1));
+          else echo "  pass  $1"; pass=$((pass+1)); fi; }
+check "empty queue → signal idle (3)"     "$(codeS signal)" 3
+missS "empty queue emits no marker"       "$(QS signal 2>/dev/null)" "DRAIN-WANTED"
+QS add "s1" >/dev/null
+check "drainable → signal dispatched (0)" "$(codeS signal)" 0
+grep_check "drainable emits DRAIN-WANTED"  "$(QS signal)" "DRAIN-WANTED 1 pending"
+sid=$(QS next | grep -o 'task-[0-9][0-9]*' | head -1); QS claim "$sid" >/dev/null 2>&1
+check "active driver → signal idle (3)"    "$(codeS signal)" 3
+missS "active driver emits no marker"      "$(QS signal 2>/dev/null)" "DRAIN-WANTED"
+QS done "$sid" --skip-validate >/dev/null
+check "completed task auto-archived"       "$(QS list | grep -c "$sid")" 0
+check "drained → signal idle (3)"          "$(codeS signal)" 3
 
 echo "== DRAIN-WANTED marker: non-empty + running ⇒ a driver is wanted =="
 # Self-contained queue so it can't perturb the ID-sequenced sections above.

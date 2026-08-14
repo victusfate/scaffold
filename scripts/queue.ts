@@ -10,6 +10,7 @@
 //   node scripts/queue.ts show <id>                  # print a task's full spec
 //   node scripts/queue.ts next | ready               # serial pick | fan-out candidate set
 //   node scripts/queue.ts tick                       # serial loop entry (reclaim→begin→print)
+//   node scripts/queue.ts signal                     # print DRAIN-WANTED iff drainable (Monitor poll)
 //   node scripts/queue.ts claim <id> [--worker w]    # atomic claim for a parallel worker
 //   node scripts/queue.ts done <id> [--skip-validate]# run validate, then complete
 //   node scripts/queue.ts fail <id> [reason...]      # record a failure (retries then terminal)
@@ -31,7 +32,7 @@ import {
   parseQueue, serializeQueue, render as renderModel,
   addTask, addMany, setField, moveToTop, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
-  nextActionable, readyTasks, deadlocked, drainSignal,
+  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone,
   type Queue, type Task, type QueueConfig,
 } from './queue-model.ts';
 
@@ -64,8 +65,8 @@ const VALUE_FLAGS = new Set([
 ]);
 const MS_PER_MIN = 60000;
 
-// Exit codes for the loop entry points (tick, ready) so a driver can branch its
-// next cadence without parsing text: 0 = work dispatched → continue immediately;
+// Exit codes for the loop entry points (tick, ready, signal) so a driver can branch
+// its next cadence without parsing text: 0 = work dispatched/wanted → continue;
 // 3 = idle → back off to a long fallback; 4 = paused for a usage window → slow-poll;
 // 5 = stopped → halt. 1 stays a usage error.
 const EXIT = { DISPATCHED: 0, ERROR: 1, IDLE: 3, PAUSED: 4, STOPPED: 5 } as const;
@@ -217,9 +218,21 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
       return 1;
     }
   }
-  save(markDone(q, id));
-  log(`done ${id}`);
-  console.log(`✓ ${id} done${t.validate && !skip ? ' (validation passed)' : ''}`);
+  // Complete the task, then archive it out of the live queue right away — plus any
+  // earlier done task this completion just freed (one whose last unfinished
+  // dependent was this one). A done task still depended on by unfinished work is
+  // kept until that work finishes, so dependency resolution never breaks.
+  let dq = markDone(q, id);
+  const sweep = archivableDone(dq);
+  if (sweep.length) {
+    appendArchive(sweep);
+    for (const s of sweep) dq = removeTask(dq, s.id);
+  }
+  save(dq);
+  const archivedSelf = sweep.some(s => s.id === id);
+  log(`done ${id}${sweep.length ? ` → archived ${sweep.map(s => s.id).join(', ')}` : ''}`);
+  console.log(`✓ ${id} done${t.validate && !skip ? ' (validation passed)' : ''}`
+    + (archivedSelf ? ' → archived' : ' (kept: still a dependency)'));
   return 0;
 }
 
@@ -237,16 +250,35 @@ function cmdConfig(q: Queue, key: string, val: string): number {
   return 0;
 }
 
+/** Append a batch of finished tasks to the git-ignored archive.md audit log. */
+function appendArchive(tasks: Task[]): void {
+  const block = `\n## Archived ${now()}\n\n`
+    + tasks.map(t => `- [${t.status === 'done' ? 'x' : '!'}] ${t.id} — ${t.title}`).join('\n') + '\n';
+  appendFileSync(sidecar('archive.md'), block);
+}
+
 function cmdArchive(q: Queue): number {
   const gone = q.tasks.filter(t => t.status === 'done' || t.status === 'failed');
   if (!gone.length) { console.log('archive: nothing to sweep'); return 0; }
-  const block = `\n## Archived ${now()}\n\n`
-    + gone.map(t => `- [${t.status === 'done' ? 'x' : '!'}] ${t.id} — ${t.title}`).join('\n') + '\n';
-  appendFileSync(sidecar('archive.md'), block);
+  appendArchive(gone);
   save({ config: q.config, tasks: q.tasks.filter(t => t.status !== 'done' && t.status !== 'failed') });
   log(`archived ${gone.length} task(s)`);
   console.log(`archived ${gone.length} task(s) → ${sidecar('archive.md')}`);
   return 0;
+}
+
+/**
+ * The drain signal as a pollable command for a Monitor: prints the DRAIN-WANTED
+ * marker and exits 0 when a running queue has eligible work and no active driver;
+ * prints nothing and exits IDLE otherwise. A Monitor that polls this emits an event
+ * ONLY when a drain is genuinely wanted — so it never fires on an empty/idle queue,
+ * yet re-wakes the loop the moment a later `add` makes work drainable.
+ */
+function cmdSignal(q: Queue): number {
+  const sig = drainSignal(q);
+  if (!sig) return EXIT.IDLE;
+  console.log(sig);
+  return EXIT.DISPATCHED;
 }
 
 // ---------------------------------------------------------------- worktrees
@@ -313,22 +345,26 @@ function cmdLoop(q: Queue): number {
   const drain = q.config.maxParallel > 1
     ? 'run `node scripts/queue.ts ready` and dispatch each returned task in its own worktree, then done/fail each'
     : 'run `node scripts/queue.ts tick` and do the task it prints, then `done <id>` or `fail <id>`';
-  // Idle (tick exits 3) is a clean stop when an event-driven driver is attached:
-  // arm a Monitor on the queue file first (its mtime bumps on every add/top/start),
-  // and on idle TERMINATE the loop (ScheduleWakeup stop:true) — the Monitor re-drains
-  // on the next enqueue, so a drained queue can't stall. The idlePoll heartbeat is
-  // only the fallback when no Monitor can be armed. Exit 5 (operator stop) always
-  // ends the loop; exit 4 slow-polls a usage window.
-  console.log(`/loop ${q.config.idlePoll} drain the work queue: FIRST arm a Monitor on `
-    + `.agent/queue/queue.md (its mtime bumps on every add/top/start — the primary, `
-    + `event-driven driver), THEN repeatedly ${drain} — keep going while tick/ready exits 0; `
-    + `on exit 3 (idle/drained) TERMINATE the loop with ScheduleWakeup stop:true, because the `
-    + `Monitor restarts the drain on the next add so the queue can't stall. Only if you could `
-    + `NOT arm a Monitor, fall back to re-arming the ${q.config.idlePoll} heartbeat so a later `
-    + `add is still picked up. Exit 5 (operator stop) always stops the loop; exit 4 slow-polls `
-    + `at ${q.config.pausePoll}. `
-    + `Cadence: busy → continue immediately · idle → stop:true (Monitor restarts on add; `
-    + `${q.config.idlePoll} heartbeat only if unmonitored) · paused → ${q.config.pausePoll}.`);
+  // Arm a Monitor that POLLS `queue signal` (not the file mtime): it emits an event
+  // only when a running queue has eligible work and no active driver, so it never
+  // fires on an empty/idle queue, yet re-wakes the loop the moment a later add makes
+  // work drainable. Each finished task auto-archives out of the queue, so a drain
+  // ends with the queue truly empty. On idle (tick exits 3) TERMINATE the loop
+  // (ScheduleWakeup stop:true) — the signal-Monitor is the standing driver. Exit 5
+  // (operator stop) always ends the loop; exit 4 slow-polls a usage window.
+  const signalPoll = `arm a Monitor whose command polls the drain signal — e.g. `
+    + `\`while true; do node scripts/queue.ts signal; sleep ${q.config.idlePoll}; done\` — `
+    + `it prints a line ONLY when work is drainable, so it never fires on an empty queue`;
+  console.log(`/loop ${q.config.idlePoll} drain the work queue: FIRST ${signalPoll}; `
+    + `THEN repeatedly ${drain} — keep going while tick/ready exits 0 (each completed task `
+    + `auto-archives out of the queue). On exit 3 (idle/drained) TERMINATE the loop with `
+    + `ScheduleWakeup stop:true; the signal-Monitor re-wakes the loop only when a later add `
+    + `makes work drainable, so the queue can't stall and no loop fires on an empty queue. `
+    + `Only if you could NOT arm a Monitor, fall back to re-arming the ${q.config.idlePoll} `
+    + `heartbeat (it must poll, so it may wake on an empty queue). Exit 5 (operator stop) `
+    + `always stops the loop; exit 4 slow-polls at ${q.config.pausePoll}. `
+    + `Cadence: busy → continue immediately · idle → stop:true (signal-Monitor re-wakes on new `
+    + `work; ${q.config.idlePoll} heartbeat only if unmonitored) · paused → ${q.config.pausePoll}.`);
   return 0;
 }
 
@@ -378,6 +414,7 @@ function main(argv: string[]): number {
     }
     case 'ready': return cmdReady(q);
     case 'tick': return cmdTick(q);
+    case 'signal': return cmdSignal(q);
 
     case 'claim': {
       if (!needId()) { console.error('claim: unknown task id'); return 1; }
@@ -434,7 +471,7 @@ function main(argv: string[]): number {
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
-        + `claim begin done fail top remove start stop pause interval config archive loop worktree`);
+        + `signal claim begin done fail top remove start stop pause interval config archive loop worktree`);
       return 1;
   }
 }

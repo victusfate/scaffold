@@ -6,6 +6,7 @@ import {
   addTask, addMany, setTaskStatus, setField, moveToTop, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
+  archivableDone,
   type Queue,
 } from './queue-model.ts';
 
@@ -235,6 +236,35 @@ integrationBranch: queue/integration
     + '- [ ] task-003 — blocked\n  - deps: task-000\n');
   assert('drain counts only eligible', drainSignal(mixed) === `${DRAIN_MARKER} 1 pending`,
     String(drainSignal(mixed)));
+}
+
+// ---- archivableDone: archive a completed task, but not while it's still a dep ----
+{
+  const ids = (ts: { id: string }[]): string => ts.map(t => t.id).sort().join(',');
+
+  // independent done tasks → all archivable immediately
+  const indep = parseQueue('- [x] task-001 — a\n- [x] task-002 — b\n- [ ] task-003 — c\n');
+  assert('independent done are archivable', ids(archivableDone(indep)) === 'task-001,task-002');
+
+  // a done task with a pending dependent is NOT archivable (would deadlock it)
+  const chain = parseQueue('- [x] task-001 — base\n- [ ] task-002 — dep\n  - deps: task-001\n');
+  assert('done kept while a pending task depends on it', archivableDone(chain).length === 0);
+
+  // an active dependent also pins its done dependency
+  const activeDep = parseQueue('- [x] task-001 — base\n- [>] task-002 — dep\n  - deps: task-001\n');
+  assert('done kept while an active task depends on it', archivableDone(activeDep).length === 0);
+
+  // once the dependent finishes, the whole chain becomes archivable
+  const chainDone = markDone(chain, 'task-002');
+  assert('chain archivable after dependent done', ids(archivableDone(chainDone)) === 'task-001,task-002');
+
+  // failed tasks are never auto-archived (kept for deadlock visibility)
+  const failed = parseQueue('- [!] task-001 — boom\n- [x] task-002 — ok\n');
+  assert('failed never archivable', ids(archivableDone(failed)) === 'task-002');
+
+  // a done task whose only dependent already failed terminally is archivable
+  const depFailed = parseQueue('- [x] task-001 — base\n- [!] task-002 — dep\n  - deps: task-001\n');
+  assert('done archivable once its dependent has failed', ids(archivableDone(depFailed)) === 'task-001');
 }
 
 console.error(`\nqueue.test: ${passed} passed, ${failed} failed`);

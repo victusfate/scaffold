@@ -404,6 +404,26 @@ export function deadlocked(q: Queue): Task[] {
 }
 
 /**
+ * Completed (`done`) tasks that may be archived out of the live queue right now.
+ * `isEligible` resolves a task's `deps` against the *live* queue, so a done task is
+ * still needed while any unfinished (pending/active) task depends on it — archiving
+ * it early would deadlock that dependent. So a done task is archivable only once no
+ * unfinished task lists it as a dependency; a chain therefore archives from the
+ * leaves inward as each dependent finishes. Failed tasks are never returned — they
+ * stay visible so `deadlocked()` can still report dependents blocked by a failed
+ * dependency (sweep them explicitly with `queue archive`).
+ */
+export function archivableDone(q: Queue): Task[] {
+  const neededByUnfinished = new Set<string>();
+  for (const t of q.tasks) {
+    if (t.status === 'pending' || t.status === 'active') {
+      for (const d of t.dependsOn) neededByUnfinished.add(d);
+    }
+  }
+  return q.tasks.filter(t => t.status === 'done' && !neededByUnfinished.has(t.id));
+}
+
+/**
  * The single task a serial worker should act on now: resume an active task if one
  * exists, else the topmost eligible pending task. Null if stopped or drained.
  */
