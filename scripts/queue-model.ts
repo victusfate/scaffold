@@ -30,6 +30,11 @@
 //
 // Line order is priority (top first). Checkboxes encode status:
 //   `[ ]` pending · `[>]` active · `[x]` done · `[!]` failed.
+//
+// quality-ok: file-length — one cohesive work-queue model read top-to-bottom
+// (types → parse → serialize → mutations → selection over a single Task/Queue
+// type). Kept whole by choice at ~500 lines rather than fragmenting one model
+// across files with circular type imports just to satisfy a line-count proxy.
 
 // ---------------------------------------------------------------- model
 

@@ -22,6 +22,11 @@ printf 'const MAX_RETRIES = 3;\nfunction run() { return MAX_RETRIES; }\n' > "$CL
 LONG="$FIXTURES/long.js"
 for _ in $(seq 1 "$FIXTURE_LINE_COUNT"); do printf '// padding\n'; done > "$LONG"
 
+# Fixture: over-length file blessed by a file-length override pragma — should pass
+LONG_OK="$FIXTURES/long-ok.js"
+printf '// quality-ok: file-length — one cohesive module, split would fragment it\n' > "$LONG_OK"
+for _ in $(seq 1 "$FIXTURE_LINE_COUNT"); do printf '// padding\n'; done >> "$LONG_OK"
+
 # Fixture: file with magic number
 MAGIC="$FIXTURES/magic.js"
 printf 'function timeout() { return 86400; }\n' > "$MAGIC"
@@ -74,6 +79,13 @@ if echo "$output" | grep -qE '(long\.js|long):'; then
   ok "long file citation includes filename"
 else
   fail "long file error must include filename:line citation"
+fi
+
+# Over-length file with a file-length override pragma should pass
+if bash "$SCRIPT" "$LONG_OK" > /dev/null 2>&1; then
+  ok "quality-ok: file-length pragma suppresses the length violation"
+else
+  fail "file-length-overridden file should pass"
 fi
 
 # Magic number should fail

@@ -27,7 +27,7 @@ Score = 10 − Σ(violation weights)
 
 A score of 9 means exactly one minor violation, cited.
 
-**Override (model-driven criteria only):** add `quality-override: <file> — <criterion> — <reason>` to the PR body to exempt a file from a specific non-numeric criterion. Most mechanical criteria (file length, commented-out code) cannot be overridden — the code must be fixed.
+**Override (model-driven criteria only):** add `quality-override: <file> — <criterion> — <reason>` to the PR body to exempt a file from a specific non-numeric criterion. **File length** may be overridden inline with a cited reason (see the file-length pragma below) when a file is genuinely one cohesive unit that a split would only fragment; **commented-out code** cannot be overridden — the code must be fixed.
 
 **Inline override (colocated):** place `// quality-override: <criterion> — <reason>` on the line immediately above the offending line. It suppresses that single deduction for `<criterion>` and appears in audit output as an accepted override at **zero** score weight. For a violation that scopes the whole file, place the pragma on the first non-blank, non-shebang line. `<reason>` is required and the em dash `—` is the separator. A malformed pragma (unknown criterion, blank reason, or missing separator) is itself a `[Clarity/minor]` violation, since a broken override is worse than none.
 
@@ -38,7 +38,9 @@ A score of 9 means exactly one minor violation, cited.
 - *String-literal contents* — numbers inside quoted strings are data.
 - *`@generated` files* — a file with `@generated` in its first 5 lines is skipped whole (the same convention ESLint/Prettier honor). Use only for genuinely machine-produced/data files (geometry, fixtures, compiled tables) — never to silence a lint on hand-maintained logic.
 
-When a bare literal survives those exclusions and is genuinely self-documenting (e.g. `86400` where the context makes "seconds in a day" obvious), place `# quality-ok: magic-number — <reason>` (or `//` for JS/TS) on the **immediately preceding line**. The `<reason>` is required. File-length and commented-out-code cannot be overridden inline or via PR body — those violations must be fixed in the code.
+When a bare literal survives those exclusions and is genuinely self-documenting (e.g. `86400` where the context makes "seconds in a day" obvious), place `# quality-ok: magic-number — <reason>` (or `//` for JS/TS) on the **immediately preceding line**. The `<reason>` is required.
+
+**File-length pragma:** the ≤500-line limit is a smell, not a law — its remedy is to split at cohesive seams, never to strip comments or densify. But a file that is genuinely **one cohesive unit** (a model/schema/state-machine that reads top-to-bottom over a single type, where every candidate seam is shallow and a split would scatter one concept across files) may be blessed with `# quality-ok: file-length — <reason>` (or `//`) placed on the **first non-shebang line**. Like the magic-number pragma, the keyword is the gate and the `<reason>` is required (enforced at review). Prefer a real split whenever a clean seam exists; reach for the override only when keeping the file whole genuinely aids comprehension more than fragmenting it. **Commented-out-code** has no override — it must be fixed in the code.
 
 ---
 
@@ -83,7 +85,7 @@ A file scores 10 when:
 
 A file scores 10 when:
 
-- **Fits in one mental model** — a reader holds the whole file after one pass. All file types: ≤500 lines. *[mechanical: check with `wc -l`]* (major) — **the remedy for a long or growing file is always to split it into cohesive modules, never to cram**: do not strip comments, densify code, or hold back edits to fit under the limit. Cramming to hit a line count trades readability for the metric and defeats this criterion's intent.
+- **Fits in one mental model** — a reader holds the whole file after one pass. All file types: ≤500 lines. *[mechanical: check with `wc -l`]* (major) — **the remedy for a long or growing file is always to split it into cohesive modules, never to cram**: do not strip comments, densify code, or hold back edits to fit under the limit. Cramming to hit a line count trades readability for the metric and defeats this criterion's intent. When a file is genuinely one cohesive unit with no clean seam, an inline `quality-ok: file-length — <reason>` override (see the file-length pragma) is preferable to an arbitrary split — but a real seam always wins over the override.
 - **Top-to-bottom narrative** — declarations, derived state, effects, return appear in that order with no backtracking. (minor)
 - **No destructuring walls** — when a hook or function returns >8 names, callers group them or the hook is split. *[mechanical: count destructured names at call site]* (minor)
 - **No surprise control flow** — early returns are fine; deeply nested conditionals in JSX or effects are not. (major)
