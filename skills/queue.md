@@ -189,9 +189,9 @@ do.
 | `tick` / `ready` exit | Meaning | Next action |
 |---|---|---|
 | `0` | a task was dispatched | do it, then loop **immediately** |
-| `3` | idle — nothing eligible | re-arm the fallback at config **`idlePoll`** (default 20m) to catch newly-added work |
+| `3` | idle — nothing eligible | **re-arm the heartbeat** at config **`idlePoll`** (default 20m) to catch newly-added work — **never** `ScheduleWakeup stop:true` while running |
 | `4` | paused for a usage window | slow-poll at config **`pausePoll`** (default 30m); auto-resumes when the window reopens |
-| `5` | stopped (manual) | halt until `queue start` |
+| `5` | stopped (manual) | halt until `queue start` — the only exit that stops the loop |
 
 The three fallback cadences are all editable config: `interval` (fixed one-tick
 loops), `idlePoll` (continuous-drainer idle fallback), `pausePoll` (paused). Set
@@ -199,9 +199,45 @@ them with `queue config idlePoll 20m` etc. `node scripts/queue.ts loop` prints t
 invocation for the current state — it wakes at `idlePoll` and drains continuously
 each wake — so you never hardcode a delay.
 
-**Enqueue kicks the drain.** After `add`/`add-many` on a running, idle queue the CLI
-hints to start now — so newly-added work begins in seconds, not on the next poll.
-When you add tasks and no drain is running, start one immediately.
+**The stall invariant — "empty" is not "stopped."** While `config.status ==
+running`, the loop is **never fully stopped**, only heartbeating. An idle/empty
+tick (exit `3`) means **re-arm the heartbeat at `idlePoll`** — it does **not** mean
+`ScheduleWakeup stop:true`. `stop:true` is reserved for `status: stopped`/paused
+(exit `5`/`4` — an operator action), never for an empty queue. If the loop stopped
+on an empty tick, a later `add` would leave the queue *logically running with no
+driver attached* — work would stall until a human noticed and re-ran `/loop`. So the
+principle to bake in: **non-empty + running ⇒ a driver is attached; the loop
+heartbeats while running and only `stop:true`s when the operator stops/pauses.** Any
+task added later is then picked up automatically on the next heartbeat.
+
+**Event-driven restart (preferred over waiting for the heartbeat).** Arm a
+persistent **`Monitor` on the queue state file** (`.agent/queue/queue.md`) as the
+loop's *primary* wake signal. Every `add`/`set`/`top`/`start` rewrites that file
+(bumping its mtime) → the Monitor fires → the loop resumes **immediately** instead
+of waiting up to `idlePoll`. The `idlePoll` heartbeat becomes the fallback, not the
+only path. The mutation also prints a stable machine marker —
+`queue: DRAIN-WANTED <n> pending` — that a Monitor, cron, or agent can key on to
+confirm a driver is wanted (emitted only when running, drainable, and no task is
+active; suppressed when stopped/paused, since an operator halt is not a stall).
+
+**Enqueue kicks the drain.** After `add`/`add-many`/`top`/`start` on a running,
+drainable queue with no active task, the CLI emits `queue: DRAIN-WANTED <n> pending`
+and hints to start now — so newly-added work begins in seconds, not on the next
+poll. When you add tasks and no drain is running, start one immediately.
+
+**Durable driver across session close (optional).** A `/loop` lives only as long as
+its session. To keep the queue draining unattended past that, register a
+**`CronCreate`** firing the drain every `config.interval`:
+
+```
+CronCreate: schedule every <config.interval> →
+  run `node scripts/queue.ts tick`, do the task it prints, then done/fail it
+```
+
+`tick`'s exit `3` makes each firing a **safe no-op when the queue is empty**, so the
+cron can run indefinitely without side effects; it drains only when there's eligible
+work. Use this when the queue must outlive any single session (overnight, across
+machines).
 
 **Auto-drain on request.** When the user asks to run/drain/keep working the queue
 (or `/queue` with no clear one-shot intent), start the loop yourself — no need to
@@ -244,3 +280,6 @@ execution — applied to the queue so overnight drains survive the window.
 5. **Never blind-merge a worktree.** Merge-back is agent-driven; on conflict,
    reconcile carefully or fail safe (D7). Failures never halt independent work.
 6. **Stopped means stopped** — a `tick` does nothing until `queue start`.
+7. **A running queue never silently stalls.** Empty ≠ stopped: while
+   `status: running`, an idle tick re-arms the `idlePoll` heartbeat — it never
+   `ScheduleWakeup stop:true`s. Only an operator stop/pause ends the loop.

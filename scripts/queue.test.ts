@@ -5,7 +5,7 @@ import {
   parseQueue, serializeQueue, newTask,
   addTask, addMany, setTaskStatus, setField, moveToTop, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
-  isEligible, deadlocked, nextActionable, readyTasks,
+  isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
   type Queue,
 } from './queue-model.ts';
 
@@ -207,6 +207,34 @@ integrationBranch: queue/integration
   // round-trips through the file
   assert('resumeAt round-trips',
     parseQueue(serializeQueue(paused)).config.resumeAt === '2026-08-12T22:00:00.000Z');
+}
+
+// ---- drainSignal: non-empty + running ⇒ a driver is wanted ----
+{
+  // running with an eligible pending task and no active driver → DRAIN-WANTED
+  const ready = parseQueue('- [ ] task-001 — a\n- [ ] task-002 — b\n');
+  assert('drain wanted when idle+pending', drainSignal(ready) === `${DRAIN_MARKER} 2 pending`,
+    String(drainSignal(ready)));
+
+  // a driver already active → no signal (drain is attached)
+  assert('no drain when active', drainSignal(beginTask(ready, 'task-001', NOW, 'w1')) === null);
+
+  // empty running queue → genuinely idle, no signal
+  assert('no drain when empty', drainSignal(parseQueue('')) === null);
+
+  // stopped / paused is an operator halt, not a stalled drain → no signal
+  assert('no drain when stopped', drainSignal(setConfig(ready, { status: 'stopped' })) === null);
+  assert('no drain when paused', drainSignal(pauseUntil(ready, '2026-08-12T22:00:00.000Z')) === null);
+
+  // all pending blocked by an unmet dep → nothing eligible → no signal (not a stall)
+  const blocked = parseQueue('- [ ] task-002 — dep\n  - deps: task-000\n');
+  assert('no drain when dep-blocked', drainSignal(blocked) === null);
+
+  // only eligible pending are counted, dep-blocked ones excluded
+  const mixed = parseQueue('- [x] task-001 — done\n- [ ] task-002 — go\n  - deps: task-001\n'
+    + '- [ ] task-003 — blocked\n  - deps: task-000\n');
+  assert('drain counts only eligible', drainSignal(mixed) === `${DRAIN_MARKER} 1 pending`,
+    String(drainSignal(mixed)));
 }
 
 console.error(`\nqueue.test: ${passed} passed, ${failed} failed`);

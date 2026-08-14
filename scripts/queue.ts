@@ -31,7 +31,7 @@ import {
   parseQueue, serializeQueue, render as renderModel,
   addTask, addMany, setField, moveToTop, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
-  nextActionable, readyTasks, deadlocked,
+  nextActionable, readyTasks, deadlocked, drainSignal,
   type Queue, type Task, type QueueConfig,
 } from './queue-model.ts';
 
@@ -314,9 +314,14 @@ function cmdLoop(q: Queue): number {
     ? 'run `node scripts/queue.ts ready` and dispatch each returned task in its own worktree, then done/fail each'
     : 'run `node scripts/queue.ts tick` and do the task it prints, then `done <id>` or `fail <id>`';
   // The loop wakes at idlePoll: each wake drains continuously until idle (tick exits
-  // 3), so idlePoll is the fallback re-check cadence, not a per-task delay.
+  // 3), so idlePoll is the fallback re-check cadence, not a per-task delay. Idle is
+  // NOT terminal while running — re-arm the heartbeat so a later add is picked up;
+  // only exit 5 (operator stop) ends the loop.
   console.log(`/loop ${q.config.idlePoll} drain the work queue: repeatedly ${drain} — `
-    + `keep going while tick/ready exits 0, stop the turn when it exits 3 (idle). `
+    + `keep going while tick/ready exits 0; on exit 3 (idle) end the turn but RE-ARM the `
+    + `heartbeat at ${q.config.idlePoll} (never ScheduleWakeup stop:true while the queue is `
+    + `running — a non-empty queue must never silently stall). Only exit 5 (operator stop) `
+    + `stops the loop; exit 4 slow-polls at ${q.config.pausePoll}. `
     + `Cadence: busy → continue immediately · idle → ${q.config.idlePoll} · paused → ${q.config.pausePoll}.`);
   return 0;
 }
@@ -355,8 +360,9 @@ function main(argv: string[]): number {
     case 'set': {
       const [, field, ...v] = f.positionals;
       if (!needId() || !field) { console.error('usage: queue set <id> <field> <value>'); return 1; }
-      save(setField(q, id, taskOverrides(parse([`--${field}`, v.join(' ')]))));
-      console.log(`set ${id}.${field}`); return 0;
+      q = setField(q, id, taskOverrides(parse([`--${field}`, v.join(' ')])));
+      save(q);
+      console.log(`set ${id}.${field}${drainKick(q)}`); return 0;
     }
 
     case 'next': {
@@ -391,14 +397,15 @@ function main(argv: string[]): number {
 
     case 'top': case 'prioritize':
       if (!needId()) { console.error('top: unknown task id'); return 1; }
-      save(moveToTop(q, id)); console.log(`${id} moved to top`); return 0;
+      q = moveToTop(q, id); save(q);
+      console.log(`${id} moved to top${drainKick(q)}`); return 0;
     case 'remove': case 'rm':
       if (!needId()) { console.error('remove: unknown task id'); return 1; }
       save(removeTask(q, id)); log(`remove ${id}`); console.log(`removed ${id}`); return 0;
 
     case 'start':
-      save(setConfig(q, { status: 'running', resumeAt: '' }));
-      log('start'); console.log('queue: running'); return 0;
+      q = setConfig(q, { status: 'running', resumeAt: '' }); save(q);
+      log('start'); console.log(`queue: running${drainKick(q)}`); return 0;
     case 'stop':
       save(setConfig(q, { status: 'stopped', resumeAt: '' }));
       log('stop'); console.log('queue: stopped'); return 0;
@@ -433,10 +440,17 @@ function cleanItem(line: string): string {
   return line.replace(/^\s*[-*]\s*(\[[ >xX!]?\]\s*)?/, '').trim();
 }
 
-/** Nudge toward starting a drain when work was added to a running, idle queue. */
+/**
+ * Emit the stable DRAIN-WANTED marker (plus a human hint) when a mutation leaves a
+ * running queue drainable with no driver attached. This is a machine signal — a
+ * Monitor on the queue file, a cron, or an agent keys on `queue: DRAIN-WANTED` to
+ * (re)start the drain — not just prose a human has to be watching to notice. Empty
+ * string when a driver is already active, nothing is eligible, or the queue is
+ * stopped/paused (an operator halt is not a stalled drain).
+ */
 function drainKick(q: Queue): string {
-  const idle = q.config.status === 'running' && !q.tasks.some(t => t.status === 'active');
-  return idle ? '  → start now: `node scripts/queue.ts tick` (or the loop)' : '';
+  const sig = drainSignal(q);
+  return sig ? `\n${sig}  → start now: \`node scripts/queue.ts tick\` (or the loop)` : '';
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
