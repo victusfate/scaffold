@@ -1,0 +1,349 @@
+#!/usr/bin/env node
+// voice-loop.ts — hands-free, headphones-only voice loop for the victus agent.
+//
+// The goal: talk to the coding agent with no keyboard. You speak, whisper.cpp
+// transcribes, `claude -p` does the real work (full tool use, flat-rate under
+// your Claude Code subscription — NOT the metered Agent SDK), and macOS `say`
+// speaks the reply back. Headphones make this clean: the agent's own voice
+// never leaks into the mic, so no echo cancellation is needed.
+//
+// This is the FREE stack — every piece is local/offline except the LLM call,
+// which rides your existing subscription:
+//   mic --(sox rec, silence-gated)--> wav
+//       --(whisper.cpp local model)--> text
+//       --(claude -p --resume)--> reply text   (full tools, flat-rate)
+//       --(XTTS NZ clone | Piper model | macOS say)--> headphones
+//
+// TTS is pluggable (VOICE_TTS_BACKEND): 'say' (built-in), 'piper' (local neural
+// model), or 'xtts' (a genuine NZ voice-clone via a persistent Python server —
+// see scripts/voice/xtts_server.py). A sox silence-gate handles endpointing and
+// turns run sequentially. Roadmap (README): Silero VAD, barge-in, streaming.
+//
+// Self-contained tool: everything it needs lives in this scripts/voice/ dir
+// (this entry, xtts_server.py, requirements.txt, README.md), so it can later be
+// lifted into its own repo with a single move.
+//
+// Run:   node scripts/voice/voice-loop.ts
+// Check: node scripts/voice/voice-loop.ts --check   (verify deps, then exit)
+// Quit:  Ctrl-C, or say one of the EXIT_PHRASES.
+
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
+import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir, homedir } from 'node:os'
+import { join, dirname } from 'node:path'
+
+// ---- Config (env-overridable; all reversible in one line) -------------------
+
+const CFG = {
+  // STT
+  whisperBin: process.env.VOICE_WHISPER_BIN ?? 'whisper-cli',
+  whisperModel:
+    process.env.VOICE_WHISPER_MODEL ??
+    join(homedir(), '.whisper-models', 'ggml-base.en.bin'),
+
+  // TTS backend — 'auto' prefers a local neural model (Piper) when it and a
+  // voice are installed, else falls back to macOS `say`. Force one with
+  // VOICE_TTS_BACKEND=say|piper|xtts. 'xtts' is the genuine NZ voice-clone
+  // (Python; never auto-selected since it is heavier/slower).
+  ttsBackend: process.env.VOICE_TTS_BACKEND ?? 'auto',
+  // `say` voice — Karen is Australian, the closest free ready-made accent to NZ.
+  // `say -v '?'` lists installed voices.
+  ttsVoice: process.env.VOICE_TTS_VOICE ?? 'Karen',
+  ttsRate: process.env.VOICE_TTS_RATE ?? '', // words/min; empty = system default
+  // Piper — local neural TTS model. en_GB is the closest accent Piper ships
+  // (no en_AU/en_NZ voice exists in Piper).
+  piperBin: process.env.VOICE_PIPER_BIN ?? 'piper',
+  piperModel:
+    process.env.VOICE_PIPER_MODEL ??
+    join(homedir(), '.piper-voices', 'en_GB-alba-medium.onnx'),
+  player: process.env.VOICE_PLAYER ?? 'afplay', // macOS ships afplay
+  // XTTS (slice 3) — Coqui XTTS-v2 voice clone: the only free/local route to a
+  // genuine NZ accent. Runs as a persistent Python server (loads the model once)
+  // and clones from a ~6s speaker sample. Slower than Piper/say.
+  python: process.env.VOICE_PYTHON ?? 'python3',
+  xttsModel:
+    process.env.VOICE_XTTS_MODEL ?? 'tts_models/multilingual/multi-dataset/xtts_v2',
+  xttsSpeaker:
+    process.env.VOICE_XTTS_SPEAKER ?? join(homedir(), '.xtts-voices', 'nz-sample.wav'),
+  xttsLang: process.env.VOICE_XTTS_LANG ?? 'en',
+
+  // Agent — full tools, flat-rate via the CLI under your subscription.
+  claudeBin: process.env.VOICE_CLAUDE_BIN ?? 'claude',
+  allowedTools:
+    process.env.VOICE_ALLOWED_TOOLS ?? 'Read,Edit,Write,Bash,Glob,Grep',
+
+  // Endpointing — sox `silence` effect. Start on sound; stop after trailing
+  // quiet. Thresholds are % of full scale; laptop mics sit low, so 1% catches
+  // normal speech onset while staying above room noise (~0.4%). Raise stopSecs
+  // if it cuts you off mid-thought; lower for snappier turns. Biggest lever on
+  // how the loop "feels".
+  // quality-ok: magic-number — 16 kHz mono, whisper.cpp's input rate
+  sampleRate: 16000,
+  startThreshold: process.env.VOICE_START_THRESHOLD ?? '1%',
+  stopSecs: process.env.VOICE_STOP_SECS ?? '1.5',
+  stopThreshold: process.env.VOICE_STOP_THRESHOLD ?? '1%',
+  minChars: 2, // ignore blips shorter than this after transcription
+  // Live level meter while recording (sox -S on stderr) so you can SEE it hear
+  // you. Only visible when the loop runs in a foreground terminal.
+  // VOICE_METER=0 silences it.
+  meter: (process.env.VOICE_METER ?? '1') !== '0',
+
+  exitPhrases: ['stop listening', 'goodbye victus', "that's all for now"],
+}
+
+// ---- Small helpers ----------------------------------------------------------
+
+// TTS backend resolved once at startup, plus the temp dir Piper writes into.
+let ACTIVE_TTS = 'say'
+let SPEAK_DIR = ''
+const SCRIPT_DIR = dirname(process.argv[1] ?? '.')
+
+// Persistent XTTS server state (only used when ACTIVE_TTS === 'xtts').
+let XTTS_PROC: ChildProcess | null = null
+let xttsPending: ((line: string) => void) | null = null
+let xttsBuf = ''
+
+// Is `bin` on PATH? Pass bin as a positional arg to `sh` (not interpolated into
+// the script) so there's no injection and no shell-arg deprecation warning.
+const have = (bin: string) =>
+  spawnSync('sh', ['-c', 'command -v "$1" >/dev/null 2>&1', '_', bin], {
+    stdio: 'ignore',
+  }).status === 0
+
+/** Which TTS backend will run: explicit choice, or auto-detect Piper > say. */
+function resolveTts(): string {
+  if (CFG.ttsBackend !== 'auto') return CFG.ttsBackend
+  return have(CFG.piperBin) && existsSync(CFG.piperModel) ? 'piper' : 'say'
+}
+
+/**
+ * Boot the persistent XTTS Python server: loads the model once, then answers
+ * one synthesis request per line. Resolves when it prints READY.
+ */
+function startXtts(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const server = join(SCRIPT_DIR, 'xtts_server.py')
+    const proc = spawn(
+      CFG.python,
+      [server, '--speaker', CFG.xttsSpeaker, '--model', CFG.xttsModel, '--language', CFG.xttsLang],
+      { stdio: ['pipe', 'pipe', 'inherit'] },
+    )
+    XTTS_PROC = proc
+    proc.on('error', reject)
+    proc.on('exit', (code) => {
+      if (code && code !== 0) reject(new Error(`xtts server exited (${code})`))
+    })
+    proc.stdout!.setEncoding('utf8')
+    proc.stdout!.on('data', (chunk: string) => {
+      xttsBuf += chunk
+      let nl: number
+      while ((nl = xttsBuf.indexOf('\n')) >= 0) {
+        const line = xttsBuf.slice(0, nl).trim()
+        xttsBuf = xttsBuf.slice(nl + 1)
+        if (line === 'READY') { resolve(); continue }
+        if (xttsPending) { const r = xttsPending; xttsPending = null; r(line) }
+      }
+    })
+  })
+}
+
+/** One XTTS synthesis request; resolves with the server's reply line. */
+function xttsRequest(text: string): Promise<string> {
+  return new Promise((resolve) => {
+    xttsPending = resolve
+    XTTS_PROC!.stdin!.write(Buffer.from(text, 'utf8').toString('base64') + '\n')
+  })
+}
+
+/** Speak text through the active local TTS backend (XTTS, Piper, or `say`). */
+async function speak(text: string): Promise<void> {
+  if (ACTIVE_TTS === 'xtts') {
+    const line = await xttsRequest(text)
+    if (line.startsWith('WAV ')) spawnSync(CFG.player, [line.slice(4)], { stdio: 'ignore' })
+    else console.error('  (xtts) ' + line)
+    return
+  }
+  if (ACTIVE_TTS === 'piper') {
+    const wav = join(SPEAK_DIR, 'reply.wav')
+    spawnSync(CFG.piperBin, ['-m', CFG.piperModel, '-f', wav], { input: text })
+    spawnSync(CFG.player, [wav], { stdio: 'ignore' })
+    return
+  }
+  const args = ['-v', CFG.ttsVoice]
+  if (CFG.ttsRate) args.push('-r', CFG.ttsRate)
+  args.push(text)
+  spawnSync('say', args, { stdio: 'ignore' })
+}
+
+// ---- Dependency check -------------------------------------------------------
+
+function checkDeps(): string[] {
+  const problems: string[] = []
+  if (!have('rec') && !have('sox'))
+    problems.push('sox (mic capture) — install: brew install sox')
+  if (!have(CFG.whisperBin))
+    problems.push(
+      `${CFG.whisperBin} (STT) — install: brew install whisper-cpp`,
+    )
+  if (!existsSync(CFG.whisperModel))
+    problems.push(
+      `whisper model not found at ${CFG.whisperModel} — download a ggml model, e.g.\n` +
+        '     mkdir -p ~/.whisper-models && curl -L -o ~/.whisper-models/ggml-base.en.bin \\\n' +
+        '       https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin',
+    )
+  if (!have(CFG.claudeBin))
+    problems.push(`${CFG.claudeBin} (agent) — Claude Code CLI must be on PATH`)
+
+  const tts = resolveTts()
+  if (tts === 'piper') {
+    if (!have(CFG.piperBin))
+      problems.push(`${CFG.piperBin} (TTS) — install Piper; see scripts/voice/README.md`)
+    if (!existsSync(CFG.piperModel))
+      problems.push(`Piper voice not found at ${CFG.piperModel} — download an en_GB .onnx (see README)`)
+    if (!have(CFG.player)) problems.push(`${CFG.player} (audio player) — macOS ships afplay`)
+  } else if (tts === 'xtts') {
+    if (!have(CFG.python)) {
+      problems.push(`${CFG.python} (XTTS) — Python 3.10+ required`)
+    } else if (spawnSync(CFG.python, ['-c', 'import TTS'], { stdio: 'ignore' }).status !== 0) {
+      problems.push('coqui-tts not importable — pip install coqui-tts (see README)')
+    }
+    if (!existsSync(CFG.xttsSpeaker))
+      problems.push(`XTTS speaker sample not found at ${CFG.xttsSpeaker} — add a ~6s NZ .wav (see README)`)
+    if (!have(CFG.player)) problems.push(`${CFG.player} (audio player) — macOS ships afplay`)
+  } else if (!have('say')) {
+    problems.push('say (TTS) — macOS only; this loop targets macOS')
+  }
+  return problems
+}
+
+// ---- Loop steps -------------------------------------------------------------
+
+/** Record one utterance to a wav, returning when sox detects trailing silence. */
+function recordUtterance(wav: string): Promise<void> {
+  const recBin = have('rec') ? 'rec' : 'sox'
+  const pre = recBin === 'sox' ? ['-d'] : [] // `sox -d` reads the default mic
+  // -S shows a live VU meter on stderr (feedback); -q silences it.
+  const args = [
+    ...pre,
+    CFG.meter ? '-S' : '-q',
+    '-c', '1',
+    '-r', String(CFG.sampleRate),
+    '-b', '16',
+    wav,
+    // silence: start when sound exceeds threshold; stop after stopSecs quiet.
+    'silence', '1', '0.1', CFG.startThreshold,
+    '1', CFG.stopSecs, CFG.stopThreshold,
+  ]
+  return new Promise((resolve, reject) => {
+    // Inherit stderr so the meter is visible when run in a foreground terminal.
+    const p = spawn(recBin, args, { stdio: ['ignore', 'ignore', CFG.meter ? 'inherit' : 'ignore'] })
+    p.on('error', reject)
+    p.on('close', () => resolve())
+  })
+}
+
+/** Transcribe a wav with whisper.cpp; returns the plain text (no timestamps). */
+function transcribe(wav: string): string {
+  const r = spawnSync(
+    CFG.whisperBin,
+    ['-m', CFG.whisperModel, '-f', wav, '-nt', '-np', '-l', 'en'],
+    { encoding: 'utf8' },
+  )
+  return (r.stdout ?? '').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * Send text to the agent. First turn starts a fresh session; later turns
+ * resume it so context carries across the conversation. Returns { reply,
+ * sessionId }.
+ */
+function ask(text: string, sessionId: string | null): { reply: string; sessionId: string | null } {
+  const args = ['-p', text, '--output-format', 'json', '--allowedTools', CFG.allowedTools]
+  if (sessionId) args.push('--resume', sessionId)
+  // quality-ok: magic-number — 64 MB stdout cap, room for a long agent reply
+  const r = spawnSync(CFG.claudeBin, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+  if (r.status !== 0) {
+    return { reply: `The agent call failed. ${(r.stderr ?? '').trim()}`.trim(), sessionId }
+  }
+  try {
+    const j = JSON.parse(r.stdout)
+    return { reply: String(j.result ?? '').trim(), sessionId: j.session_id ?? sessionId }
+  } catch {
+    // Fallback: treat raw stdout as the reply if JSON parsing fails.
+    return { reply: (r.stdout ?? '').trim(), sessionId }
+  }
+}
+
+// ---- Main -------------------------------------------------------------------
+
+async function main() {
+  const argv = process.argv.slice(2)
+  if (argv.includes('--help') || argv.includes('-h')) {
+    console.log(
+      'voice-loop — hands-free voice loop for victus.\n' +
+        '  node scripts/voice/voice-loop.ts          start the loop\n' +
+        '  node scripts/voice/voice-loop.ts --check  verify deps and exit\n' +
+        '  env: VOICE_TTS_VOICE, VOICE_WHISPER_MODEL, VOICE_ALLOWED_TOOLS, ...',
+    )
+    return
+  }
+
+  const problems = checkDeps()
+  if (problems.length) {
+    console.error('Voice loop is missing some pieces:\n')
+    for (const p of problems) console.error('  - ' + p)
+    console.error('\nFix those, then re-run. See scripts/voice/README.md.')
+    process.exit(1)
+  }
+  if (argv.includes('--check')) {
+    const tts = resolveTts()
+    const voice =
+      tts === 'piper' ? CFG.piperModel
+      : tts === 'xtts' ? `xtts clone of ${CFG.xttsSpeaker}`
+      : `say -v ${CFG.ttsVoice}`
+    console.log(`All voice-loop deps present. STT: ${CFG.whisperModel} | TTS: ${tts} (${voice})`)
+    return
+  }
+
+  const dir = mkdtempSync(join(tmpdir(), 'victus-voice-'))
+  const wav = join(dir, 'utt.wav')
+  SPEAK_DIR = dir
+  ACTIVE_TTS = resolveTts()
+  const cleanup = () => {
+    try { XTTS_PROC?.kill() } catch {}
+    try { rmSync(dir, { recursive: true, force: true }) } catch {}
+  }
+  process.on('SIGINT', () => { console.log('\nCiao.'); cleanup(); process.exit(0) })
+
+  if (ACTIVE_TTS === 'xtts') {
+    console.log('Loading XTTS voice model (first run downloads ~1.8GB)…')
+    await startXtts()
+  }
+
+  let sessionId: string | null = null
+  await speak(`Righto. I'm listening. She'll be right.`)
+  console.log(`victus voice loop [TTS: ${ACTIVE_TTS}] — speak after the pause. Ctrl-C to quit.\n`)
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    process.stdout.write('\n🎙  listening — speak now (live level below):\n')
+    await recordUtterance(wav)
+    const heard = transcribe(wav)
+    if (heard.length < CFG.minChars) { console.log('(nothing)'); continue }
+    console.log(`\n  you: ${heard}`)
+
+    if (CFG.exitPhrases.some((p) => heard.toLowerCase().includes(p))) {
+      await speak('Sweet as. Talk later.')
+      break
+    }
+
+    process.stdout.write('  victus is working…')
+    const { reply, sessionId: sid } = ask(heard, sessionId)
+    sessionId = sid
+    console.log(`\n  victus: ${reply}\n`)
+    await speak(reply)
+  }
+  cleanup()
+}
+
+main().catch((e) => { console.error(e); process.exit(1) })
