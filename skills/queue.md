@@ -98,6 +98,44 @@ printf 'Write the README\nAdd unit tests\nWire the CI\n' | node scripts/queue.ts
 
 `add-many` **appends** (never clobbers) and also takes positional args.
 
+Each line becomes its own task, so split the list to the atomic grain below
+before piping it in — bulk-seeding is where umbrella tasks sneak in.
+
+## Task sizing — atomic tasks, no open-ended umbrellas
+
+A queued task must be **one reviewable slice a single agent can finish and mark
+`done` in one sitting** — not an open-ended program of work. An unattended worker
+has nobody to tell it "that's enough," so a task that *can't* finish never does: it
+holds its lease, accretes scope, and blocks everything downstream of it.
+
+- **`accept` must be checkable.** Every task carries an `accept:` naming a concrete,
+  verifiable end state ("hands have thumb+finger bones; a wielded weapon shows a
+  wrapped grip") — an end state, not a direction of travel. If you can't write a
+  crisp accept line, the task is too big: split it.
+- **No "ensure all X" / "cover every Y" / "rich, detailed …" tasks.** Those never
+  complete; they accrete. Convert them into a **finite enumerated set** of atomic
+  tasks (one per power, per character, per scene), plus at most *one* thin
+  "audit the remaining gaps and `add` them as tasks" task — which itself completes.
+- **Split on delivery, not on layer.** Each subtask cuts through to something
+  demonstrable/testable and can be marked `done` independently — the vertical-slice
+  rule the chain applies *inside* a feature, applied to the queue itself. Prefer 5
+  tasks that each ship a thing over 1 task that ships five things.
+- **Umbrella → children, then close the umbrella.** When work has many parts, the
+  parent becomes a **tracking stub**: `deps: <child ids>` with an `accept` of "all
+  children done." It only becomes eligible once every child completes, so closing it
+  is automatic and it can never sit open as a place to pile new scope — **new scope
+  is a new task**.
+- **Size guide:** if a task can't plausibly reach its `accept` in one focused agent
+  session, split it *before* starting. When in doubt, split.
+- **Partial progress = split, not a lingering open task.** If a worker finishes only
+  part of an oversized task, narrow it to the slice actually delivered (`queue set
+  <id> accept "<slice>"`), `done` it, and `add` the remainder as new smaller tasks
+  with their own accept lines — don't leave the big one 40%-open forever. This is the
+  sizing counterpart to `needs-spec:`: re-file rather than grind.
+
+Sizing happens at **enqueue** time, alongside specification — same reason: the
+worker can't renegotiate scope mid-drain.
+
 ## Two speeds: `direct` vs `chain`
 
 - **`direct`** (default) — small, self-contained work (bug fixes, chores, config).
@@ -312,7 +350,12 @@ execution — applied to the queue so overnight drains survive the window.
    so an empty queue never wakes it. Only when **no Monitor could be armed** does an
    idle tick re-arm the `idlePoll` heartbeat instead. A registered `CronCreate` drain
    is an equivalent standing driver. An operator stop/pause always ends the loop.
-8. **Completed tasks auto-archive.** A successful `done` moves the task into
+8. **Tasks are atomic.** One reviewable slice, finishable in one sitting, with a
+   checkable `accept`. Never enqueue an "ensure all X"/"cover every Y" umbrella —
+   enumerate it into finite children and make the parent a tracking stub
+   (`deps: <child ids>`). When in doubt, split. Partial progress gets re-filed as
+   smaller tasks, not left 40%-open.
+9. **Completed tasks auto-archive.** A successful `done` moves the task into
    `archive.md` and out of the live queue, so the queue empties as work finishes — but
    a `done` task still depended on by unfinished work is kept until that dependent
    completes (never break the DAG). Terminal `failed` tasks stay visible; sweep them
