@@ -16,3 +16,7 @@ package-lock.json
 .agent/queue/log.md
 .agent/queue/archive.md
 .agent/queue/wt/
+
+# Local editor prefs & personal scratch diagrams (not part of scaffold)
+.vscode/
+diagrams/
