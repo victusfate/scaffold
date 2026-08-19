@@ -34,6 +34,13 @@ scripts/queue.test.ts
 scripts/resolver-phases.ts
 scripts/resolver-utils.ts
 scripts/update-skills-doc.ts
+scripts/voice/voice-loop.ts
+scripts/voice/voice-loop.test.ts
+scripts/voice/xtts_server.py
+scripts/voice/requirements.txt
+scripts/voice/fetch-sample.sh
+scripts/voice/README.md
+scripts/voice/.gitignore
 tools/hoist-skill/tool.yaml
 tools/hoist-skill/run
 tools/hoist-skill/hoist.ts
@@ -186,6 +193,11 @@ skills/diagram.md
 .cursor/rules/diagram.mdc
 .agents/skills/diagram/SKILL.md
 .agent/workflows/diagram.md
+skills/voice-chat.md
+.claude/skills/voice-chat/SKILL.md
+.cursor/rules/voice-chat.mdc
+.agents/skills/voice-chat/SKILL.md
+.agent/workflows/voice-chat.md
 skills/council.md
 .claude/skills/council/SKILL.md
 .cursor/rules/council.mdc

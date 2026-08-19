@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/queue`.
+Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/queue`, `/voice-chat`.
 
 Bundled skills (self-contained Anthropic Agent Skills, Claude harness; loaded by description rather than a slash command): `improve`.
 <!-- END_SKILLS_INVOCATION -->
@@ -61,6 +61,7 @@ tools/
     council/SKILL.md          # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
     statusline/SKILL.md       # Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing
     queue/SKILL.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
+    voice-chat/SKILL.md       # Hands-free, headphones-only voice loop: speak → whisper.cpp STT → `claude -p` (full tools, flat-rate under your subscription) → local TTS (say/espeak/piper/xtts); cross-platform (macOS/Linux/WSL), everything local except the LLM call
     improve/SKILL.md          # (bundled) Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
@@ -95,6 +96,7 @@ tools/
     council.mdc          # mirrors council for Cursor
     statusline.mdc       # mirrors statusline for Cursor
     queue.mdc            # mirrors queue for Cursor
+    voice-chat.mdc       # mirrors voice-chat for Cursor
 .agents/
   skills/
     feature-chain/SKILL.md    # Orchestrate design → PRD → TDD → review end to end
@@ -121,6 +123,7 @@ tools/
     council/SKILL.md          # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
     statusline/SKILL.md       # Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing
     queue/SKILL.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
+    voice-chat/SKILL.md       # Hands-free, headphones-only voice loop: speak → whisper.cpp STT → `claude -p` (full tools, flat-rate under your subscription) → local TTS (say/espeak/piper/xtts); cross-platform (macOS/Linux/WSL), everything local except the LLM call
 .agent/
   rules/
     agents.md           # thin pointer to AGENTS.md (always-on)
@@ -149,6 +152,7 @@ tools/
     council.md          # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
     statusline.md       # Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing
     queue.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
+    voice-chat.md       # Hands-free, headphones-only voice loop: speak → whisper.cpp STT → `claude -p` (full tools, flat-rate under your subscription) → local TTS (say/espeak/piper/xtts); cross-platform (macOS/Linux/WSL), everything local except the LLM call
 scripts/
   check-resolvable.ts            # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-skills-doc.ts           # regenerate docs/skills.md skill sections from RESOLVER.md

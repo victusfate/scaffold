@@ -1,0 +1,8 @@
+# Local voice-loop artifacts — never commit these.
+# Downloaded/recorded speaker samples and TTS models live in $HOME by default,
+# but ignore any that land here, plus Python bytecode from xtts_server.py.
+*.wav
+*.onnx
+__pycache__/
+*.pyc
+.xtts-venv/

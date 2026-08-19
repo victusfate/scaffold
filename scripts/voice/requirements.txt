@@ -1,0 +1,13 @@
+# Python deps for the OPTIONAL XTTS voice-clone backend (xtts_server.py).
+# Only needed when you run VOICE_TTS_BACKEND=xtts — the default 'say'/'piper'/
+# 'espeak' backends need no Python at all.
+#
+# Coqui-TTS pulls in a matching torch build. Install into a throwaway venv so it
+# never collides with system Python:
+#   python3 -m venv ~/.xtts-venv
+#   source ~/.xtts-venv/bin/activate
+#   pip install -r scripts/voice/requirements.txt
+#   VOICE_PYTHON=~/.xtts-venv/bin/python VOICE_TTS_BACKEND=xtts node scripts/voice/voice-loop.ts
+#
+# coqui-tts is the maintained community fork of the (archived) Coqui TTS package.
+coqui-tts>=0.24
