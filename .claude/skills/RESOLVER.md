@@ -31,6 +31,7 @@ the first match.
 | council | `/(?:^\/council\b)|(?:council\|war[-\s]?room\|pressure[-\s]?test\|stress[-\s]?test\|debate)\s+(?:this\|it\|the)\b/i` | `skills/council.md` | Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step |
 | statusline | `/(?:^\/statusline\b)\|(?:enable\|turn\s+on\|show)\s+(?:the\s+)?(?:usage\s+)?status[-\s]?line/i` | `skills/statusline.md` | Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing |
 | queue | `/(?:^\/queue\b)|(?:work\|task)\s+queue\|drain\s+(?:the\s+)?queue/i` | `skills/queue.md` | Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume |
+| voice-chat | `/(?:^\/voice-chat\b)|(?:voice\s+chat\|voice\s+loop\|talk\s+to\s+(?:the\s+)?agent\|hands[-\s]?free\s+voice)/i` | `skills/voice-chat.md` | Hands-free, headphones-only voice loop: speak → whisper.cpp STT → `claude -p` (full tools, flat-rate under your subscription) → local TTS (say/espeak/piper/xtts); cross-platform (macOS/Linux/WSL), everything local except the LLM call |
 
 ## Column contract
 
