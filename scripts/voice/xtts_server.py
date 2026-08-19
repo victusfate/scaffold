@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # xtts_server.py — persistent Coqui XTTS-v2 voice-clone TTS server for the
-# victus voice loop (scripts/voice-loop.ts, backend "xtts").
+# voice loop (scripts/voice/voice-loop.ts, backend "xtts").
 #
 # Why a server, not a per-call script: XTTS takes several seconds to load. We
 # load the model ONCE, print "READY", then answer one synthesis request per
@@ -13,13 +13,13 @@
 #           "WAV <path>" on success or "ERR <message>" on failure.
 #   stderr: human-readable progress/log (inherited by the parent terminal).
 #
-# This is the ONLY free + local route to a genuine New Zealand accent: XTTS
-# clones the voice in ~/.xtts-voices/nz-sample.wav (a ~6s NZ English sample you
-# provide). Per Coqui's own docs it clones timbre reliably but accent only
-# partially, so fidelity depends on the sample. XTTS-v2 is under the Coqui
-# Public Model License (non-commercial) — fine for personal use.
+# A free + local route to a custom cloned voice: XTTS clones the voice in the
+# sample at $VOICE_XTTS_SPEAKER (default ~/.xtts-voices/sample.wav, a ~6s clip
+# you provide — see fetch-sample.sh). Per Coqui's own docs it clones timbre
+# reliably but accent only partially, so fidelity depends on the sample. XTTS-v2
+# is under the Coqui Public Model License (non-commercial) — fine for personal use.
 #
-# Run indirectly via `VOICE_TTS_BACKEND=xtts node scripts/voice-loop.ts`.
+# Run indirectly via `VOICE_TTS_BACKEND=xtts node scripts/voice/voice-loop.ts`.
 
 import argparse
 import base64
@@ -77,7 +77,7 @@ def main() -> int:
         emit(f"ERR model load failed: {e}")
         return 1
 
-    tmpdir = tempfile.mkdtemp(prefix="victus-xtts-")
+    tmpdir = tempfile.mkdtemp(prefix="voice-xtts-")
     emit("READY")
 
     n = 0

@@ -75,8 +75,8 @@ const CFG = {
   player: process.env.VOICE_PLAYER ?? (IS_MAC ? 'afplay' : 'paplay'),
   // XTTS — Coqui XTTS-v2 voice clone: a free/local route to a custom voice.
   // Runs as a persistent Python server (loads the model once) and clones from a
-  // ~6s speaker sample. Slower than Piper/say. See fetch-nz-sample.sh for one
-  // example sample; supply any ~6s .wav via VOICE_XTTS_SPEAKER.
+  // ~6s speaker sample. Slower than Piper/say. See fetch-sample.sh for one way
+  // to get one; supply any ~6s .wav via VOICE_XTTS_SPEAKER.
   python: process.env.VOICE_PYTHON ?? 'python3',
   xttsModel:
     process.env.VOICE_XTTS_MODEL ?? 'tts_models/multilingual/multi-dataset/xtts_v2',
