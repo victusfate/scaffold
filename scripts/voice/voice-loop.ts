@@ -36,6 +36,7 @@ import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
 import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir, homedir } from 'node:os'
 import { join, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // ---- Config (env-overridable; all reversible in one line) -------------------
 
@@ -133,14 +134,27 @@ const have = (bin: string) =>
   }).status === 0
 
 /**
- * Which TTS backend will run: explicit choice, or auto-detect. Order:
- * Piper (if installed with a voice) > macOS `say` > `espeak-ng` (portable).
+ * Pure TTS-backend decision (exported for tests): an explicit backend wins;
+ * otherwise auto-detect in order Piper (installed + voice) > macOS `say` >
+ * `espeak-ng` (the portable fallback).
  */
-function resolveTts(): string {
-  if (CFG.ttsBackend !== 'auto') return CFG.ttsBackend
-  if (have(CFG.piperBin) && existsSync(CFG.piperModel)) return 'piper'
-  if (IS_MAC && have('say')) return 'say'
+export function chooseTts(
+  backend: string,
+  caps: { piperReady: boolean; isMac: boolean; hasSay: boolean },
+): string {
+  if (backend !== 'auto') return backend
+  if (caps.piperReady) return 'piper'
+  if (caps.isMac && caps.hasSay) return 'say'
   return 'espeak'
+}
+
+/** Resolve the TTS backend against the live host (probes PATH and the model). */
+function resolveTts(): string {
+  return chooseTts(CFG.ttsBackend, {
+    piperReady: have(CFG.piperBin) && existsSync(CFG.piperModel),
+    isMac: IS_MAC,
+    hasSay: have('say'),
+  })
 }
 
 /**
@@ -388,4 +402,8 @@ async function main() {
   cleanup()
 }
 
-main().catch((e) => { console.error(e); process.exit(1) })
+// Run the loop only when invoked directly — importing the module (e.g. from the
+// test) must not start recording.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  main().catch((e: unknown) => { console.error(e); process.exit(1) })
+}

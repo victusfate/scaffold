@@ -35,6 +35,7 @@ scripts/resolver-phases.ts
 scripts/resolver-utils.ts
 scripts/update-skills-doc.ts
 scripts/voice/voice-loop.ts
+scripts/voice/voice-loop.test.ts
 scripts/voice/xtts_server.py
 scripts/voice/requirements.txt
 scripts/voice/fetch-sample.sh
