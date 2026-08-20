@@ -1,5 +1,10 @@
 ## Purpose
 
+> **Multi-harness:** This skill references other scaffold skills using Claude Code
+> slash-command notation (`/name`). When running under **pi**, read and follow
+> `.agents/skills/<name>/SKILL.md` instead — the canonical instructions in
+> `skills/<name>.md` are identical for both harnesses.
+
 Lazy-senior-dev mode for *writing* code: force the simplest, shortest solution
 that actually works — YAGNI, stdlib first, no unrequested abstractions. Governs
 what you build, not how you review existing code (use `/simplify` for a

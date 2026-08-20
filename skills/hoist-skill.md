@@ -1,5 +1,9 @@
 ## Instructions
 
+> **Multi-harness:** Output paths below show `.claude/skills/` (Claude Code) and
+> `.agents/skills/` (pi). The `--harness` flag controls which format is emitted;
+> `claude` writes Claude Code wrappers, `antigravity` writes pi-compatible wrappers.
+
 Export one or more scaffold skills into a target repo in the requested harness format. Wraps `tools/hoist-skill/run` — do not reimplement its logic here.
 
 ### Step 1 — resolve arguments
@@ -99,10 +103,13 @@ Outputs a JSON source list to stdout without writing any files:
     { "path": "tools/hoist-skill/run", "required": true },
     { "path": ".claude/skills/RESOLVER.md", "required": true },
     { "path": "skills/tdd.md", "required": true, "ref": "main" },
-    { "path": ".claude/skills/tdd/SKILL.md", "required": false, "ref": "main" }
+    { "path": ".agents/skills/tdd/SKILL.md", "required": false, "ref": "main" }
   ]
 }
 ```
+
+(`.claude/skills/RESOLVER.md` and `.claude/skills/tdd/SKILL.md` are the Claude Code
+equivalents.)
 
 `required: true` sources must exist at the consumer before emitting;
 `required: false` sources are generated when absent. The consumer curls each

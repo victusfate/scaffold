@@ -1,5 +1,11 @@
 ## Purpose
 
+> **Multi-harness:** This skill references other scaffold skills using Claude Code
+> slash-command notation (`/name`). When running under **pi**, read and follow
+> `.agents/skills/<name>/SKILL.md` instead — the canonical instructions in
+> `skills/<name>.md` are identical for both harnesses.
+> Also: `claude -c` (Claude Code session resume) is `pi -c` in pi.
+
 Pick up a checkpointed session from `.pause/handoff.md` and keep going — whether
 you are back on your laptop or coming in cold from Claude mobile/web. Pulls the
 latest, reconstructs where things stood, and continues from the handoff's next
@@ -12,7 +18,7 @@ Counterpart to `/pause`, which produces the handoff this reads.
 ### 1 — Get the latest
 
 - `git pull` (set the upstream first if the branch has none).
-- If `claude -c` is available on *this* machine, mention it: full conversation
+- If `claude -c` (or `pi -c`) is available on *this* machine, mention it: full conversation
   history beats a reconstructed handoff. Use this skill when that history is
   gone, or when you are on a different device.
 

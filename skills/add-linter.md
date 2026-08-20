@@ -1,5 +1,10 @@
 ## Purpose
 
+> **Multi-harness:** This skill references other scaffold skills using Claude Code
+> slash-command notation (`/name`). When running under **pi**, read and follow
+> `.agents/skills/<name>/SKILL.md` instead — the canonical instructions in
+> `skills/<name>.md` are identical for both harnesses.
+
 Add linter configs and GitHub Actions workflows for languages detected in the
 current repo. One prompt per language — the user decides which to adopt.
 

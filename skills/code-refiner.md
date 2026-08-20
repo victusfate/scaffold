@@ -1,5 +1,10 @@
 ## Purpose
 
+> **Multi-harness:** This skill references other scaffold skills using Claude Code
+> slash-command notation (`/name`). When running under **pi**, read and follow
+> `.agents/skills/<name>/SKILL.md` instead — the canonical instructions in
+> `skills/<name>.md` are identical for both harnesses.
+
 Review the current diff **and fix it**, in one composite pass: run the
 correctness review (`validate`) and the structural-quality review (`simplify`)
 **in parallel**, merge their findings, then apply every fix in a **single serial

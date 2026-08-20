@@ -1,5 +1,13 @@
 ## Instructions
 
+> **Multi-harness:** This skill works in both Claude Code and pi. Cross-references
+> to other scaffold skills use Claude Code slash-command notation (`/name`). When
+> running under pi, read `.agents/skills/<name>/SKILL.md` instead — the canonical
+> instructions in `skills/<name>.md` are identical.
+>
+> **GitHub operations:** Where Claude Code uses `mcp__github__*` tools, pi uses `gh`
+> CLI commands. The `gh` path works in both harnesses and is the canonical form below.
+
 Create a pull request for the current branch and immediately subscribe to its activity. These two steps are atomic — never create without subscribing.
 
 ### Step 1 — verify state
@@ -182,11 +190,13 @@ If auto-corrections were applied in Step 2, append this section:
 
 ### Step 7 — create the PR
 
-Use the available GitHub tool (`mcp__github__create_pull_request` or `gh pr create`) to open the PR against the repo's default base branch (usually `main`).
+Use `gh pr create` to open the PR against the repo's default base branch (usually `main`). Under Claude Code, `mcp__github__create_pull_request` is also available.
 
 ### Step 8 — subscribe immediately
 
-Without pausing or asking, call `mcp__github__subscribe_pr_activity` (or equivalent) for the PR number just returned.
+Without pausing or asking, subscribe to PR activity for the PR number just returned.
+Under Claude Code: `mcp__github__subscribe_pr_activity`. Under pi: use `gh pr view <pr> --watch`
+to track CI status, and note that pi lacks a webhook-based subscription mechanism.
 
 **Never ask the user whether to subscribe. Always do it.**
 
@@ -202,9 +212,9 @@ status check can fail *open*. GitHub treats a **skipped** required check as
 `if: always()`), or any required job gated by a path filter / `if:` that never
 runs, **skips** on failure and the gate passes silently.
 
-- **Read the actual check conclusions, not the merge button** (`mcp__github__…get_check_runs`
-  or `gh pr checks <pr>`). Treat a lingering `skipping` on a *required* check as
-  suspect, not a pass.
+- **Read the actual check conclusions, not the merge button** (`gh pr checks <pr>`;
+  Claude Code: `mcp__github__…get_check_runs`). Treat a lingering `skipping` on a
+  *required* check as suspect, not a pass.
 - **Capture the watch's own exit**, not a wrapper's:
   `gh pr checks <pr> --watch; echo "EXIT=$?"` — a surrounding shell/echo can mask a
   failure with exit 0.

@@ -1,5 +1,11 @@
 ## Purpose
 
+> **Multi-harness:** This skill references other scaffold skills using Claude Code
+> slash-command notation (`/name`). When running under **pi**, read and follow
+> `.agents/skills/<name>/SKILL.md` instead — the canonical instructions in
+> `skills/<name>.md` are identical for both harnesses.
+> Also: `claude -c` (Claude Code session resume) is `pi -c` in pi.
+
 Checkpoint the current working session into git so it survives a close and can
 be picked up from anywhere — your laptop or Claude mobile/web. Writes a
 human-readable handoff, commits whatever is in flight (code *or* prose — docs,
@@ -66,6 +72,6 @@ State, in two lines: what was committed and pushed, and how to come back —
 1. **Pushed or stranded.** Cross-device resume only sees pushed commits. Always
    flag dirty paths before they are lost.
 2. **No secrets in the handoff.** Prose and pointers, not credentials.
-3. **`claude -c` wins on the same machine** — recommend it when the user is just
+3. **`claude -c` (or `pi -c`) wins on the same machine** — recommend it when the user is just
    stepping away locally; do not oversell the skill.
 4. **One handoff, overwritten.** `.pause/handoff.md` is always current.

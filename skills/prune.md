@@ -1,5 +1,10 @@
 ## Purpose
 
+> **Multi-harness:** This skill references other scaffold skills using Claude Code
+> slash-command notation (`/name`). When running under **pi**, read and follow
+> `.agents/skills/<name>/SKILL.md` instead — the canonical instructions in
+> `skills/<name>.md` are identical for both harnesses.
+
 Run every quality lens on the current branch — correctness validation and structural quality — then funnel all findings into a full feature chain (design → PRD → TDD → PR) to fix them systematically.
 
 Use this when fixes are too large for a one-shot apply: the findings need a plan, tests, and a proper PR.

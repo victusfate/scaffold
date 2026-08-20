@@ -1,5 +1,10 @@
 ## Instructions
 
+> **Multi-harness:** This skill references other scaffold skills using Claude Code
+> slash-command notation (`/name`). When running under **pi**, read and follow
+> `.agents/skills/<name>/SKILL.md` instead — the canonical instructions in
+> `skills/<name>.md` are identical for both harnesses.
+
 Synthesize the current context and codebase into a PRD. **Do not interview the user** — use what's already known from the conversation and any existing `design.md`.
 
 ### Process

@@ -1,5 +1,10 @@
 ## Purpose
 
+> **Multi-harness:** This skill references other scaffold skills using Claude Code
+> slash-command notation (`/name`). When running under **pi**, read and follow
+> `.agents/skills/<name>/SKILL.md` instead — the canonical instructions in
+> `skills/<name>.md` are identical for both harnesses.
+
 A **visible, editable Markdown work queue** that agents drain **autonomously** so
 you can augment a long-running project without babysitting it. You stack up work;
 a loop wakes on an interval (default 6 min) and drains it — one task at a time, or

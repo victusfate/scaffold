@@ -136,11 +136,24 @@ Also: ponytail, sync-scaffold, validate, prune, queue (already green above but n
 
 ---
 
-## Recommendation
+## Status: Option A applied (2025-08-20)
 
-Start with **Option A** — minimal harness-conditional fixes. Every skill remains a single SKILL.md
-that works in both harnesses. The cross-reference issue is the largest surface but also the simplest
-fix: one canonical sentence per cross-reference.
+All 25 skills are now dual-harness compatible. Summary of changes:
 
-Once all skills pass a pi smoke test, consider Option B as a follow-up for tighter pi integration
-(e.g., a pi package that bundles all scaffold skills).
+### Hard breaks fixed (5 skills)
+| Skill | Fix |
+|-------|-----|
+| create-pr | Replaced `mcp__github__*` calls with `gh` CLI + harness-conditional notes (Step 7, Step 8, merge verification) |
+| statusline | Added harness note: pi has no native `statusLine` key; this skill is Claude Code-only until a pi extension companion is written |
+| voice-chat | Generalized `claude -p` → `<agent> -p` with runtime detection (`PI_CODING_AGENT`); updated subscription language |
+| hoist-skill | Added harness note explaining `--harness claude` vs `--harness antigravity` output paths |
+| skillify | Added harness note: pi discovers skills by directory presence, no RESOLVER.md needed; updated registration rule |
+
+### Cross-reference notes added (14 skills)
+Each skill that references other scaffold skills via `/name` notation now has a `Multi-harness` preamble explaining the pi load path (read `.agents/skills/<name>/SKILL.md`). Affected: feature-chain, tdd, code-refiner, prune, grill-with-docs, to-prd, pause, resume, queue, ponytail, add-linter, audit, simplify, validate.
+
+### Unchanged (6 skills)
+Council, design-review, diagram, frontend-design, protect-branch, sync-scaffold — no Claude-specific references.
+
+### Inline `claude -c` → `claude -c` (or `pi -c`) updates
+- pause.md, resume.md: session-resume references now mention both harnesses.

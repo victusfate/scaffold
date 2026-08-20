@@ -1,17 +1,21 @@
 ## Instructions
 
+> **Multi-harness:** This skill spawns the agent binary as a subprocess. Detect the
+> harness at runtime: if `PI_CODING_AGENT` is set, use `pi -p`; otherwise default to
+> `claude -p`. The `--resume` flag is Claude Code-specific; pi uses `--continue` / `-c`.
+> Everything else (STT, TTS, silence-gate) is harness-agnostic.
+
 Set up or run **voice-chat** — a hands-free, headphones-only voice loop that lets
 the user talk to the coding agent with no keyboard. The engine lives in
 `scripts/voice/` (entry point `voice-loop.ts`); this skill drives its setup and
 launch and explains the knobs.
 
 **The pipeline** (everything local/offline except the LLM call, which rides the
-user's existing Claude Code subscription — flat-rate, full tools, *not* the
-metered Agent SDK):
+user's existing subscription — flat-rate, full tools, *not* the metered Agent SDK):
 
 ```
 mic ─(sox rec, silence-gated)─▶ wav ─(whisper.cpp)─▶ text
-    ─(claude -p --resume)─▶ reply ─(XTTS | Piper | say | espeak-ng)─▶ headphones
+    ─(<agent> -p --resume)─▶ reply ─(XTTS | Piper | say | espeak-ng)─▶ headphones
 ```
 
 Turns run sequentially; a sox silence-gate does endpointing (always-on VAD, no
@@ -93,5 +97,5 @@ streaming) live in `scripts/voice/README.md` — read it for anything not covere
   (greeting "Ready. I'm listening.", sign-off "Goodbye."). A consumer gives it a
   voice purely through `VOICE_GREETING` / `VOICE_SIGNOFF` / `VOICE_TTS_VOICE`.
 - **Free stack.** Every piece is local except the agent call, which uses the
-  user's Claude Code subscription — no metered API spend.
+  user's existing subscription — no metered API spend.
 - **Cross-platform.** macOS, Linux, and WSL; capture/playback auto-detect the host.
