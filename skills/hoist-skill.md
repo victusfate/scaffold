@@ -1,8 +1,9 @@
 ## Instructions
 
-> **Multi-harness:** Output paths below show `.claude/skills/` (Claude Code) and
-> `.agents/skills/` (pi). The `--harness` flag controls which format is emitted;
-> `claude` writes Claude Code wrappers, `antigravity` writes pi-compatible wrappers.
+> **Multi-harness:** Output paths below show `.claude/skills/` (Claude Code),
+> `.agents/skills/` (pi, agy), and `.agent/workflows/` (agy). The `--harness` flag
+> controls which format is emitted: `claude` writes Claude Code wrappers,
+> `antigravity` writes pi/agy-compatible wrappers.
 
 Export one or more scaffold skills into a target repo in the requested harness format. Wraps `tools/hoist-skill/run` — do not reimplement its logic here.
 

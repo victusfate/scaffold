@@ -1,12 +1,14 @@
 ## Instructions
 
-> **Multi-harness:** This skill works in both Claude Code and pi. Cross-references
-> to other scaffold skills use Claude Code slash-command notation (`/name`). When
-> running under pi, read `.agents/skills/<name>/SKILL.md` instead — the canonical
+> **Multi-harness:** This skill works in Claude Code, pi, and agy. Cross-references
+> to other scaffold skills use slash-command notation (`/name`). In **Claude Code**
+> and **agy**, slash commands auto-expand from their skill/workflow directories.
+> Under pi, read `.agents/skills/<name>/SKILL.md` instead — the canonical
 > instructions in `skills/<name>.md` are identical.
 >
-> **GitHub operations:** Where Claude Code uses `mcp__github__*` tools, pi uses `gh`
-> CLI commands. The `gh` path works in both harnesses and is the canonical form below.
+> **GitHub operations:** Where Claude Code uses `mcp__github__*` tools, pi and agy
+> use `gh` CLI commands. The `gh` path works in all harnesses and is the canonical
+> form below.
 
 Create a pull request for the current branch and immediately subscribe to its activity. These two steps are atomic — never create without subscribing.
 

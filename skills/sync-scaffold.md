@@ -1,3 +1,6 @@
+> **Multi-harness:** This skill works identically in Claude Code, pi, and agy. All paths
+> and commands are harness-agnostic.
+
 ## Instructions
 
 Sync this repo from the upstream scaffold, or bootstrap scaffold support from scratch if it isn't set up yet.

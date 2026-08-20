@@ -1,11 +1,12 @@
 ## Purpose
 
 > **Multi-harness:** Under **Claude Code**, a skill is registered in
-> `.claude/skills/RESOLVER.md` with a regex anchor. Under **pi**, skills are
-> discovered by directory presence — no resolver file needed. When running under
-> pi (`PI_CODING_AGENT=true`), place the skill directly in `.agents/skills/<slug>/`
-> and skip resolver registration. The `.agents/skills/<slug>/SKILL.md` wrapper and
-> `skills/<slug>.md` canonical file are produced for both harnesses.
+> `.claude/skills/RESOLVER.md` with a regex anchor. Under **pi** and **agy**, skills
+> are discovered by directory presence — no resolver file needed. When running under
+> pi (`PI_CODING_AGENT=true`) or agy (`AGY=true`), place the skill directly in
+> `.agents/skills/<slug>/` and skip resolver registration. For agy, also emit
+> `.agent/workflows/<slug>.md`. The `.agents/skills/<slug>/SKILL.md` wrapper and
+> `skills/<slug>.md` canonical file are produced for all harnesses.
 
 Turn a completed piece of work into a durable skill: a file other agents
 (Claude, Codex, Gemini, Cursor) can invoke, registered in the routing table and

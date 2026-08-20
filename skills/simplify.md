@@ -1,9 +1,10 @@
 ## Philosophy
 
-> **Multi-harness:** This skill references other scaffold skills using Claude Code
-> slash-command notation (`/name`). When running under **pi**, read and follow
-> `.agents/skills/<name>/SKILL.md` instead — the canonical instructions in
-> `skills/<name>.md` are identical for both harnesses.
+> **Multi-harness:** This skill references other scaffold skills using slash-command
+> notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from
+> their skill/workflow directories. Under **pi**, read and follow
+> `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in
+> `skills/<name>.md` are identical for all harnesses.
 
 Seek **ambitious structural simplification** — not just the absence of bad patterns. Actively hunt for *code judo moves*: reorganizations that preserve behavior while dramatically reducing complexity. Working code is not enough; push for designs that feel inevitable in hindsight. Missed simplification opportunities are failures, not oversights.
 

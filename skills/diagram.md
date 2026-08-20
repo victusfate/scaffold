@@ -1,3 +1,6 @@
+> **Multi-harness:** This skill works identically in Claude Code, pi, and agy. All paths
+> and commands are harness-agnostic.
+
 ## Instructions
 
 Generate or refine a [mermaid](https://mermaid.js.org) diagram, keeping the

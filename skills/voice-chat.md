@@ -1,9 +1,11 @@
 ## Instructions
 
 > **Multi-harness:** This skill spawns the agent binary as a subprocess. Detect the
-> harness at runtime: if `PI_CODING_AGENT` is set, use `pi -p`; otherwise default to
-> `claude -p`. The `--resume` flag is Claude Code-specific; pi uses `--continue` / `-c`.
-> Everything else (STT, TTS, silence-gate) is harness-agnostic.
+> harness at runtime: if `PI_CODING_AGENT` is set, use `pi -p`; if `AGY` or
+> `ANTIGRAVITY` env vars are set, use `agy -p`; otherwise default to `claude -p`.
+> The `--resume` flag is Claude Code-specific; pi uses `--continue` / `-c`, agy
+> uses `--continue` / `-c`. Everything else (STT, TTS, silence-gate) is
+> harness-agnostic.
 
 Set up or run **voice-chat** — a hands-free, headphones-only voice loop that lets
 the user talk to the coding agent with no keyboard. The engine lives in
