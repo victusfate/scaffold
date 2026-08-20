@@ -1,5 +1,8 @@
 ## Purpose
 
+> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
+> Under **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+
 Lazy-senior-dev mode for *writing* code: force the simplest, shortest solution
 that actually works — YAGNI, stdlib first, no unrequested abstractions. Governs
 what you build, not how you review existing code (use `/simplify` for a

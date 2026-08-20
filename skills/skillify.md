@@ -1,5 +1,13 @@
 ## Purpose
 
+> **Multi-harness:** Under **Claude Code**, a skill is registered in
+> `.claude/skills/RESOLVER.md` with a regex anchor. Under **pi** and **agy**, skills
+> are discovered by directory presence — no resolver file needed. When running under
+> pi (`PI_CODING_AGENT=true`) or agy (`AGY=true`), place the skill directly in
+> `.agents/skills/<slug>/` and skip resolver registration. For agy, also emit
+> `.agent/workflows/<slug>.md`. The `.agents/skills/<slug>/SKILL.md` wrapper and
+> `skills/<slug>.md` canonical file are produced for all harnesses.
+
 Turn a completed piece of work into a durable skill: a file other agents
 (Claude, Codex, Gemini, Cursor) can invoke, registered in the routing table and
 propagated upstream to `scaffold` so every downstream repo inherits it.
@@ -11,8 +19,11 @@ propagated upstream to `scaffold` so every downstream repo inherits it.
 - **Slug is canonical.** kebab-case, drop articles, ≤30 chars. State it before
   writing the first file so the user can correct it. The slug is the directory
   name AND the RESOLVER `Skill` cell AND the `^\/<slug>` regex anchor.
-- **Register or it doesn't exist.** A skill not in `.claude/skills/RESOLVER.md`
-  and `.github/scaffold-files.txt` is orphaned. Both edits are mandatory.
+- **Register or it doesn't exist.** Under Claude Code, a skill not in
+  `.claude/skills/RESOLVER.md` and `.github/scaffold-files.txt` is orphaned.
+  Under pi, the `.agents/skills/<slug>/SKILL.md` wrapper is sufficient — pi
+  discovers skills by directory presence. Both harnesses require the canonical
+  `skills/<slug>.md` file.
 - **Stay MECE.** Before generating, scan RESOLVER for a skill with overlapping
   purpose. If one exists, extend it with a parameterized arg instead of adding a
   near-duplicate.
@@ -105,9 +116,10 @@ repeating them.
 
 ### Phase 3 — Review, Save, and PR to scaffold
 
-1. **Register** — add a row to `.claude/skills/RESOLVER.md` (unique `^\/<slug>`
-   anchor, path pointing to `skills/<slug>.md`) and append all five new file
-   paths to `.github/scaffold-files.txt`.
+1. **Register** — Under Claude Code: add a row to `.claude/skills/RESOLVER.md`
+   (unique `^\/<slug>` anchor, path pointing to `skills/<slug>.md`). Under pi:
+   ensure `.agents/skills/<slug>/SKILL.md` exists (it does, from Phase 2).
+   Append all new file paths to `.github/scaffold-files.txt` for both harnesses.
 2. **Tests** — the skill must survive `node scripts/check-resolvable.ts`. Add a
    focused test for any logic the skill ships in a script.
 3. **Validate** — `node scripts/check-resolvable.ts`. Fix every error.

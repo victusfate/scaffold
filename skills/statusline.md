@@ -1,5 +1,12 @@
 ## Purpose
 
+> **Multi-harness:** Under **Claude Code**, the statusLine feature reads from
+> `~/.claude/settings.json` and a companion script at `~/.claude/statusline.sh`.
+> Under **pi** and **agy**, there is no native `statusLine` configuration key — the
+> equivalent is the built-in footer (model + context% + usage%). This skill toggles
+> the Claude Code path; for pi or agy, a companion extension would be needed to
+> replicate the behavior.
+
 Turn the usage **statusLine** on (or off) without editing any config by hand —
 model + context-window % + 5-hour usage % shown in every project. Opt-in and
 global: it lives in your `~/.claude`, so run it once per machine. This skill just

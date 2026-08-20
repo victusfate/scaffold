@@ -1,5 +1,8 @@
 ## Purpose
 
+> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
+> Under **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+
 Score any scope of source files against the four rubric dimensions and report the worst-offending files first, with cited violations. Use this to understand where quality debt lives before diving in to fix it.
 
 **Difference from `/simplify`:** `simplify` runs on the diff (changed files only, auto-fix in the chain, feeds PR body). `audit` is standalone: configurable scope (defaults to the whole repo), ranked full report, review mode default.

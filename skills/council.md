@@ -1,3 +1,6 @@
+> **Multi-harness:** This skill works identically in Claude Code, pi, and agy. All paths
+> and commands are harness-agnostic.
+
 ## Purpose
 
 Run a high-stakes decision through a **council of five advisors**, each arguing

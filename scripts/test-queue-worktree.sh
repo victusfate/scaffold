@@ -37,8 +37,8 @@ check "task records branch"        'run show task-001 | grep -q "branch: queue/t
 echo "== the worktree is a real, independent working tree =="
 check "worktree is registered"     'git worktree list | grep -q "wt/task-001"'
 ( cd "$TMP/.agent/queue/wt/task-001" && echo hi > new.txt && git add -A && git commit -qm work )
-check "commit isolated to branch"  '! git log "$BASE" --oneline | grep -q work'
-check "commit on task branch"      'git log queue/task-001 --oneline | grep -q work'
+check "commit isolated to branch"  '! git log "$BASE" --oneline | grep work > /dev/null'
+check "commit on task branch"      'git log queue/task-001 --oneline | grep work > /dev/null'
 
 echo "== a second task gets its own worktree (parallel) =="
 run worktree add task-002 >/dev/null
