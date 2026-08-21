@@ -94,21 +94,46 @@ without a server. Op set (v1): `add`, `set`, `remove`, `move`, `top`,
 maxParallel/integrationBranch/idlePoll/pausePoll), `archive`. Unknown op or
 malformed args → HTTP 400 with a message, queue untouched.
 
+Explicit contracts (the wire types, not loose bags):
+
+```ts
+type Op =
+  | { op: 'add'; title: string; top?: boolean; fields?: TaskPatch }
+  | { op: 'set'; id: string; fields: TaskPatch }        // TaskPatch: title, mode,
+  | { op: 'remove' | 'top' | 'requeue'; id: string }    //   slug, deps, files,
+  | { op: 'move'; id: string; to: number }              //   validate, accept, note
+  | { op: 'start' | 'stop' | 'archive' }
+  | { op: 'config'; key: ConfigKey; value: string };
+
+interface ConsoleState {
+  config: QueueConfig;
+  tasks: Array<Task & { eligible: boolean; deadlocked: boolean }>;
+  drain: string | null;      // drainSignal marker, if any
+}
+
+interface OpResult { ok: boolean; error?: string }      // applyOp return carries
+                                                        //   the new Queue on ok
+```
+
+`applyOp`'s dispatch and the archive sweep it triggers reuse the existing model
+functions verbatim; only argument validation is new logic.
+
 ### D6 — Reordering: `move` to an explicit position, pure and clamped
 
 New pure op `moveTask(q, id, toIndex)` — remove the task from its slot, insert
 at `toIndex` (0-based, clamped to the list bounds); unknown id is a no-op
 returning the queue unchanged (same tolerance as `moveToTop`). The CLI gains
 `queue move <id> <pos>` where `<pos>` is 1-based to match the numbering
-`queue list` prints, plus `up`/`down` as relative one-step aliases. Drag-drop
-on the web page emits the same op with the drop index.
+`queue list` prints. No `up`/`down` relative aliases — an explicit position
+covers every reorder and keeps the surface minimal; the web page's drag covers
+the "one step" gesture. Drag-drop emits the same op with the drop index.
 
 ### D7 — Requeue: the prune-adjacent recovery verb
 
-`requeueTask(q, id)` — pure: only meaningful for a `failed` (or stuck
-`pending`-with-failures) task; resets `status: 'pending'`, `failures: 0`,
-clears `note`/`owner`/`startedAt`. Keeps its position. CLI: `queue requeue
-<id>`. Rationale: today a terminal-failed task can only be removed or
+`requeueTask(q, id)` — pure. Applies to a task with `status: 'failed'` or
+`failures > 0`: resets `status: 'pending'`, `failures: 0`, clears
+`note`/`owner`/`startedAt`, keeps its position. Any other task (or an unknown
+id) is a no-op returning the queue unchanged. CLI: `queue requeue <id>`. Rationale: today a terminal-failed task can only be removed or
 hand-edited back to life; requeue makes "I fixed the spec, run it again" a
 first-class management action from both surfaces.
 
@@ -139,8 +164,9 @@ updates immediately without waiting for the watcher. `watchFile` interval
 
 ### D10 — Testing strategy
 
-- Pure layer (`moveTask`, `requeueTask`, `applyOp`, state shaping): unit tests
-  in the existing `node:assert` style, added to the queue test files.
+- Pure layer, split by home: `moveTask`/`requeueTask` (model) join
+  `scripts/queue.test.ts`; `applyOp` + `ConsoleState` shaping are tested in the
+  new `scripts/queue-console.test.ts`. Same `node:assert` style throughout.
 - Server layer: integration test that boots the server on an ephemeral port
   with a temp `QUEUE_FILE`, exercises GET `/`, GET `/api/queue`, a POST op
   round-trip (mutation visible in the file), a 400 on a bad op, and loopback
