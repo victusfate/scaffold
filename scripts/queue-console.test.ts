@@ -3,8 +3,11 @@
 // (ConsoleState shaping + applyOp dispatch) and, in later slices, its
 // loopback HTTP server and page template.
 
+import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { parseQueue } from './queue-model.ts';
-import { consoleState, applyOp, type Op } from './queue-console.ts';
+import { consoleState, applyOp, startServer, type Op } from './queue-console.ts';
 
 let passed = 0, failed = 0;
 function assert(label: string, cond: boolean, detail = ''): void {
@@ -136,6 +139,61 @@ maxParallel: 2
   assert('clearing deps allowed', cleared.ok && cleared.queue.tasks[1].dependsOn.length === 0);
   const valid = applyOp(q, { op: 'set', id: 'task-003', fields: { deps: 'task-001, task-002' } });
   assert('valid multi-dep accepted', valid.ok && valid.queue.tasks[2].dependsOn.join(',') === 'task-001,task-002');
+}
+
+// ---- server: loopback HTTP round-trips against a temp queue file ----
+{
+  const dir = mkdtempSync(join(tmpdir(), 'queue-console-'));
+  const file = join(dir, 'queue.md');
+  writeFileSync(file, '- [ ] task-001 — first\n- [x] task-002 — finished\n');
+  process.env.QUEUE_FILE = file;
+
+  const server = startServer(0);
+  await new Promise<void>(res => server.on('listening', res));
+  const addr = server.address() as { address: string; port: number };
+  const base = `http://127.0.0.1:${addr.port}`;
+  assert('server binds loopback only', addr.address === '127.0.0.1', addr.address);
+
+  const page = await fetch(`${base}/`);
+  assert('GET / serves the console page', page.status === 200
+    && (page.headers.get('content-type') ?? '').includes('text/html'));
+
+  const state = await (await fetch(`${base}/api/queue`)).json() as { tasks: { id: string }[] };
+  assert('GET /api/queue reflects the file', state.tasks.map(t => t.id).join(',') === 'task-001,task-002');
+
+  const post = (body: unknown): Promise<Response> => fetch(`${base}/api/op`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+  });
+
+  const added = await post({ op: 'add', title: 'From the page', top: true });
+  const addedState = await added.json() as { tasks: { title: string }[] };
+  assert('POST op returns fresh state', added.status === 200 && addedState.tasks[0].title === 'From the page');
+  assert('POST op mutates the file on disk', readFileSync(file, 'utf8').includes('From the page'));
+
+  const before = readFileSync(file, 'utf8');
+  const bad = await post({ op: 'done', id: 'task-001' });
+  assert('execution verb → 400', bad.status === 400);
+  const badBody = await bad.json() as { error?: string };
+  assert('400 carries the reason', typeof badBody.error === 'string');
+  assert('rejected op leaves the file untouched', readFileSync(file, 'utf8') === before);
+  assert('malformed JSON → 400', (await fetch(`${base}/api/op`, { method: 'POST', body: '{nope' })).status === 400);
+  assert('unknown route → 404', (await fetch(`${base}/nope`)).status === 404);
+
+  const swept = await post({ op: 'archive' });
+  assert('archive op sweeps the file', swept.status === 200 && !readFileSync(file, 'utf8').includes('task-002'));
+  assert('archive op persists the sidecar', existsSync(join(dir, 'archive.md'))
+    && readFileSync(join(dir, 'archive.md'), 'utf8').includes('task-002'));
+
+  const events = await fetch(`${base}/events`);
+  assert('SSE endpoint speaks event-stream',
+    (events.headers.get('content-type') ?? '').includes('text/event-stream'));
+  const reader = events.body!.getReader();
+  const first = new TextDecoder().decode((await reader.read()).value);
+  assert('SSE greets the client', first.includes(': connected'));
+  await reader.cancel();
+
+  server.close();
+  delete process.env.QUEUE_FILE;
 }
 
 console.error(`\nqueue-console.test: ${passed} passed, ${failed} failed`);
