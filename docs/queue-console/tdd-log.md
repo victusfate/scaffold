@@ -32,3 +32,18 @@ queued-task contract, no interactive gates).
   (also fixed a TS narrowing error). Note for code-refiner: my additions
   nudged queue-model.ts (535) and queue.ts (507) over the 500-line signal —
   split at a seam there, not cram.
+
+## Slice 4 — console server: loopback HTTP + SSE
+- Status: done
+- RED: 14 server assertions (loopback bind, GET / html, /api/queue mirrors
+  file, POST op mutates disk + returns state, 400 on execution verb /
+  malformed JSON with file untouched, 404, archive op writes sidecar, SSE
+  content-type + greeting).
+- GREEN: server half of queue-console.ts (startServer, op handler, SSE with
+  watcher detached on close); stub template; extracted shared
+  scripts/queue-io.ts (queueFile/load/save/log/appendArchive) — the seam that
+  also brings queue.ts back to 480 lines; test-queue-worktree.sh copy list
+  updated for the new module.
+- REFACTOR: applyOp doc comment re-anchored after helper insertion; body
+  chunks decoded explicitly. 59+99 assertions, both queue shell tests,
+  typecheck, lint 0 errors.

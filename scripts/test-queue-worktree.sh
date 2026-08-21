@@ -15,7 +15,7 @@ cd "$TMP"
 git init -q
 git config user.email t@t.t; git config user.name t
 mkdir scripts
-cp "$HERE/queue.ts" "$HERE/queue-model.ts" scripts/
+cp "$HERE/queue.ts" "$HERE/queue-model.ts" "$HERE/queue-io.ts" scripts/
 echo "seed" > file.txt
 git add -A; git commit -qm init
 # shellcheck disable=SC2034  # used inside the single-quoted predicates eval'd by check()

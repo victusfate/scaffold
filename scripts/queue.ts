@@ -26,37 +26,17 @@
 // add/set flags: --mode chain --slug <s> --deps a,b --files a,b --validate "<cmd>"
 //   --accept "<criteria>" --top --worker <name>
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { execSync } from 'node:child_process';
+import { ROOT, sidecar, now, load, save, log, appendArchive } from './queue-io.ts';
 import {
-  parseQueue, serializeQueue, render as renderModel,
+  render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, splitList, taskFields,
   type Queue, type Task, type QueueConfig,
 } from './queue-model.ts';
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const QUEUE_DIR = join(ROOT, '.agent', 'queue');
-
-function queueFile(): string { return process.env.QUEUE_FILE ?? join(QUEUE_DIR, 'queue.md'); }
-function sidecar(name: string): string { return join(dirname(queueFile()), name); }
-function now(): string { return new Date().toISOString(); }
-
-function load(): Queue {
-  const p = queueFile();
-  return existsSync(p) ? parseQueue(readFileSync(p, 'utf8')) : parseQueue('');
-}
-function save(q: Queue): void {
-  const p = queueFile();
-  mkdirSync(dirname(p), { recursive: true });
-  writeFileSync(p, serializeQueue(q));
-}
-function log(msg: string): void {
-  appendFileSync(sidecar('log.md'), `- ${now()} ${msg}\n`);
-}
 
 // ---------------------------------------------------------------- flags
 
@@ -237,13 +217,6 @@ function cmdConfig(q: Queue, key: string, val: string): number {
   }
   console.log(`config ${key} = ${val}`);
   return 0;
-}
-
-/** Append a batch of finished tasks to the git-ignored archive.md audit log. */
-function appendArchive(tasks: Task[]): void {
-  const block = `\n## Archived ${now()}\n\n`
-    + tasks.map(t => `- [${t.status === 'done' ? 'x' : '!'}] ${t.id} — ${t.title}`).join('\n') + '\n';
-  appendFileSync(sidecar('archive.md'), block);
 }
 
 function cmdArchive(q: Queue): number {

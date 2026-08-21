@@ -9,7 +9,17 @@
 //
 // Management surface only, by design (docs/queue-console/design.md D3): no
 // done/fail/claim/worktree ops and nothing here ever executes a shell command.
+//
+// Bottom half: the console server — a zero-dependency loopback HTTP server
+// (mermaid-watch.ts pattern) serving the page, the state JSON, the op
+// endpoint, and an SSE channel that fires when the queue file changes.
+// Usage: node scripts/queue-console.ts [--port 8722]   (QUEUE_FILE honored)
 
+import http from 'node:http';
+import { readFileSync, watchFile, unwatchFile } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { load, save, log, appendArchive, queueFile } from './queue-io.ts';
 import {
   addTask, setField, removeTask, moveToTop, moveTask, requeueTask, setConfig,
   isEligible, deadlocked, drainSignal, splitList,
@@ -145,18 +155,18 @@ function applyConfigOp(q: Queue, key: ConfigKey, value: string): OpResult {
   return done(setConfig(q, { [key]: value }));
 }
 
-/**
- * Apply one validated console operation to the queue. Pure: returns the new
- * queue (plus, for `archive`, the swept tasks for the caller to persist) or a
- * rejection with the queue untouched. The single mutation gateway for every
- * console surface, so the file format and the dependency DAG stay intact.
- */
 /** Reject unless the op's `id` names a task in the queue. Null when it does. */
 function unknownId(q: Queue, op: { op: string; id: string }): OpResult | null {
   if (typeof op.id === 'string' && q.tasks.some(t => t.id === op.id)) return null;
   return reject(`${op.op}: unknown task id ${String(op.id ?? '')}`.trim());
 }
 
+/**
+ * Apply one validated console operation to the queue. Pure: returns the new
+ * queue (plus, for `archive`, the swept tasks for the caller to persist) or a
+ * rejection with the queue untouched. The single mutation gateway for every
+ * console surface, so the file format and the dependency DAG stay intact.
+ */
 export function applyOp(q: Queue, op: Op): OpResult {
   if (!op || typeof op !== 'object' || typeof op.op !== 'string') return reject('missing op');
 
@@ -191,3 +201,110 @@ export function applyOp(q: Queue, op: Op): OpResult {
     default: return reject(`unknown op: ${(op as { op: string }).op}`);
   }
 }
+
+// ---------------------------------------------------------------- server
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const TEMPLATE = join(HERE, 'queue-console.template.html');
+const DEFAULT_PORT = 8722;
+const HTTP_OK = 200;
+const HTTP_BAD_REQUEST = 400;
+const HTTP_NOT_FOUND = 404;
+const WATCH_INTERVAL_MS = 500;
+const MAX_BODY_BYTES = 64 * 1024;
+
+function readBody(req: http.IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject_) => {
+    let body = '';
+    req.on('data', (chunk: Buffer) => {
+      body += chunk.toString('utf8');
+      if (body.length > MAX_BODY_BYTES) { req.destroy(); reject_(new Error('body too large')); }
+    });
+    req.on('end', () => resolve(body));
+    req.on('error', reject_);
+  });
+}
+
+function sendJson(res: http.ServerResponse, status: number, payload: unknown): void {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(payload));
+}
+
+/**
+ * Apply one op posted by the page: parse → validate through applyOp → persist.
+ * The archive sidecar is written before the queue file, matching the CLI's
+ * ordering, and every accepted op lands in the audit log.
+ */
+async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  let op: Op;
+  try {
+    op = JSON.parse(await readBody(req)) as Op;
+  } catch (e) {
+    sendJson(res, HTTP_BAD_REQUEST, { error: `invalid JSON body: ${(e as Error).message}` });
+    return;
+  }
+  const result = applyOp(load(), op);
+  if (!result.ok) { sendJson(res, HTTP_BAD_REQUEST, { error: result.error }); return; }
+  if (result.archived.length) appendArchive(result.archived);
+  save(result.queue);
+  log(`console ${op.op}${'id' in op ? ' ' + op.id : ''}`);
+  sendJson(res, HTTP_OK, consoleState(load()));
+}
+
+/**
+ * Start the console server on 127.0.0.1 — a personal steering surface, never
+ * exposed beyond the machine. SSE clients get a `changed` event whenever the
+ * queue file's mtime moves (worker writes included); the watcher is detached
+ * on close so tests and one-off runs exit cleanly.
+ */
+export function startServer(port: number): http.Server {
+  const clients = new Set<http.ServerResponse>();
+  const server = http.createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/') {
+      res.writeHead(HTTP_OK, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(readFileSync(TEMPLATE, 'utf8'));
+    } else if (req.method === 'GET' && req.url === '/api/queue') {
+      sendJson(res, HTTP_OK, consoleState(load()));
+    } else if (req.method === 'POST' && req.url === '/api/op') {
+      void handleOp(req, res);
+    } else if (req.method === 'GET' && req.url === '/events') {
+      res.writeHead(HTTP_OK, {
+        'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive',
+      });
+      res.write(': connected\n\n');
+      clients.add(res);
+      req.on('close', () => clients.delete(res));
+    } else {
+      res.writeHead(HTTP_NOT_FOUND);
+      res.end();
+    }
+  });
+
+  const file = queueFile();
+  const onFileChange = (curr: { mtimeMs: number }, prev: { mtimeMs: number }): void => {
+    if (curr.mtimeMs === prev.mtimeMs) return;
+    for (const c of clients) {
+      try { c.write('data: changed\n\n'); } catch { clients.delete(c); }
+    }
+  };
+  watchFile(file, { interval: WATCH_INTERVAL_MS }, onFileChange);
+  server.on('close', () => unwatchFile(file, onFileChange));
+
+  server.listen(port, '127.0.0.1');
+  return server;
+}
+
+function main(argv: string[]): void {
+  let port = DEFAULT_PORT;
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--port') port = Number(argv[++i]);
+    else { process.stderr.write(`usage: node scripts/queue-console.ts [--port ${DEFAULT_PORT}]\n`); process.exit(1); }
+  }
+  if (!Number.isInteger(port) || port < 0) { process.stderr.write('queue-console: --port needs a number\n'); process.exit(1); }
+  startServer(port).on('listening', function (this: http.Server) {
+    const addr = this.address() as { port: number };
+    process.stdout.write(`queue-console: http://localhost:${addr.port}  (queue ${queueFile()})\n`);
+  });
+}
+
+if (process.argv[1] === fileURLToPath(import.meta.url)) main(process.argv.slice(2));
