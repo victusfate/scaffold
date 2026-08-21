@@ -378,6 +378,19 @@ export function recordFailure(
   return { queue: withTasks(q, tasks), terminal, failures };
 }
 
+/**
+ * Revive a failed (or retrying) task in place: back to pending with its failure
+ * history cleared, position kept. The recovery verb for "I fixed the spec, run it
+ * again." A clean pending/active/done task (or unknown id) is left untouched.
+ */
+export function requeueTask(q: Queue, id: string): Queue {
+  const hit = q.tasks.find(t => t.id === id);
+  if (!hit || (hit.status !== 'failed' && hit.failures === 0)) return q;
+  return mapTask(q, id, t => ({
+    ...t, status: 'pending', failures: 0, note: null, owner: null, startedAt: null,
+  }));
+}
+
 /** Pause the queue until an ISO time, to ride out a usage-limit window. */
 export function pauseUntil(q: Queue, resumeAtIso: string): Queue {
   return setConfig(q, { status: 'stopped', resumeAt: resumeAtIso });
