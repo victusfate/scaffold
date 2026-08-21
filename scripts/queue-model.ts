@@ -329,6 +329,15 @@ export function moveToTop(q: Queue, id: string): Queue {
   return hit ? withTasks(q, [hit, ...q.tasks.filter(t => t.id !== id)]) : q;
 }
 
+/** Reorder a task to an explicit 0-based position, clamped to the list bounds. */
+export function moveTask(q: Queue, id: string, toIndex: number): Queue {
+  const hit = q.tasks.find(t => t.id === id);
+  if (!hit) return q;
+  const rest = q.tasks.filter(t => t.id !== id);
+  const at = Math.min(Math.max(toIndex, 0), rest.length);
+  return withTasks(q, [...rest.slice(0, at), hit, ...rest.slice(at)]);
+}
+
 export function removeTask(q: Queue, id: string): Queue {
   return withTasks(q, q.tasks.filter(t => t.id !== id));
 }

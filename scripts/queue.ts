@@ -15,6 +15,7 @@
 //   node scripts/queue.ts done <id> [--skip-validate]# run validate, then complete
 //   node scripts/queue.ts fail <id> [reason...]      # record a failure (retries then terminal)
 //   node scripts/queue.ts top <id> | remove <id>
+//   node scripts/queue.ts move <id> <pos>            # reorder to a 1-based position (as in `list`)
 //   node scripts/queue.ts start | stop               # run/pause the worker
 //   node scripts/queue.ts interval 6m                # edit the wake interval
 //   node scripts/queue.ts config <key> <value>       # maxFailures|leaseMinutes|maxParallel|integrationBranch
@@ -30,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 import { execSync } from 'node:child_process';
 import {
   parseQueue, serializeQueue, render as renderModel,
-  addTask, addMany, setField, moveToTop, removeTask, setConfig,
+  addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, splitList, taskFields,
   type Queue, type Task, type QueueConfig,
@@ -429,6 +430,14 @@ function main(argv: string[]): number {
       if (!needId()) { console.error('top: unknown task id'); return 1; }
       q = moveToTop(q, id); save(q);
       console.log(`${id} moved to top${drainKick(q)}`); return 0;
+    case 'move': {
+      const pos = Number(f.positionals[1]);
+      if (!needId() || !Number.isInteger(pos) || pos < 1) {
+        console.error('usage: queue move <id> <pos>  (1-based, as numbered in `queue list`)'); return 1;
+      }
+      q = moveTask(q, id, pos - 1); save(q); log(`move ${id} → ${pos}`);
+      console.log(`${id} moved to position ${pos}${drainKick(q)}`); return 0;
+    }
     case 'remove': case 'rm':
       if (!needId()) { console.error('remove: unknown task id'); return 1; }
       save(removeTask(q, id)); log(`remove ${id}`); console.log(`removed ${id}`); return 0;
@@ -458,7 +467,7 @@ function main(argv: string[]): number {
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
-        + `signal claim begin done fail top remove start stop pause interval config archive loop worktree`);
+        + `signal claim begin done fail top move remove start stop pause interval config archive loop worktree`);
       return 1;
   }
 }
