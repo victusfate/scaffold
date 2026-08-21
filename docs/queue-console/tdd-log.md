@@ -47,3 +47,15 @@ queued-task contract, no interactive gates).
 - REFACTOR: applyOp doc comment re-anchored after helper insertion; body
   chunks decoded explicitly. 59+99 assertions, both queue shell tests,
   typecheck, lint 0 errors.
+
+## Slice 5 — console page template
+- Status: done
+- RED: 21 contract assertions (mount points, all 10 op wirings, draggable,
+  no execution verbs, no external assets).
+- GREEN: full single-file page — status header with start/stop + config
+  editors + archive + drain hint, add form with spec fields, task rows with
+  chips (chain/deps/retries/owner/note/ready/deadlocked), drag reorder,
+  requeue only where applicable, row-expanding editor, SSE refresh deferred
+  behind a stale banner while editing/dragging (D8), error banner for 400s.
+- REFACTOR: start/stop toggle rewritten to literal ops. 80/80 console
+  assertions; live curl smoke-test against a temp queue passed.
