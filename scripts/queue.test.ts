@@ -3,7 +3,7 @@
 
 import {
   parseQueue, serializeQueue, newTask,
-  addTask, addMany, setTaskStatus, setField, moveToTop, removeTask, setConfig,
+  addTask, addMany, setTaskStatus, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
   archivableDone,
@@ -304,6 +304,25 @@ integrationBranch: queue/integration
   const handless = parseQueue(serializeQueue(setConfig(parseQueue('- [ ] no id here\n'), { nextId: 9 })));
   assert('id-less line synthesized from the counter', handless.tasks[0].id === 'task-009', handless.tasks[0].id);
   assert('counter advanced past the synthesized id', handless.config.nextId === 10);
+}
+
+// ---- moveTask: reorder to an explicit position ----
+{
+  const order = (q: Queue): string => q.tasks.map(t => t.id).join(',');
+  const q = parseQueue('- [ ] task-001 — a\n- [ ] task-002 — b\n- [ ] task-003 — c\n- [ ] task-004 — d\n');
+
+  assert('move to head', order(moveTask(q, 'task-003', 0)) === 'task-003,task-001,task-002,task-004');
+  assert('move to middle', order(moveTask(q, 'task-001', 2)) === 'task-002,task-003,task-001,task-004');
+  assert('move to last', order(moveTask(q, 'task-001', 3)) === 'task-002,task-003,task-004,task-001');
+  assert('move clamps past end', order(moveTask(q, 'task-002', 99)) === 'task-001,task-003,task-004,task-002');
+  assert('move clamps negative', order(moveTask(q, 'task-004', -5)) === 'task-004,task-001,task-002,task-003');
+  assert('move unknown id is a no-op', order(moveTask(q, 'task-999', 0)) === order(q));
+  assert('move preserves untouched relative order',
+    order(moveTask(q, 'task-002', 3)) === 'task-001,task-003,task-004,task-002');
+  assert('move keeps task fields intact',
+    moveTask(parseQueue(SAMPLE), 'task-004', 0).tasks[0].status === 'failed');
+  assert('move survives round-trip',
+    order(parseQueue(serializeQueue(moveTask(q, 'task-003', 0)))) === 'task-003,task-001,task-002,task-004');
 }
 
 console.error(`\nqueue.test: ${passed} passed, ${failed} failed`);
