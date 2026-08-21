@@ -118,6 +118,15 @@ interface OpResult { ok: boolean; error?: string }      // applyOp return carrie
 `applyOp`'s dispatch and the archive sweep it triggers reuse the existing model
 functions verbatim; only argument validation is new logic.
 
+**Dependency integrity (D5a, user-directed):** the typed interface is the DAG's
+guard, so agents can't mangle dependencies through it. `applyOp` rejects — with
+the queue untouched — any op that would corrupt the graph: `add`/`set` whose
+`deps` reference a task id not present in the queue, a self-dependency, or a
+dependency cycle; and `remove` of a task that an unfinished (pending/active)
+task still depends on (edit the dependents first). Hand edits to the file stay
+forgiving as before; the software interface is where integrity is enforced.
+The CLI `set <id> deps …` path gains the same guard via a shared validator.
+
 ### D6 — Reordering: `move` to an explicit position, pure and clamped
 
 New pure op `moveTask(q, id, toIndex)` — remove the task from its slot, insert
