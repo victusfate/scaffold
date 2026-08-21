@@ -4,7 +4,7 @@
 import {
   parseQueue, serializeQueue, newTask,
   addTask, addMany, setTaskStatus, setField, moveToTop, moveTask, removeTask, setConfig,
-  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
+  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
   archivableDone,
   type Queue,
@@ -323,6 +323,31 @@ integrationBranch: queue/integration
     moveTask(parseQueue(SAMPLE), 'task-004', 0).tasks[0].status === 'failed');
   assert('move survives round-trip',
     order(parseQueue(serializeQueue(moveTask(q, 'task-003', 0)))) === 'task-003,task-001,task-002,task-004');
+}
+
+// ---- requeueTask: revive a failed task in place ----
+{
+  const md = '- [ ] task-001 — a\n- [!] task-002 — boom\n  - failures: 3\n  - note: needs-spec: which db?\n'
+    + '  - owner: worker-a\n  - started: 2026-08-12T19:00:00.000Z\n- [ ] task-003 — c\n  - failures: 2\n';
+  const q = parseQueue(md);
+
+  const revived = requeueTask(q, 'task-002').tasks[1];
+  assert('requeue failed → pending', revived.status === 'pending');
+  assert('requeue clears failures', revived.failures === 0);
+  assert('requeue clears note/owner/started',
+    revived.note === null && revived.owner === null && revived.startedAt === null);
+  assert('requeue keeps position', requeueTask(q, 'task-002').tasks.map(t => t.id).join(',')
+    === 'task-001,task-002,task-003');
+
+  const retried = requeueTask(q, 'task-003').tasks[2];
+  assert('requeue resets a retrying pending task', retried.failures === 0 && retried.status === 'pending');
+
+  assert('requeue clean pending is a no-op',
+    JSON.stringify(requeueTask(q, 'task-001')) === JSON.stringify(q));
+  assert('requeue unknown id is a no-op',
+    JSON.stringify(requeueTask(q, 'task-999')) === JSON.stringify(q));
+  assert('requeue survives round-trip',
+    parseQueue(serializeQueue(requeueTask(q, 'task-002'))).tasks[1].status === 'pending');
 }
 
 console.error(`\nqueue.test: ${passed} passed, ${failed} failed`);
