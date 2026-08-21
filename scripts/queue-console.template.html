@@ -1,0 +1,330 @@
+<!doctype html>
+<!-- queue-console.template.html — the console page, served verbatim at GET /.
+     Single file, inline CSS/JS, no external assets (design.md D4/D9). All
+     mutations POST typed ops to /api/op; the page never edits queue text. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Queue Console</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1c2330; --muted: #66707f;
+    --line: #d9dee6; --accent: #2563eb; --ok: #16a34a; --warn: #d97706;
+    --bad: #dc2626; --chip: #eef1f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151a; --panel: #1a1f27; --ink: #e6eaf0; --muted: #8b94a3;
+      --line: #2a313c; --accent: #60a5fa; --ok: #4ade80; --warn: #fbbf24;
+      --bad: #f87171; --chip: #242b36;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto; max-width: 60rem; padding: 1rem;
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  h1 { font-size: 1.15rem; margin: 0; }
+  button {
+    font: inherit; color: inherit; background: var(--chip);
+    border: 1px solid var(--line); border-radius: 6px;
+    padding: 0.25rem 0.6rem; cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  input, select, textarea {
+    font: inherit; color: inherit; background: var(--panel);
+    border: 1px solid var(--line); border-radius: 6px; padding: 0.25rem 0.5rem;
+  }
+  #status { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 0.8rem 0; }
+  .pill { padding: 0.1rem 0.6rem; border-radius: 999px; font-weight: 600; }
+  .pill.running { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .pill.stopped { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
+  .pill.paused  { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .counts { color: var(--muted); }
+  #status label { color: var(--muted); }
+  #status input { width: 4.5rem; }
+  #drain { color: var(--warn); font-weight: 600; }
+  #stale, #error {
+    display: none; margin: 0.5rem 0; padding: 0.5rem 0.8rem; border-radius: 8px;
+  }
+  #stale { background: color-mix(in srgb, var(--warn) 15%, transparent); }
+  #error { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+  #add {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 0.7rem; margin: 0.8rem 0;
+  }
+  #add .row { display: flex; gap: 0.5rem; }
+  #add input[name=title] { flex: 1; }
+  #add details { margin-top: 0.5rem; }
+  #add summary { color: var(--muted); cursor: pointer; }
+  .grid {
+    display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 0.6rem;
+    margin-top: 0.5rem; align-items: center;
+  }
+  .grid label { color: var(--muted); text-align: right; }
+  #tasks { list-style: none; margin: 0; padding: 0; }
+  #tasks li {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 0.5rem 0.7rem; margin-bottom: 0.45rem;
+  }
+  #tasks li.dragover { border-color: var(--accent); }
+  .task-line { display: flex; gap: 0.55rem; align-items: baseline; flex-wrap: wrap; }
+  .handle { cursor: grab; color: var(--muted); user-select: none; }
+  .badge { font-weight: 700; width: 1em; display: inline-block; }
+  .badge.pending { color: var(--muted); }
+  .badge.active  { color: var(--accent); }
+  .badge.done    { color: var(--ok); }
+  .badge.failed  { color: var(--bad); }
+  .tid { color: var(--muted); font-family: ui-monospace, monospace; font-size: 0.85em; }
+  .title { flex: 1; min-width: 12rem; }
+  .chip {
+    background: var(--chip); border-radius: 999px; padding: 0 0.5rem;
+    font-size: 0.8em; color: var(--muted); white-space: nowrap;
+  }
+  .chip.ready { color: var(--ok); }
+  .chip.deadlocked, .chip.note { color: var(--warn); }
+  .actions { display: flex; gap: 0.3rem; }
+  .actions button { padding: 0.05rem 0.45rem; }
+  .editor { border-top: 1px solid var(--line); margin-top: 0.5rem; padding-top: 0.2rem; }
+  .editor .buttons { grid-column: 2; display: flex; gap: 0.5rem; margin-top: 0.3rem; }
+  .empty { color: var(--muted); padding: 1rem; text-align: center; }
+</style>
+</head>
+<body>
+<header id="status"></header>
+<div id="stale">Queue changed on disk. <button id="refresh">Refresh</button></div>
+<div id="error"></div>
+
+<form id="add">
+  <div class="row">
+    <input name="title" placeholder="New task title…" autocomplete="off">
+    <label><input type="checkbox" name="top"> top</label>
+    <button class="primary" type="submit">Add</button>
+  </div>
+  <details>
+    <summary>spec fields</summary>
+    <div class="grid">
+      <label>mode</label><select name="mode"><option>direct</option><option>chain</option></select>
+      <label>slug</label><input name="slug" placeholder="docs/&lt;slug&gt;/">
+      <label>deps</label><input name="deps" placeholder="task-001, task-002">
+      <label>files</label><input name="files" placeholder="src/a.ts, test/a.test.ts">
+      <label>validate</label><input name="validate" placeholder="npm test">
+      <label>accept</label><input name="accept" placeholder="checkable end state">
+    </div>
+  </details>
+</form>
+
+<ul id="tasks"></ul>
+
+<script>
+"use strict";
+const $ = (sel, el) => (el || document).querySelector(sel);
+const ERROR_HIDE_MS = 6000;
+let S = null;          // last ConsoleState
+let editingId = null;  // task id whose editor is open (or "add" while typing)
+let draggingId = null;
+
+const busy = () => editingId !== null || draggingId !== null;
+const esc = s => String(s ?? "").replace(/[&<>"']/g,
+  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+async function refresh() {
+  const res = await fetch("/api/queue");
+  S = await res.json();
+  render();
+}
+
+async function post(op) {
+  const res = await fetch("/api/op", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(op),
+  });
+  const body = await res.json();
+  if (!res.ok) { showError(body.error || "operation rejected"); return false; }
+  S = body;
+  // Close the editor only when this op consumed or destroyed it — a save
+  // (set/add) or removing the edited row. Other ops keep it open, and
+  // render() carries the typed-but-unsaved values across the re-render.
+  if (op.op === "set" || op.op === "add" || (op.op === "remove" && op.id === editingId)) editingId = null;
+  render();
+  return true;
+}
+
+function showError(msg) {
+  const el = $("#error");
+  el.textContent = msg;
+  el.style.display = "block";
+  clearTimeout(showError.t);
+  showError.t = setTimeout(() => { el.style.display = "none"; }, ERROR_HIDE_MS);
+}
+
+// ------------------------------------------------------------------ header
+
+function renderStatus() {
+  const c = S.config;
+  const paused = c.status === "stopped" && c.resumeAt;
+  const cls = paused ? "paused" : c.status;
+  const label = paused ? "paused until " + c.resumeAt : c.status;
+  const n = s => S.tasks.filter(t => t.status === s).length;
+  $("#status").innerHTML =
+    '<h1>Queue Console</h1>' +
+    '<span class="pill ' + cls + '">' + esc(label) + '</span>' +
+    '<span class="counts">' + n("pending") + ' pending · ' + n("active") + ' active · '
+      + n("done") + ' done · ' + n("failed") + ' failed</span>' +
+    '<label>every <input id="cfg-interval" value="' + esc(c.interval) + '"></label>' +
+    '<label>parallel <input id="cfg-parallel" type="number" min="1" value="' + c.maxParallel + '"></label>' +
+    '<button id="toggle">' + (c.status === "running" ? "Stop" : "Start") + '</button>' +
+    '<button id="sweep">Archive done/failed</button>' +
+    (S.drain ? '<span id="drain">' + esc(S.drain) + '</span>' : '');
+  $("#toggle").onclick = () =>
+    post(S.config.status === "running" ? { op: "stop" } : { op: "start" });
+  $("#sweep").onclick = () => post({ op: "archive" });
+  $("#cfg-interval").onchange = e => post({ op: "config", key: "interval", value: e.target.value });
+  $("#cfg-parallel").onchange = e => post({ op: "config", key: "maxParallel", value: e.target.value });
+}
+
+// ------------------------------------------------------------------ tasks
+
+const BADGE = { pending: "·", active: "▶", done: "✓", failed: "✗" };
+
+function chips(t) {
+  const out = [];
+  if (t.mode === "chain") out.push('<span class="chip">chain</span>');
+  if (t.dependsOn.length) out.push('<span class="chip">deps: ' + esc(t.dependsOn.join(", ")) + '</span>');
+  if (t.failures) out.push('<span class="chip">retries: ' + t.failures + '</span>');
+  if (t.owner) out.push('<span class="chip">@' + esc(t.owner) + '</span>');
+  if (t.note) out.push('<span class="chip note">' + esc(t.note) + '</span>');
+  if (t.deadlocked) out.push('<span class="chip deadlocked">blocked by failed dep</span>');
+  else if (t.eligible) out.push('<span class="chip ready">ready</span>');
+  return out.join("");
+}
+
+function editorHtml(t) {
+  const f = (label, name, value, ph) =>
+    '<label>' + label + '</label><input name="' + name + '" value="' + esc(value ?? "") + '"'
+      + (ph ? ' placeholder="' + ph + '"' : "") + '>';
+  return '<form class="editor grid">'
+    + f("title", "title", t.title)
+    + '<label>mode</label><select name="mode"><option'
+      + (t.mode === "direct" ? " selected" : "") + '>direct</option><option'
+      + (t.mode === "chain" ? " selected" : "") + '>chain</option></select>'
+    + f("slug", "slug", t.slug)
+    + f("deps", "deps", t.dependsOn.join(", "), "task-001, task-002")
+    + f("files", "files", t.files.join(", "))
+    + f("validate", "validate", t.validate)
+    + f("accept", "accept", t.accept)
+    + f("note", "note", t.note)
+    + '<div class="buttons"><button class="primary" type="submit">Save</button>'
+    + '<button type="button" data-cancel>Cancel</button></div></form>';
+}
+
+function taskHtml(t) {
+  // Never offer requeue on an active task — resetting a live claim would let
+  // two workers run it at once (the model refuses too; this hides the trap).
+  const canRequeue = t.status === "failed" || (t.failures > 0 && t.status !== "active");
+  return '<div class="task-line">'
+    + '<span class="handle" title="drag to reorder">⋮⋮</span>'
+    + '<span class="badge ' + t.status + '">' + BADGE[t.status] + '</span>'
+    + '<span class="tid">' + t.id + '</span>'
+    + '<span class="title">' + esc(t.title) + '</span>'
+    + chips(t)
+    + '<span class="actions">'
+    + '<button data-act="top" title="move to top">⤒</button>'
+    + (canRequeue ? '<button data-act="requeue" title="reset to pending">↻</button>' : "")
+    + '<button data-act="edit" title="edit fields">✎</button>'
+    + '<button data-act="remove" title="remove">✕</button>'
+    + '</span></div>'
+    + (editingId === t.id ? editorHtml(t) : "");
+}
+
+function renderTasks() {
+  const ul = $("#tasks");
+  if (!S.tasks.length) {
+    ul.innerHTML = '<li class="empty">(empty — add a task above)</li>';
+    return;
+  }
+  ul.innerHTML = S.tasks.map(t =>
+    '<li draggable="true" data-id="' + t.id + '">' + taskHtml(t) + '</li>').join("");
+  ul.querySelectorAll("li").forEach(li => {
+    const id = li.dataset.id;
+    li.addEventListener("dragstart", () => { draggingId = id; });
+    li.addEventListener("dragend", () => { draggingId = null; li.classList.remove("dragover"); });
+    li.addEventListener("dragover", e => { e.preventDefault(); li.classList.add("dragover"); });
+    li.addEventListener("dragleave", () => li.classList.remove("dragover"));
+    li.addEventListener("drop", e => {
+      e.preventDefault();
+      const to = S.tasks.findIndex(t => t.id === id);
+      const from = draggingId;
+      draggingId = null;
+      if (from && from !== id) post({ op: "move", id: from, to });
+    });
+    li.querySelectorAll("[data-act]").forEach(btn => {
+      btn.onclick = () => {
+        const act = btn.dataset.act;
+        if (act === "edit") { editingId = editingId === id ? null : id; render(); }
+        else if (act === "remove") { if (confirm("Remove " + id + "?")) post({ op: "remove", id }); }
+        else if (act === "top") post({ op: "top", id });
+        else if (act === "requeue") post({ op: "requeue", id });
+      };
+    });
+    const editor = li.querySelector(".editor");
+    if (editor) {
+      editor.addEventListener("submit", e => {
+        e.preventDefault();
+        const v = name => editor.querySelector('[name="' + name + '"]').value;
+        post({ op: "set", id, fields: {
+          title: v("title"), mode: v("mode"), slug: v("slug"), deps: v("deps"),
+          files: v("files"), validate: v("validate"), accept: v("accept"), note: v("note"),
+        } });
+      });
+      editor.querySelector("[data-cancel]").onclick = () => { editingId = null; render(); };
+    }
+  });
+}
+
+function render() {
+  // Re-rendering rebuilds an open editor from server state; carry the user's
+  // typed-but-unsaved field values across so no op can eat their input.
+  const openEditor = editingId && $('#tasks li[data-id="' + editingId + '"] .editor');
+  const typed = openEditor
+    ? [...openEditor.querySelectorAll("[name]")].map(el => [el.name, el.value]) : null;
+  renderStatus();
+  renderTasks();
+  if (typed) {
+    const editor = $('#tasks li[data-id="' + editingId + '"] .editor');
+    if (editor) for (const [name, value] of typed) {
+      const el = editor.querySelector('[name="' + name + '"]');
+      if (el) el.value = value;
+    }
+  }
+  $("#stale").style.display = "none";
+}
+
+// ------------------------------------------------------------------ add form
+
+$("#add").addEventListener("submit", e => {
+  e.preventDefault();
+  const v = name => $('#add [name="' + name + '"]').value;
+  const fields = {};
+  for (const k of ["mode", "slug", "deps", "files", "validate", "accept"]) {
+    if (v(k) && !(k === "mode" && v(k) === "direct")) fields[k] = v(k);
+  }
+  post({ op: "add", title: v("title"), top: $('#add [name="top"]').checked, fields })
+    .then(ok => { if (ok) { $("#add").reset(); } });
+});
+
+// ------------------------------------------------------------------ live
+
+$("#refresh").onclick = refresh;
+new EventSource("/events").onmessage = () => {
+  // A worker (or another console) wrote the file. Never fight an open editor
+  // or an in-flight drag — offer a refresh instead (design.md D8).
+  if (busy()) $("#stale").style.display = "block";
+  else refresh();
+};
+refresh();
+</script>
+</body>
+</html>

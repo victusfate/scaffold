@@ -15,6 +15,8 @@
 //   node scripts/queue.ts done <id> [--skip-validate]# run validate, then complete
 //   node scripts/queue.ts fail <id> [reason...]      # record a failure (retries then terminal)
 //   node scripts/queue.ts top <id> | remove <id>
+//   node scripts/queue.ts move <id> <pos>            # reorder to a 1-based position (as in `list`)
+//   node scripts/queue.ts requeue <id>               # revive a failed task (pending, failures cleared)
 //   node scripts/queue.ts start | stop               # run/pause the worker
 //   node scripts/queue.ts interval 6m                # edit the wake interval
 //   node scripts/queue.ts config <key> <value>       # maxFailures|leaseMinutes|maxParallel|integrationBranch
@@ -24,37 +26,18 @@
 // add/set flags: --mode chain --slug <s> --deps a,b --files a,b --validate "<cmd>"
 //   --accept "<criteria>" --top --worker <name>
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { execSync } from 'node:child_process';
+import { ROOT, sidecar, now, load, save, log, appendArchive } from './queue-io.ts';
 import {
-  parseQueue, serializeQueue, render as renderModel,
-  addTask, addMany, setField, moveToTop, removeTask, setConfig,
-  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
-  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, splitList, taskFields,
-  type Queue, type Task, type QueueConfig,
+  render as renderModel,
+  addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
+  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask,
+  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
+  fieldPatch, sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
+  type Queue, type Task,
 } from './queue-model.ts';
-
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const QUEUE_DIR = join(ROOT, '.agent', 'queue');
-
-function queueFile(): string { return process.env.QUEUE_FILE ?? join(QUEUE_DIR, 'queue.md'); }
-function sidecar(name: string): string { return join(dirname(queueFile()), name); }
-function now(): string { return new Date().toISOString(); }
-
-function load(): Queue {
-  const p = queueFile();
-  return existsSync(p) ? parseQueue(readFileSync(p, 'utf8')) : parseQueue('');
-}
-function save(q: Queue): void {
-  const p = queueFile();
-  mkdirSync(dirname(p), { recursive: true });
-  writeFileSync(p, serializeQueue(q));
-}
-function log(msg: string): void {
-  appendFileSync(sidecar('log.md'), `- ${now()} ${msg}\n`);
-}
 
 // ---------------------------------------------------------------- flags
 
@@ -86,14 +69,13 @@ function parse(rest: string[]): Parsed {
   return { positionals, flags, bools };
 }
 
+const SPEC_FLAGS = ['mode', 'slug', 'deps', 'files', 'validate', 'accept'];
+
 function taskOverrides(f: Parsed): Partial<Task> {
   const o: Partial<Task> = {};
-  if (f.flags.has('mode')) o.mode = f.flags.get('mode') === 'chain' ? 'chain' : 'direct';
-  if (f.flags.has('slug')) o.slug = f.flags.get('slug') || null;
-  if (f.flags.has('deps')) o.dependsOn = splitList(f.flags.get('deps') ?? '');
-  if (f.flags.has('files')) o.files = splitList(f.flags.get('files') ?? '');
-  if (f.flags.has('validate')) o.validate = f.flags.get('validate') || null;
-  if (f.flags.has('accept')) o.accept = f.flags.get('accept') || null;
+  for (const key of SPEC_FLAGS) {
+    if (f.flags.has(key)) Object.assign(o, fieldPatch(key, f.flags.get(key) ?? ''));
+  }
   return o;
 }
 
@@ -224,33 +206,24 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
 }
 
 function cmdConfig(q: Queue, key: string, val: string): number {
-  const numKeys: (keyof QueueConfig)[] = ['maxFailures', 'leaseMinutes', 'maxParallel'];
-  const strKeys: (keyof QueueConfig)[] = ['integrationBranch', 'idlePoll', 'pausePoll'];
-  if (strKeys.includes(key as keyof QueueConfig)) save(setConfig(q, { [key]: val } as Partial<QueueConfig>));
-  else if (numKeys.includes(key as keyof QueueConfig)) save(setConfig(q, { [key]: Number(val) } as Partial<QueueConfig>));
+  if ((TEXT_CONFIG_KEYS as readonly string[]).includes(key)) save(setConfig(q, { [key]: val }));
+  else if ((NUMERIC_CONFIG_KEYS as readonly string[]).includes(key)) save(setConfig(q, { [key]: Number(val) }));
   else {
     console.error(`config: unknown key ${key} `
-      + '(maxFailures|leaseMinutes|maxParallel|integrationBranch|idlePoll|pausePoll)');
+      + `(${[...NUMERIC_CONFIG_KEYS, ...TEXT_CONFIG_KEYS].join('|')})`);
     return 1;
   }
   console.log(`config ${key} = ${val}`);
   return 0;
 }
 
-/** Append a batch of finished tasks to the git-ignored archive.md audit log. */
-function appendArchive(tasks: Task[]): void {
-  const block = `\n## Archived ${now()}\n\n`
-    + tasks.map(t => `- [${t.status === 'done' ? 'x' : '!'}] ${t.id} — ${t.title}`).join('\n') + '\n';
-  appendFileSync(sidecar('archive.md'), block);
-}
-
 function cmdArchive(q: Queue): number {
-  const gone = q.tasks.filter(t => t.status === 'done' || t.status === 'failed');
-  if (!gone.length) { console.log('archive: nothing to sweep'); return 0; }
-  appendArchive(gone);
-  save({ config: q.config, tasks: q.tasks.filter(t => t.status !== 'done' && t.status !== 'failed') });
-  log(`archived ${gone.length} task(s)`);
-  console.log(`archived ${gone.length} task(s) → ${sidecar('archive.md')}`);
+  const { queue, swept } = sweepFinished(q);
+  if (!swept.length) { console.log('archive: nothing to sweep'); return 0; }
+  appendArchive(swept);
+  save(queue);
+  log(`archived ${swept.length} task(s)`);
+  console.log(`archived ${swept.length} task(s) → ${sidecar('archive.md')}`);
   return 0;
 }
 
@@ -361,8 +334,8 @@ function main(argv: string[]): number {
   const [cmd = 'list', ...rest] = argv;
   const f = parse(rest);
   const id = f.positionals[0];
-  const needId = (): boolean => Boolean(id && load().tasks.some(t => t.id === id));
   let q = load();
+  const needId = (): boolean => Boolean(id && q.tasks.some(t => t.id === id));
 
   switch (cmd) {
     case 'list': case 'status': console.log(renderModel(q)); return 0;
@@ -429,6 +402,23 @@ function main(argv: string[]): number {
       if (!needId()) { console.error('top: unknown task id'); return 1; }
       q = moveToTop(q, id); save(q);
       console.log(`${id} moved to top${drainKick(q)}`); return 0;
+    case 'move': {
+      const pos = Number(f.positionals[1]);
+      if (!needId() || !Number.isInteger(pos) || pos < 1) {
+        console.error('usage: queue move <id> <pos>  (1-based, as numbered in `queue list`)'); return 1;
+      }
+      q = moveTask(q, id, pos - 1); save(q); log(`move ${id} → ${pos}`);
+      console.log(`${id} moved to position ${pos}${drainKick(q)}`); return 0;
+    }
+    case 'requeue': {
+      if (!needId()) { console.error('requeue: unknown task id'); return 1; }
+      const before = q.tasks.find(t => t.id === id)!;
+      if (before.status !== 'failed' && before.failures === 0) {
+        console.log(`requeue: ${id} is ${before.status} with no failures — nothing to revive`); return 0;
+      }
+      q = requeueTask(q, id); save(q); log(`requeue ${id}`);
+      console.log(`${id} requeued (pending, failures cleared)${drainKick(q)}`); return 0;
+    }
     case 'remove': case 'rm':
       if (!needId()) { console.error('remove: unknown task id'); return 1; }
       save(removeTask(q, id)); log(`remove ${id}`); console.log(`removed ${id}`); return 0;
@@ -458,7 +448,7 @@ function main(argv: string[]): number {
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
-        + `signal claim begin done fail top remove start stop pause interval config archive loop worktree`);
+        + `signal claim begin done fail top move requeue remove start stop pause interval config archive loop worktree`);
       return 1;
   }
 }

@@ -79,7 +79,8 @@ signal                                  # print DRAIN-WANTED iff drainable (Moni
 claim <id> [--worker w]                # atomic claim for a parallel worker
 done <id> [--skip-validate]            # validate, complete, then auto-archive out of the queue
 fail <id> [reason...]                  # record a failure (retries, then terminal)
-top <id> | remove <id>
+top <id> | move <id> <pos> | remove <id>   # reprioritize (1-based pos, as `list` numbers) | prune
+requeue <id>                           # revive a failed task (pending again, failures cleared)
 start | stop                           # run or pause the whole queue
 interval <dur> | config <key> <value>  # cadence | maxFailures|leaseMinutes|maxParallel|integrationBranch
 worktree add|remove|list <id>          # isolated git worktree per task
@@ -89,6 +90,24 @@ archive | loop                          # sweep done/failed | print the /loop in
 `add`/`set` flags: `--mode chain` · `--slug <s>` · `--deps a,b` · `--files a,b` ·
 `--validate "<cmd>"` · `--accept "<criteria>"` · `--top`. Override the file with
 `QUEUE_FILE=<path>`.
+
+## Console (`scripts/queue-console.ts`)
+
+A local web console over the same model layer — view, add, edit, prune,
+drag-reorder, requeue, start/stop, and archive-sweep the queue live from a
+browser, auto-refreshing as workers write the file:
+
+```bash
+node scripts/queue-console.ts [--port 8722]   # → http://localhost:8722  (QUEUE_FILE honored)
+```
+
+Zero dependencies, loopback-only, **management surface only**: it exposes no
+done/fail/claim/worktree actions and never executes a task's `validate` (or any
+shell command) — execution stays with workers. Every page action posts a typed
+op that is validated before it touches the file, and the interface guards the
+dependency DAG: deps naming nonexistent tasks, self-deps, cycles, and removing
+a task that unfinished work still depends on are all rejected. Agents get the
+same guarantees through `queue.ts`; humans can still hand-edit the file freely.
 
 ## Creating a queue from in-memory items
 

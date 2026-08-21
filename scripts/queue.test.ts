@@ -2,9 +2,9 @@
 // Tests for scripts/queue-model.ts — the pure work-queue engine.
 
 import {
-  parseQueue, serializeQueue, newTask,
-  addTask, addMany, setTaskStatus, setField, moveToTop, removeTask, setConfig,
-  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue,
+  parseQueue, serializeQueue,
+  addTask, addMany, setTaskStatus, setField, moveToTop, moveTask, removeTask, setConfig,
+  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask, sweepFinished,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
   archivableDone,
   type Queue,
@@ -306,6 +306,66 @@ integrationBranch: queue/integration
   assert('counter advanced past the synthesized id', handless.config.nextId === 10);
 }
 
+// ---- moveTask: reorder to an explicit position ----
+{
+  const order = (q: Queue): string => q.tasks.map(t => t.id).join(',');
+  const q = parseQueue('- [ ] task-001 — a\n- [ ] task-002 — b\n- [ ] task-003 — c\n- [ ] task-004 — d\n');
+
+  assert('move to head', order(moveTask(q, 'task-003', 0)) === 'task-003,task-001,task-002,task-004');
+  assert('move to middle', order(moveTask(q, 'task-001', 2)) === 'task-002,task-003,task-001,task-004');
+  assert('move to last', order(moveTask(q, 'task-001', 3)) === 'task-002,task-003,task-004,task-001');
+  assert('move clamps past end', order(moveTask(q, 'task-002', 99)) === 'task-001,task-003,task-004,task-002');
+  assert('move clamps negative', order(moveTask(q, 'task-004', -5)) === 'task-004,task-001,task-002,task-003');
+  assert('move unknown id is a no-op', order(moveTask(q, 'task-999', 0)) === order(q));
+  assert('move preserves untouched relative order',
+    order(moveTask(q, 'task-002', 3)) === 'task-001,task-003,task-004,task-002');
+  assert('move keeps task fields intact',
+    moveTask(parseQueue(SAMPLE), 'task-004', 0).tasks[0].status === 'failed');
+  assert('move survives round-trip',
+    order(parseQueue(serializeQueue(moveTask(q, 'task-003', 0)))) === 'task-003,task-001,task-002,task-004');
+}
+
+// ---- requeueTask: revive a failed task in place ----
+{
+  const md = '- [ ] task-001 — a\n- [!] task-002 — boom\n  - failures: 3\n  - note: needs-spec: which db?\n'
+    + '  - owner: worker-a\n  - started: 2026-08-12T19:00:00.000Z\n- [ ] task-003 — c\n  - failures: 2\n';
+  const q = parseQueue(md);
+
+  const revived = requeueTask(q, 'task-002').tasks[1];
+  assert('requeue failed → pending', revived.status === 'pending');
+  assert('requeue clears failures', revived.failures === 0);
+  assert('requeue clears note/owner/started',
+    revived.note === null && revived.owner === null && revived.startedAt === null);
+  assert('requeue keeps position', requeueTask(q, 'task-002').tasks.map(t => t.id).join(',')
+    === 'task-001,task-002,task-003');
+
+  const retried = requeueTask(q, 'task-003').tasks[2];
+  assert('requeue resets a retrying pending task', retried.failures === 0 && retried.status === 'pending');
+
+  assert('requeue clean pending is a no-op',
+    JSON.stringify(requeueTask(q, 'task-001')) === JSON.stringify(q));
+  assert('requeue unknown id is a no-op',
+    JSON.stringify(requeueTask(q, 'task-999')) === JSON.stringify(q));
+
+  // an active task is never reset, even with failures — that would steal a live claim
+  const activeRetry = parseQueue('- [>] task-001 — running\n  - failures: 2\n  - owner: worker-a\n');
+  assert('requeue active task is a no-op',
+    JSON.stringify(requeueTask(activeRetry, 'task-001')) === JSON.stringify(activeRetry));
+  assert('requeue survives round-trip',
+    parseQueue(serializeQueue(requeueTask(q, 'task-002'))).tasks[1].status === 'pending');
+}
+
+// ---- sweepFinished: archive failed + done, but never a done task still depended on ----
+{
+  const q = parseQueue('- [x] task-001 — base\n- [ ] task-002 — child\n  - deps: task-001\n'
+    + '- [!] task-003 — dead\n- [x] task-004 — free\n');
+  const { queue, swept } = sweepFinished(q);
+  assert('sweep takes failed and free done', swept.map(t => t.id).sort().join(',') === 'task-003,task-004');
+  assert('sweep keeps a done task with an unfinished dependent',
+    queue.tasks.map(t => t.id).join(',') === 'task-001,task-002');
+  assert('sweep with nothing finished is empty',
+    sweepFinished(parseQueue('- [ ] task-001 — live\n')).swept.length === 0);
+}
+
 console.error(`\nqueue.test: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
-void newTask;
