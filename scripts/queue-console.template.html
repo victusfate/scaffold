@@ -122,6 +122,7 @@
 <script>
 "use strict";
 const $ = (sel, el) => (el || document).querySelector(sel);
+const ERROR_HIDE_MS = 6000;
 let S = null;          // last ConsoleState
 let editingId = null;  // task id whose editor is open (or "add" while typing)
 let draggingId = null;
@@ -143,7 +144,10 @@ async function post(op) {
   const body = await res.json();
   if (!res.ok) { showError(body.error || "operation rejected"); return false; }
   S = body;
-  editingId = null;
+  // Close the editor only when this op consumed or destroyed it — a save
+  // (set/add) or removing the edited row. Other ops keep it open, and
+  // render() carries the typed-but-unsaved values across the re-render.
+  if (op.op === "set" || op.op === "add" || (op.op === "remove" && op.id === editingId)) editingId = null;
   render();
   return true;
 }
@@ -153,7 +157,7 @@ function showError(msg) {
   el.textContent = msg;
   el.style.display = "block";
   clearTimeout(showError.t);
-  showError.t = setTimeout(() => { el.style.display = "none"; }, 6000);
+  showError.t = setTimeout(() => { el.style.display = "none"; }, ERROR_HIDE_MS);
 }
 
 // ------------------------------------------------------------------ header
@@ -217,7 +221,9 @@ function editorHtml(t) {
 }
 
 function taskHtml(t) {
-  const canRequeue = t.status === "failed" || t.failures > 0;
+  // Never offer requeue on an active task — resetting a live claim would let
+  // two workers run it at once (the model refuses too; this hides the trap).
+  const canRequeue = t.status === "failed" || (t.failures > 0 && t.status !== "active");
   return '<div class="task-line">'
     + '<span class="handle" title="drag to reorder">⋮⋮</span>'
     + '<span class="badge ' + t.status + '">' + BADGE[t.status] + '</span>'
@@ -279,8 +285,20 @@ function renderTasks() {
 }
 
 function render() {
+  // Re-rendering rebuilds an open editor from server state; carry the user's
+  // typed-but-unsaved field values across so no op can eat their input.
+  const openEditor = editingId && $('#tasks li[data-id="' + editingId + '"] .editor');
+  const typed = openEditor
+    ? [...openEditor.querySelectorAll("[name]")].map(el => [el.name, el.value]) : null;
   renderStatus();
   renderTasks();
+  if (typed) {
+    const editor = $('#tasks li[data-id="' + editingId + '"] .editor');
+    if (editor) for (const [name, value] of typed) {
+      const el = editor.querySelector('[name="' + name + '"]');
+      if (el) el.value = value;
+    }
+  }
   $("#stale").style.display = "none";
 }
 

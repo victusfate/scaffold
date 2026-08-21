@@ -143,22 +143,34 @@ function applyConfig(config: QueueConfig, key: string, val: string): void {
   }
 }
 
-function applyField(task: Task, key: string, val: string): void {
+/**
+ * The canonical wire→model coercion for one task field: a raw string (file
+ * line, CLI flag, or console op) becomes a typed partial. Every surface that
+ * accepts field text derives from this one grammar; unknown keys coerce to {}
+ * so callers decide whether that is an error (the console rejects, the file
+ * parser forgives).
+ */
+export function fieldPatch(key: string, val: string): Partial<Task> {
+  const v = val.trim();
   switch (key) {
-    case 'mode': task.mode = val === 'chain' ? 'chain' : 'direct'; break;
-    case 'slug': task.slug = val || null; break;
-    case 'deps': case 'dependsOn': task.dependsOn = splitList(val); break;
-    case 'files': task.files = splitList(val); break;
-    case 'validate': task.validate = val || null; break;
-    case 'accept': task.accept = val || null; break;
-    case 'note': task.note = val || null; break;
-    case 'failures': task.failures = Number(val) || 0; break;
-    case 'owner': task.owner = val || null; break;
-    case 'branch': task.branch = val || null; break;
-    case 'worktree': task.worktree = val || null; break;
-    case 'started': case 'startedAt': task.startedAt = val || null; break;
-    default: break;
+    case 'mode': return { mode: v === 'chain' ? 'chain' : 'direct' };
+    case 'slug': return { slug: v || null };
+    case 'deps': case 'dependsOn': return { dependsOn: splitList(v) };
+    case 'files': return { files: splitList(v) };
+    case 'validate': return { validate: v || null };
+    case 'accept': return { accept: v || null };
+    case 'note': return { note: v || null };
+    case 'failures': return { failures: Number(v) || 0 };
+    case 'owner': return { owner: v || null };
+    case 'branch': return { branch: v || null };
+    case 'worktree': return { worktree: v || null };
+    case 'started': case 'startedAt': return { startedAt: v || null };
+    default: return {};
   }
+}
+
+function applyField(task: Task, key: string, val: string): void {
+  Object.assign(task, fieldPatch(key, val));
 }
 
 /** Parse the Markdown queue file into a model. Forgiving of hand edits. */
@@ -325,9 +337,12 @@ export function setField(q: Queue, id: string, patch: Partial<Task>): Queue {
 }
 
 export function moveToTop(q: Queue, id: string): Queue {
-  const hit = q.tasks.find(t => t.id === id);
-  return hit ? withTasks(q, [hit, ...q.tasks.filter(t => t.id !== id)]) : q;
+  return moveTask(q, id, 0);
 }
+
+/** Editable config keys, split by type — the one home both CLI and console derive from. */
+export const NUMERIC_CONFIG_KEYS = ['maxFailures', 'leaseMinutes', 'maxParallel'] as const;
+export const TEXT_CONFIG_KEYS = ['interval', 'integrationBranch', 'idlePoll', 'pausePoll'] as const;
 
 /** Reorder a task to an explicit 0-based position, clamped to the list bounds. */
 export function moveTask(q: Queue, id: string, toIndex: number): Queue {
@@ -381,11 +396,13 @@ export function recordFailure(
 /**
  * Revive a failed (or retrying) task in place: back to pending with its failure
  * history cleared, position kept. The recovery verb for "I fixed the spec, run it
- * again." A clean pending/active/done task (or unknown id) is left untouched.
+ * again." An active task is never reset — stealing a live claim would let two
+ * workers run it at once; clean pending/done tasks and unknown ids are also
+ * left untouched.
  */
 export function requeueTask(q: Queue, id: string): Queue {
   const hit = q.tasks.find(t => t.id === id);
-  if (!hit || (hit.status !== 'failed' && hit.failures === 0)) return q;
+  if (!hit || hit.status === 'active' || (hit.status !== 'failed' && hit.failures === 0)) return q;
   return mapTask(q, id, t => ({
     ...t, status: 'pending', failures: 0, note: null, owner: null, startedAt: null,
   }));
@@ -489,6 +506,24 @@ export function archivableDone(q: Queue): Task[] {
     }
   }
   return q.tasks.filter(t => t.status === 'done' && !neededByUnfinished.has(t.id));
+}
+
+/**
+ * The manual archive sweep: terminal `failed` tasks plus every archivable
+ * `done` task leave the live queue. A done task that unfinished work still
+ * depends on is NOT swept (`archivableDone`) — archiving it would strand its
+ * dependents as permanently ineligible with nothing left to flag the gap.
+ * Returns the shrunken queue and the swept tasks for the caller to persist.
+ */
+export function sweepFinished(q: Queue): { queue: Queue; swept: Task[] } {
+  const gone = new Set([
+    ...q.tasks.filter(t => t.status === 'failed').map(t => t.id),
+    ...archivableDone(q).map(t => t.id),
+  ]);
+  return {
+    queue: withTasks(q, q.tasks.filter(t => !gone.has(t.id))),
+    swept: q.tasks.filter(t => gone.has(t.id)),
+  };
 }
 
 /**

@@ -67,3 +67,28 @@ queued-task contract, no interactive gates).
   .github/scaffold-files.txt (ship manifest gate caught them).
 - Full gate: `npm test` all suites green incl. RESOLVER + manifest checks;
   typecheck clean; lint 0 errors (pre-existing warning baseline).
+
+## Code-refiner pass (parallel validate + simplify, merged, applied serially)
+- Correctness (critical→minor): browser-boundary hardening on the server —
+  loopback Host allowlist (DNS-rebinding) + JSON content-type requirement
+  (kills preflight-free cross-origin POSTs; closes the poisoned-`validate`
+  RCE path); archive now DAG-safe via model op `sweepFinished` (a done task
+  with unfinished dependents is kept — CLI `archive` fixed too); `handleOp`
+  failures → 500 instead of an unhandled rejection; `close()` ends SSE
+  clients + detaches the watcher; `requeueTask` never resets an active task
+  (model + page button + design.md); the page preserves typed-but-unsaved
+  editor values across re-renders and only closes the editor on save/remove.
+  Drag-index-vs-worker race left as designed (LWW, D2/D8 — clamped,
+  id-validated, self-correcting).
+- Structure: canonical field-coercion `fieldPatch` in queue-model (was 3
+  copies across parser/CLI/console); config-key lists exported from the
+  model (was 2 hand-maintained partitions); shared `scripts/sse-watch.ts`
+  used by queue-console AND mermaid-watch (which thereby gains the
+  detachable-watcher fix); `moveToTop` delegates to `moveTask`; `ok` rename
+  (constructor no longer shadows the 'done' status); `needId` reads the
+  already-loaded queue; named ERROR_HIDE_MS; test double-call/cast and
+  `void newTask` ceremony removed. Accepted, no action: test-harness
+  copy (repo-wide convention), template BADGE echo (separate runtime),
+  queue-model file-length pragma.
+- Gate after pass: 103 + 84 assertions green, full `npm test` green,
+  typecheck clean, lint 0 errors.

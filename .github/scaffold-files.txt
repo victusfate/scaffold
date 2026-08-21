@@ -30,6 +30,7 @@ scripts/mermaid-watch.ts
 scripts/mermaid-watch.test.ts
 scripts/queue-model.ts
 scripts/queue-io.ts
+scripts/sse-watch.ts
 scripts/queue.ts
 scripts/queue.test.ts
 scripts/queue-console.ts

@@ -84,6 +84,16 @@ console, so no auth layer is added. Routes:
 Default port `8722`, `--port` to override; `QUEUE_FILE` env honored exactly as
 in `queue.ts`. Usage: `node scripts/queue-console.ts [--port 8722]`.
 
+**Browser-boundary hardening (added in code review):** loopback binding alone
+does not stop the user's own browser acting as a confused deputy, so the
+server also (a) rejects any request whose `Host` header is not loopback
+(defeats DNS rebinding) and (b) requires `content-type: application/json` on
+`POST /api/op`, which forces every cross-origin browser request into a CORS
+preflight the server never answers — no hostile web page can fire a
+"simple" no-preflight POST at the op endpoint. The SSE plumbing is shared
+with `mermaid-watch.ts` via `scripts/sse-watch.ts`, and `close()` ends SSE
+clients and detaches the file watcher so the process can exit.
+
 ### D5 — One op endpoint with a typed dispatcher, mirroring the CLI
 
 `POST /api/op` carries `{ "op": "<name>", ...args }`. A pure, exported
@@ -126,6 +136,9 @@ dependency cycle; and `remove` of a task that an unfinished (pending/active)
 task still depends on (edit the dependents first). Hand edits to the file stay
 forgiving as before; the software interface is where integrity is enforced.
 The CLI `set <id> deps …` path gains the same guard via a shared validator.
+The `archive` sweep honors the DAG too (model op `sweepFinished`, shared by
+CLI and console): a `done` task that unfinished work still depends on is kept,
+because sweeping it would strand its dependents as permanently ineligible.
 
 ### D6 — Reordering: `move` to an explicit position, pure and clamped
 
@@ -139,10 +152,12 @@ the "one step" gesture. Drag-drop emits the same op with the drop index.
 
 ### D7 — Requeue: the prune-adjacent recovery verb
 
-`requeueTask(q, id)` — pure. Applies to a task with `status: 'failed'` or
-`failures > 0`: resets `status: 'pending'`, `failures: 0`, clears
-`note`/`owner`/`startedAt`, keeps its position. Any other task (or an unknown
-id) is a no-op returning the queue unchanged. CLI: `queue requeue <id>`. Rationale: today a terminal-failed task can only be removed or
+`requeueTask(q, id)` — pure. Applies to a task with `status: 'failed'`, or
+`failures > 0` while **not active**: resets `status: 'pending'`, `failures:
+0`, clears `note`/`owner`/`startedAt`, keeps its position. An `active` task is
+never reset — stealing a live claim would let two workers run the same task —
+and any other task (or an unknown id) is a no-op returning the queue
+unchanged. CLI: `queue requeue <id>`. Rationale: today a terminal-failed task can only be removed or
 hand-edited back to life; requeue makes "I fixed the spec, run it again" a
 first-class management action from both surfaces.
 

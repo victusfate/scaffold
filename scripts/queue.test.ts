@@ -2,9 +2,9 @@
 // Tests for scripts/queue-model.ts — the pure work-queue engine.
 
 import {
-  parseQueue, serializeQueue, newTask,
+  parseQueue, serializeQueue,
   addTask, addMany, setTaskStatus, setField, moveToTop, moveTask, removeTask, setConfig,
-  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask,
+  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask, sweepFinished,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
   archivableDone,
   type Queue,
@@ -346,10 +346,26 @@ integrationBranch: queue/integration
     JSON.stringify(requeueTask(q, 'task-001')) === JSON.stringify(q));
   assert('requeue unknown id is a no-op',
     JSON.stringify(requeueTask(q, 'task-999')) === JSON.stringify(q));
+
+  // an active task is never reset, even with failures — that would steal a live claim
+  const activeRetry = parseQueue('- [>] task-001 — running\n  - failures: 2\n  - owner: worker-a\n');
+  assert('requeue active task is a no-op',
+    JSON.stringify(requeueTask(activeRetry, 'task-001')) === JSON.stringify(activeRetry));
   assert('requeue survives round-trip',
     parseQueue(serializeQueue(requeueTask(q, 'task-002'))).tasks[1].status === 'pending');
 }
 
+// ---- sweepFinished: archive failed + done, but never a done task still depended on ----
+{
+  const q = parseQueue('- [x] task-001 — base\n- [ ] task-002 — child\n  - deps: task-001\n'
+    + '- [!] task-003 — dead\n- [x] task-004 — free\n');
+  const { queue, swept } = sweepFinished(q);
+  assert('sweep takes failed and free done', swept.map(t => t.id).sort().join(',') === 'task-003,task-004');
+  assert('sweep keeps a done task with an unfinished dependent',
+    queue.tasks.map(t => t.id).join(',') === 'task-001,task-002');
+  assert('sweep with nothing finished is empty',
+    sweepFinished(parseQueue('- [ ] task-001 — live\n')).swept.length === 0);
+}
+
 console.error(`\nqueue.test: ${passed} passed, ${failed} failed`);
 if (failed > 0) process.exit(1);
-void newTask;

@@ -11,10 +11,11 @@
 // Then open http://localhost:<port> and edit the file; the tab re-renders.
 
 import http from 'node:http';
-import { readFileSync, existsSync, watchFile } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 
 const DEFAULT_PORT = 8080;
 const HTTP_OK = 200;
@@ -70,28 +71,22 @@ function main(argv: string[]): void {
   } catch {
     die(`initial render failed for ${file} — ensure the mmdc/Chromium render works`);
   }
-  const clients = new Set<http.ServerResponse>();
+  const sse = createSseChannel();
   const server = http.createServer((req, res) => {
     if (req.url === '/') {
       res.writeHead(HTTP_OK, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(page);
     } else if (req.url === '/events') {
-      res.writeHead(HTTP_OK, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
-      res.write(': connected\n\n');
-      clients.add(res);
-      req.on('close', () => clients.delete(res));
+      sse.attach(req, res);
     } else {
       res.writeHead(HTTP_NOT_FOUND);
       res.end();
     }
   });
 
-  watchFile(file, { interval: POLL_INTERVAL_MS }, (curr, prev) => {
-    if (curr.mtimeMs === prev.mtimeMs) return;
+  watchFileChanges(file, POLL_INTERVAL_MS, () => {
     try { page = renderPage(file, portable); } catch { /* keep the last good page on a render error */ }
-    for (const res of clients) {
-      try { res.write('data: reload\n\n'); } catch { clients.delete(res); }
-    }
+    sse.broadcast('reload');
   });
 
   server.listen(port, () => {

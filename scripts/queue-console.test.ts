@@ -6,6 +6,7 @@
 import { mkdtempSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import http from 'node:http';
 import { parseQueue } from './queue-model.ts';
 import { consoleState, applyOp, startServer, type Op } from './queue-console.ts';
 
@@ -80,8 +81,8 @@ maxParallel: 2
 
   assert('stop stops', ok({ op: 'stop' }).queue.config.status === 'stopped');
   const stopped = applyOp(q, { op: 'stop' });
-  assert('start resumes', stopped.ok && applyOp(stopped.queue, { op: 'start' }).ok
-    && (applyOp(stopped.queue, { op: 'start' }) as { ok: true; queue: ReturnType<typeof parseQueue> }).queue.config.status === 'running');
+  const restarted = stopped.ok ? applyOp(stopped.queue, { op: 'start' }) : stopped;
+  assert('start resumes', restarted.ok && restarted.queue.config.status === 'running');
   assert('config sets a string key', ok({ op: 'config', key: 'interval', value: '9m' }).queue.config.interval === '9m');
   assert('config sets a numeric key', ok({ op: 'config', key: 'maxParallel', value: '4' }).queue.config.maxParallel === 4);
 }
@@ -94,6 +95,13 @@ maxParallel: 2
   assert('archive reports swept tasks', r.ok && r.archived.map(t => t.id).join(',') === 'task-001,task-002');
   const empty = applyOp(parseQueue('- [ ] task-001 — live\n'), { op: 'archive' });
   assert('archive with nothing to sweep is ok+empty', empty.ok && empty.archived.length === 0);
+
+  // the DAG guard applies to archive too: a done task with an unfinished
+  // dependent stays, or the dependent would be stranded forever
+  const chained = parseQueue('- [x] task-001 — base\n- [ ] task-002 — child\n  - deps: task-001\n');
+  const kept = applyOp(chained, { op: 'archive' });
+  assert('archive keeps a depended-on done task',
+    kept.ok && kept.queue.tasks.length === 2 && kept.archived.length === 0);
 }
 
 // ---- applyOp: rejections leave the queue untouched ----
@@ -214,9 +222,31 @@ maxParallel: 2
   const reader = events.body!.getReader();
   const first = new TextDecoder().decode((await reader.read()).value);
   assert('SSE greets the client', first.includes(': connected'));
-  await reader.cancel();
 
-  server.close();
+  // a request whose Host is not loopback is a DNS-rebinding attempt → 403 on
+  // every route (fetch forbids overriding Host, so use a raw request)
+  const rebound = await new Promise<number>(resolve => {
+    http.get({ host: '127.0.0.1', port: addr.port, path: '/api/queue',
+      headers: { host: 'attacker.example' } }, r => resolve(r.statusCode ?? 0));
+  });
+  assert('non-loopback Host → 403', rebound === 403, String(rebound));
+
+  // a JSON content-type is required — this is what forces cross-origin
+  // browsers into a preflight the server never answers
+  const plain = await fetch(`${base}/api/op`, {
+    method: 'POST', headers: { 'content-type': 'text/plain' },
+    body: JSON.stringify({ op: 'stop' }),
+  });
+  assert('non-JSON content-type → 400', plain.status === 400);
+
+  // close() must complete even with this SSE stream still open (it ends the
+  // stream and detaches the file watcher) — a hang here fails the whole run
+  const closed = await new Promise<boolean>(resolve => {
+    const timer = setTimeout(() => resolve(false), 3000);
+    server.close(() => { clearTimeout(timer); resolve(true); });
+  });
+  assert('close completes with an open SSE client', closed);
+  await reader.cancel().catch(() => {});
   delete process.env.QUEUE_FILE;
 }
 

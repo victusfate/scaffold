@@ -34,8 +34,9 @@ import {
   render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask,
-  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, splitList, taskFields,
-  type Queue, type Task, type QueueConfig,
+  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
+  fieldPatch, sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
+  type Queue, type Task,
 } from './queue-model.ts';
 
 // ---------------------------------------------------------------- flags
@@ -68,14 +69,13 @@ function parse(rest: string[]): Parsed {
   return { positionals, flags, bools };
 }
 
+const SPEC_FLAGS = ['mode', 'slug', 'deps', 'files', 'validate', 'accept'];
+
 function taskOverrides(f: Parsed): Partial<Task> {
   const o: Partial<Task> = {};
-  if (f.flags.has('mode')) o.mode = f.flags.get('mode') === 'chain' ? 'chain' : 'direct';
-  if (f.flags.has('slug')) o.slug = f.flags.get('slug') || null;
-  if (f.flags.has('deps')) o.dependsOn = splitList(f.flags.get('deps') ?? '');
-  if (f.flags.has('files')) o.files = splitList(f.flags.get('files') ?? '');
-  if (f.flags.has('validate')) o.validate = f.flags.get('validate') || null;
-  if (f.flags.has('accept')) o.accept = f.flags.get('accept') || null;
+  for (const key of SPEC_FLAGS) {
+    if (f.flags.has(key)) Object.assign(o, fieldPatch(key, f.flags.get(key) ?? ''));
+  }
   return o;
 }
 
@@ -206,13 +206,11 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
 }
 
 function cmdConfig(q: Queue, key: string, val: string): number {
-  const numKeys: (keyof QueueConfig)[] = ['maxFailures', 'leaseMinutes', 'maxParallel'];
-  const strKeys: (keyof QueueConfig)[] = ['integrationBranch', 'idlePoll', 'pausePoll'];
-  if (strKeys.includes(key as keyof QueueConfig)) save(setConfig(q, { [key]: val } as Partial<QueueConfig>));
-  else if (numKeys.includes(key as keyof QueueConfig)) save(setConfig(q, { [key]: Number(val) } as Partial<QueueConfig>));
+  if ((TEXT_CONFIG_KEYS as readonly string[]).includes(key)) save(setConfig(q, { [key]: val }));
+  else if ((NUMERIC_CONFIG_KEYS as readonly string[]).includes(key)) save(setConfig(q, { [key]: Number(val) }));
   else {
     console.error(`config: unknown key ${key} `
-      + '(maxFailures|leaseMinutes|maxParallel|integrationBranch|idlePoll|pausePoll)');
+      + `(${[...NUMERIC_CONFIG_KEYS, ...TEXT_CONFIG_KEYS].join('|')})`);
     return 1;
   }
   console.log(`config ${key} = ${val}`);
@@ -220,12 +218,12 @@ function cmdConfig(q: Queue, key: string, val: string): number {
 }
 
 function cmdArchive(q: Queue): number {
-  const gone = q.tasks.filter(t => t.status === 'done' || t.status === 'failed');
-  if (!gone.length) { console.log('archive: nothing to sweep'); return 0; }
-  appendArchive(gone);
-  save({ config: q.config, tasks: q.tasks.filter(t => t.status !== 'done' && t.status !== 'failed') });
-  log(`archived ${gone.length} task(s)`);
-  console.log(`archived ${gone.length} task(s) → ${sidecar('archive.md')}`);
+  const { queue, swept } = sweepFinished(q);
+  if (!swept.length) { console.log('archive: nothing to sweep'); return 0; }
+  appendArchive(swept);
+  save(queue);
+  log(`archived ${swept.length} task(s)`);
+  console.log(`archived ${swept.length} task(s) → ${sidecar('archive.md')}`);
   return 0;
 }
 
@@ -336,8 +334,8 @@ function main(argv: string[]): number {
   const [cmd = 'list', ...rest] = argv;
   const f = parse(rest);
   const id = f.positionals[0];
-  const needId = (): boolean => Boolean(id && load().tasks.some(t => t.id === id));
   let q = load();
+  const needId = (): boolean => Boolean(id && q.tasks.some(t => t.id === id));
 
   switch (cmd) {
     case 'list': case 'status': console.log(renderModel(q)); return 0;

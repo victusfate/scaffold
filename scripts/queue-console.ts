@@ -16,13 +16,15 @@
 // Usage: node scripts/queue-console.ts [--port 8722]   (QUEUE_FILE honored)
 
 import http from 'node:http';
-import { readFileSync, watchFile, unwatchFile } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { load, save, log, appendArchive, queueFile } from './queue-io.ts';
+import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
   addTask, setField, removeTask, moveToTop, moveTask, requeueTask, setConfig,
-  isEligible, deadlocked, drainSignal, splitList,
+  isEligible, deadlocked, drainSignal, fieldPatch, sweepFinished,
+  NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type QueueConfig, type Task,
 } from './queue-model.ts';
 
@@ -33,12 +35,8 @@ export interface TaskPatch {
   files?: string; validate?: string; accept?: string; note?: string;
 }
 
-const CONFIG_KEYS = [
-  'interval', 'maxFailures', 'leaseMinutes', 'maxParallel',
-  'integrationBranch', 'idlePoll', 'pausePoll',
-] as const;
+const CONFIG_KEYS = [...NUMERIC_CONFIG_KEYS, ...TEXT_CONFIG_KEYS];
 export type ConfigKey = typeof CONFIG_KEYS[number];
-const NUMERIC_CONFIG_KEYS: ConfigKey[] = ['maxFailures', 'leaseMinutes', 'maxParallel'];
 
 export type Op =
   | { op: 'add'; title: string; top?: boolean; fields?: TaskPatch }
@@ -71,7 +69,11 @@ export function consoleState(q: Queue): ConsoleState {
 
 const PATCHABLE = ['title', 'mode', 'slug', 'deps', 'files', 'validate', 'accept', 'note'] as const;
 
-/** Convert a wire TaskPatch (all strings) into a model patch, or name the bad field. */
+/**
+ * Convert a wire TaskPatch (all strings) into a model patch, or name the bad
+ * field. Boundary checks live here; the coercion itself is the model's
+ * canonical `fieldPatch` grammar.
+ */
 function parsePatch(fields: TaskPatch): { patch: Partial<Task> } | { error: string } {
   const unknown = Object.keys(fields).find(k => !(PATCHABLE as readonly string[]).includes(k));
   if (unknown) return { error: `unknown field: ${unknown}` };
@@ -80,13 +82,10 @@ function parsePatch(fields: TaskPatch): { patch: Partial<Task> } | { error: stri
     if (!fields.title.trim()) return { error: 'title cannot be empty' };
     patch.title = fields.title.trim();
   }
-  if (fields.mode !== undefined) patch.mode = fields.mode === 'chain' ? 'chain' : 'direct';
-  if (fields.slug !== undefined) patch.slug = fields.slug.trim() || null;
-  if (fields.deps !== undefined) patch.dependsOn = splitList(fields.deps);
-  if (fields.files !== undefined) patch.files = splitList(fields.files);
-  if (fields.validate !== undefined) patch.validate = fields.validate.trim() || null;
-  if (fields.accept !== undefined) patch.accept = fields.accept.trim() || null;
-  if (fields.note !== undefined) patch.note = fields.note.trim() || null;
+  for (const key of PATCHABLE) {
+    const val = fields[key];
+    if (key !== 'title' && val !== undefined) Object.assign(patch, fieldPatch(key, val));
+  }
   return { patch };
 }
 
@@ -121,7 +120,7 @@ function unfinishedDependents(q: Queue, id: string): Task[] {
 
 // ---------------------------------------------------------------- dispatch
 
-const done = (queue: Queue, archived: Task[] = []): OpResult => ({ ok: true, queue, archived });
+const ok = (queue: Queue, archived: Task[] = []): OpResult => ({ ok: true, queue, archived });
 const reject = (error: string): OpResult => ({ ok: false, error });
 
 function applyTaskPatch(q: Queue, id: string, fields: TaskPatch): OpResult {
@@ -131,7 +130,7 @@ function applyTaskPatch(q: Queue, id: string, fields: TaskPatch): OpResult {
     const bad = depsError(q.tasks, id, parsed.patch.dependsOn);
     if (bad) return reject(bad);
   }
-  return done(setField(q, id, parsed.patch));
+  return ok(setField(q, id, parsed.patch));
 }
 
 function applyAdd(q: Queue, op: { title: string; top?: boolean; fields?: TaskPatch }): OpResult {
@@ -142,17 +141,17 @@ function applyAdd(q: Queue, op: { title: string; top?: boolean; fields?: TaskPat
     const bad = depsError(q.tasks, '', parsed.patch.dependsOn);
     if (bad) return reject(bad);
   }
-  return done(addTask(q, op.title, { top: op.top === true, ...parsed.patch }));
+  return ok(addTask(q, op.title, { top: op.top === true, ...parsed.patch }));
 }
 
 function applyConfigOp(q: Queue, key: ConfigKey, value: string): OpResult {
   if (!CONFIG_KEYS.includes(key)) return reject(`config: unknown key ${String(key)}`);
-  if (NUMERIC_CONFIG_KEYS.includes(key)) {
+  if ((NUMERIC_CONFIG_KEYS as readonly string[]).includes(key)) {
     const n = Number(value);
     if (!Number.isFinite(n) || n < 1) return reject(`config: ${key} needs a positive number`);
-    return done(setConfig(q, { [key]: n }));
+    return ok(setConfig(q, { [key]: n }));
   }
-  return done(setConfig(q, { [key]: value }));
+  return ok(setConfig(q, { [key]: value }));
 }
 
 /** Reject unless the op's `id` names a task in the queue. Null when it does. */
@@ -172,12 +171,12 @@ export function applyOp(q: Queue, op: Op): OpResult {
 
   switch (op.op) {
     case 'add': return applyAdd(q, op);
-    case 'start': return done(setConfig(q, { status: 'running', resumeAt: '' }));
-    case 'stop': return done(setConfig(q, { status: 'stopped', resumeAt: '' }));
+    case 'start': return ok(setConfig(q, { status: 'running', resumeAt: '' }));
+    case 'stop': return ok(setConfig(q, { status: 'stopped', resumeAt: '' }));
     case 'config': return applyConfigOp(q, op.key, op.value);
     case 'archive': {
-      const swept = q.tasks.filter(t => t.status === 'done' || t.status === 'failed');
-      return done({ config: q.config, tasks: q.tasks.filter(t => !swept.includes(t)) }, swept);
+      const { queue, swept } = sweepFinished(q);
+      return ok(queue, swept);
     }
     case 'set':
       return unknownId(q, op) ?? applyTaskPatch(q, op.id, op.fields ?? {});
@@ -188,15 +187,15 @@ export function applyOp(q: Queue, op: Op): OpResult {
       if (blocked.length) {
         return reject(`remove: ${blocked.map(t => t.id).join(', ')} depend(s) on ${op.id} — edit their deps first`);
       }
-      return done(removeTask(q, op.id));
+      return ok(removeTask(q, op.id));
     }
-    case 'top': return unknownId(q, op) ?? done(moveToTop(q, op.id));
-    case 'requeue': return unknownId(q, op) ?? done(requeueTask(q, op.id));
+    case 'top': return unknownId(q, op) ?? ok(moveToTop(q, op.id));
+    case 'requeue': return unknownId(q, op) ?? ok(requeueTask(q, op.id));
     case 'move': {
       const bad = unknownId(q, op);
       if (bad) return bad;
       if (!Number.isInteger(op.to) || op.to < 0) return reject('move: `to` must be a non-negative integer index');
-      return done(moveTask(q, op.id, op.to));
+      return ok(moveTask(q, op.id, op.to));
     }
     default: return reject(`unknown op: ${(op as { op: string }).op}`);
   }
@@ -209,9 +208,18 @@ const TEMPLATE = join(HERE, 'queue-console.template.html');
 const DEFAULT_PORT = 8722;
 const HTTP_OK = 200;
 const HTTP_BAD_REQUEST = 400;
+const HTTP_FORBIDDEN = 403;
 const HTTP_NOT_FOUND = 404;
+const HTTP_SERVER_ERROR = 500;
 const WATCH_INTERVAL_MS = 500;
 const MAX_BODY_BYTES = 64 * 1024;
+
+/**
+ * Only loopback names are legitimate Hosts for this server. Anything else is a
+ * DNS-rebinding attempt (a hostile page resolving its own domain to 127.0.0.1
+ * to smuggle requests past the browser's same-origin policy) — refuse it.
+ */
+const LOOPBACK_HOST = /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/;
 
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject_) => {
@@ -233,9 +241,18 @@ function sendJson(res: http.ServerResponse, status: number, payload: unknown): v
 /**
  * Apply one op posted by the page: parse → validate through applyOp → persist.
  * The archive sidecar is written before the queue file, matching the CLI's
- * ordering, and every accepted op lands in the audit log.
+ * ordering (a crash between the two duplicates an audit line rather than
+ * losing a task), and every accepted op lands in the audit log. Requiring a
+ * JSON content-type is a security boundary, not pedantry: it forces any
+ * cross-origin browser request into a CORS preflight, which this server never
+ * answers — so a hostile web page cannot fire a "simple" no-preflight POST at
+ * the op endpoint.
  */
 async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+  if (!(req.headers['content-type'] ?? '').includes('application/json')) {
+    sendJson(res, HTTP_BAD_REQUEST, { error: 'content-type must be application/json' });
+    return;
+  }
   let op: Op;
   try {
     op = JSON.parse(await readBody(req)) as Op;
@@ -253,42 +270,43 @@ async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Pr
 
 /**
  * Start the console server on 127.0.0.1 — a personal steering surface, never
- * exposed beyond the machine. SSE clients get a `changed` event whenever the
- * queue file's mtime moves (worker writes included); the watcher is detached
- * on close so tests and one-off runs exit cleanly.
+ * exposed beyond the machine. Every request must carry a loopback Host (see
+ * LOOPBACK_HOST). SSE clients get a `changed` event whenever the queue file's
+ * mtime moves (worker writes included). `close()` is overridden to also end
+ * SSE clients and detach the file watcher — otherwise the held-open streams
+ * and the poller would keep the process alive after a shutdown.
  */
 export function startServer(port: number): http.Server {
-  const clients = new Set<http.ServerResponse>();
+  const sse = createSseChannel();
   const server = http.createServer((req, res) => {
-    if (req.method === 'GET' && req.url === '/') {
+    if (!LOOPBACK_HOST.test(req.headers.host ?? '')) {
+      sendJson(res, HTTP_FORBIDDEN, { error: 'forbidden: loopback host required' });
+    } else if (req.method === 'GET' && req.url === '/') {
       res.writeHead(HTTP_OK, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(readFileSync(TEMPLATE, 'utf8'));
     } else if (req.method === 'GET' && req.url === '/api/queue') {
       sendJson(res, HTTP_OK, consoleState(load()));
     } else if (req.method === 'POST' && req.url === '/api/op') {
-      void handleOp(req, res);
-    } else if (req.method === 'GET' && req.url === '/events') {
-      res.writeHead(HTTP_OK, {
-        'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive',
+      handleOp(req, res).catch((e: unknown) => {
+        if (!res.headersSent) sendJson(res, HTTP_SERVER_ERROR, { error: (e as Error).message });
+        else res.end();
       });
-      res.write(': connected\n\n');
-      clients.add(res);
-      req.on('close', () => clients.delete(res));
+    } else if (req.method === 'GET' && req.url === '/events') {
+      sse.attach(req, res);
     } else {
       res.writeHead(HTTP_NOT_FOUND);
       res.end();
     }
   });
 
-  const file = queueFile();
-  const onFileChange = (curr: { mtimeMs: number }, prev: { mtimeMs: number }): void => {
-    if (curr.mtimeMs === prev.mtimeMs) return;
-    for (const c of clients) {
-      try { c.write('data: changed\n\n'); } catch { clients.delete(c); }
-    }
+  const unwatch = watchFileChanges(queueFile(), WATCH_INTERVAL_MS, () => sse.broadcast('changed'));
+  const netClose = server.close.bind(server);
+  server.close = (cb?: (err?: Error) => void): http.Server => {
+    unwatch();
+    sse.end();
+    server.closeAllConnections();
+    return netClose(cb);
   };
-  watchFile(file, { interval: WATCH_INTERVAL_MS }, onFileChange);
-  server.on('close', () => unwatchFile(file, onFileChange));
 
   server.listen(port, '127.0.0.1');
   return server;
