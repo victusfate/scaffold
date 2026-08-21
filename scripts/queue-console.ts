@@ -249,7 +249,11 @@ function sendJson(res: http.ServerResponse, status: number, payload: unknown): v
  * the op endpoint.
  */
 async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
-  if (!(req.headers['content-type'] ?? '').includes('application/json')) {
+  // Compare the MIME *essence* (before any ';param'), not a substring — a
+  // header like `text/plain; application/json` is essence text/plain, which
+  // browsers treat as CORS-safelisted and send without preflight.
+  const essence = (req.headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+  if (essence !== 'application/json') {
     sendJson(res, HTTP_BAD_REQUEST, { error: 'content-type must be application/json' });
     return;
   }

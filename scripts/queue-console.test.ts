@@ -239,6 +239,19 @@ maxParallel: 2
   });
   assert('non-JSON content-type → 400', plain.status === 400);
 
+  // the essence must be json — `text/plain; application/json` is essence
+  // text/plain (CORS-safelisted, sent with NO preflight) and must be refused
+  const smuggled = await fetch(`${base}/api/op`, {
+    method: 'POST', headers: { 'content-type': 'text/plain; application/json' },
+    body: JSON.stringify({ op: 'stop' }),
+  });
+  assert('safelisted-essence smuggling → 400', smuggled.status === 400);
+  const charset = await fetch(`${base}/api/op`, {
+    method: 'POST', headers: { 'content-type': 'application/json; charset=utf-8' },
+    body: JSON.stringify({ op: 'config', key: 'idlePoll', value: '25m' }),
+  });
+  assert('json with charset suffix accepted', charset.status === 200);
+
   // close() must complete even with this SSE stream still open (it ends the
   // stream and detaches the file watcher) — a hang here fails the whole run
   const closed = await new Promise<boolean>(resolve => {
