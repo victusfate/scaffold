@@ -59,3 +59,11 @@ queued-task contract, no interactive gates).
   behind a stale banner while editing/dragging (D8), error banner for 400s.
 - REFACTOR: start/stop toggle rewritten to literal ops. 80/80 console
   assertions; live curl smoke-test against a temp queue passed.
+
+## Slice 6 — docs and discoverability
+- Status: done
+- skills/queue.md: move/requeue in the command surface + Console section
+  (management-only + DAG-guard contract stated). New files registered in
+  .github/scaffold-files.txt (ship manifest gate caught them).
+- Full gate: `npm test` all suites green incl. RESOLVER + manifest checks;
+  typecheck clean; lint 0 errors (pre-existing warning baseline).
