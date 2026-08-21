@@ -141,6 +141,30 @@ maxParallel: 2
   assert('valid multi-dep accepted', valid.ok && valid.queue.tasks[2].dependsOn.join(',') === 'task-001,task-002');
 }
 
+// ---- template: the page's contract with the server and the design ----
+{
+  const html = readFileSync(join(import.meta.dirname, 'queue-console.template.html'), 'utf8');
+  const has = (label: string, needle: string): void =>
+    assert(label, html.includes(needle), `missing ${needle}`);
+
+  has('page posts to the op endpoint', '/api/op');
+  has('page reads state from the api', '/api/queue');
+  has('page subscribes to SSE', '/events');
+  has('task list mount point', 'id="tasks"');
+  has('add form mount point', 'id="add"');
+  has('status header mount point', 'id="status"');
+  has('changed-on-disk banner mount point', 'id="stale"');
+  has('error surface mount point', 'id="error"');
+  for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"']) {
+    has(`page wires op ${op}`, `op: ${op}`);
+  }
+  has('rows are draggable', 'draggable');
+  assert('page has no execution verbs',
+    !html.includes("op: 'done'") && !html.includes("op: 'fail'") && !html.includes("op: 'claim'"));
+  assert('page loads no external assets',
+    !/(?:src|href)\s*=\s*["']https?:\/\//.test(html), 'external src/href found');
+}
+
 // ---- server: loopback HTTP round-trips against a temp queue file ----
 {
   const dir = mkdtempSync(join(tmpdir(), 'queue-console-'));
