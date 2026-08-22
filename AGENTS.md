@@ -283,6 +283,32 @@ Never commit directly to main for feature work.
 A session spans the full lifetime of a branch — from creation until it is merged or discarded. Only switch branches after the current feature branch is merged or the user explicitly asks; keep committing to the current branch until then. The one permitted exception is checking out main solely to pull and immediately create a new feature branch.
 A new session always starts from a fresh branch off main.
 
+## ONE Working Branch — fan-out integration (NON-NEGOTIABLE)
+
+**A session has EXACTLY ONE working branch** — the feature branch made at session start.
+Code, assets, docs, lore, ledgers — *everything* lands on that one branch. This is the
+single most important operational rule when fanning out; violating it silently splits the
+project in two.
+
+- **Lanes work in isolated git worktrees** (`isolation: "worktree"`), each branched off the
+  ONE working branch, and gate their own diff.
+- **The orchestrator merges each lane into the ONE working branch the moment that lane
+  completes** — not into a separate "integration" branch, not batched "later". One completed
+  lane → rebase/merge → resolve → push → mark the ledger. Do it before spawning the next thing.
+- **The orchestrator commits ALL of its OWN work — ledgers, queue, docs, lore, web, hotfixes —
+  to that SAME ONE branch**, never to a different branch than the lanes push to.
+- **NEVER run two long-lived branches at once** (e.g. an "integration" branch *and* an "asset"
+  branch; a "code" branch *and* a "docs" branch). If a prior session handed you two, your FIRST
+  act is to consolidate them into one before any new work.
+- **Self-check every few lanes / whenever you notice you've pushed to a branch name:** *"Is
+  more than one branch accumulating commits this session?"* If yes — **STOP and merge them now.**
+  A code-on-branch-A / bookkeeping-on-branch-B divergence is a process failure, not a workflow.
+- The one working branch is what the user plays, and what becomes the PR. It must ALWAYS hold
+  both the lane code AND the orchestrator's bookkeeping — never one without the other.
+
+Lanes push with `git push origin HEAD:<the-one-branch>` (rebase-retry, never force). The
+orchestrator's ledger/doc commits go to the same `<the-one-branch>`. There is no second branch.
+
 ## File Delivery
 
 When the user asks to copy, download, or share a file (any type), always use the SendUserFile tool to deliver it — never print the contents inline.
