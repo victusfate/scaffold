@@ -87,6 +87,17 @@ When given a standing directive to work autonomously toward a goal — an explic
 - **One reviewable unit at a time, fully gated.** Each slice goes RED → GREEN →
   REFACTOR and passes the full gate (tests + typecheck + quality gate) before its
   commit, so the stream stays inspectable and safe to stop at any commit.
+- **Never idle while described work is unbuilt — run the built-vs-described audit.**
+  Before concluding "the queue is exhausted / nothing to do," compare, per category
+  of work the user asked for, what actually **exists and is reachable** (code that
+  runs, features wired to an entry point, tests green) against what is only
+  **described** (a spec, a design doc, a queued task, a TODO). Every gap is ready
+  work: a spec with no implementation → **build it**; a described capability with no
+  wiring → **wire it**; a documented interface with no caller → **connect it**.
+  "Exhausted" means *built and reachable*, not merely *written down*. Do not treat
+  "the user might want it slightly different" as a reason to idle — produce a
+  reasonable first pass, stage anything user-facing for review, and keep going.
+  Steering *refines* the work; it is not a prerequisite for starting it.
 
 ## Understand the shape of the problem first
 
@@ -123,6 +134,16 @@ feature as done, live, or working when it is built-but-unwired.
   drifted from reality — surface any gap with a `file:line` citation.
 - **Report faithfully.** If the last mile didn't ship, say so plainly. Never
   present built-but-dead as delivered.
+- **Don't label your own reporting "honest."** "Honest," "honestly," "the honest
+  truth," "to be honest," "honest status/assessment" — these are claims *about
+  yourself*, not properties of the statement, and announcing honesty neither makes
+  a claim accurate nor adds information. When every other update is tagged "honest,"
+  the word means nothing and starts to imply the untagged ones weren't. State the
+  fact and show what backs it — the `file:line`, the measurement, the failing test
+  output — and let accuracy speak for itself. Reserve "honestly" for the rare case
+  where it does real work (flagging that you're now *contradicting* an earlier claim
+  of your own), never as a preface or intensifier. Same for "transparent," "to be
+  clear," "frankly," and similar self-congratulating hedges.
 
 Reviewers enforce the code side of this via the rubric's *Vestige & Layering* R5
 ("liveness is the call graph, not tests") and `/validate`'s test-integrity pass.
