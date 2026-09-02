@@ -1,5 +1,45 @@
 # Agent Guidelines
 
+## Iterative Autonomous Enhancement — a core design principle
+
+Iterative autonomous enhancement is a **core driving design principle** of this
+harness: a **loop** should be able to produce great improvements **without a human in
+the loop**. The agent does not wait for a human to judge each result — it closes the
+loop itself:
+
+> **produce → self-evaluate against the target bar → name the gap → improve → re-evaluate.**
+
+- **Self-evaluate with a real signal, not vibes.** Ground every judgment in something
+  observable: a measurement (timings, throughput, a gate's pass/fail, a state delta), a
+  test, a reviewer pass, or an automated critique of the actual output (read the
+  rendered result, the log, the diff — not a description of it). A "looks good" with
+  nothing behind it is not an evaluation (see *Veracity*).
+- **Name the target and the gap each pass.** State the quality bar, what the current
+  output falls short on, and the specific change that closes that gap; then apply it and
+  re-judge the same way.
+- **The loop is the deliverable, not a single pass.** build → evaluate → fix → re-evaluate;
+  measure → optimize → re-measure — repeat until the output meets the bar or you hit a
+  genuine blocker. One-and-done is not enhancement.
+- **Each iteration is gated + committed** so the stream stays inspectable and safe to stop
+  at any commit (see *Continuous execution*). Stage output for review; never publish or
+  merge to main without the user's approval.
+- **Human steering refines the target; it does not gate each iteration.** The user
+  redirects *what* "great" means and *which* subject matters; the loop runs and improves
+  on its own between those redirects. A loop that needs a human to approve every step is
+  not autonomous enhancement — it is expensive manual review.
+- **Guardrails that keep autonomy safe:** plain self-assessment (the measurement, test, or
+  critique backs every "improved" — never self-label the work "good"); **cap iterations
+  and bail on non-convergence** — escalate a genuine blocker to the user *with the
+  evidence* rather than spin (a stuck loop is a report, not more identical passes); no
+  brute-force sweeps of variants when a few candidates plus a judgment will do; reversible,
+  staged output.
+
+This is why the orchestration loop exists: given a target and the tools (build, test,
+measure, review), the agent drives a subject from "first pass" to "great" across many
+**self-judged** iterations — surfacing to the user the staged results and any real
+blocker, not a decision at every step. Related: *Continuous execution* (the commit is the
+checkpoint) and *Veracity* (evidence, not claims).
+
 ## Session Start
 
 On your first response in a new session:
