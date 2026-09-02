@@ -49,7 +49,7 @@ tools/
     simplify/SKILL.md         # Structural-quality review of changed code: score against the rubric, gate at 10/10, and apply reuse/simplification/efficiency/altitude cleanups
     code-refiner/SKILL.md     # Composite review-and-fix: parallel validate + simplify reviews, merged findings, then a single serial fixer with re-verify
     prune/SKILL.md            # Run all quality review skills and funnel findings into design→PRD→TDD→PR
-    pause/SKILL.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
+    pause/SKILL.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume; fire it incrementally (each lane merge / near the usage limit) to keep a long autonomous run resumable
     resume/SKILL.md           # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
     hoist-skill/SKILL.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
@@ -111,7 +111,7 @@ tools/
     simplify/SKILL.md         # Structural-quality review of changed code: score against the rubric, gate at 10/10, and apply reuse/simplification/efficiency/altitude cleanups
     code-refiner/SKILL.md     # Composite review-and-fix: parallel validate + simplify reviews, merged findings, then a single serial fixer with re-verify
     prune/SKILL.md            # Run all quality review skills and funnel findings into design→PRD→TDD→PR
-    pause/SKILL.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
+    pause/SKILL.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume; fire it incrementally (each lane merge / near the usage limit) to keep a long autonomous run resumable
     resume/SKILL.md           # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
     hoist-skill/SKILL.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
@@ -140,7 +140,7 @@ tools/
     simplify.md         # Structural-quality review of changed code: score against the rubric, gate at 10/10, and apply reuse/simplification/efficiency/altitude cleanups
     code-refiner.md     # Composite review-and-fix: parallel validate + simplify reviews, merged findings, then a single serial fixer with re-verify
     prune.md            # Run all quality review skills and funnel findings into design→PRD→TDD→PR
-    pause.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
+    pause.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume; fire it incrementally (each lane merge / near the usage limit) to keep a long autonomous run resumable
     resume.md           # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
     hoist-skill.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist

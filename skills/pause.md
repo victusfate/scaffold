@@ -65,6 +65,46 @@ No secrets, keys, or tokens — this gets pushed.
 State, in two lines: what was committed and pushed, and how to come back —
 `/resume` from any device, or `claude -c` here for full history.
 
+## Incremental mode
+
+`/pause` is not only for stepping away — it is also the **checkpoint primitive
+for a long autonomous run** (a fan-out orchestration, a `/queue` drain, an
+overnight loop). Instead of firing once at the end, fire it **repeatedly** so an
+abrupt rate-limit or crash loses **at most one step**:
+
+- **On every lane merge.** The moment a subagent / worktree lane merges into the
+  one working branch, run the Steps again — refresh the handoff and push. The
+  checkpoint then always reflects the last *integrated* unit; nothing that has
+  converged is left stranded in a local session.
+- **Periodically** through a long solo stretch — at each meaningful step (a
+  slice committed, a queue task drained), never only at shutdown.
+
+Each firing runs the same Steps (write handoff → commit in flight → push); only
+the cadence differs. Because `.pause/handoff.md` is one overwritten file,
+refreshing it is cheap, and git history keeps every prior checkpoint. This
+incremental firing pairs directly with the fan-out / orchestration workflow —
+checkpoint on each lane merge is how a many-lane run stays resumable.
+
+### Rate-limit / usage-window trigger
+
+When the rolling usage window is **near its limit** (or on an explicit
+rate-limit signal), do not burn the remainder blindly:
+
+1. **Refresh the handoff now.** Record the *exact* next action and commands, the
+   in-flight lane / worktree state (which agent id holds which task, any
+   push-rejected lane still to land), and any pending user decisions — so a cold
+   or post-reset session continues without re-deriving anything.
+2. **Drop a memory pointer.** Leave a short project-memory note pointing at
+   `.pause/handoff.md` (or the run's dedicated resume doc), so a compacted or
+   cold session finds the checkpoint even with no conversation history.
+3. **Schedule the resume past the reset.** `ScheduleWakeup` for *after* the
+   window resets, then stop — spend the budget, sleep, auto-resume. Never
+   retry-storm into the limit. On wake, hand off to `/resume`, which reads the
+   handoff this wrote.
+
+The durable resume doc a long orchestration maintains (a committed, always-latest
+state file the wakeup reads first) is exactly what this trigger keeps fresh.
+
 ## Critical rules
 
 1. **Pushed or stranded.** Cross-device resume only sees pushed commits. Always
@@ -73,3 +113,8 @@ State, in two lines: what was committed and pushed, and how to come back —
 3. **`claude -c` (or `pi -c`) wins on the same machine** — recommend it when the user is just
    stepping away locally; do not oversell the skill.
 4. **One handoff, overwritten.** `.pause/handoff.md` is always current.
+5. **Incremental beats final.** In a long autonomous run, checkpoint on every
+   lane merge and at each meaningful step — not once at the end. A handoff one
+   step stale survives a rate-limit; a handoff written only at shutdown does not.
+   Near the usage limit, refresh, drop the memory pointer, schedule past the
+   reset, then stop — do not spend the last of the budget racing the wall.
