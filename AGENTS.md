@@ -353,11 +353,13 @@ project in two.
 
 - **Lanes work in isolated git worktrees** (`isolation: "worktree"`), each branched off the
   ONE working branch, and gate their own diff.
-- **The orchestrator merges each lane into the ONE working branch the moment that lane
+- **The orchestrator merges each lane into the ONE working branch LOCALLY the moment that lane
   completes** — not into a separate "integration" branch, not batched "later". One completed
-  lane → rebase/merge → resolve → push → mark the ledger. Do it before spawning the next thing.
+  lane → merge/rebase its worktree branch into the local one branch → resolve → delete the worktree →
+  mark the ledger. Do it before spawning the next thing. (Pushing to GitHub is a SEPARATE, controlled,
+  batched step by the orchestrator — see the push rule below.)
 - **The orchestrator commits ALL of its OWN work — ledgers, queue, docs, lore, web, hotfixes —
-  to that SAME ONE branch**, never to a different branch than the lanes push to.
+  to that SAME ONE branch**, never to a different branch than the lanes merge into.
 - **NEVER run two long-lived branches at once** (e.g. an "integration" branch *and* an "asset"
   branch; a "code" branch *and* a "docs" branch). If a prior session handed you two, your FIRST
   act is to consolidate them into one before any new work.
@@ -367,8 +369,20 @@ project in two.
 - The one working branch is what the user plays, and what becomes the PR. It must ALWAYS hold
   both the lane code AND the orchestrator's bookkeeping — never one without the other.
 
-Lanes push with `git push origin HEAD:<the-one-branch>` (rebase-retry, never force). The
-orchestrator's ledger/doc commits go to the same `<the-one-branch>`. There is no second branch.
+### NO PUSH RACE — lanes commit LOCALLY, the orchestrator merges + gates + pushes
+
+**Subagent worktree lanes NEVER `git push` to GitHub.** A lane commits to its OWN worktree branch and
+reports; it does not touch `origin`. Telling a lane to `git push origin HEAD:<branch>` is a bug — it
+creates a **push race** where N lanes pushing rapidly each trigger a full CI run and rapid pushes
+cancel + cold-restart the slow gates, torching CI minutes. There is ONE pusher: the orchestrator.
+
+Every time: (1) lane commits locally in its worktree, reports — no push; (2) orchestrator merges the
+lane branch into the LOCAL one working branch, deletes the worktree; (3) orchestrator runs the CI
+gates **LOCALLY as a pre-flight** (a fast local `make ci`/preflight of the same checks CI runs) and
+fixes locally before spending a GitHub run; (4) orchestrator pushes to GitHub in **controlled batches**
+(rebase-retry, never force). GitHub CI is a fast confirmation, not the failure-finder. The
+orchestrator's own commits ride the same batched push. There is no second branch, and there is never a
+push race.
 
 ## File Delivery
 
