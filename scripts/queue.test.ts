@@ -6,7 +6,7 @@ import {
   addTask, addMany, setTaskStatus, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask, sweepFinished,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
-  archivableDone,
+  archivableDone, gateTasks, ungateTasks,
   type Queue,
 } from './queue-model.ts';
 
@@ -365,6 +365,84 @@ integrationBranch: queue/integration
     queue.tasks.map(t => t.id).join(',') === 'task-001,task-002');
   assert('sweep with nothing finished is empty',
     sweepFinished(parseQueue('- [ ] task-001 — live\n')).swept.length === 0);
+}
+
+// ---- gateTasks / ungateTasks: the mechanical dependency-gate interface ----
+{
+  const base = () => parseQueue(
+    '- [ ] task-001 — model work\n'
+    + '- [ ] task-002 — gameplay\n'
+    + '- [ ] task-003 — quests\n  - deps: task-002\n'
+    + '- [x] task-004 — already done\n'
+    + '- [!] task-005 — dead\n'
+    + '- [ ] task-591 — model-fidelity gate\n');
+
+  // gate: adds deps: task-591 to every OTHER unfinished task, skips done/failed + the gate itself
+  {
+    const { queue, gated } = gateTasks(base(), 'task-591');
+    assert('gate returns the gated ids', gated.sort().join(',') === 'task-001,task-002,task-003');
+    const by = (id: string) => queue.tasks.find(t => t.id === id)!;
+    assert('gate skips the gate task itself', !by('task-591').dependsOn.includes('task-591'));
+    assert('gate skips done tasks', by('task-004').dependsOn.length === 0);
+    assert('gate skips failed tasks', by('task-005').dependsOn.length === 0);
+    assert('gate adds the dep to a pending task', by('task-001').dependsOn.includes('task-591'));
+    assert('gate preserves an existing dep', by('task-003').dependsOn.join(',') === 'task-002,task-591');
+    // gated tasks are no longer eligible; the gate itself still is
+    assert('a gated task is no longer eligible', !isEligible(by('task-001'), queue));
+    assert('the gate task stays eligible', isEligible(by('task-591'), queue));
+  }
+
+  // gate is idempotent — re-running adds no duplicate deps
+  {
+    const once = gateTasks(base(), 'task-591').queue;
+    const twice = gateTasks(once, 'task-591');
+    assert('gate is idempotent (no re-gate)', twice.gated.length === 0);
+    assert('gate idempotent leaves deps unchanged', JSON.stringify(twice.queue) === JSON.stringify(once));
+  }
+
+  // gate --only filters by id/title substring (case-insensitive)
+  {
+    const { gated } = gateTasks(base(), 'task-591', 'quest');
+    assert('gate --only filters by title', gated.join(',') === 'task-003');
+    assert('gate --only matches by id', gateTasks(base(), 'task-591', 'task-002').gated.join(',') === 'task-002');
+  }
+
+  // gate is cycle-safe: never gates a task the gate itself depends on
+  {
+    const q = parseQueue('- [ ] task-001 — a\n- [ ] task-002 — gate\n  - deps: task-001\n');
+    const { queue, gated } = gateTasks(q, 'task-002');
+    assert('gate skips an ancestor of the gate (no cycle)', !gated.includes('task-001'));
+    assert('gate ancestor keeps clean deps', queue.tasks.find(t => t.id === 'task-001')!.dependsOn.length === 0);
+  }
+
+  // gate on an unknown gate id is a no-op
+  {
+    const q = base();
+    const r = gateTasks(q, 'task-999');
+    assert('gate unknown id is a no-op', r.gated.length === 0 && JSON.stringify(r.queue) === JSON.stringify(q));
+  }
+
+  // ungate: removes the gate dep everywhere, trimming multi-dep lists
+  {
+    const gatedQ = gateTasks(base(), 'task-591').queue;
+    const { queue, ungated } = ungateTasks(gatedQ, 'task-591');
+    assert('ungate returns the ungated ids', ungated.sort().join(',') === 'task-001,task-002,task-003');
+    const by = (id: string) => queue.tasks.find(t => t.id === id)!;
+    assert('ungate drops the sole dep', by('task-001').dependsOn.length === 0);
+    assert('ungate trims a multi-dep list', by('task-003').dependsOn.join(',') === 'task-002');
+    assert('ungate restores eligibility', isEligible(by('task-001'), queue));
+    // full round-trip through the file format
+    assert('gate→ungate round-trips to the original deps',
+      JSON.stringify(parseQueue(serializeQueue(queue)).tasks.map(t => t.dependsOn))
+      === JSON.stringify(base().tasks.map(t => t.dependsOn)));
+  }
+
+  // ungate on a gate nobody depends on is a no-op
+  {
+    const q = base();
+    const r = ungateTasks(q, 'task-591');
+    assert('ungate with no dependents is a no-op', r.ungated.length === 0);
+  }
 }
 
 console.error(`\nqueue.test: ${passed} passed, ${failed} failed`);

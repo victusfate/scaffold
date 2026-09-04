@@ -83,6 +83,8 @@ top <id> | move <id> <pos> | remove <id>   # reprioritize (1-based pos, as `list
 requeue <id>                           # revive a failed task (pending again, failures cleared)
 start | stop                           # run or pause the whole queue
 interval <dur> | config <key> <value>  # cadence | maxFailures|leaseMinutes|maxParallel|integrationBranch
+gate <gate-id> [--only f] [--dry-run]  # add deps:<gate-id> to every other task (block; see Gating work)
+ungate <gate-id> [--keep-gate]         # remove <gate-id> from all deps + mark it done (unblock)
 worktree add|remove|list <id>          # isolated git worktree per task
 archive | loop                          # sweep done/failed | print the /loop invocation
 ```
@@ -90,6 +92,41 @@ archive | loop                          # sweep done/failed | print the /loop in
 `add`/`set` flags: `--mode chain` · `--slug <s>` · `--deps a,b` · `--files a,b` ·
 `--validate "<cmd>"` · `--accept "<criteria>"` · `--top`. Override the file with
 `QUEUE_FILE=<path>`.
+
+## Gating work (dependency gates)
+
+A **gate** is just a task that everything else depends on: while it's unfinished,
+`isEligible` blocks every task carrying `deps: <gate-id>`, so nothing else runs. It
+is the mechanical form of a **temporary priority block** — e.g. the 2026
+model-fidelity block, where every non-model task carried `deps: task-591` so only
+the character pipeline could run until the user opened the gate.
+
+`gate` / `ungate` are the **mechanical interface** for this. **Never hand-edit
+`queue.md` deps to apply or lift a block** (critical rule 4) — that is exactly the
+corruption the queue exists to prevent. Applying the block by hand once meant
+text-editing the dep off 72 tasks to lift it; these verbs do it in one call:
+
+```bash
+node scripts/queue.ts add "model-fidelity gate" --accept "user opens the gate"
+node scripts/queue.ts gate task-591            # block: deps: task-591 on every other task
+node scripts/queue.ts gate task-591 --dry-run  # preview the plan, write nothing
+node scripts/queue.ts gate task-591 --only web # only tasks whose id/title contains "web"
+node scripts/queue.ts ungate task-591          # lift: strip the dep everywhere + mark the gate done
+```
+
+- **`gate <gate-id> [--only <filter>] [--dry-run]`** — adds `deps: <gate-id>` to
+  every **other** unfinished task. Idempotent (a task already gated is skipped) and
+  cycle-safe (a task the gate itself depends on is never gated). Skips the gate task
+  itself and any `done`/`failed` task. `--only` restricts to tasks whose id or title
+  contains the (case-insensitive) substring; `--dry-run` prints the plan without
+  writing. Prints how many tasks were gated.
+- **`ungate <gate-id> [--keep-gate] [--dry-run]`** — removes `<gate-id>` from every
+  task's deps (trimming a multi-dep list, dropping an empty one) and marks the gate
+  task `done` so its blocked dependents become eligible. `--keep-gate` leaves the
+  gate task's status untouched; `--dry-run` previews. Prints how many were ungated.
+
+Opening a real block (like model-fidelity) is a deliberate call — `ungate` is the
+one command that does it, cleanly and reversibly, instead of a bulk text edit.
 
 ## Console (`scripts/queue-console.ts`)
 
