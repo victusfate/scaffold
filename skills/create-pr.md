@@ -71,6 +71,35 @@ Each round:
 
 Track auto-fixes applied (scope + one-liner) to include in the PR body.
 
+### Step 2b — LOCAL pre-merge gate (`make ci`) + readiness tracking
+
+Run the repo's **local pre-merge gate** — the CI-equivalent that validates everything BEFORE any
+GitHub run. Under the two-tier CI model (GitHub Actions = instant unit checks only; the heavy
+integration gates — Godot import + boot/reachability/render, full test suites — run **locally**),
+this local gate is the authoritative merge gate. Run it and it must be GREEN before a non-draft PR.
+
+```bash
+# full local gate: Tier-1 unit + Tier-2 heavy integration. Prefer `make ci`.
+if   [ -f Makefile ] && grep -qE '^ci:' Makefile;   then make ci        2>&1 | tee /tmp/premerge-gate.log
+elif [ -f scripts/ci-local.sh ];                    then bash scripts/ci-local.sh 2>&1 | tee /tmp/premerge-gate.log
+else echo "NO_LOCAL_GATE — no \`make ci\` / scripts/ci-local.sh; note it in the PR body"; fi
+```
+
+Capture each phase's PASS/FAIL from the output. **Track readiness** for the PR body (Step 6):
+
+- **All phases pass → the branch is MERGE-READY.** Open the PR normally (Step 7).
+- **Any phase fails → auto-correct** with the same loop as Step 2 (≤2 rounds, ≤30-line scope, no
+  regressions, commit each fix, re-run `make ci`). If still red after 2 rounds, **open the PR as a
+  DRAFT** (`gh pr create --draft`) with the failing gates listed in the *Pre-merge gate status*
+  section and tell the user exactly which gates are red. **Never open a ready (non-draft) PR while
+  the local gate is red** — GitHub CI is only the instant unit tier, so a red local gate is the only
+  thing standing between the PR and a broken merge.
+- If `NO_LOCAL_GATE`, record that in the status section (readiness = UNVERIFIED) and proceed, but say
+  so plainly.
+
+Record the per-phase PASS/FAIL table + the readiness verdict (READY / DRAFT-<red gates> / UNVERIFIED)
+for Step 6.
+
 ### Step 3 — bump version on the branch
 
 If the repo has no `package.json`, skip this step silently.
@@ -155,6 +184,16 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 - <bullet 2>
 - <bullet 3 if needed>
 
+## Pre-merge gate status
+<from Step 2b `make ci` — the LOCAL pre-merge gate; GitHub CI is instant-unit only>
+**Readiness: READY** &nbsp;(or `DRAFT — <red gate(s)>`, or `UNVERIFIED — no local gate`)
+| Gate (local) | Result |
+|------|--------|
+| rust unit + clippy + license-audit | ✅ pass |
+| shellcheck / mechanical | ✅ pass |
+| godot-gates (integration, run locally) | ✅ pass |
+| <other phases make ci reported> | ✅ / ❌ |
+
 ## Quality Scores
 | File | Quality | Readability | Encapsulation | Clarity |
 |------|---------|-------------|---------------|---------|
@@ -193,6 +232,15 @@ If auto-corrections were applied in Step 2, append this section:
 ### Step 7 — create the PR
 
 Use `gh pr create` to open the PR against the repo's default base branch (usually `main`). Under Claude Code, `mcp__github__create_pull_request` is also available.
+
+**Honor the Step-2b readiness verdict:**
+- **READY** (local gate all-green) → open a normal PR. The included *Pre-merge gate status* section is
+  the evidence it's merge-ready before GitHub's instant-unit CI even reports.
+- **DRAFT — `<red gate>`** (local gate red after auto-correct) → open with `gh pr create --draft` and
+  say which gates are red; do not present it as ready.
+- **UNVERIFIED** (no local gate found) → open normally but state readiness is unverified.
+
+This makes the LOCAL pre-merge gate — not GitHub CI — the gate the PR's readiness is tracked against.
 
 ### Step 8 — subscribe immediately
 
