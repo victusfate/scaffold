@@ -9,7 +9,9 @@ be picked up from anywhere — your laptop or Claude mobile/web. Writes a
 human-readable handoff, commits whatever is in flight (code *or* prose — docs,
 notes, decision logs), and pushes so a cold session elsewhere can resume.
 
-Pairs with `/resume`, which reads what this writes.
+Pairs with `/resume`, which reads what this writes. For frequent, incremental
+checkpointing through a long autonomous run, use `/save` instead — same handoff
+file, low ceremony, fired every step.
 
 ## When it matters
 
