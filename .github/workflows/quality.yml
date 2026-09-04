@@ -9,7 +9,7 @@ jobs:
     name: Mechanical checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Run mechanical quality checks (all files)
         run: |
           mapfile -t FILES < <(git ls-files | grep -E '\.(js|mjs|ts|tsx|sh|py|rb|go)$' || true)
@@ -19,7 +19,7 @@ jobs:
     name: Shellcheck (dogfood)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       # Lint scaffold's own vendored shell scripts against the very .shellcheckrc
       # we ship to consumers — so we never again ship a config our scripts fail.
       - name: Shellcheck own scripts with the shipped config
