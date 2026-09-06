@@ -187,6 +187,7 @@ node tools/hoist-skill/run --list
 |---|---|
 | `claude` | `skills/<name>.md` + `.claude/skills/<name>/SKILL.md` |
 | `cursor` | `skills/<name>.md` + `.cursor/rules/<name>.mdc` |
+| `codex` | `skills/<name>.md` + `.agents/skills/<name>/SKILL.md` |
 | `antigravity` | `skills/<name>.md` + `.agents/skills/<name>/SKILL.md` + `.agent/workflows/<name>.md` |
 
 The same clobber-safe contract applies as with the sync script: `.scaffold-keep` paths are never touched, differing files become `<file>.scaffold-new` sidecars, and `--force` overrides that.
