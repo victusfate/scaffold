@@ -1,7 +1,7 @@
 ## Instructions
 
 > **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
 
 Run the full feature chain end-to-end. **Do not pause for permission between phases.** Pauses *within* a phase belong to the phase's own skill (grill Q&A answers, `to-prd` test-module confirmation, `tdd` granularity confirmation); the chain itself stops only at the end for user review.
 

@@ -1,4 +1,4 @@
-> **Multi-harness:** This skill works identically in Claude Code, pi, and agy. All paths
+> **Multi-harness:** This skill works identically in Claude Code, Codex, pi, and agy. All paths
 > and commands are harness-agnostic.
 
 ## Purpose
@@ -24,7 +24,9 @@ there. If the question has a correct answer, just answer it.
 ## Execution model
 
 The advisors are **isolated subagents** run in parallel — independent context so
-each leans fully into its lens without anchoring on the others. Advisors inherit
+each leans fully into its lens without anchoring on the others. Use the current client’s subagent tools and batch advisors within its concurrency
+limit. If isolated subagents are unavailable, disclose that the council cannot
+run independently; provide a clearly labeled single-agent analysis. Advisors inherit
 the session's model; diversity comes from persona, not vendor.
 
 **Phase 1 — Frame (main agent).**
@@ -103,7 +105,7 @@ point; do not sand it down.
 ## Rules
 
 - Phases 2 and 3 are read-only analysis — the council never modifies files.
-- Advisors run concurrently (one message, five Agent calls); never serialize them.
+- Advisors run concurrently within the client’s available slots; batch when fewer than five slots are available. Keep every advisor isolated.
 - Anonymize before peer review — reviewers must not know which persona wrote what.
 - The chairman commits to a recommendation; "it depends" is not a verdict.
 - If the question is factual or low-stakes, skip the council and just answer.

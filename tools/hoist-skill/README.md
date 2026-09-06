@@ -5,7 +5,7 @@ Emit scaffold capabilities (skills) into a consumer repo in the target harness f
 ## Usage
 
 ```bash
-node tools/hoist-skill/run --names <name[,name]|all> [--harness <claude|cursor|antigravity|all>] [--into <dest>] [--force]
+node tools/hoist-skill/run --names <name[,name]|all> [--harness <claude|cursor|antigravity|codex|all>] [--into <dest>] [--force]
 ```
 
 **Options**
@@ -13,7 +13,7 @@ node tools/hoist-skill/run --names <name[,name]|all> [--harness <claude|cursor|a
 | Flag | Default | Description |
 |---|---|---|
 | `--names` | `all` | Comma-separated capability names, or `all` |
-| `--harness` | `claude` | Target harness: `claude`, `cursor`, `antigravity`, or `all` |
+| `--harness` | `claude` | Target harness: `claude`, `cursor`, `antigravity`, `codex`, or `all` |
 | `--into` | `.` | Destination repo root |
 | `--force` | false | Overwrite differing files instead of writing `.scaffold-new` sidecars |
 | `--list` | — | Print available capabilities and harnesses as JSON and exit |
@@ -39,6 +39,7 @@ For each capability + harness:
 |---|---|
 | `claude` | `skills/<name>.md` (canonical body) + `.claude/skills/<name>/SKILL.md` (wrapper) |
 | `cursor` | `skills/<name>.md` + `.cursor/rules/<name>.mdc` |
+| `codex` | `skills/<name>.md` + `.agents/skills/<name>/SKILL.md` |
 | `antigravity` | `skills/<name>.md` + `.agents/skills/<name>/SKILL.md` + `.agent/workflows/<name>.md` |
 
 ## Clobber-safe contract

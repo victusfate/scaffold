@@ -18,7 +18,15 @@ drives `bin/install-statusline.sh`; it does not reimplement the install.
 - `/statusline off` — disable it (remove the `statusLine` key from
   `~/.claude/settings.json`; the script file is left in place).
 
-## Steps
+## Codex
+
+Use the Codex CLI built-in `/statusline` picker to select model, context, and
+rate-limit fields. It persists to `tui.status_line` in Codex configuration. For
+`off`, clear those fields (an empty `tui.status_line` array disables them). Use
+`/status` for a snapshot. In an app client without the picker, use its status UI.
+Do not run the Claude installer when the user asks for Codex status display.
+
+## Steps (Claude Code)
 
 **Enable (default):**
 1. Confirm `jq` is on PATH (`command -v jq`). If missing, tell the user to

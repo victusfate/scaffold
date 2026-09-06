@@ -1,18 +1,18 @@
 # voice-chat — hands-free voice loop for the coding agent
 
 Talk to the coding agent with no keyboard. You speak, [whisper.cpp] transcribes,
-`claude -p` does the real work (full tool use, flat-rate under your Claude Code
-subscription — **not** the metered Agent SDK), and a local TTS backend speaks the
+Claude Code (default) or Codex does the agent work through its installed CLI,
+and a local TTS backend speaks the
 reply into your headphones. Headphones matter: the agent's own voice never leaks
 into the mic, so no echo cancellation is needed.
 
 Everything is local/offline **except** the LLM call, which rides your existing
-subscription:
+CLI authentication and account limits:
 
 ```
 mic ──(sox rec, silence-gated)──▶ wav
     ──(whisper.cpp local model)──▶ text
-    ──(claude -p --resume)───────▶ reply text   (full tools, flat-rate)
+    ──(Claude or Codex CLI)─────▶ reply text
     ──(XTTS clone | Piper | say | espeak-ng)──▶ headphones
 ```
 
@@ -63,6 +63,29 @@ node scripts/voice/voice-loop.ts
 Quit with `Ctrl-C` or by saying one of the exit phrases
 (`stop listening`, `goodbye agent`, `that's all for now`).
 
+## Agent backend
+
+Claude remains the default. Select Codex explicitly for both setup and launch:
+
+```sh
+VOICE_AGENT=codex node scripts/voice/voice-loop.ts --check
+VOICE_AGENT=codex node scripts/voice/voice-loop.ts
+```
+
+Install and authenticate the selected CLI first. `VOICE_CODEX_BIN` and
+`VOICE_CLAUDE_BIN` override executable paths; `VOICE_ALLOWED_TOOLS` applies only
+to Claude. Unsupported `VOICE_AGENT` values fail explicitly.
+
+Codex receives prompts on stdin through `codex exec --json`, with the
+`workspace-write` sandbox. Subsequent utterances resume the exact returned
+thread ID. The loop speaks the last agent message, excluding reasoning and tool
+events; failed or incomplete responses are reported as failures. It does not
+choose a model, bypass approvals, or change global configuration. In a
+noninteractive call, operations requiring unavailable approval may fail.
+
+Protocol tests use fake agent and audio executables through the real entry point;
+authenticated calls and physical audio still require a local acceptance run.
+
 ## TTS backends
 
 Set `VOICE_TTS_BACKEND` (or leave it `auto`):
@@ -107,7 +130,8 @@ All env-overridable, all reversible in one line:
 | `VOICE_SIGNOFF` | `Goodbye.` | spoken on exit phrase |
 | `VOICE_WHISPER_MODEL` | `~/.whisper-models/ggml-base.en.bin` | STT model |
 | `VOICE_WHISPER_BIN` | `whisper-cli` | whisper.cpp binary |
-| `VOICE_ALLOWED_TOOLS` | `Read,Edit,Write,Bash,Glob,Grep` | agent tool allowlist |
+| `VOICE_AGENT` | `claude` | `claude` or `codex` CLI backend |
+| `VOICE_ALLOWED_TOOLS` | `Read,Edit,Write,Bash,Glob,Grep` | Claude-only tool allowlist |
 | `VOICE_PLAYER` | `afplay` (mac) / `paplay` | wav player for piper/xtts |
 | `VOICE_TTS_VOICE` | `Karen` | macOS `say` voice |
 | `VOICE_ESPEAK_BIN` | `espeak-ng` | espeak binary |
