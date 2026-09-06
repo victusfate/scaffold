@@ -65,3 +65,5 @@ tools/sync
 
 # Codex consumer acceptance tests
 tools/hoist-skill/codex.test.ts
+scripts/voice/agent.test.ts
+scripts/voice/fixtures/cli.ts

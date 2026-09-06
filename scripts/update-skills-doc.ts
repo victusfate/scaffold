@@ -31,9 +31,12 @@ function pad(name: string, col: number): string {
 function generateInvocation(rows: SkillRow[], bundled: SkillRow[]): string {
   const list = rows.map(r => `\`/${r.skill}\``).join(', ');
   let out = `Skills can be invoked individually: ${list}.`;
+  out += '\n\nIn Codex, use `$skill-name` or `/skills` to select these workflows from `.agents/skills`. '
+    + 'See [Codex support](codex.md) for setup and client-specific behavior.';
   if (bundled.length) {
     const blist = bundled.map(b => `\`${b.skill}\``).join(', ');
-    out += `\n\nBundled skills (self-contained Anthropic Agent Skills, Claude harness; loaded by description rather than a slash command): ${blist}.`;
+    out += `\n\nBundled skills (self-contained upstream Agent Skills): ${blist}. `
+      + 'The bundled `improve` advisor is also available to Codex through `.agents/skills/improve/SKILL.md`.';
   }
   return out;
 }
@@ -55,7 +58,7 @@ function generateStructure(rows: SkillRow[], bundled: SkillRow[]): string {
     `${pad(`    ${r.skill}/SKILL.md`, claudeCol)}# ${r.purpose}`
   ).join('\n');
 
-  // Bundled skills live only under .claude/skills/ (Claude harness; no cross-harness wrappers).
+  // Bundled sources live under .claude/skills/; improve has an Agent Skills bridge.
   const bundledSkills = bundled.map(b =>
     `${pad(`    ${b.skill}/SKILL.md`, claudeCol)}# (bundled) ${b.purpose}`
   ).join('\n');
@@ -110,6 +113,7 @@ ${cursorSkills}
 .agents/
   skills/
 ${agentSkills}
+    improve/SKILL.md              # bridge to the bundled advisor and its references
 .agent/
   rules/
 ${pad('    agents.md', agentWCol)}# thin pointer to AGENTS.md (always-on)

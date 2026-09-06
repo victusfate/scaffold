@@ -25,8 +25,8 @@ function safeWrite(dest: string, relPath: string, content: string, kept: KeepMat
 }
 
 // Every harness emitter starts by writing the shared skill body (skills/<name>.md).
-// Extracted here because the three emitters are otherwise structurally different:
-// claude/cursor each add one wrapper file; antigravity adds two (skill + workflow).
+// Claude/Cursor each add one wrapper; Codex adds an Agent Skills wrapper,
+// shared with Antigravity, which additionally emits a workflow.
 // A table-driven approach would need variable-length rows and wouldn't be clearer.
 // quality-override: parameter-discipline — internal; makeEmitters presents the public 4-arg Emitter form
 function writeBody(cap: Capability, dest: string, srcRoot: string, kept: KeepMatcher, results: WriteResult[], force: boolean): void {
@@ -34,7 +34,7 @@ function writeBody(cap: Capability, dest: string, srcRoot: string, kept: KeepMat
 }
 
 // Each emitter writes the body then one or more harness-specific wrappers.
-// Wrappers are thin @-include stubs generated from cap.purpose when no
+// Wrappers are thin includes or explicit file links generated from cap.purpose when no
 // curated version exists in the scaffold source tree.
 
 export function emitClaude(cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[], srcRoot: string, force: boolean): void {
@@ -57,7 +57,7 @@ export function emitCursor(cap: Capability, dest: string, kept: KeepMatcher, res
   safeWrite(dest, cursorRel, content, kept, results, force);
 }
 
-export function emitCodex(cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[], srcRoot: string, force: boolean): void {
+function emitCodex(cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[], srcRoot: string, force: boolean): void {
   writeBody(cap, dest, srcRoot, kept, results, force);
 
   const agentSkillRel = `.agents/skills/${cap.name}/SKILL.md`;

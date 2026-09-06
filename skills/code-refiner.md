@@ -1,7 +1,7 @@
 ## Purpose
 
 > **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
 
 Review the current diff **and fix it**, in one composite pass: run the
 correctness review (`validate`) and the structural-quality review (`simplify`)
@@ -18,6 +18,11 @@ gate, or standalone before a PR. For a full-repo survey (not a diff), use
 - `--effort low|medium|high|max` — passed through to the correctness review (default: `medium`)
 - `--fix` — apply the merged fixes (default standalone: review-only, present and wait)
 - `--comment` — post the merged findings as inline PR comments
+
+## Client capabilities
+
+Apply the [harness capability rules](../AGENTS.md#harness-capabilities) for
+native subagents, concurrency, review isolation, and referenced-file reads.
 
 ## Execution model
 

@@ -38,7 +38,7 @@
 | `skills/<name>.md` | the **canonical** skill/workflow body (the real instructions) | canonical | yes |
 | `.claude/skills/<name>/SKILL.md` | Claude form: frontmatter + `@../../../skills/<name>.md` | generated | no |
 | `.cursor/rules/<name>.mdc` | Cursor form: frontmatter + `@../../skills/<name>.md` | generated | no |
-| `.agents/skills/<name>/SKILL.md`, `.agent/workflows/<name>.md` | other-harness forms | generated | no |
+| `.agents/skills/<name>/SKILL.md`, `.agent/workflows/<name>.md` | Codex/pi/agy skill wrappers and agy workflows | generated | no |
 | `.claude/skills/RESOLVER.md` | routing table; every skill MUST be registered | canonical | yes |
 | `tools/<name>/` | self-describing, agent/MCP-callable tool (`tool.yaml` + `run`) | canonical | yes |
 | `scripts/<name>.{sh,mjs}` | repo-local plumbing, run by a human or a skill | canonical | yes |

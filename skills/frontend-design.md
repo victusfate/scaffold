@@ -1,4 +1,4 @@
-> **Multi-harness:** This skill works identically in Claude Code, pi, and agy. All paths
+> **Multi-harness:** This skill works identically in Claude Code, Codex, pi, and agy. All paths
 > and commands are harness-agnostic.
 
 ---
@@ -45,4 +45,4 @@ Interpret creatively and make unexpected choices that feel genuinely designed fo
 
 **IMPORTANT**: Match implementation complexity to the aesthetic vision. Maximalist designs need elaborate code with extensive animations and effects. Minimalist or refined designs need restraint, precision, and careful attention to spacing, typography, and subtle details. Elegance comes from executing the vision well.
 
-Remember: Claude is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.
+Remember: the agent is capable of extraordinary creative work. Don't hold back, show what can truly be created when thinking outside the box and committing fully to a distinctive vision.

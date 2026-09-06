@@ -1,7 +1,7 @@
 ## Purpose
 
 > **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
 
 A **visible, editable Markdown work queue** that agents drain **autonomously** so
 you can augment a long-running project without babysitting it. You stack up work;
@@ -18,6 +18,17 @@ many units of work** on an ongoing project, unattended.
 The reliable read/mutate layer is `scripts/queue.ts` (pure model in
 `scripts/queue-model.ts`). Humans edit the file freely; agents mutate it **only**
 through the CLI so the format never corrupts.
+
+## Client capability fallback
+
+Before arming a driver, check which tools are exposed. In Codex or another client
+without `Monitor`, `ScheduleWakeup`, or `CronCreate`, drain ready tasks in the
+active turn using the CLI below. Stop on idle, operator stop, or a real usage
+limit; checkpoint remaining work and explain that future additions need another
+invocation of the queue skill. Never claim the queue will auto-restart after the
+client closes. The persistent-driver rules below apply only when such a driver
+is actually available and successfully armed. Batch worktree lanes within the
+client’s concurrency limit, or drain serially if subagents are unavailable.
 
 ## The queue file
 

@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFile, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
+import { createServer } from 'node:http';
+import { promisify } from 'node:util';
 
 function run(args: string[], env = process.env): Record<string, unknown> {
   const result = spawnSync(process.execPath, ['tools/hoist-skill/run', ...args], {
@@ -88,5 +90,34 @@ await test('generated Codex wrappers resolve and all harnesses share the same wr
   } finally {
     rmSync(dest, { recursive: true, force: true });
     rmSync(source, { recursive: true, force: true });
+  }
+});
+
+await test('Codex fetch generates an absent optional wrapper from a pinned source', async () => {
+  const dest = mkdtempSync(join(tmpdir(), 'codex-fetch-'));
+  const requests: string[] = [];
+  const server = createServer((req, res) => {
+    requests.push(req.url ?? '');
+    if (req.url === '/v-test/.claude/skills/RESOLVER.md')
+      res.end(readFileSync('.claude/skills/RESOLVER.md'));
+    else if (req.url === '/v-test/skills/tdd.md') res.end('pinned body\n');
+    else { res.statusCode = 404; res.end(); }
+  });
+  try {
+    await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address !== 'string');
+    await promisify(execFile)(process.execPath, [
+      'tools/hoist-skill/run', '--fetch', '--names', 'tdd', '--harness', 'codex',
+      '--ref', 'v-test', '--into', dest,
+    ], { env: { ...process.env, HOIST_RAW_BASE: `http://127.0.0.1:${address.port}` } });
+    assert.ok(requests.includes('/v-test/.agents/skills/tdd/SKILL.md'));
+    assert.equal(readFileSync(join(dest, 'skills/tdd.md'), 'utf8'), 'pinned body\n');
+    assert.match(readFileSync(join(dest, '.agents/skills/tdd/SKILL.md'), 'utf8'), /^---\nname: tdd/);
+    assert.match(readFileSync(join(dest, '.sync/hoisted'), 'utf8'), /tdd\tcodex\tv-test/);
+  } finally {
+    server.closeAllConnections();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+    rmSync(dest, { recursive: true, force: true });
   }
 });

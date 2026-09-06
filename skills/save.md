@@ -1,7 +1,8 @@
 ## Purpose
 
 > **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+> Codex save: use `$save` for this workflow; `codex resume --last` restores local chat history.
 > Also: for full same-machine history use `claude -c` in Claude Code, `pi -c` under pi, or `agy -c` under agy.
 
 `/save` is the **lightweight, frequent checkpoint** for a long autonomous run —
@@ -75,7 +76,7 @@ rate-limit signal), do not burn the remainder:
 2. **Drop a memory pointer** — a short project-memory note pointing at
    `.pause/handoff.md` (or the run's dedicated resume doc), so a compacted or
    cold session finds it with no conversation history.
-3. **`ScheduleWakeup` for after the window resets**, then stop. Spend the budget,
+3. **Schedule a wakeup for after the window resets if the client exposes a scheduler**, then stop. Without one, checkpoint and give the `$resume` / `/resume` instruction instead; do not promise automatic resumption. Spend the budget,
    sleep, auto-resume — never retry-storm the limit. On wake, hand off to
    `/resume`.
 

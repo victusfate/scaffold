@@ -5,6 +5,7 @@ import { chmodSync, copyFileSync, mkdtempSync, readFileSync, rmSync, symlinkSync
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
+import { agentConfig, askAgent } from './agent.ts';
 
 interface Call { name: string; args: string[]; input: string }
 
@@ -42,10 +43,37 @@ await test('Codex voice invokes exec and resumes the exact returned session', ()
   assert.equal(calls[0]!.name, 'codex');
   assert.ok(calls[0]!.args.includes('exec'));
   assert.ok(calls[0]!.args.includes('--json'));
+  assert.ok(calls[0]!.args.includes('workspace-write'));
   assert.equal(calls[0]!.input, 'Please inspect $(literal) and `text`');
   assert.ok(calls[1]!.args.includes('resume'));
   assert.ok(calls[1]!.args.includes('codex-session'));
   assert.ok(!calls[1]!.args.includes('--last'));
   assert.match(spoken, /Codex reply/);
   assert.doesNotMatch(spoken, /private reasoning|thread.started/);
+});
+
+await test('Claude remains the default and retains its resume protocol', () => {
+  assert.equal(agentConfig({}).name, 'claude');
+  const { calls, spoken } = runLoop('claude');
+  assert.equal(calls[0]!.name, 'claude');
+  assert.ok(calls[0]!.args.includes('--allowedTools'));
+  assert.ok(calls[1]!.args.includes('--resume'));
+  assert.ok(calls[1]!.args.includes('claude-session'));
+  assert.match(spoken, /Claude reply/);
+});
+
+await test('Codex subprocess and protocol failures are spoken as failures', () => {
+  for (const failure of ['exit', 'malformed']) {
+    const { spoken } = runLoop('codex', failure);
+    assert.match(spoken, /agent (call|response) failed/);
+    assert.doesNotMatch(spoken, /Codex reply|not JSON/);
+  }
+});
+
+await test('invalid backend fails explicitly and missing binary preserves the session', () => {
+  assert.throws(() => agentConfig({ VOICE_AGENT: 'unsupported' }), /Unsupported VOICE_AGENT/);
+  const result = askAgent({ name: 'codex', binary: '/nonexistent/voice-agent', allowedTools: '' },
+    'continue', 'existing-session');
+  assert.equal(result.sessionId, 'existing-session');
+  assert.match(result.reply, /agent call failed/);
 });

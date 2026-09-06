@@ -2,11 +2,11 @@
 
 [![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?style=for-the-badge&logo=github)](https://github.com/victusfate/scaffold/generate)
 
-An opinionated, cross-harness project scaffold for AI-assisted development. Drop it into any new project to get a consistent design → PRD → TDD workflow with scored quality gates, whether you're using Claude Code, Cursor, or Gemini CLI.
+An opinionated, cross-harness project scaffold for AI-assisted development. Drop it into any new project to get a consistent design → PRD → TDD workflow with scored quality gates, whether you're using Claude Code, Codex, Cursor, or Gemini CLI.
 
 ## Usage
 
-**Browser / mobile:** hit "Use this template" above → create new repository → open in Claude Code.
+**Browser / mobile:** hit "Use this template" above → create new repository → open in your preferred coding agent.
 
 **CLI:**
 ```bash
@@ -90,7 +90,26 @@ is itself a `[Clarity/minor]` violation.
 | Cursor | `.cursor/rules/*.mdc` — description-driven activation |
 | Google Antigravity | `GEMINI.md` + `AGENTS.md`; `.agents/skills/` (lazy-loaded) + `.agent/workflows/` (slash commands) |
 | Gemini CLI | `GEMINI.md` → references `AGENTS.md` |
-| OpenAI Codex | `AGENTS.md` directly |
+| OpenAI Codex | `AGENTS.md` directly; `.agents/skills/` via `$skill-name` or `/skills` |
+
+## Codex quick start
+
+Open this repository in Codex and ask for a task, or invoke `$feature-chain`.
+Skills are discovered from `.agents/skills`; their linked bodies in `skills/`
+remain shared with the other harnesses. Use `$resume` for scaffold checkpoints;
+Codex’s `/resume` selects local chat history.
+
+For an existing project, use the scaffold sync flow below to install the complete
+harness, including runtime scripts and the quality rubric. For a selected set of
+skill bodies and wrappers:
+
+```bash
+node tools/hoist-skill/run --names feature-chain,tdd --harness codex --into ../my-project
+```
+
+Selective hoisting does not install a skill’s transitive runtime dependencies;
+use full sync for a complete development harness. See [Codex support](docs/codex.md)
+for setup, verified paths, optional integrations, and voice configuration.
 
 ## Feature artifacts
 
