@@ -42,7 +42,7 @@ import {
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type Task,
 } from './queue-model.ts';
-import { parse, taskOverrides, SPEC_FLAGS, type Parsed } from './queue-cli-args.ts';
+import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
 
 // ---------------------------------------------------------------- flags
 
@@ -358,7 +358,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     case 'set': {
       const [, field, ...v] = f.positionals;
       if (!needId() || !field) { console.error('usage: queue set <id> <field> <value>'); return 1; }
-      if (!SPEC_FLAGS.includes(field) || (field === 'title' && !v.join(' ').trim())) {
+      if (!(SPEC_FLAGS as readonly string[]).includes(field) || (field === 'title' && !v.join(' ').trim())) {
         console.error('queue set: unsupported field or empty title'); return 1;
       }
       q = setField(q, id, taskOverrides(parse([`--${field}`, v.join(' ')])));

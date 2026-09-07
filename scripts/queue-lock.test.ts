@@ -2,7 +2,7 @@
 // Cross-process mutations must retain every record rather than clobbering a stale snapshot.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseQueue } from './queue-model.ts';
 import { fileURLToPath } from 'node:url';
@@ -11,7 +11,7 @@ const SELF = fileURLToPath(import.meta.url);
 const CLI = fileURLToPath(new URL('./queue.ts', import.meta.url));
 const PER_WORKER = 30;
 
-async function worker(label: string): Promise<number> {
+function worker(label: string): number {
   for (let i = 1; i <= PER_WORKER; i++) {
     const result = spawnSync(process.execPath, [CLI, 'add', `${label}-${i}`], { stdio: 'ignore' });
     if (result.status !== 0) return result.status ?? 1;
@@ -23,9 +23,17 @@ async function hold(marker: string): Promise<number> {
   const { withLock } = await import('./queue-io.ts');
   withLock(() => {
     writeFileSync(marker, 'held');
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100);
+    waitFor(`${marker}-release`);
   });
   return 0;
+}
+
+function waitFor(marker: string): void {
+  const deadline = Date.now() + 5000;
+  while (!existsSync(marker) && Date.now() < deadline) {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+  }
+  if (!existsSync(marker)) throw new Error(`timed out waiting for ${marker}`);
 }
 
 function spawnCli(file: string, args: string[], script = CLI): Promise<number> {
@@ -44,8 +52,14 @@ function run(file: string, ...args: string[]): number {
   }).status ?? 1;
 }
 
-if (process.argv[2] === '--worker') process.exit(await worker(process.argv[3]));
+if (process.argv[2] === '--worker') process.exit(worker(process.argv[3]));
 if (process.argv[2] === '--hold') process.exit(await hold(process.argv[3]));
+if (process.argv[2] === '--validate-barrier') {
+  const directory = dirname(process.env.QUEUE_FILE!);
+  writeFileSync(join(directory, 'validate-started'), 'started');
+  waitFor(join(directory, 'validate-release'));
+  process.exit(0);
+}
 
 const dir = mkdtempSync(join(tmpdir(), 'queue-lock-'));
 const file = join(dir, 'queue.md');
@@ -53,12 +67,11 @@ try {
   writeFileSync(file, '# Work Queue\n\n');
   const lockMarker = join(dir, 'lock-held');
   const holding = spawnCli(file, ['--hold', lockMarker], SELF);
-  for (let attempt = 0; attempt < 50 && !existsSync(lockMarker); attempt++) {
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
-  }
-  if (!existsSync(lockMarker) || !/^pid=\d+ acquiredAt=.+\n$/.test(readFileSync(`${file}.lock`, 'utf8'))) {
+  waitFor(lockMarker);
+  if (!/^pid=\d+ acquiredAt=.+\n$/.test(readFileSync(`${file}.lock`, 'utf8'))) {
     throw new Error('lock metadata is missing');
   }
+  writeFileSync(`${lockMarker}-release`, 'continue');
   if (await holding !== 0) throw new Error('lock holder failed');
   console.log('queue-lock: live lock records owner metadata PASS');
   const codes = await Promise.all([
@@ -73,7 +86,7 @@ try {
 
   const validationFile = join(dir, 'validation.md');
   writeFileSync(validationFile, '# Work Queue\n\n');
-  const validation = `${process.execPath} ${JSON.stringify(CLI)} add from-validation`;
+  const validation = `"${process.execPath}" "${CLI}" add from-validation`;
   if (run(validationFile, 'add', 'validated task', '--validate', validation) !== 0) {
     throw new Error('could not create validation task');
   }
@@ -90,17 +103,12 @@ try {
   const marker = join(dir, 'validate-started');
   const release = join(dir, 'validate-release');
   writeFileSync(competingFile, '# Work Queue\n\n');
-  const delayedValidation = `${process.execPath} -e ${JSON.stringify(
-    `const fs = require('node:fs'); fs.writeFileSync(${JSON.stringify(marker)}, 'started'); const end = Date.now() + 5000; while (!fs.existsSync(${JSON.stringify(release)}) && Date.now() < end) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10); if (!fs.existsSync(${JSON.stringify(release)})) process.exit(1);`,
-  )}`;
+  const delayedValidation = `"${process.execPath}" "${SELF}" --validate-barrier`;
   if (run(competingFile, 'add', 'competing task', '--validate', delayedValidation) !== 0) {
     throw new Error('could not create competing validation task');
   }
   const completing = spawnCli(competingFile, ['done', 'task-001']);
-  for (let attempt = 0; attempt < 50 && !existsSync(marker); attempt++) {
-    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
-  }
-  if (!existsSync(marker)) throw new Error('validation did not start');
+  waitFor(marker);
   if (run(competingFile, 'fail', 'task-001', 'competing transition') !== 0) {
     throw new Error('competing transition did not complete');
   }

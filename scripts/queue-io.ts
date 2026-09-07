@@ -54,7 +54,7 @@ function acquire(): void {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       if (Date.now() >= deadline) {
         throw new Error(`queue: lock ${path} remained held for ${LOCK_WAIT_MS}ms; `
-          + 'confirm its holder is dead before removing it');
+          + 'confirm its holder is dead before removing it', { cause: error });
       }
       napSync(LOCK_POLL_MS);
     }

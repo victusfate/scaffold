@@ -4,7 +4,7 @@ import { EDITABLE_TASK_FIELDS, fieldPatch, type Task } from './queue-model.ts';
 export interface Parsed { positionals: string[]; flags: Map<string, string>; bools: Set<string>; }
 
 const VALUE_FLAGS = new Set([
-  'title', 'mode', 'slug', 'deps', 'files', 'validate', 'accept', 'worker', 'note', 'until', 'minutes', 'only',
+  ...EDITABLE_TASK_FIELDS, 'worker', 'until', 'minutes', 'only',
 ]);
 
 export function parse(rest: string[]): Parsed {
