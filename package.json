@@ -1,6 +1,6 @@
 {
   "name": "scaffold",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "type": "module",
   "engines": {
     "node": ">=23.6.0"
