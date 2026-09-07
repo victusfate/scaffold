@@ -9,8 +9,8 @@
 - Portable public tests cover duration aliases, invalid input, exact argv,
   recurrence, duplicate refusal, graceful stop/restart, failure limits,
   active descendant timeout/cancel, lifetime expiry, and stale supervisor refusal.
-- Real detached-process tests passed on WSL/Linux and native Windows. macOS is
-  covered by the added CI job; no local macOS execution is claimed.
+- Real detached-process tests passed on WSL/Linux and native Windows locally,
+  and on GitHub's Ubuntu, macOS, and Windows runners with Node 24.
 
 ## Slice 2: Skill and distribution
 
@@ -29,3 +29,7 @@
 - Supported command contract: foreground commands join their workers. Windows
   cannot reclaim a detached tree after its parent exits; this is documented.
 - No paid agent runs or production work loops launched during verification.
+- Merged upstream queue-gate changes required a behavior-preserving handler
+  extraction to restore the file-length gate; the isolated worktree fixture
+  also copies the extracted module. Both independent reviews found no issues
+  in the extraction.
