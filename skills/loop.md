@@ -74,6 +74,8 @@ Include these execution instructions in the agent prompt:
 ## Select and arm a driver
 
 Use an exposed native recurring scheduler if it supports the requested behavior.
+For editing jobs it must prevent overlapping runs in the same checkout; otherwise
+use the external driver or report the unsupported requirement.
 Record its actual ID, lifetime, overlap behavior, and stop method. Do not claim
 session persistence unless provided. Never arm two drivers for the same work.
 Check existing driver status first. Report whether native recurrence is fixed
@@ -113,6 +115,8 @@ Explain defaults when arming unless the user supplied alternatives:
   This is a restart delay, not an independent 10-minute watchdog polling an
   active agent. The active agent manages its workers; the timeout bounds a hang.
 - Lifetime 8h, per-run timeout 30min, stop after three consecutive failures.
+  Lifetime prevents new runs after expiration; a run already active may finish
+  afterward within its own timeout.
   Choose a longer explicit timeout for known long jobs. Timeouts can interrupt
   work. Semantic stagnation needs agent judgment; the driver sees exit codes.
 - Survives chat/terminal closure while the user manager runs, not reboot/WSL

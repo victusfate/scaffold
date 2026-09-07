@@ -32,6 +32,12 @@ scripts/queue-model.ts
 scripts/queue-io.ts
 scripts/sse-watch.ts
 scripts/queue.ts
+scripts/agent-loop.ts
+scripts/agent-loop-state.ts
+scripts/agent-loop-systemd.ts
+scripts/agent-loop-runner.ts
+scripts/agent-loop.test.ts
+scripts/agent-loop-systemd.test.ts
 scripts/queue.test.ts
 scripts/queue-console.ts
 scripts/queue-console.template.html
