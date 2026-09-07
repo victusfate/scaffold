@@ -39,7 +39,7 @@ tools/
 .claude/
   skills/
     RESOLVER.md               # central routing table — skill → regex → path
-    loop/SKILL.md             # Schedule a recurring instruction or command with an interval; use for /loop, loop status, or loop stop, with native scheduling or an external Linux/WSL driver
+    loop/SKILL.md             # Schedule a recurring instruction or command with an interval; use for /loop, loop status, or loop stop, with native scheduling or an external macOS/Linux/WSL/Windows driver
     feature-chain/SKILL.md    # Orchestrate design → PRD → TDD → review end to end
     grill-with-docs/SKILL.md  # Design Q&A → design.md + canonical vocabulary
     to-prd/SKILL.md           # Synthesize context + codebase → prd.md
@@ -105,7 +105,7 @@ tools/
     voice-chat.mdc       # mirrors voice-chat for Cursor
 .agents/
   skills/
-    loop/SKILL.md             # Schedule a recurring instruction or command with an interval; use for /loop, loop status, or loop stop, with native scheduling or an external Linux/WSL driver
+    loop/SKILL.md             # Schedule a recurring instruction or command with an interval; use for /loop, loop status, or loop stop, with native scheduling or an external macOS/Linux/WSL/Windows driver
     feature-chain/SKILL.md    # Orchestrate design → PRD → TDD → review end to end
     grill-with-docs/SKILL.md  # Design Q&A → design.md + canonical vocabulary
     to-prd/SKILL.md           # Synthesize context + codebase → prd.md
@@ -137,7 +137,7 @@ tools/
   rules/
     agents.md           # thin pointer to AGENTS.md (always-on)
   workflows/
-    loop.md             # Schedule a recurring instruction or command with an interval; use for /loop, loop status, or loop stop, with native scheduling or an external Linux/WSL driver
+    loop.md             # Schedule a recurring instruction or command with an interval; use for /loop, loop status, or loop stop, with native scheduling or an external macOS/Linux/WSL/Windows driver
     feature-chain.md    # Orchestrate design → PRD → TDD → review end to end
     grill-with-docs.md  # Design Q&A → design.md + canonical vocabulary
     to-prd.md           # Synthesize context + codebase → prd.md

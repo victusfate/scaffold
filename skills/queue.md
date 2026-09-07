@@ -23,7 +23,7 @@ through the CLI so the format never corrupts.
 
 Before arming a driver, check which tools are exposed. In Codex or another client
 without `Monitor`, `ScheduleWakeup`, or `CronCreate`, the [loop skill](loop.md)
-provides an external Linux/WSL driver when unattended recurrence is requested.
+provides an external macOS/Linux/WSL/Windows driver when unattended recurrence is requested.
 If this drain already runs inside a loop, reuse it; never create a nested driver.
 Without an available, successfully armed driver, drain ready tasks in the active
 turn using the CLI below. Stop on idle, operator stop, or a real usage limit;

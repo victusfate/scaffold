@@ -22,9 +22,9 @@ TypeScript CLI, with durable command configuration and lifecycle controls.
 
 ## Implementation Decisions
 
-CLI verbs: start, status, stop, logs, plus an internal timer-run entrypoint.
+CLI verbs: start, status, stop, logs, plus an internal supervise entrypoint.
 Inputs: checkout, interval, lifetime, timeout, failure limit, and argv.
-Structured JSON on stdout; child output retained in private logs. Unit identity
+Structured JSON on stdout; child output retained in private logs. Supervisor identity
 is derived from canonical checkout. Configuration never overwrites repo source.
 An external Node supervisor provides non-overlap and timeout, using process
 groups on POSIX and taskkill on Windows. No global settings change. A crashed

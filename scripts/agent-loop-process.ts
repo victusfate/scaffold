@@ -9,13 +9,16 @@ import { stopRequest } from './agent-loop-state.ts';
 
 const POLL_MS = 100;
 const KILL_GRACE_MS = 500;
+const TASKKILL_TIMEOUT_MS = 5000;
 
 async function terminate(child: ChildProcess): Promise<void> {
   if (!child.pid) return;
   if (process.platform === 'win32') {
+    // taskkill cannot retain ownership after the root exits. Commands must join
+    // their workers before exiting; independently detached jobs are not supervised.
     if (child.exitCode !== null || child.signalCode !== null) return;
     const result = spawnSync('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], {
-      windowsHide: true, encoding: 'utf8', timeout: 5000,
+      windowsHide: true, encoding: 'utf8', timeout: TASKKILL_TIMEOUT_MS,
     });
     if (result.status !== 0 && child.exitCode === null) throw new Error(`taskkill failed: ${result.error?.message || result.stderr}`);
     return;

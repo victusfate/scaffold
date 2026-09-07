@@ -83,11 +83,20 @@ cadence or completion-relative and give the child a supported self-stop mechanis
 When the user needs an external driver and native scheduling is session-bound
 or absent, use the external fallback.
 
-### Linux/WSL external fallback
+### Portable external fallback
 
-Requires Node >=23.6 and a working systemd **user** manager. No boot service,
-lingering, global settings, permission changes, or paid agent calls as probes.
-Unsupported hosts fail explicitly; do not substitute chat-local sleeps.
+Requires Node >=23.6 on macOS, Linux/WSL, or native Windows. A detached Node
+supervisor runs outside the chat and launches commands serially. No systemd,
+launchd, Task Scheduler, boot installation, global settings, permission changes,
+or paid agent calls as probes. Unsupported hosts fail explicitly.
+
+Schedule foreground commands that keep their parent alive until workers finish.
+Non-overlap applies to those command runs, not arbitrary detached services. On
+Windows, tree cancellation requires the command parent to still be alive; a
+launcher that spawns background work and exits is unsupported. Independently
+detached jobs must have their own lifecycle controls and be reconciled by the
+agent, not assumed covered by the supervisor's timeout. Do not use a fire-and-forget
+launcher as the recurring command.
 
 ```text
 node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --lifetime 8h --timeout 30min --max-failures 3 -- EXECUTABLE ARG...
@@ -107,6 +116,11 @@ Pass the captured prompt as one argument. Preserve selected repo/model settings;
 do not add permission, trust, or sandbox bypass flags. The helper pins the CWD.
 An explicitly selected session can be resumed with supported options; never use
 a global “latest session” selector that might pick unrelated work.
+On Windows use an actual `.exe`, or `node.exe` plus the installed CLI's JavaScript
+entrypoint. A `.cmd`/`.bat` shim is not an executable argv target without shell
+parsing. Do not silently enable a shell to run agent instructions through a shim.
+Pass native absolute paths on Windows, for example `C:\\work\\project`; the
+POSIX paths above are placeholders, not required path syntax.
 
 Explain defaults when arming unless the user supplied alternatives:
 
@@ -119,14 +133,18 @@ Explain defaults when arming unless the user supplied alternatives:
   afterward within its own timeout.
   Choose a longer explicit timeout for known long jobs. Timeouts can interrupt
   work. Semantic stagnation needs agent judgment; the driver sees exit codes.
-- Survives chat/terminal closure while the user manager runs, not reboot/WSL
-  shutdown. Does not wake the computer or run without CLI authentication.
+- Survives chat/terminal closure while the supervisor lives, not reboot/WSL
+  shutdown or a supervisor crash. Does not wake the computer or run without CLI
+  authentication. Stale/crashed ownership is reported rather than auto-reclaimed;
+  inspect remaining jobs before a deliberate recovery.
 - Stop disables future runs; current work finishes. `--cancel` also terminates
-  the current service's process tree. Explain that distinction before cancelling.
+  the current command's process tree. Explain that distinction before cancelling.
+  Stop returns after recording the request. Poll status until `ended` before
+  claiming cancellation finished or handing the checkout back to interactive work.
 - Private state includes argv and logs. Keep credentials out of prompts/argv
   and sensitive command details out of public status updates.
 
-After start succeeds, immediately call `status`. Report the actual unit ID,
+After start succeeds, immediately call `status`. Report the actual supervisor ID/PID,
 checkout, interval, expiration, timeout, logs and stop commands. If startup or
 verification fails, report **not armed** and resolve the specific failure within
 scope. Never claim background execution without verified driver state.

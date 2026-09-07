@@ -16,6 +16,9 @@ an actual work loop or install personal skills as part of developing this PR.
 - A loop is an externally scheduled, non-overlapping series of command runs.
 - An instruction is natural language passed as one argument to a headless agent.
   It is never evaluated as shell source. An explicit command is an argv array.
+- Commands are foreground processes that join their workers. Arbitrarily detached
+  jobs are outside the driver's ownership; Windows taskkill cannot reclaim a tree
+  after its root exits. Non-overlap is guaranteed for scheduled command runs.
 - The interval is a delay after a completed run. First execution starts promptly.
 - The driver is a native harness scheduler when exposed, or a detached Node
   supervisor on macOS, Linux/WSL, and native Windows. No pretend wakeup and no

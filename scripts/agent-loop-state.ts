@@ -5,12 +5,13 @@ import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 
 const SECOND = 1000;
+const HEARTBEAT_STALE_MS = 5000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 const MAX_DURATION = 30 * 24 * HOUR;
 const UNITS: Record<string, number> = { ms: 1, s: SECOND, m: MINUTE, min: MINUTE, h: HOUR };
 export interface Config {
-  cwd: string; unit: string; generation: string; argv: string[]; path: string;
+  cwd: string; unit: string; generation: string; argv: string[];
   interval: number; timeout: number; expiresAt: number; maxFailures: number;
 }
 export interface Progress {
@@ -77,6 +78,6 @@ export function stopRequest(dir: string, generation: string): { cancel: boolean 
 }
 
 export function alive(progress: Progress): boolean {
-  if (!progress.pid || progress.ended || !progress.heartbeat || Date.now() - progress.heartbeat > 5000) return false;
+  if (!progress.pid || progress.ended || !progress.heartbeat || Date.now() - progress.heartbeat > HEARTBEAT_STALE_MS) return false;
   try { process.kill(progress.pid, 0); return true; } catch { return false; }
 }

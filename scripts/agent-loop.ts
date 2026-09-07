@@ -11,6 +11,8 @@ import type { Config } from './agent-loop-state.ts';
 import { supervise } from './agent-loop-runner.ts';
 
 const DEFAULT_FAILURES = 3;
+const HANDSHAKE_TIMEOUT_MS = 10_000;
+const HANDSHAKE_POLL_MS = 25;
 interface Input { verb: string; options: Map<string, string>; argv: string[]; cancel: boolean }
 
 function allowedOptions(verb: string): string[] {
@@ -48,7 +50,7 @@ function configuration(input: Input, target: ReturnType<typeof location>): Confi
   if (!input.argv[0]) throw new Error('start requires -- CMD ARG...');
   if (/\.(cmd|bat)$/i.test(input.argv[0])) throw new Error('Command must be an executable, not a .cmd/.bat shell script');
   return { cwd: target.cwd, unit: target.unit, generation: randomUUID(), argv: input.argv,
-    path: process.env.PATH || '', interval, timeout, expiresAt: Date.now() + lifetime, maxFailures };
+    interval, timeout, expiresAt: Date.now() + lifetime, maxFailures };
 }
 
 function status(dir: string): object {
@@ -73,13 +75,13 @@ async function launch(config: Config, dir: string): Promise<void> {
   let spawnError: Error | undefined;
   child.once('error', error => { spawnError = error; });
   child.unref();
-  const deadline = Date.now() + 10_000;
+  const deadline = Date.now() + HANDSHAKE_TIMEOUT_MS;
   while (Date.now() < deadline) {
     if (spawnError) { rmSync(lease, { recursive: true }); throw spawnError; }
     const progress = readProgress(dir);
     if (progress.generation === config.generation && progress.ready && alive(progress)) return;
     if (child.exitCode !== null) throw new Error('Supervisor exited before startup handshake; inspect supervisor.log');
-    await delay(25);
+    await delay(HANDSHAKE_POLL_MS);
   }
   save(dir, 'stopped.json', { generation: config.generation, cancel: true });
   throw new Error('Supervisor startup could not be verified; inspect supervisor.log and lease');

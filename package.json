@@ -8,7 +8,7 @@
   "scripts": {
     "test": "node scripts/agent-loop.test.ts && node tools/hoist-skill/codex.test.ts && tools/hoist-skill/test && tools/sync/test && node tools/linter-setup/test && node scripts/compute-bump.test.ts && node scripts/mermaid-render.test.ts && node scripts/mermaid-watch.test.ts && node scripts/queue.test.ts && node scripts/queue-console.test.ts && node scripts/voice/voice-loop.test.ts && node scripts/voice/agent.test.ts && bash scripts/test-queue-worktree.sh && bash scripts/test-queue-loop.sh && bash scripts/test-sync.sh && bash scripts/test-bootstrap.sh && bash scripts/test-rubric-format.sh && bash scripts/test-audit-skill.sh && bash scripts/test-council-skill.sh && bash scripts/test-simplify.sh && bash scripts/test-tdd-rubric.sh && bash scripts/test-mechanical-check.sh && bash scripts/test-create-pr-gate.sh && bash scripts/test-statusline.sh && bash scripts/test-linter-setup.sh && node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check",
     "test:integration": "RUN_INTEGRATION=1 tools/hoist-skill/test-integration && RUN_INTEGRATION=1 tools/sync/test-integration && RUN_INTEGRATION=1 tools/linter-setup/test-integration",
-    "test:loop:integration": "AGENT_LOOP_SYSTEMD_TEST=1 node scripts/agent-loop-systemd.test.ts",
+    "test:loop:integration": "node scripts/agent-loop.integration.test.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit"
   },
