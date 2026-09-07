@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 
@@ -51,5 +51,10 @@ export function save(dir: string, name: string, value: unknown): void {
 }
 
 export function initialize(dir: string): void {
+  if (existsSync(dir)) {
+    const stat = lstatSync(dir);
+    if (!stat.isDirectory() || stat.uid !== process.getuid?.()) throw new Error('Unsafe loop state directory');
+    if (readdirSync(dir).length && !existsSync(join(dir, 'config.json'))) throw new Error('Refusing to overwrite unrelated state');
+  }
   mkdirSync(dir, { recursive: true, mode: 0o700 });
 }
