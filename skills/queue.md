@@ -22,13 +22,16 @@ through the CLI so the format never corrupts.
 ## Client capability fallback
 
 Before arming a driver, check which tools are exposed. In Codex or another client
-without `Monitor`, `ScheduleWakeup`, or `CronCreate`, drain ready tasks in the
-active turn using the CLI below. Stop on idle, operator stop, or a real usage
-limit; checkpoint remaining work and explain that future additions need another
-invocation of the queue skill. Never claim the queue will auto-restart after the
-client closes. The persistent-driver rules below apply only when such a driver
-is actually available and successfully armed. Batch worktree lanes within the
-client’s concurrency limit, or drain serially if subagents are unavailable.
+without `Monitor`, `ScheduleWakeup`, or `CronCreate`, the [loop skill](loop.md)
+provides an external Linux/WSL driver when unattended recurrence is requested.
+If this drain already runs inside a loop, reuse it; never create a nested driver.
+Without an available, successfully armed driver, drain ready tasks in the active
+turn using the CLI below. Stop on idle, operator stop, or a real usage limit;
+checkpoint remaining work and explain that future additions need another
+invocation. Never claim automatic restart without verified scheduler state.
+The native persistent-driver rules below apply only when those tools are exposed.
+Batch worktree lanes within the client’s concurrency limit, or drain serially if
+subagents are unavailable.
 
 ## The queue file
 
