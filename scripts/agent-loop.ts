@@ -1,20 +1,21 @@
 #!/usr/bin/env node
-// Schedule bounded argv commands with systemd: start, status, stop, and logs.
+// Portable external argv loop: start, status, stop [--cancel], and logs.
+import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, rmSync } from 'node:fs';
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { duration, EMPTY, initialize, location, readConfig, readProgress, save, withControlLock } from './agent-loop-state.ts';
+import { setTimeout as delay } from 'node:timers/promises';
+import { alive, duration, EMPTY, initialize, location, readConfig, readProgress, save, stopRequest, withControlLock } from './agent-loop-state.ts';
 import type { Config } from './agent-loop-state.ts';
-import { arm, available, busy, control, unitState } from './agent-loop-systemd.ts';
-import { finish, run } from './agent-loop-runner.ts';
+import { supervise } from './agent-loop-runner.ts';
 
 const DEFAULT_FAILURES = 3;
 interface Input { verb: string; options: Map<string, string>; argv: string[]; cancel: boolean }
 
 function allowedOptions(verb: string): string[] {
   if (verb === 'start') return ['--cwd', '--interval', '--timeout', '--lifetime', '--max-failures'];
-  return verb.startsWith('timer-') ? ['--state', '--generation'] : ['--cwd'];
+  return verb === 'supervise' ? ['--state', '--generation'] : ['--cwd'];
 }
 
 function addOption(options: Map<string, string>, key: string, value: string | undefined, verb: string): void {
@@ -24,9 +25,7 @@ function addOption(options: Map<string, string>, key: string, value: string | un
 
 function parse(args: string[]): Input {
   const verb = args.shift() || '';
-  if (!['start', 'status', 'stop', 'logs', 'timer-run', 'timer-finish'].includes(verb)) {
-    throw new Error('Usage: agent-loop.ts start|status|stop|logs --cwd PATH [options] [-- CMD ARG...]');
-  }
+  if (!['start', 'status', 'stop', 'logs', 'supervise'].includes(verb)) throw new Error('Usage: agent-loop.ts start|status|stop|logs --cwd PATH [options] [-- CMD ARG...]');
   const separator = args.indexOf('--');
   const argv = separator < 0 ? [] : args.splice(separator).slice(1);
   const options = new Map<string, string>();
@@ -47,54 +46,64 @@ function configuration(input: Input, target: ReturnType<typeof location>): Confi
   const maxFailures = Number(input.options.get('--max-failures') || DEFAULT_FAILURES);
   if (!Number.isSafeInteger(maxFailures) || maxFailures < 1) throw new Error('max-failures must be a positive integer');
   if (!input.argv[0]) throw new Error('start requires -- CMD ARG...');
+  if (/\.(cmd|bat)$/i.test(input.argv[0])) throw new Error('Command must be an executable, not a .cmd/.bat shell script');
   return { cwd: target.cwd, unit: target.unit, generation: randomUUID(), argv: input.argv,
     path: process.env.PATH || '', interval, timeout, expiresAt: Date.now() + lifetime, maxFailures };
 }
 
 function status(dir: string): object {
   const config = readConfig(dir);
-  const timer = unitState(`${config.unit}.timer`);
-  const service = unitState(`${config.unit}.service`);
   const progress = readProgress(dir);
-  if (progress.running && !busy(service)) {
-    progress.failures++;
-    progress.running = false;
-    progress.outcome = 'previous run timed out or crashed';
-  }
-  return { ...config, timer, service, armed: timer === 'active',
-    expired: Date.now() >= config.expiresAt, ...progress,
-    stop: existsSync(join(dir, 'stopped.json')) ? JSON.parse(readFileSync(join(dir, 'stopped.json'), 'utf8')) as unknown : null,
-    log: join(dir, 'output.log') };
+  const live = alive(progress);
+  const stopped = stopRequest(dir, config.generation);
+  return { ...config, ...progress, driver: 'node', armed: live && !stopped && Date.now() < config.expiresAt,
+    supervisor: live ? 'active' : progress.ended ? 'stopped' : 'stale',
+    running: live && progress.running, interrupted: !live && progress.running,
+    stopRequested: !!stopped, log: join(dir, 'output.log') };
 }
 
-function start(input: Input, target: ReturnType<typeof location>): object {
+async function launch(config: Config, dir: string): Promise<void> {
+  const lease = join(dir, 'supervisor.lock');
+  mkdirSync(lease, { mode: 0o700 });
+  const fd = openSync(join(dir, 'supervisor.log'), 'w', 0o600);
+  const child = spawn(process.execPath, [fileURLToPath(import.meta.url), 'supervise', '--state', dir, '--generation', config.generation], {
+    detached: true, windowsHide: true, stdio: ['ignore', fd, fd],
+  });
+  closeSync(fd);
+  let spawnError: Error | undefined;
+  child.once('error', error => { spawnError = error; });
+  child.unref();
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    if (spawnError) { rmSync(lease, { recursive: true }); throw spawnError; }
+    const progress = readProgress(dir);
+    if (progress.generation === config.generation && progress.ready && alive(progress)) return;
+    if (child.exitCode !== null) throw new Error('Supervisor exited before startup handshake; inspect supervisor.log');
+    await delay(25);
+  }
+  save(dir, 'stopped.json', { generation: config.generation, cancel: true });
+  throw new Error('Supervisor startup could not be verified; inspect supervisor.log and lease');
+}
+
+async function start(input: Input, target: ReturnType<typeof location>): Promise<object> {
   const config = configuration(input, target);
-  available();
   initialize(target.dir);
-  return withControlLock(target.dir, () => { try {
-    if (busy(unitState(`${target.unit}.timer`)) || busy(unitState(`${target.unit}.service`))) throw new Error('A loop already exists for this checkout');
-    if (existsSync(join(target.dir, 'config.json')) && readConfig(target.dir).cwd !== target.cwd) throw new Error('State ownership mismatch');
+  return withControlLock(target.dir, async () => {
+    if (existsSync(join(target.dir, 'supervisor.lock'))) throw new Error('A loop already owns this checkout; a stale lease requires inspection, never automatic reclaim');
     save(target.dir, 'config.json', config);
     save(target.dir, 'progress.json', EMPTY);
     rmSync(join(target.dir, 'stopped.json'), { force: true });
-    arm(config, target.dir, fileURLToPath(import.meta.url));
+    await launch(config, target.dir);
     return status(target.dir);
-  } catch (error) {
-    // Only clean up units created by this start, never an existing active loop.
-    if (existsSync(join(target.dir, 'config.json')) && readConfig(target.dir).generation === config.generation) {
-      save(target.dir, 'stopped.json', { reason: 'start failed' });
-      control(['stop', `${target.unit}.timer`], true);
-    }
-    throw error;
-  } });
+  });
 }
 
-function stop(target: ReturnType<typeof location>, cancel: boolean): void {
-  withControlLock(target.dir, () => {
-    save(target.dir, 'stopped.json', { reason: cancel ? 'cancelled' : 'user stop' });
-    if (busy(unitState(`${target.unit}.timer`))) control(['stop', `${target.unit}.timer`]);
-    if (cancel && busy(unitState(`${target.unit}.service`))) control(['stop', `${target.unit}.service`]);
-    if (busy(unitState(`${target.unit}.timer`))) throw new Error('Timer did not stop');
+async function stop(dir: string, cancel: boolean): Promise<void> {
+  await withControlLock(dir, () => {
+    const config = readConfig(dir);
+    const progress = readProgress(dir);
+    if (!alive(progress) && !progress.ended) throw new Error('Supervisor is stale; no process was signalled. Inspect its lease and logs');
+    save(dir, 'stopped.json', { generation: config.generation, cancel: cancel || !!stopRequest(dir, config.generation)?.cancel });
   });
 }
 
@@ -113,23 +122,16 @@ function logTail(dir: string): string {
 
 async function main(): Promise<void> {
   const input = parse(process.argv.slice(2));
-  if (input.verb === 'timer-finish') {
-    finish(input.options.get('--state') || '', input.options.get('--generation') || '');
-    return;
-  }
-  if (input.verb === 'timer-run') {
-    await run(input.options.get('--state') || '', input.options.get('--generation') || '');
+  if (input.verb === 'supervise') {
+    await supervise(input.options.get('--state') || '', input.options.get('--generation') || '');
     return;
   }
   const target = location(input.options.get('--cwd') || process.cwd());
-  if (input.verb === 'start') { console.log(JSON.stringify(start(input, target), null, 2)); return; }
-  available();
+  if (input.verb === 'start') { console.log(JSON.stringify(await start(input, target), null, 2)); return; }
   if (!existsSync(join(target.dir, 'config.json'))) throw new Error('No loop configured for this checkout');
-  if (input.verb === 'stop') stop(target, input.cancel);
+  if (input.verb === 'stop') await stop(target.dir, input.cancel);
   const result = status(target.dir);
-  if (input.verb === 'logs') {
-    console.log(JSON.stringify({ ...result, output: logTail(target.dir) }, null, 2));
-  } else console.log(JSON.stringify(result, null, 2));
+  console.log(JSON.stringify(input.verb === 'logs' ? { ...result, output: logTail(target.dir) } : result, null, 2));
 }
 
 main().catch((error: unknown) => {

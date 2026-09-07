@@ -15,7 +15,8 @@ export interface Config {
 }
 export interface Progress {
   runs: number; failures: number; running: boolean; startedAt?: number;
-  finishedAt?: number; outcome?: string; invocation?: string;
+  finishedAt?: number; outcome?: string; generation?: string; pid?: number;
+  heartbeat?: number; ready?: boolean; ended?: boolean; reason?: string;
 }
 export const EMPTY: Progress = { runs: 0, failures: 0, running: false };
 
@@ -31,7 +32,8 @@ export function duration(value: string): number {
 export function location(cwd: string): { cwd: string; dir: string; unit: string } {
   cwd = realpathSync(cwd);
   if (!statSync(cwd).isDirectory()) throw new Error('cwd must be a directory');
-  const id = createHash('sha256').update(cwd).digest('hex');
+  const identity = process.platform === 'win32' ? cwd.toLowerCase() : cwd;
+  const id = createHash('sha256').update(identity).digest('hex');
   const root = process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state');
   if (!isAbsolute(root)) throw new Error('XDG_STATE_HOME must be absolute');
   return { cwd, dir: join(root, 'scaffold-agent-loop', id), unit: `scaffold-loop-${id}` };
@@ -55,14 +57,26 @@ export function save(dir: string, name: string, value: unknown): void {
 export function initialize(dir: string): void {
   if (existsSync(dir)) {
     const stat = lstatSync(dir);
-    if (!stat.isDirectory() || stat.uid !== process.getuid?.()) throw new Error('Unsafe loop state directory');
+    if (!stat.isDirectory() || (process.getuid && stat.uid !== process.getuid())) throw new Error('Unsafe loop state directory');
     if (readdirSync(dir).length && !existsSync(join(dir, 'config.json'))) throw new Error('Refusing to overwrite unrelated state');
   }
   mkdirSync(dir, { recursive: true, mode: 0o700 });
 }
 
-export function withControlLock<T>(dir: string, action: () => T): T {
+export async function withControlLock<T>(dir: string, action: () => T | Promise<T>): Promise<T> {
   const lock = join(dir, 'control.lock');
   try { mkdirSync(lock, { mode: 0o700 }); } catch { throw new Error('Loop control is busy; inspect control.lock if an earlier CLI crashed'); }
-  try { return action(); } finally { rmSync(lock, { recursive: true }); }
+  try { return await action(); } finally { rmSync(lock, { recursive: true }); }
+}
+
+export function stopRequest(dir: string, generation: string): { cancel: boolean } | undefined {
+  const path = join(dir, 'stopped.json');
+  if (!existsSync(path)) return;
+  const request = JSON.parse(readFileSync(path, 'utf8')) as { generation: string; cancel: boolean };
+  if (request.generation === generation) return request;
+}
+
+export function alive(progress: Progress): boolean {
+  if (!progress.pid || progress.ended || !progress.heartbeat || Date.now() - progress.heartbeat > 5000) return false;
+  try { process.kill(progress.pid, 0); return true; } catch { return false; }
 }
