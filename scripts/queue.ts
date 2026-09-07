@@ -29,26 +29,23 @@
 //   --accept "<criteria>" --top --worker <name>
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { execSync } from 'node:child_process';
-import { ROOT, sidecar, now, load, save, log, appendArchive } from './queue-io.ts';
+import { ROOT, sidecar, now, load, save, log, appendArchive, withLock, unlocked } from './queue-io.ts';
 import { cmdGate, cmdUngate, drainKick } from './queue-gates.ts';
 import {
   render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
-  fieldPatch, sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
+  sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type Task,
 } from './queue-model.ts';
+import { parse, taskOverrides, SPEC_FLAGS, type Parsed } from './queue-cli-args.ts';
 
 // ---------------------------------------------------------------- flags
 
-interface Parsed { positionals: string[]; flags: Map<string, string>; bools: Set<string>; }
-
-const VALUE_FLAGS = new Set([
-  'mode', 'slug', 'deps', 'files', 'validate', 'accept', 'worker', 'note', 'until', 'minutes', 'only',
-]);
 const MS_PER_MIN = 60000;
 
 // Exit codes for the loop entry points (tick, ready, signal) so a driver can branch
@@ -56,31 +53,6 @@ const MS_PER_MIN = 60000;
 // 3 = idle → back off to a long fallback; 4 = paused for a usage window → slow-poll;
 // 5 = stopped → halt. A bare `return 1` stays the usage/error code.
 const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5 } as const;
-
-function parse(rest: string[]): Parsed {
-  const positionals: string[] = [];
-  const flags = new Map<string, string>();
-  const bools = new Set<string>();
-  for (let i = 0; i < rest.length; i++) {
-    const a = rest[i];
-    if (a.startsWith('--')) {
-      const key = a.slice(2);
-      if (VALUE_FLAGS.has(key)) flags.set(key, rest[++i] ?? '');
-      else bools.add(key);
-    } else positionals.push(a);
-  }
-  return { positionals, flags, bools };
-}
-
-const SPEC_FLAGS = ['mode', 'slug', 'deps', 'files', 'validate', 'accept'];
-
-function taskOverrides(f: Parsed): Partial<Task> {
-  const o: Partial<Task> = {};
-  for (const key of SPEC_FLAGS) {
-    if (f.flags.has(key)) Object.assign(o, fieldPatch(key, f.flags.get(key) ?? ''));
-  }
-  return o;
-}
 
 // ---------------------------------------------------------------- validation
 
@@ -181,7 +153,13 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
   const t = q.tasks.find(x => x.id === id);
   if (!t) { console.error(`done: unknown task id ${id}`); return 1; }
   if (t.validate && !skip) {
-    const r = runValidate(t);
+    const r = unlocked(() => runValidate(t));
+    q = load();
+    const refreshed = q.tasks.find(task => task.id === id);
+    if (!refreshed || !sameTaskClaim(t, refreshed)) {
+      console.error(`done: ${id} changed during validation; inspect and retry`);
+      return 1;
+    }
     if (!r.ok) {
       const res = recordFailure(q, id, `validation failed: ${r.tail}`, q.config.maxFailures);
       save(res.queue);
@@ -206,6 +184,15 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
   console.log(`✓ ${id} done${t.validate && !skip ? ' (validation passed)' : ''}`
     + (archivedSelf ? ' → archived' : ' (kept: still a dependency)'));
   return 0;
+}
+
+function sameTaskClaim(before: Task, after: Task): boolean {
+  return before.status === after.status
+    && before.owner === after.owner
+    && before.startedAt === after.startedAt
+    && before.validate === after.validate
+    && before.failures === after.failures
+    && before.note === after.note;
 }
 
 function cmdConfig(q: Queue, key: string, val: string): number {
@@ -335,6 +322,11 @@ function cmdLoop(q: Queue): number {
 // ---------------------------------------------------------------- dispatch
 
 function main(argv: string[]): number {
+  const stdinItems = argv[0] === 'add-many' && argv.length === 1 ? readStdin() : undefined;
+  return withLock(() => dispatch(argv, stdinItems));
+}
+
+function dispatch(argv: string[], stdinItems?: string[]): number {
   const [cmd = 'list', ...rest] = argv;
   const f = parse(rest);
   const id = f.positionals[0];
@@ -356,7 +348,7 @@ function main(argv: string[]): number {
       console.log(`added ${t.id}${t.mode === 'chain' ? ' (chain)' : ''} — ${title}${drainKick(q)}`); return 0;
     }
     case 'add-many': {
-      const raw = f.positionals.length ? f.positionals : readStdin();
+      const raw = f.positionals.length ? f.positionals : stdinItems ?? readStdin();
       const items = raw.map(cleanItem).filter(Boolean);
       if (!items.length) { console.error('add-many: no items (pass args or pipe lines on stdin)'); return 1; }
       q = addMany(q, items, { top: f.bools.has('top') });
@@ -366,6 +358,9 @@ function main(argv: string[]): number {
     case 'set': {
       const [, field, ...v] = f.positionals;
       if (!needId() || !field) { console.error('usage: queue set <id> <field> <value>'); return 1; }
+      if (!SPEC_FLAGS.includes(field) || (field === 'title' && !v.join(' ').trim())) {
+        console.error('queue set: unsupported field or empty title'); return 1;
+      }
       q = setField(q, id, taskOverrides(parse([`--${field}`, v.join(' ')])));
       save(q);
       console.log(`set ${id}.${field}${drainKick(q)}`); return 0;
@@ -468,6 +463,6 @@ function cleanItem(line: string): string {
 }
 
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   process.exit(main(process.argv.slice(2)));
 }

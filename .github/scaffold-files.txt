@@ -31,6 +31,9 @@ scripts/mermaid-watch.test.ts
 scripts/queue-model.ts
 scripts/queue-io.ts
 scripts/queue-gates.ts
+scripts/queue-edit.test.ts
+scripts/queue-lock.test.ts
+scripts/queue-cli-args.ts
 scripts/sse-watch.ts
 scripts/queue.ts
 scripts/agent-loop.ts

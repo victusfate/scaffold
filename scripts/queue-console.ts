@@ -19,11 +19,11 @@ import http from 'node:http';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { load, save, log, appendArchive, queueFile } from './queue-io.ts';
+import { load, save, log, appendArchive, queueFile, withLock } from './queue-io.ts';
 import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
   addTask, setField, removeTask, moveToTop, moveTask, requeueTask, setConfig,
-  isEligible, deadlocked, drainSignal, fieldPatch, sweepFinished,
+  isEligible, deadlocked, drainSignal, EDITABLE_TASK_FIELDS, fieldPatch, sweepFinished,
   NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type QueueConfig, type Task,
 } from './queue-model.ts';
@@ -67,7 +67,7 @@ export function consoleState(q: Queue): ConsoleState {
 
 // ---------------------------------------------------------------- validation
 
-const PATCHABLE = ['title', 'mode', 'slug', 'deps', 'files', 'validate', 'accept', 'note'] as const;
+const PATCHABLE = EDITABLE_TASK_FIELDS;
 
 /**
  * Convert a wire TaskPatch (all strings) into a model patch, or name the bad
@@ -264,10 +264,15 @@ async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Pr
     sendJson(res, HTTP_BAD_REQUEST, { error: `invalid JSON body: ${(e as Error).message}` });
     return;
   }
-  const result = applyOp(load(), op);
+  const result = withLock(() => {
+    const applied = applyOp(load(), op);
+    if (applied.ok) {
+      if (applied.archived.length) appendArchive(applied.archived);
+      save(applied.queue);
+    }
+    return applied;
+  });
   if (!result.ok) { sendJson(res, HTTP_BAD_REQUEST, { error: result.error }); return; }
-  if (result.archived.length) appendArchive(result.archived);
-  save(result.queue);
   log(`console ${op.op}${'id' in op ? ' ' + op.id : ''}`);
   sendJson(res, HTTP_OK, consoleState(load()));
 }

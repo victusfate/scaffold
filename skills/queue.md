@@ -160,6 +160,15 @@ dependency DAG: deps naming nonexistent tasks, self-deps, cycles, and removing
 a task that unfinished work still depends on are all rejected. Agents get the
 same guarantees through `queue.ts`; humans can still hand-edit the file freely.
 
+Concurrent CLI and console mutations share an exclusive queue sidecar lock. It
+waits for at most one minute and never steals an old lock: a slow live holder
+cannot be distinguished from a crashed one. If it times out, confirm the holder
+is dead before removing `<queue-file>.lock`, then retry the command. Inspect
+that file first: it records the holder PID and acquisition timestamp.
+Validation releases and retakes the lock before it commits; worktree add/remove
+keeps it for the lifecycle so a checkout reference cannot be lost. A slow
+checkout can therefore make another mutation time out rather than interleave.
+
 ## Creating a queue from in-memory items
 
 When you already hold a list of work, pipe it in — one item per line (leading
