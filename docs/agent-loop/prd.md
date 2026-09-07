@@ -7,7 +7,7 @@ them. Users need an external driver with an interval and a concrete instruction.
 
 ## Solution
 
-A discoverable loop skill wraps native scheduling tools or a systemd-backed
+A discoverable loop skill wraps native scheduling tools or a portable
 TypeScript CLI, with durable command configuration and lifecycle controls.
 
 ## User Stories
@@ -26,16 +26,19 @@ CLI verbs: start, status, stop, logs, plus an internal timer-run entrypoint.
 Inputs: checkout, interval, lifetime, timeout, failure limit, and argv.
 Structured JSON on stdout; child output retained in private logs. Unit identity
 is derived from canonical checkout. Configuration never overwrites repo source.
-Systemd provides non-overlap and process-tree timeout. No global settings change.
+An external Node supervisor provides non-overlap and timeout, using process
+groups on POSIX and taskkill on Windows. No global settings change. A crashed
+supervisor is reported, not mistaken for a healthy loop or silently duplicated.
 
 ## Testing Decisions
 
 Test the CLI from temporary checkouts: argv preservation, validation, duplicate
 start, recurrence, non-overlap, graceful stop, cancellation, failure limits, and
 unsupported manager failure. Use harmless local commands, never real agent calls.
-Run an opt-in real systemd integration smoke and scaffold sync/discovery checks.
+Run real harmless supervisor integration tests and scaffold sync/discovery
+checks, including CI on ubuntu-latest, macos-latest, and windows-latest.
 
 ## Out of Scope
 
-Windows-native/macOS external drivers, reboot persistence, billing prediction,
-new agent permissions, and a replacement for queue or subagent management.
+Reboot persistence, billing prediction, new agent permissions, and a replacement
+for queue or subagent management.

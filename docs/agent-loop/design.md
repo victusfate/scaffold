@@ -17,8 +17,9 @@ an actual work loop or install personal skills as part of developing this PR.
 - An instruction is natural language passed as one argument to a headless agent.
   It is never evaluated as shell source. An explicit command is an argv array.
 - The interval is a delay after a completed run. First execution starts promptly.
-- The driver is a native harness scheduler when exposed, or a systemd user timer
-  on Linux/WSL. No pretend wakeup and no chat-local sleep loop.
+- The driver is a native harness scheduler when exposed, or a detached Node
+  supervisor on macOS, Linux/WSL, and native Windows. No pretend wakeup and no
+  chat-local sleep loop. Cross-OS support is a user requirement, not a follow-up.
 - The skill is the conversational front door. A TypeScript helper owns external
   scheduling, bounded execution, status, stop, and log retrieval.
 - One external loop per canonical checkout. No concurrent scheduler writes to
@@ -29,7 +30,7 @@ an actual work loop or install personal skills as part of developing this PR.
   failures. All are configurable. A successful agent exit is not task completion.
 - Stop cancels future runs; explicit cancel also terminates current work. Stop
   on fulfilled objective is part of the instruction, not inferred from exit 0.
-- Timers survive chat closure while the user manager runs, not reboot/WSL shutdown.
+- The supervisor survives chat closure, not reboot/WSL shutdown or supervisor crash.
   No automatic lingering, permission, trust, or model changes.
 - Native `/loop` wins in harnesses that provide it. The scaffold skill is invoked
   explicitly through skill selection there, not installed as a command override.
@@ -43,5 +44,6 @@ the repo's existing interfaces and limits. No paid agent invocation in tests.
 ## Review
 
 Two concerns: conversational scope capture and deterministic scheduling. Native
-scheduler support is conditional on actual tools; external fallback has one
-supported backend, avoiding an untested cross-platform supervisor framework.
+scheduler support is conditional on actual tools. One portable supervisor owns
+recurrence; only process-tree termination differs (POSIX groups vs Windows
+taskkill). No separate launchd/systemd/Task Scheduler installation frameworks.
