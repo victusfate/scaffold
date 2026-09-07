@@ -48,6 +48,9 @@ the child prompt so the child can stop its own future runs without guessing.
 
 Include these execution instructions in the agent prompt:
 
+- Stay within agreed tasks and the explicitly requested queue fallback. Do not
+  infer additional projects, publication authority, or permission to restart a
+  stopped queue.
 - Read repo instructions and the recorded handoff. If the recorded branch
   changed, stop the loop and report before editing.
 - Work continuously during each run; the interval restarts an ended run, not
@@ -59,6 +62,8 @@ Include these execution instructions in the agent prompt:
   limits; use the repo's memory guard for heavy jobs. A timeout is not a RAM cap.
 - Inspect stuck jobs using logs, elapsed time, and process state. Bound retries,
   keep independent work moving, and never loosen permissions or kill unrelated jobs.
+  Launch long jobs nonblockingly, retain their identifiers/logs, and inspect them
+  periodically while remaining responsive to steering.
 - If queue draining was requested, follow its skill and CLI for claims and
   completion, not direct queue-file edits or a replacement queue.
 - Integrate completed worktrees into the one active branch, validate, checkpoint,
@@ -71,6 +76,8 @@ Include these execution instructions in the agent prompt:
 Use an exposed native recurring scheduler if it supports the requested behavior.
 Record its actual ID, lifetime, overlap behavior, and stop method. Do not claim
 session persistence unless provided. Never arm two drivers for the same work.
+Check existing driver status first. Report whether native recurrence is fixed
+cadence or completion-relative and give the child a supported self-stop mechanism.
 When the user needs an external driver and native scheduling is session-bound
 or absent, use the external fallback.
 
@@ -126,4 +133,6 @@ Status/log requests are read-only: never create or restart a timer. Use the
 recorded driver. Active scheduling does not prove productive progress; inspect
 recent job output too. To change configuration, stop future runs, wait for or
 explicitly cancel current work, then start anew. Do not overwrite an active
-configuration. An explicit stop is immediate and must not be auto-rearmed.
+configuration. Disabling future runs is immediate and must not be auto-rearmed.
+The current run may still claim new tasks until it ends or times out; use explicit
+cancellation when the user wants all current work stopped too.
