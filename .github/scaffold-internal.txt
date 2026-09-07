@@ -32,6 +32,7 @@ tsconfig.json
 
 # Scaffold's own CI (consumers get sync-scaffold.yml + quality.yml + release.yml)
 .github/workflows/ci.yml
+.github/workflows/agent-loop.yml
 
 # Session checkpoints
 .pause

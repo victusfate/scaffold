@@ -30,8 +30,15 @@ scripts/mermaid-watch.ts
 scripts/mermaid-watch.test.ts
 scripts/queue-model.ts
 scripts/queue-io.ts
+scripts/queue-gates.ts
 scripts/sse-watch.ts
 scripts/queue.ts
+scripts/agent-loop.ts
+scripts/agent-loop-state.ts
+scripts/agent-loop-process.ts
+scripts/agent-loop-runner.ts
+scripts/agent-loop.test.ts
+scripts/agent-loop.integration.test.ts
 scripts/queue.test.ts
 scripts/queue-console.ts
 scripts/queue-console.template.html
@@ -129,6 +136,11 @@ skills/pause.md
 skills/resume.md
 skills/save.md
 skills/queue.md
+skills/loop.md
+.claude/skills/loop/SKILL.md
+.cursor/rules/loop.mdc
+.agents/skills/loop/SKILL.md
+.agent/workflows/loop.md
 .claude/skills/pause/SKILL.md
 .claude/skills/resume/SKILL.md
 .claude/skills/save/SKILL.md
