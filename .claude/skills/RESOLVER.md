@@ -7,6 +7,7 @@ the first match.
 
 | Skill | Invocation Regex | Path | Purpose |
 |---|---|---|---|
+| loop | `/(?:^\/loop\b)/i` | `skills/loop.md` | Schedule a recurring instruction or command with an interval; use for /loop, loop status, or loop stop, with native scheduling or an external Linux/WSL driver |
 | feature-chain | `/(?:^\/feature-chain\b)\|(?:build\|implement\|add)\s+(?:a\s+)?(?:new\s+)?(?:feature\|capability)/i` | `skills/feature-chain.md` | Orchestrate design → PRD → TDD → review end to end |
 | grill-with-docs | `/(?:^\/grill-with-docs\b)\|(?:stress[-\s]?test\|sharpen)\s+(?:the\s+)?(?:plan\|design\|idea)/i` | `skills/grill-with-docs.md` | Design Q&A → design.md + canonical vocabulary |
 | to-prd | `/(?:^\/to-prd\b)\|(?:write\|create\|generate)\s+(?:a\s+)?prd/i` | `skills/to-prd.md` | Synthesize context + codebase → prd.md |

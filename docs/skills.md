@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/queue`, `/voice-chat`.
+Skills can be invoked individually: `/loop`, `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/queue`, `/voice-chat`.
 
 In Codex, use `$skill-name` or `/skills` to select these workflows from `.agents/skills`. See [Codex support](codex.md) for setup and client-specific behavior.
 
@@ -39,6 +39,7 @@ tools/
 .claude/
   skills/
     RESOLVER.md               # central routing table — skill → regex → path
+    loop/SKILL.md             # Schedule a recurring instruction or command with an interval; use for /loop, loop status, or loop stop, with native scheduling or an external Linux/WSL driver
     feature-chain/SKILL.md    # Orchestrate design → PRD → TDD → review end to end
     grill-with-docs/SKILL.md  # Design Q&A → design.md + canonical vocabulary
     to-prd/SKILL.md           # Synthesize context + codebase → prd.md
@@ -75,6 +76,7 @@ tools/
 .cursor/
   rules/
     agents.mdc           # thin pointer to AGENTS.md
+    loop.mdc             # mirrors loop for Cursor
     feature-chain.mdc    # mirrors feature-chain for Cursor
     grill-with-docs.mdc  # mirrors grill-with-docs for Cursor
     to-prd.mdc           # mirrors to-prd for Cursor
@@ -103,6 +105,7 @@ tools/
     voice-chat.mdc       # mirrors voice-chat for Cursor
 .agents/
   skills/
+    loop/SKILL.md             # Schedule a recurring instruction or command with an interval; use for /loop, loop status, or loop stop, with native scheduling or an external Linux/WSL driver
     feature-chain/SKILL.md    # Orchestrate design → PRD → TDD → review end to end
     grill-with-docs/SKILL.md  # Design Q&A → design.md + canonical vocabulary
     to-prd/SKILL.md           # Synthesize context + codebase → prd.md
@@ -134,6 +137,7 @@ tools/
   rules/
     agents.md           # thin pointer to AGENTS.md (always-on)
   workflows/
+    loop.md             # Schedule a recurring instruction or command with an interval; use for /loop, loop status, or loop stop, with native scheduling or an external Linux/WSL driver
     feature-chain.md    # Orchestrate design → PRD → TDD → review end to end
     grill-with-docs.md  # Design Q&A → design.md + canonical vocabulary
     to-prd.md           # Synthesize context + codebase → prd.md

@@ -129,6 +129,11 @@ skills/pause.md
 skills/resume.md
 skills/save.md
 skills/queue.md
+skills/loop.md
+.claude/skills/loop/SKILL.md
+.cursor/rules/loop.mdc
+.agents/skills/loop/SKILL.md
+.agent/workflows/loop.md
 .claude/skills/pause/SKILL.md
 .claude/skills/resume/SKILL.md
 .claude/skills/save/SKILL.md
