@@ -76,6 +76,16 @@ void test('real systemd enforces failures and group timeout', { skip: !enabled }
   } finally { invoke(cwd, ['stop', '--cancel']); rmSync(cwd, { recursive: true }); }
 });
 
+void test('real systemd counts timeout before the runner initializes', { skip: !enabled }, async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'agent-loop-early-timeout-'));
+  try {
+    start(cwd, ['--timeout', '1ms', '--max-failures', '1'], 'setInterval(()=>{}, 100)');
+    const stopped = await until(cwd, status => !status.armed);
+    assert.equal(stopped.runs, 1);
+    assert.equal(stopped.failures, 1);
+  } finally { invoke(cwd, ['stop', '--cancel']); rmSync(cwd, { recursive: true }); }
+});
+
 void test('real systemd explicit cancellation kills descendants', { skip: !enabled }, async () => {
   const cwd = mkdtempSync(join(tmpdir(), 'agent-loop-cancel-'));
   try {

@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 // Private durable configuration and per-run progress for the external loop CLI.
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 
@@ -15,7 +15,7 @@ export interface Config {
 }
 export interface Progress {
   runs: number; failures: number; running: boolean; startedAt?: number;
-  finishedAt?: number; outcome?: string;
+  finishedAt?: number; outcome?: string; invocation?: string;
 }
 export const EMPTY: Progress = { runs: 0, failures: 0, running: false };
 
@@ -30,6 +30,7 @@ export function duration(value: string): number {
 
 export function location(cwd: string): { cwd: string; dir: string; unit: string } {
   cwd = realpathSync(cwd);
+  if (!statSync(cwd).isDirectory()) throw new Error('cwd must be a directory');
   const id = createHash('sha256').update(cwd).digest('hex');
   const root = process.env.XDG_STATE_HOME || join(homedir(), '.local', 'state');
   if (!isAbsolute(root)) throw new Error('XDG_STATE_HOME must be absolute');

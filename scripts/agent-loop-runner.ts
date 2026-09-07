@@ -31,6 +31,7 @@ export async function run(dir: string, generation: string): Promise<void> {
     return;
   }
   progress.runs++;
+  progress.invocation = process.env.INVOCATION_ID;
   progress.running = true;
   progress.startedAt = Date.now();
   save(dir, 'progress.json', progress);
@@ -50,6 +51,30 @@ export async function run(dir: string, generation: string): Promise<void> {
   if (finishedReason) {
     save(dir, 'stopped.json', { reason: finishedReason });
     control(['stop', `${config.unit}.timer`]);
+  }
+}
+
+export function finish(dir: string, generation: string): void {
+  if (!process.env.INVOCATION_ID) throw new Error('timer-finish is reserved for the systemd service');
+  const config = readConfig(dir);
+  if (config.generation !== generation) throw new Error('Stale loop generation');
+  const progress = readProgress(dir);
+  // ExecStopPost also runs when the main process dies before JavaScript starts.
+  // Invocation identity distinguishes that failure from a completed attempt.
+  const neverStarted = progress.invocation !== process.env.INVOCATION_ID;
+  if (process.env.SERVICE_RESULT !== 'success' && (neverStarted || progress.running)) {
+    if (neverStarted) progress.runs++;
+    progress.invocation = process.env.INVOCATION_ID;
+    progress.running = false;
+    progress.failures++;
+    progress.finishedAt = Date.now();
+    progress.outcome = `systemd ${process.env.SERVICE_RESULT || 'failure'}`;
+    save(dir, 'progress.json', progress);
+  }
+  const reason = limitReason(config, progress);
+  if (reason) {
+    save(dir, 'stopped.json', { reason });
+    control(['stop', `${config.unit}.timer`], true);
   }
 }
 

@@ -27,6 +27,8 @@ export function busy(state: string): boolean {
 }
 
 export function arm(config: Config, dir: string, script: string): void {
+  const finalize = [process.execPath, script, 'timer-finish', '--state', dir, '--generation', config.generation]
+    .map(value => JSON.stringify(value).replaceAll('%', '%%')).join(' ');
   const result = spawnSync('systemd-run', [
     '--user', '--quiet', `--unit=${config.unit}`, '--expand-environment=no',
     '--on-active=1s', `--on-unit-inactive=${config.interval}ms`,
@@ -34,6 +36,7 @@ export function arm(config: Config, dir: string, script: string): void {
     '--property=Type=exec', '--property=KillMode=control-group',
     `--property=RuntimeMaxSec=${config.timeout}ms`, '--property=TimeoutStopSec=2s',
     '--property=Restart=no', '--property=UMask=0077',
+    `--property=ExecStopPost=:${finalize}`,
     '--', process.execPath, script, 'timer-run', '--state', dir, '--generation', config.generation,
   ], { encoding: 'utf8', timeout: CONTROL_TIMEOUT });
   if (result.error || result.status !== 0) {

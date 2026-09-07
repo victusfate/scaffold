@@ -7,14 +7,14 @@ import { fileURLToPath } from 'node:url';
 import { duration, EMPTY, initialize, location, readConfig, readProgress, save, withControlLock } from './agent-loop-state.ts';
 import type { Config } from './agent-loop-state.ts';
 import { arm, available, busy, control, unitState } from './agent-loop-systemd.ts';
-import { run } from './agent-loop-runner.ts';
+import { finish, run } from './agent-loop-runner.ts';
 
 const DEFAULT_FAILURES = 3;
 interface Input { verb: string; options: Map<string, string>; argv: string[]; cancel: boolean }
 
 function allowedOptions(verb: string): string[] {
   if (verb === 'start') return ['--cwd', '--interval', '--timeout', '--lifetime', '--max-failures'];
-  return verb === 'timer-run' ? ['--state', '--generation'] : ['--cwd'];
+  return verb.startsWith('timer-') ? ['--state', '--generation'] : ['--cwd'];
 }
 
 function addOption(options: Map<string, string>, key: string, value: string | undefined, verb: string): void {
@@ -24,7 +24,7 @@ function addOption(options: Map<string, string>, key: string, value: string | un
 
 function parse(args: string[]): Input {
   const verb = args.shift() || '';
-  if (!['start', 'status', 'stop', 'logs', 'timer-run'].includes(verb)) {
+  if (!['start', 'status', 'stop', 'logs', 'timer-run', 'timer-finish'].includes(verb)) {
     throw new Error('Usage: agent-loop.ts start|status|stop|logs --cwd PATH [options] [-- CMD ARG...]');
   }
   const separator = args.indexOf('--');
@@ -113,6 +113,10 @@ function logTail(dir: string): string {
 
 async function main(): Promise<void> {
   const input = parse(process.argv.slice(2));
+  if (input.verb === 'timer-finish') {
+    finish(input.options.get('--state') || '', input.options.get('--generation') || '');
+    return;
+  }
   if (input.verb === 'timer-run') {
     await run(input.options.get('--state') || '', input.options.get('--generation') || '');
     return;
