@@ -20,6 +20,8 @@
 //   node scripts/queue.ts start | stop               # run/pause the worker
 //   node scripts/queue.ts interval 6m                # edit the wake interval
 //   node scripts/queue.ts config <key> <value>       # maxFailures|leaseMinutes|maxParallel|integrationBranch
+//   node scripts/queue.ts gate <gate-id> [--only f]  # deps: <gate-id> on every other task (block)
+//   node scripts/queue.ts ungate <gate-id>           # remove <gate-id> from deps + mark it done (unblock)
 //   node scripts/queue.ts archive                    # sweep done/failed into archive.md
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
 //
@@ -35,7 +37,7 @@ import {
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
-  fieldPatch, sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
+  fieldPatch, sweepFinished, gateTasks, ungateTasks, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type Task,
 } from './queue-model.ts';
 
@@ -44,7 +46,7 @@ import {
 interface Parsed { positionals: string[]; flags: Map<string, string>; bools: Set<string>; }
 
 const VALUE_FLAGS = new Set([
-  'mode', 'slug', 'deps', 'files', 'validate', 'accept', 'worker', 'note', 'until', 'minutes',
+  'mode', 'slug', 'deps', 'files', 'validate', 'accept', 'worker', 'note', 'until', 'minutes', 'only',
 ]);
 const MS_PER_MIN = 60000;
 
@@ -224,6 +226,53 @@ function cmdArchive(q: Queue): number {
   save(queue);
   log(`archived ${swept.length} task(s)`);
   console.log(`archived ${swept.length} task(s) → ${sidecar('archive.md')}`);
+  return 0;
+}
+
+/**
+ * `queue gate <gate-id> [--only <filter>] [--dry-run]` — the mechanical form of a
+ * temporary priority block: add `deps: <gate-id>` to every other unfinished task
+ * so nothing runs until the gate is done. Idempotent, cycle-safe, filterable.
+ * `--dry-run` prints the plan without writing. Replaces hand-editing `queue.md`.
+ */
+function cmdGate(q: Queue, gateId: string, only: string, dryRun: boolean): number {
+  if (!gateId) { console.error('usage: queue gate <gate-id> [--only <filter>] [--dry-run]'); return 1; }
+  if (!q.tasks.some(t => t.id === gateId)) { console.error(`gate: unknown gate task id ${gateId}`); return 1; }
+  const { queue, gated } = gateTasks(q, gateId, only || undefined);
+  const scope = only ? ` matching "${only}"` : '';
+  if (dryRun) {
+    console.log(`gate (dry-run): would gate ${gated.length} task(s)${scope} behind ${gateId}`
+      + (gated.length ? `\n  ${gated.join(', ')}` : ''));
+    return 0;
+  }
+  save(queue); log(`gate ${gateId} → ${gated.length} task(s)${scope}`);
+  console.log(`gated ${gated.length} task(s)${scope} behind ${gateId}`
+    + (gated.length ? ` (${gated.join(', ')})` : ' (nothing to gate)'));
+  return 0;
+}
+
+/**
+ * `queue ungate <gate-id> [--keep-gate] [--dry-run]` — lift a gate: strip
+ * `<gate-id>` from every task's deps and, unless `--keep-gate`, mark the gate task
+ * done so its blocked dependents become eligible. The mechanical way to open a
+ * block like the model-fidelity gate (never text-edit `queue.md`).
+ */
+function cmdUngate(q: Queue, gateId: string, keepGate: boolean, dryRun: boolean): number {
+  if (!gateId) { console.error('usage: queue ungate <gate-id> [--keep-gate] [--dry-run]'); return 1; }
+  const gate = q.tasks.find(t => t.id === gateId);
+  const { queue, ungated } = ungateTasks(q, gateId);
+  const markGate = gate && !keepGate && gate.status !== 'done';
+  if (dryRun) {
+    console.log(`ungate (dry-run): would ungate ${ungated.length} task(s) from ${gateId}`
+      + (markGate ? ` and mark ${gateId} done` : '')
+      + (ungated.length ? `\n  ${ungated.join(', ')}` : ''));
+    return 0;
+  }
+  const finalQ = markGate ? markDone(queue, gateId) : queue;
+  save(finalQ); log(`ungate ${gateId} → ${ungated.length} task(s)${markGate ? ' + done' : ''}`);
+  console.log(`ungated ${ungated.length} task(s) from ${gateId}`
+    + (markGate ? `; ${gateId} marked done` : '')
+    + drainKick(finalQ));
   return 0;
 }
 
@@ -442,13 +491,16 @@ function main(argv: string[]): number {
       if (!id) { console.error('usage: queue interval <duration>'); return 1; }
       save(setConfig(q, { interval: id })); console.log(`interval: ${id}`); return 0;
     case 'config': return cmdConfig(q, f.positionals[0], f.positionals.slice(1).join(' '));
+    case 'gate': return cmdGate(q, f.positionals[0] ?? '', f.flags.get('only') ?? '', f.bools.has('dry-run'));
+    case 'ungate': return cmdUngate(q, f.positionals[0] ?? '', f.bools.has('keep-gate'), f.bools.has('dry-run'));
     case 'archive': return cmdArchive(q);
     case 'loop': return cmdLoop(q);
     case 'worktree': case 'wt': return cmdWorktree(q, f.positionals[0] ?? '', f.positionals[1] ?? '');
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
-        + `signal claim begin done fail top move requeue remove start stop pause interval config archive loop worktree`);
+        + `signal claim begin done fail top move requeue remove start stop pause interval config `
+        + `gate ungate archive loop worktree`);
       return 1;
   }
 }
