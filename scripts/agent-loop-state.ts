@@ -6,6 +6,7 @@ import { isAbsolute, join } from 'node:path';
 
 const SECOND = 1000;
 const HEARTBEAT_STALE_MS = 5000;
+const DURATION_HINT = 'use 10min, 10m, 30s, or 8h (maximum 30 days)';
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 const MAX_DURATION = 30 * 24 * HOUR;
@@ -25,7 +26,7 @@ export function duration(value: string): number {
   const match = /^(\d+)(ms|s|m|min|h)$/.exec(value);
   const result = match ? Number(match[1]) * UNITS[match[2]] : NaN;
   if (!Number.isSafeInteger(result) || result < 1 || result > MAX_DURATION) {
-    throw new Error(`Invalid duration: ${value}; use 10min, 10m, 30s, or 8h (maximum 30 days)`);
+    throw new Error(`Invalid duration: ${value}; ${DURATION_HINT}`);
   }
   return result;
 }

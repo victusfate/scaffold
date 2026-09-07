@@ -13,6 +13,7 @@ import { supervise } from './agent-loop-runner.ts';
 const DEFAULT_FAILURES = 3;
 const HANDSHAKE_TIMEOUT_MS = 10_000;
 const HANDSHAKE_POLL_MS = 25;
+const MAX_LOG_BYTES = 64 * 1024;
 interface Input { verb: string; options: Map<string, string>; argv: string[]; cancel: boolean }
 
 function allowedOptions(verb: string): string[] {
@@ -113,11 +114,10 @@ function logTail(dir: string): string {
   const log = join(dir, 'output.log');
   if (!existsSync(log)) return '';
   const fd = openSync(log, 'r');
-  const maxBytes = 64 * 1024;
   try {
     const size = fstatSync(fd).size;
-    const buffer = Buffer.alloc(Math.min(size, maxBytes));
-    const bytes = readSync(fd, buffer, 0, buffer.length, Math.max(0, size - maxBytes));
+    const buffer = Buffer.alloc(Math.min(size, MAX_LOG_BYTES));
+    const bytes = readSync(fd, buffer, 0, buffer.length, Math.max(0, size - MAX_LOG_BYTES));
     return buffer.subarray(0, bytes).toString('utf8');
   } finally { closeSync(fd); }
 }
