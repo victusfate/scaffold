@@ -31,6 +31,7 @@
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { execSync } from 'node:child_process';
 import { ROOT, sidecar, now, load, save, log, appendArchive, withLock, unlocked } from './queue-io.ts';
 import { cmdGate, cmdUngate, drainKick } from './queue-gates.ts';
@@ -156,7 +157,7 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
     const r = unlocked(() => runValidate(t));
     q = load();
     const refreshed = q.tasks.find(task => task.id === id);
-    if (!refreshed || !sameTaskClaim(t, refreshed)) {
+    if (!refreshed || !isDeepStrictEqual(t, refreshed)) {
       console.error(`done: ${id} changed during validation; inspect and retry`);
       return 1;
     }
@@ -184,15 +185,6 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
   console.log(`✓ ${id} done${t.validate && !skip ? ' (validation passed)' : ''}`
     + (archivedSelf ? ' → archived' : ' (kept: still a dependency)'));
   return 0;
-}
-
-function sameTaskClaim(before: Task, after: Task): boolean {
-  return before.status === after.status
-    && before.owner === after.owner
-    && before.startedAt === after.startedAt
-    && before.validate === after.validate
-    && before.failures === after.failures
-    && before.note === after.note;
 }
 
 function cmdConfig(q: Queue, key: string, val: string): number {
@@ -322,7 +314,8 @@ function cmdLoop(q: Queue): number {
 // ---------------------------------------------------------------- dispatch
 
 function main(argv: string[]): number {
-  const stdinItems = argv[0] === 'add-many' && argv.length === 1 ? readStdin() : undefined;
+  const stdinItems = argv[0] === 'add-many' && parse(argv.slice(1)).positionals.length === 0
+    ? readStdin() : undefined;
   return withLock(() => dispatch(argv, stdinItems));
 }
 
@@ -348,7 +341,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       console.log(`added ${t.id}${t.mode === 'chain' ? ' (chain)' : ''} — ${title}${drainKick(q)}`); return 0;
     }
     case 'add-many': {
-      const raw = f.positionals.length ? f.positionals : stdinItems ?? readStdin();
+      const raw = f.positionals.length ? f.positionals : stdinItems ?? [];
       const items = raw.map(cleanItem).filter(Boolean);
       if (!items.length) { console.error('add-many: no items (pass args or pipe lines on stdin)'); return 1; }
       q = addMany(q, items, { top: f.bools.has('top') });
