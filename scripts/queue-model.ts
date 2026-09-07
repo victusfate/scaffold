@@ -476,6 +476,74 @@ export function render(q: Queue): string {
 
 // ---------------------------------------------------------------- selection
 
+/**
+ * The set of task ids `id` transitively depends on (its ancestors in the dep
+ * DAG). Used by `gateTasks` to never add a gate dep to a task the gate itself
+ * already depends on — that would close a cycle and deadlock both.
+ */
+function dependencyClosure(q: Queue, id: string): Set<string> {
+  const seen = new Set<string>();
+  const stack = [id];
+  while (stack.length) {
+    const cur = stack.pop()!;
+    const task = q.tasks.find(t => t.id === cur);
+    if (!task) continue;
+    for (const d of task.dependsOn) {
+      if (!seen.has(d)) { seen.add(d); stack.push(d); }
+    }
+  }
+  return seen;
+}
+
+/**
+ * Apply a dependency gate: add `gateId` to the deps of every OTHER unfinished
+ * task so nothing runs until the gate task is done. This is the mechanical form
+ * of a temporary priority block (e.g. the 2026 model-fidelity block, where every
+ * non-model task carried `deps: task-591`) — never hand-edit deps to do this.
+ *
+ * Idempotent and cycle-safe. A task is skipped when it: is the gate itself; is
+ * already `done`/`failed` (a finished task can't be blocked); already lists the
+ * gate in its deps; is an ancestor the gate transitively depends on (adding the
+ * dep would close a cycle); or, when `only` is given, does not match that
+ * case-insensitive substring against its id or title. Returns the new queue and
+ * the ids actually gated (empty when the gate task doesn't exist).
+ */
+export function gateTasks(
+  q: Queue, gateId: string, only?: string,
+): { queue: Queue; gated: string[] } {
+  if (!q.tasks.some(t => t.id === gateId)) return { queue: q, gated: [] };
+  const ancestors = dependencyClosure(q, gateId);
+  const needle = only?.trim().toLowerCase() ?? '';
+  const gated: string[] = [];
+  const tasks = q.tasks.map(t => {
+    if (t.id === gateId) return t;
+    if (t.status === 'done' || t.status === 'failed') return t;
+    if (t.dependsOn.includes(gateId)) return t;
+    if (ancestors.has(t.id)) return t;
+    if (needle && !`${t.id} ${t.title}`.toLowerCase().includes(needle)) return t;
+    gated.push(t.id);
+    return { ...t, dependsOn: [...t.dependsOn, gateId] };
+  });
+  return { queue: withTasks(q, tasks), gated };
+}
+
+/**
+ * Lift a dependency gate: strip `gateId` from every task's deps (trimming a
+ * multi-dep list, dropping an empty one). The inverse of `gateTasks` — the
+ * mechanical way to open a block like the model-fidelity gate rather than
+ * text-editing `queue.md`. Returns the new queue and the ids actually ungated.
+ * The gate task itself is untouched here; the CLI marks it done separately.
+ */
+export function ungateTasks(q: Queue, gateId: string): { queue: Queue; ungated: string[] } {
+  const ungated: string[] = [];
+  const tasks = q.tasks.map(t => {
+    if (!t.dependsOn.includes(gateId)) return t;
+    ungated.push(t.id);
+    return { ...t, dependsOn: t.dependsOn.filter(d => d !== gateId) };
+  });
+  return { queue: withTasks(q, tasks), ungated };
+}
+
 /** A pending task is eligible only when every dependency is done. */
 export function isEligible(task: Task, q: Queue): boolean {
   return task.status === 'pending'
