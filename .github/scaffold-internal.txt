@@ -62,3 +62,8 @@ tools/sync
 # Per-repo work-queue state (see skills/queue.md). Each repo owns its own queue;
 # scaffold ships the /queue skill + scripts/queue.ts, not this runtime file.
 .agent/queue/queue.md
+
+# Codex consumer acceptance tests
+tools/hoist-skill/codex.test.ts
+scripts/voice/agent.test.ts
+scripts/voice/fixtures/cli.ts

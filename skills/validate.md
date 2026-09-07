@@ -1,7 +1,7 @@
 ## Purpose
 
 > **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
 
 Validate that a change is **correct** — hunt for bugs. Default scope is the current
 branch diff; `--full` scans the entire codebase to catch issues before CI.
@@ -16,6 +16,11 @@ them.
 - `--full` — review all tracked source files instead of just the branch diff
 - `--comment` — post findings as inline PR review comments via GitHub MCP tools
 - `--fix` — apply findings directly to the working tree
+
+## Client capabilities
+
+Apply the [harness capability rules](../AGENTS.md#harness-capabilities) for
+native subagents, concurrency, review isolation, and referenced-file reads.
 
 ## Execution model
 

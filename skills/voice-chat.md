@@ -1,11 +1,12 @@
 ## Instructions
 
-> **Multi-harness:** This skill spawns the agent binary as a subprocess. Detect the
-> harness at runtime: if `PI_CODING_AGENT` is set, use `pi -p`; if `AGY` or
-> `ANTIGRAVITY` env vars are set, use `agy -p`; otherwise default to `claude -p`.
-> The `--resume` flag is Claude Code-specific; pi uses `--continue` / `-c`, agy
-> uses `--continue` / `-c`. Everything else (STT, TTS, silence-gate) is
-> harness-agnostic.
+> **Multi-harness:** The runner supports `VOICE_AGENT=claude` (default) and
+> `VOICE_AGENT=codex`. In Codex, prefix both `--check` and launch with
+> `VOICE_AGENT=codex`. Codex uses `exec --json` and resumes the returned thread ID;
+> Claude retains `-p` / `--resume`. Other clients may drive this skill, but the
+> runner does not implement pi/agy subprocess protocols. Never substitute binaries
+> while retaining another client’s flags.
+
 
 Set up or run **voice-chat** — a hands-free, headphones-only voice loop that lets
 the user talk to the coding agent with no keyboard. The engine lives in
@@ -13,11 +14,11 @@ the user talk to the coding agent with no keyboard. The engine lives in
 launch and explains the knobs.
 
 **The pipeline** (everything local/offline except the LLM call, which rides the
-user's existing subscription — flat-rate, full tools, *not* the metered Agent SDK):
+selected CLI’s existing authentication and account limits):
 
 ```
 mic ─(sox rec, silence-gated)─▶ wav ─(whisper.cpp)─▶ text
-    ─(<agent> -p --resume)─▶ reply ─(XTTS | Piper | say | espeak-ng)─▶ headphones
+    ─(Claude or Codex CLI)─▶ reply ─(XTTS | Piper | say | espeak-ng)─▶ headphones
 ```
 
 Turns run sequentially; a sox silence-gate does endpointing (always-on VAD, no
@@ -85,7 +86,8 @@ Everything is env-overridable and reversible in one line. Most-used:
 |---|---|---|
 | `VOICE_TTS_BACKEND` | `auto` | `say` / `espeak` / `piper` / `xtts` |
 | `VOICE_GREETING` / `VOICE_SIGNOFF` | neutral | spoken lines — give the loop a persona without touching code |
-| `VOICE_ALLOWED_TOOLS` | `Read,Edit,Write,Bash,Glob,Grep` | agent tool allowlist |
+| `VOICE_AGENT` | `claude` | `claude` or `codex` CLI backend |
+| `VOICE_ALLOWED_TOOLS` | `Read,Edit,Write,Bash,Glob,Grep` | Claude-only tool allowlist |
 | `VOICE_WHISPER_MODEL` | `~/.whisper-models/ggml-base.en.bin` | STT model |
 | `VOICE_PLAYER` | `afplay` (mac) / `paplay` | wav player for piper/xtts |
 | `VOICE_START_THRESHOLD` / `VOICE_STOP_SECS` / `VOICE_STOP_THRESHOLD` | `1%` / `1.5` / `1%` | silence-gate feel — the biggest lever |
@@ -98,6 +100,6 @@ streaming) live in `scripts/voice/README.md` — read it for anything not covere
 - **Neutral by default; re-flavor via env.** The shipped defaults are persona-free
   (greeting "Ready. I'm listening.", sign-off "Goodbye."). A consumer gives it a
   voice purely through `VOICE_GREETING` / `VOICE_SIGNOFF` / `VOICE_TTS_VOICE`.
-- **Free stack.** Every piece is local except the agent call, which uses the
-  user's existing subscription — no metered API spend.
+- **Local audio.** Only the agent call uses a remote service; billing and limits
+  follow the selected CLI's authentication, including API billing when configured.
 - **Cross-platform.** macOS, Linux, and WSL; capture/playback auto-detect the host.

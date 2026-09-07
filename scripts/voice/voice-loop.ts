@@ -2,8 +2,7 @@
 // voice-loop.ts — hands-free, headphones-only voice loop for the coding agent.
 //
 // The goal: talk to the coding agent with no keyboard. You speak, whisper.cpp
-// transcribes, `claude -p` does the real work (full tool use, flat-rate under
-// your Claude Code subscription — NOT the metered Agent SDK), and a local TTS
+// transcribes, the selected Claude or Codex CLI does the agent work, and a local TTS
 // backend speaks the reply back. Headphones make this clean: the agent's own
 // voice never leaks into the mic, so no echo cancellation is needed.
 //
@@ -11,11 +10,11 @@
 // host — `say`/`afplay` on macOS, `espeak-ng`/`paplay` elsewhere — and every
 // choice is env-overridable.
 //
-// This is the FREE stack — every piece is local/offline except the LLM call,
-// which rides your existing subscription:
+// Every piece is local/offline except the LLM call, which uses the selected
+// CLI’s authentication and account limits:
 //   mic --(sox rec, silence-gated)--> wav
 //       --(whisper.cpp local model)--> text
-//       --(claude -p --resume)--> reply text   (full tools, flat-rate)
+//       --(Claude or Codex CLI)--> reply text
 //       --(XTTS clone | Piper model | say | espeak-ng)--> headphones
 //
 // TTS is pluggable (VOICE_TTS_BACKEND): 'say' (macOS built-in), 'espeak'
@@ -37,6 +36,7 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir, homedir } from 'node:os'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { agentConfig, askAgent } from './agent.ts'
 
 // ---- Config (env-overridable; all reversible in one line) -------------------
 
@@ -84,11 +84,6 @@ const CFG = {
   xttsSpeaker:
     process.env.VOICE_XTTS_SPEAKER ?? join(homedir(), '.xtts-voices', 'sample.wav'),
   xttsLang: process.env.VOICE_XTTS_LANG ?? 'en',
-
-  // Agent — full tools, flat-rate via the CLI under your subscription.
-  claudeBin: process.env.VOICE_CLAUDE_BIN ?? 'claude',
-  allowedTools:
-    process.env.VOICE_ALLOWED_TOOLS ?? 'Read,Edit,Write,Bash,Glob,Grep',
 
   // Spoken lines — neutral by default; give the loop a persona via env without
   // touching code. VOICE_GREETING plays once at startup; VOICE_SIGNOFF on exit.
@@ -224,6 +219,7 @@ async function speak(text: string): Promise<void> {
 // ---- Dependency check -------------------------------------------------------
 
 function checkDeps(): string[] {
+  const agent = agentConfig()
   const problems: string[] = []
   if (!have('rec') && !have('sox'))
     problems.push('sox (mic capture) — install: brew install sox')
@@ -237,8 +233,8 @@ function checkDeps(): string[] {
         '     mkdir -p ~/.whisper-models && curl -L -o ~/.whisper-models/ggml-base.en.bin \\\n' +
         '       https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin',
     )
-  if (!have(CFG.claudeBin))
-    problems.push(`${CFG.claudeBin} (agent) — Claude Code CLI must be on PATH`)
+  if (!have(agent.binary))
+    problems.push(`${agent.binary} (agent) — ${agent.name} CLI must be on PATH`)
 
   // Platform-aware hint for the audio player these backends pipe wavs through.
   const playerHint = IS_MAC
@@ -306,28 +302,6 @@ function transcribe(wav: string): string {
   return (r.stdout ?? '').replace(/\s+/g, ' ').trim()
 }
 
-/**
- * Send text to the agent. First turn starts a fresh session; later turns
- * resume it so context carries across the conversation. Returns { reply,
- * sessionId }.
- */
-function ask(text: string, sessionId: string | null): { reply: string; sessionId: string | null } {
-  const args = ['-p', text, '--output-format', 'json', '--allowedTools', CFG.allowedTools]
-  if (sessionId) args.push('--resume', sessionId)
-  // quality-ok: magic-number — 64 MB stdout cap, room for a long agent reply
-  const r = spawnSync(CFG.claudeBin, args, { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
-  if (r.status !== 0) {
-    return { reply: `The agent call failed. ${(r.stderr ?? '').trim()}`.trim(), sessionId }
-  }
-  try {
-    const j = JSON.parse(r.stdout) as { result?: string; session_id?: string }
-    return { reply: (j.result ?? '').trim(), sessionId: j.session_id ?? sessionId }
-  } catch {
-    // Fallback: treat raw stdout as the reply if JSON parsing fails.
-    return { reply: (r.stdout ?? '').trim(), sessionId }
-  }
-}
-
 // ---- Main -------------------------------------------------------------------
 
 async function main() {
@@ -337,11 +311,12 @@ async function main() {
       'voice-loop — hands-free voice loop for the coding agent.\n' +
         '  node scripts/voice/voice-loop.ts          start the loop\n' +
         '  node scripts/voice/voice-loop.ts --check  verify deps and exit\n' +
-        '  env: VOICE_TTS_BACKEND, VOICE_GREETING, VOICE_WHISPER_MODEL, VOICE_ALLOWED_TOOLS, ...',
+        '  env: VOICE_TTS_BACKEND, VOICE_GREETING, VOICE_WHISPER_MODEL, VOICE_AGENT=claude|codex, ...',
     )
     return
   }
 
+  const agent = agentConfig()
   const problems = checkDeps()
   if (problems.length) {
     console.error('Voice loop is missing some pieces:\n')
@@ -358,7 +333,7 @@ async function main() {
       : `say -v ${CFG.ttsVoice}`
     const recorder = have('rec') ? 'rec' : 'sox'
     console.log(`All voice-loop deps present. STT: ${CFG.whisperModel} | TTS: ${tts} (${voice})`)
-    console.log(`Platform: ${PLATFORM}. Recorder: ${recorder}. Player: ${CFG.player}.`)
+    console.log(`Agent: ${agent.name} (${agent.binary}). Platform: ${PLATFORM}. Recorder: ${recorder}. Player: ${CFG.player}.`)
     return
   }
 
@@ -394,7 +369,7 @@ async function main() {
     }
 
     process.stdout.write('  agent is working…')
-    const { reply, sessionId: sid } = ask(heard, sessionId)
+    const { reply, sessionId: sid } = askAgent(agent, heard, sessionId)
     sessionId = sid
     console.log(`\n  agent: ${reply}\n`)
     await speak(reply)

@@ -1,5 +1,5 @@
 ---
-description: Hands-free, headphones-only voice loop for the coding agent — you speak, whisper.cpp transcribes, `claude -p` runs with full tools at flat-rate under your Claude Code subscription, and a local TTS backend (macOS say, espeak-ng, Piper, or an XTTS voice-clone) speaks the reply. Cross-platform (macOS/Linux/WSL); everything local except the LLM call. Use to set up or run voice chat, talk to the agent by voice, "hands-free", or /voice-chat.
+description: Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
 ---
 
 Read and follow the complete skill instructions in [`skills/voice-chat.md`](../../skills/voice-chat.md).

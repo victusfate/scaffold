@@ -1,7 +1,7 @@
 ## Purpose
 
 > **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
 
 Score any scope of source files against the four rubric dimensions and report the worst-offending files first, with cited violations. Use this to understand where quality debt lives before diving in to fix it.
 
@@ -17,6 +17,11 @@ Score any scope of source files against the four rubric dimensions and report th
 
 - **`<path>`** — directory or glob to score. Defaults to all source files in the repo (`git ls-files`), excluding generated files, lock files, and fixtures.
 - **`--fix`** — after reporting, apply auto-fixes for violations under 30 lines. Surfaces larger violations for user approval.
+
+## Client capabilities
+
+Apply the [harness capability rules](../AGENTS.md#harness-capabilities) for
+native subagents, concurrency, review isolation, and referenced-file reads.
 
 ## Execution model
 

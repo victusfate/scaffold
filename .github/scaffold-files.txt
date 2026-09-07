@@ -223,3 +223,7 @@ skills/statusline.md
 .claude/skills/improve/references/closing-the-loop.md
 .claude/skills/improve/references/plan-template.md
 .claude/skills/improve/SKILL.md
+
+docs/codex.md
+scripts/voice/agent.ts
+.agents/skills/improve/SKILL.md
