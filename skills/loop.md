@@ -37,6 +37,15 @@ completion condition. Use the repo's durable handoff convention, preserving any
 unrelated handoff. Include this snapshot in the scheduled prompt; a fresh CLI
 session does not inherit chat memory or native subagent handles.
 
+Before the first external run, finish/checkpoint the current edit and transfer
+checkout ownership: the parent session stops editing that checkout once the
+driver starts. Finish native subagent lanes first, or record independently
+surviving process IDs, worktrees, and logs that the next run can reconcile. To
+resume interactive edits, stop the loop and wait for the current run to finish
+(or explicitly cancel it). Status-only check-ins do not require stopping it.
+Put the exact helper path, checkout, and `stop --cwd <checkout>` invocation in
+the child prompt so the child can stop its own future runs without guessing.
+
 Include these execution instructions in the agent prompt:
 
 - Read repo instructions and the recorded handoff. If the recorded branch
@@ -94,6 +103,8 @@ Explain defaults when arming unless the user supplied alternatives:
 
 - First run starts promptly; the next starts one interval after completion.
   Long runs do not overlap or accumulate a backlog.
+  This is a restart delay, not an independent 10-minute watchdog polling an
+  active agent. The active agent manages its workers; the timeout bounds a hang.
 - Lifetime 8h, per-run timeout 30min, stop after three consecutive failures.
   Choose a longer explicit timeout for known long jobs. Timeouts can interrupt
   work. Semantic stagnation needs agent judgment; the driver sees exit codes.
