@@ -1,3 +1,4 @@
+// Transient user units provide recurrence, non-overlap and process-group limits.
 import { spawnSync } from 'node:child_process';
 import type { Config } from './agent-loop-state.ts';
 

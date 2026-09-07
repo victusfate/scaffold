@@ -19,7 +19,8 @@ function invoke(cwd: string, args: string[], success = true): Status {
 
 function start(cwd: string, options: string[], script: string, argv: string[] = []): Status {
   const result = spawnSync(process.execPath, [cli, 'start', '--cwd', cwd, '--interval', '100ms',
-    '--lifetime', '30s', ...options, '--', process.execPath, '-e', script, ...argv], { encoding: 'utf8' });
+    ...(options.includes('--lifetime') ? [] : ['--lifetime', '30s']), ...options,
+    '--', process.execPath, '-e', script, ...argv], { encoding: 'utf8' });
   assert.equal(result.status, 0, result.stderr);
   return JSON.parse(result.stdout) as Status;
 }
@@ -49,6 +50,19 @@ void test('real systemd preserves argv, repeats serially, and stops future runs'
     assert.equal(invoke(cwd, ['status']).runs, finished.runs);
     assert.match(invoke(cwd, ['logs']).output, new RegExp(JSON.stringify(argv).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
     assert.equal(existsSync(join(cwd, 'BAD')), false);
+    start(cwd, ['--max-failures', '1'], 'process.exit(1)');
+    const failed = await until(cwd, status => !status.armed);
+    assert.equal(failed.failures, 1);
+  } finally { invoke(cwd, ['stop', '--cancel']); rmSync(cwd, { recursive: true }); }
+});
+
+void test('real systemd lifetime blocks further command starts', { skip: !enabled }, async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'agent-loop-expiry-'));
+  try {
+    start(cwd, ['--lifetime', '100ms'], 'console.log("MUST NOT RUN")');
+    const stopped = await until(cwd, status => !status.armed);
+    assert.equal(stopped.runs, 0);
+    assert.equal(invoke(cwd, ['logs']).output, '');
   } finally { invoke(cwd, ['stop', '--cancel']); rmSync(cwd, { recursive: true }); }
 });
 

@@ -1,5 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from 'node:fs';
+// Private durable configuration and per-run progress for the external loop CLI.
+import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { isAbsolute, join } from 'node:path';
 
@@ -57,4 +58,10 @@ export function initialize(dir: string): void {
     if (readdirSync(dir).length && !existsSync(join(dir, 'config.json'))) throw new Error('Refusing to overwrite unrelated state');
   }
   mkdirSync(dir, { recursive: true, mode: 0o700 });
+}
+
+export function withControlLock<T>(dir: string, action: () => T): T {
+  const lock = join(dir, 'control.lock');
+  try { mkdirSync(lock, { mode: 0o700 }); } catch { throw new Error('Loop control is busy; inspect control.lock if an earlier CLI crashed'); }
+  try { return action(); } finally { rmSync(lock, { recursive: true }); }
 }

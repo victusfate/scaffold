@@ -1,8 +1,15 @@
+// The systemd-only entrypoint reconciles interrupted runs before launching work.
 import { spawn } from 'node:child_process';
-import { closeSync, existsSync, openSync, appendFileSync } from 'node:fs';
+import { closeSync, existsSync, openSync, appendFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { readConfig, readProgress, save } from './agent-loop-state.ts';
+import type { Config, Progress } from './agent-loop-state.ts';
 import { control } from './agent-loop-systemd.ts';
+
+function limitReason(config: Config, progress: Progress): string | undefined {
+  if (progress.failures >= config.maxFailures) return 'failure limit';
+  if (Date.now() >= config.expiresAt) return 'lifetime expired';
+}
 
 export async function run(dir: string, generation: string): Promise<void> {
   if (!process.env.INVOCATION_ID) throw new Error('timer-run is reserved for the systemd service');
@@ -17,8 +24,9 @@ export async function run(dir: string, generation: string): Promise<void> {
     progress.outcome = 'previous run timed out or crashed';
     save(dir, 'progress.json', progress);
   }
-  if (existsSync(join(dir, 'stopped.json')) || Date.now() >= config.expiresAt || progress.failures >= config.maxFailures) {
-    save(dir, 'stopped.json', { reason: progress.failures >= config.maxFailures ? 'failure limit' : 'stopped or lifetime expired' });
+  const reason = limitReason(config, progress);
+  if (existsSync(join(dir, 'stopped.json')) || reason) {
+    save(dir, 'stopped.json', { reason: reason || 'user stop' });
     control(['stop', `${config.unit}.timer`]);
     return;
   }
@@ -27,7 +35,8 @@ export async function run(dir: string, generation: string): Promise<void> {
   progress.startedAt = Date.now();
   save(dir, 'progress.json', progress);
   const log = join(dir, 'output.log');
-  appendFileSync(log, `\n[${new Date().toISOString()}] run ${progress.runs}\n`, { mode: 0o600 });
+  if (existsSync(log)) renameSync(log, join(dir, 'previous.log'));
+  writeFileSync(log, `[${new Date().toISOString()}] run ${progress.runs}\n`, { mode: 0o600 });
   const fd = openSync(log, 'a', 0o600);
   const outcome = await execute(config, fd);
   closeSync(fd);
@@ -37,8 +46,9 @@ export async function run(dir: string, generation: string): Promise<void> {
   progress.failures = outcome === 'exit 0' ? 0 : progress.failures + 1;
   save(dir, 'progress.json', progress);
   appendFileSync(log, `[${new Date().toISOString()}] ${outcome}\n`);
-  if (progress.failures >= config.maxFailures || Date.now() >= config.expiresAt) {
-    save(dir, 'stopped.json', { reason: progress.failures >= config.maxFailures ? 'failure limit' : 'lifetime expired' });
+  const finishedReason = limitReason(config, progress);
+  if (finishedReason) {
+    save(dir, 'stopped.json', { reason: finishedReason });
     control(['stop', `${config.unit}.timer`]);
   }
 }

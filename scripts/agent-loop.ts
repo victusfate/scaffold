@@ -1,15 +1,26 @@
 #!/usr/bin/env node
+// Schedule bounded argv commands with systemd: start, status, stop, and logs.
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { closeSync, existsSync, fstatSync, openSync, readFileSync, readSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { duration, EMPTY, initialize, location, readConfig, readProgress, save } from './agent-loop-state.ts';
+import { duration, EMPTY, initialize, location, readConfig, readProgress, save, withControlLock } from './agent-loop-state.ts';
 import type { Config } from './agent-loop-state.ts';
 import { arm, available, busy, control, unitState } from './agent-loop-systemd.ts';
 import { run } from './agent-loop-runner.ts';
 
 const DEFAULT_FAILURES = 3;
 interface Input { verb: string; options: Map<string, string>; argv: string[]; cancel: boolean }
+
+function allowedOptions(verb: string): string[] {
+  if (verb === 'start') return ['--cwd', '--interval', '--timeout', '--lifetime', '--max-failures'];
+  return verb === 'timer-run' ? ['--state', '--generation'] : ['--cwd'];
+}
+
+function addOption(options: Map<string, string>, key: string, value: string | undefined, verb: string): void {
+  if (!allowedOptions(verb).includes(key) || options.has(key) || !value) throw new Error(`Invalid option: ${key}`);
+  options.set(key, value);
+}
 
 function parse(args: string[]): Input {
   const verb = args.shift() || '';
@@ -23,11 +34,7 @@ function parse(args: string[]): Input {
   while (args.length) {
     const key = args.shift()!;
     if (key === '--cancel' && verb === 'stop' && !cancel) { cancel = true; continue; }
-    const allowed = verb === 'start' ? ['--cwd', '--interval', '--timeout', '--lifetime', '--max-failures']
-      : verb === 'timer-run' ? ['--state', '--generation'] : ['--cwd'];
-    const value = args.shift();
-    if (!allowed.includes(key) || options.has(key) || !value) throw new Error(`Invalid option: ${key}`);
-    options.set(key, value);
+    addOption(options, key, args.shift(), verb);
   }
   if (verb !== 'start' && argv.length) throw new Error('Only start accepts command arguments');
   return { verb, options, argv, cancel };
@@ -54,7 +61,7 @@ function status(dir: string): object {
     progress.running = false;
     progress.outcome = 'previous run timed out or crashed';
   }
-  return { ...config, timer, service, armed: timer === 'active' && !existsSync(join(dir, 'stopped.json')),
+  return { ...config, timer, service, armed: timer === 'active',
     expired: Date.now() >= config.expiresAt, ...progress,
     stop: existsSync(join(dir, 'stopped.json')) ? JSON.parse(readFileSync(join(dir, 'stopped.json'), 'utf8')) as unknown : null,
     log: join(dir, 'output.log') };
@@ -64,9 +71,7 @@ function start(input: Input, target: ReturnType<typeof location>): object {
   const config = configuration(input, target);
   available();
   initialize(target.dir);
-  const lock = join(target.dir, 'control.lock');
-  try { mkdirSync(lock, { mode: 0o700 }); } catch { throw new Error('Loop control is busy; inspect control.lock if an earlier CLI crashed'); }
-  try {
+  return withControlLock(target.dir, () => { try {
     if (busy(unitState(`${target.unit}.timer`)) || busy(unitState(`${target.unit}.service`))) throw new Error('A loop already exists for this checkout');
     if (existsSync(join(target.dir, 'config.json')) && readConfig(target.dir).cwd !== target.cwd) throw new Error('State ownership mismatch');
     save(target.dir, 'config.json', config);
@@ -81,7 +86,29 @@ function start(input: Input, target: ReturnType<typeof location>): object {
       control(['stop', `${target.unit}.timer`], true);
     }
     throw error;
-  } finally { rmSync(lock, { recursive: true }); }
+  } });
+}
+
+function stop(target: ReturnType<typeof location>, cancel: boolean): void {
+  withControlLock(target.dir, () => {
+    save(target.dir, 'stopped.json', { reason: cancel ? 'cancelled' : 'user stop' });
+    if (busy(unitState(`${target.unit}.timer`))) control(['stop', `${target.unit}.timer`]);
+    if (cancel && busy(unitState(`${target.unit}.service`))) control(['stop', `${target.unit}.service`]);
+    if (busy(unitState(`${target.unit}.timer`))) throw new Error('Timer did not stop');
+  });
+}
+
+function logTail(dir: string): string {
+  const log = join(dir, 'output.log');
+  if (!existsSync(log)) return '';
+  const fd = openSync(log, 'r');
+  const maxBytes = 64 * 1024;
+  try {
+    const size = fstatSync(fd).size;
+    const buffer = Buffer.alloc(Math.min(size, maxBytes));
+    const bytes = readSync(fd, buffer, 0, buffer.length, Math.max(0, size - maxBytes));
+    return buffer.subarray(0, bytes).toString('utf8');
+  } finally { closeSync(fd); }
 }
 
 async function main(): Promise<void> {
@@ -94,15 +121,10 @@ async function main(): Promise<void> {
   if (input.verb === 'start') { console.log(JSON.stringify(start(input, target), null, 2)); return; }
   available();
   if (!existsSync(join(target.dir, 'config.json'))) throw new Error('No loop configured for this checkout');
-  if (input.verb === 'stop') {
-    save(target.dir, 'stopped.json', { reason: input.cancel ? 'cancelled' : 'user stop' });
-    control(['stop', `${target.unit}.timer`], true);
-    if (input.cancel) control(['stop', `${target.unit}.service`], true);
-  }
+  if (input.verb === 'stop') stop(target, input.cancel);
   const result = status(target.dir);
   if (input.verb === 'logs') {
-    const log = join(target.dir, 'output.log');
-    console.log(JSON.stringify({ ...result, output: existsSync(log) ? readFileSync(log, 'utf8') : '' }, null, 2));
+    console.log(JSON.stringify({ ...result, output: logTail(target.dir) }, null, 2));
   } else console.log(JSON.stringify(result, null, 2));
 }
 
