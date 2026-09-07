@@ -1,4 +1,4 @@
-name: Agent loop portability
+name: Agent loop and queue portability
 
 on:
   pull_request:
@@ -19,3 +19,5 @@ jobs:
           node-version: 24
       - run: node scripts/agent-loop.test.ts
       - run: node scripts/agent-loop.integration.test.ts
+      - run: node scripts/queue-edit.test.ts
+      - run: node scripts/queue-lock.test.ts

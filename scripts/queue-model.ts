@@ -59,6 +59,9 @@ export interface Task {
   startedAt: string | null;
 }
 
+/** Fields user-facing queue editors may change. */
+export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'slug', 'deps', 'files', 'validate', 'accept', 'note'] as const;
+
 export interface QueueConfig {
   status: 'running' | 'stopped';
   interval: string;
@@ -153,6 +156,7 @@ function applyConfig(config: QueueConfig, key: string, val: string): void {
 export function fieldPatch(key: string, val: string): Partial<Task> {
   const v = val.trim();
   switch (key) {
+    case 'title': return v ? { title: v } : {};
     case 'mode': return { mode: v === 'chain' ? 'chain' : 'direct' };
     case 'slug': return { slug: v || null };
     case 'deps': case 'dependsOn': return { dependsOn: splitList(v) };
