@@ -105,8 +105,12 @@ void test('steering is durable until an acknowledged outcome and rejects a stopp
     writeFileSync(messageFile, 'file message');
     f.call(['steer', '--message', ' ', '--message-file', messageFile], false);
     f.call(['steer', '--message', ' '], false);
+    const literal = f.call(['steer', '--message', '--']) as unknown as { id: string };
+    assert.equal((f.call(['inbox']) as unknown as { pending: Array<{ message: string }> }).pending[0].message, '--');
+    f.call(['ack', '--id', literal.id, '--outcome', 'applied']);
     const queued = f.call(['steer', '--message', 'preserve this\nmessage']) as unknown as { id: string; pending: number };
     assert.equal(queued.pending, 1);
+    assert.equal((f.call(['status']) as unknown as { pendingSteering: number }).pendingSteering, 1);
     const first = f.call(['inbox']) as unknown as { pending: Array<{ id: string; message: string }> };
     assert.equal(first.pending.length, 1);
     assert.equal(first.pending[0].id, queued.id);
@@ -116,6 +120,7 @@ void test('steering is durable until an acknowledged outcome and rejects a stopp
     assert.equal(repeated.pending[0].id, queued.id);
     const acknowledged = f.call(['ack', '--id', queued.id, '--outcome', 'deferred', '--note', 'waiting on render']) as unknown as { pending: number };
     assert.equal(acknowledged.pending, 0);
+    assert.equal((f.call(['status']) as unknown as { pendingSteering: number }).pendingSteering, 0);
     assert.equal((f.call(['ack', '--id', queued.id, '--outcome', 'deferred', '--note', 'waiting on render']) as unknown as { pending: number }).pending, 0);
     f.call(['ack', '--id', queued.id, '--outcome', 'blocked', '--note', 'different'], false);
     f.call(['stop', '--cancel']);
@@ -135,6 +140,8 @@ void test('concurrent steering preserves every message and generation boundaries
     assert.equal(new Set(queued.map(item => (item as unknown as { id: string }).id)).size, 3);
     f.call(['stop', '--cancel']);
     await f.until(value => value.ended);
+    f.call(['start', '--interval', '1s', '--', process.execPath, '-e', 'setInterval(()=>{},100)'], false);
+    for (const item of inbox.pending) f.call(['ack', '--id', item.id, '--outcome', 'blocked', '--note', 'User replaced this objective; preserve disposition in history']);
     f.start('setInterval(()=>{},100)');
     await f.until(value => value.running);
     assert.deepEqual((f.call(['inbox']) as unknown as { pending: unknown[] }).pending, []);
