@@ -38,7 +38,7 @@ import { cmdGate, cmdUngate, drainKick } from './queue-gates.ts';
 import {
   render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
-  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask,
+  beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type Task,
@@ -95,9 +95,9 @@ function taskBlock(t: Task): string {
 
 /**
  * Auto-resume a due usage pause, then report whether the queue is drainable.
- * Returns a blocking EXIT code (STOPPED/PAUSED) or null to proceed.
+ * Returns a blocking EXIT code for pauses or ambiguous ownership, or null to proceed.
  */
-function pauseGate(q: Queue): { queue: Queue; blocked: number | null } {
+function dispatchGate(q: Queue): { queue: Queue; blocked: number | null } {
   const due = resumeIfDue(q, now());
   if (due.resumed) { q = due.queue; save(q); log('auto-resumed (usage window reopened)'); }
   if (q.config.status === 'stopped') {
@@ -108,19 +108,19 @@ function pauseGate(q: Queue): { queue: Queue; blocked: number | null } {
     console.log('queue: STOPPED — run `queue start` to resume');
     return { queue: q, blocked: EXIT.STOPPED };
   }
+  const expired = staleLeases(q, now(), q.config.leaseMinutes);
+  if (expired.length) {
+    console.log(`queue: OWNERSHIP CONFLICT — expired lease(s) remain active: ${expired
+      .map(t => t.id).join(', ')}. Do not reclaim or dispatch; resolve ownership explicitly.`);
+    return { queue: q, blocked: EXIT.CONFLICT };
+  }
   return { queue: q, blocked: null };
 }
 
 function cmdTick(q: Queue): number {
-  const gate = pauseGate(q);
+  const gate = dispatchGate(q);
   if (gate.blocked !== null) return gate.blocked;
   q = gate.queue;
-  const swept = reclaimStale(q, now(), q.config.leaseMinutes);
-  if (swept.reclaimed.length) {
-    console.log(`queue: OWNERSHIP CONFLICT — expired lease(s) remain active: ${swept.reclaimed
-      .map(t => t.id).join(', ')}. Do not reclaim or dispatch; resolve ownership explicitly.`);
-    return EXIT.CONFLICT;
-  }
   const t = nextActionable(q);
   if (!t) {
     const stuck = deadlocked(q);
@@ -139,7 +139,7 @@ function cmdTick(q: Queue): number {
 }
 
 function cmdReady(q: Queue): number {
-  const gate = pauseGate(q);
+  const gate = dispatchGate(q);
   if (gate.blocked !== null) return gate.blocked;
   q = gate.queue;
   const r = readyTasks(q);

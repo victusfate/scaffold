@@ -434,24 +434,11 @@ function ageMinutes(fromIso: string | null, nowIso: string): number {
   return (Date.parse(nowIso) - Date.parse(fromIso)) / MS_PER_MIN;
 }
 
-/**
- * Return any active task whose lease has gone stale (worker likely crashed) to
- * pending, releasing its claim. Returns the reclaimed ids so the caller can tear
- * down orphaned worktrees.
- */
-export function reclaimStale(
+/** Expired leases identify ownership conflicts; they never authorize releasing claims. */
+export function staleLeases(
   q: Queue, nowIso: string, leaseMinutes: number,
-): { queue: Queue; reclaimed: Task[] } {
-  const reclaimed: Task[] = [];
-  const tasks = q.tasks.map(t => {
-    if (t.status === 'active' && ageMinutes(t.startedAt, nowIso) >= leaseMinutes) {
-      reclaimed.push(t);
-      return { ...t, status: 'pending' as TaskStatus, owner: null, startedAt: null,
-        note: 'reclaimed stale lease' };
-    }
-    return t;
-  });
-  return { queue: withTasks(q, tasks), reclaimed };
+): Task[] {
+  return q.tasks.filter(t => t.status === 'active' && ageMinutes(t.startedAt, nowIso) >= leaseMinutes);
 }
 
 // ---------------------------------------------------------------- rendering

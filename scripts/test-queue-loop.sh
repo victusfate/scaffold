@@ -107,15 +107,20 @@ cat >"$S" <<'EOF'
 <!-- queue:config
 status: running
 leaseMinutes: 1
+maxParallel: 2
 -->
 
 - [>] task-001 — possibly live in another session
   - owner: another-session
   - started: 2020-01-01T00:00:00.000Z
+
+- [ ] task-002 — pending parallel work
 EOF
 QSTALE() { QUEUE_FILE="$S" node "$HERE/queue.ts" "$@"; }
 codeSTALE() { QSTALE "$@" >/dev/null 2>&1; echo $?; }
 check "stale lease → ownership conflict" "$(codeSTALE tick)" 6
+check "stale lease blocks parallel dispatch" "$(codeSTALE ready)" 6
+missing_check "conflict exposes no pending task" "$(QSTALE ready)" "task-002"
 grep_check "conflicting task stays active" "$(QSTALE list)" "▶ task-001"
 
 echo
