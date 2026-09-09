@@ -144,6 +144,27 @@ void test('timeouts kill the active descendant tree and trip the failure limit',
   } finally { await f.cleanup(); }
 });
 
+void test('normal command completion never signals a surviving descendant', { skip: process.platform === 'win32' }, async () => {
+  const f = fixture();
+  const pidFile = join(f.cwd, 'descendant.pid');
+  let descendantPid = 0;
+  try {
+    f.start([
+      "const {existsSync,writeFileSync}=require('fs'); const {spawn}=require('child_process');",
+      `const pidFile=${JSON.stringify(pidFile)};`,
+      "if(!existsSync(pidFile)){const child=spawn(process.execPath,['-e','setInterval(()=>{},100)'],{stdio:'ignore'}); writeFileSync(pidFile,String(child.pid)); child.unref()}",
+    ].join(' '));
+    await f.until(value => value.runs >= 1 && !value.running);
+    descendantPid = Number(readFileSync(pidFile, 'utf8'));
+    assert.doesNotThrow(() => process.kill(descendantPid, 0));
+  } finally {
+    if (descendantPid) {
+      try { process.kill(descendantPid, 'SIGTERM'); } catch {}
+    }
+    await f.cleanup();
+  }
+});
+
 void test('explicit cancel stops the active command and permits restart', async () => {
   const f = fixture();
   try {
