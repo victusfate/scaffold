@@ -99,6 +99,25 @@ QD stop >/dev/null
 missing_check "stop suppresses marker (operator halt ≠ stall)" "$(QD add 'd3')" "DRAIN-WANTED"
 grep_check "start re-attaches a driver" "$(QD start)" "queue: DRAIN-WANTED 3 pending"
 
+echo "== stale ownership fails closed =="
+S="$TMP/stale.md"
+cat >"$S" <<'EOF'
+# Work Queue
+
+<!-- queue:config
+status: running
+leaseMinutes: 1
+-->
+
+- [>] task-001 — possibly live in another session
+  - owner: another-session
+  - started: 2020-01-01T00:00:00.000Z
+EOF
+QSTALE() { QUEUE_FILE="$S" node "$HERE/queue.ts" "$@"; }
+codeSTALE() { QSTALE "$@" >/dev/null 2>&1; echo $?; }
+check "stale lease → ownership conflict" "$(codeSTALE tick)" 6
+grep_check "conflicting task stays active" "$(QSTALE list)" "▶ task-001"
+
 echo
 echo "queue-loop: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
