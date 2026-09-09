@@ -311,6 +311,8 @@ function cmdLoop(q: Queue): number {
     + `Only if you could NOT arm a Monitor, fall back to re-arming the ${q.config.idlePoll} `
     + `heartbeat (it must poll, so it may wake on an empty queue). Exit 5 (operator stop) `
     + `always stops the loop; exit 4 slow-polls at ${q.config.pausePoll}. `
+    + `Exit 6 (ownership conflict) stops dispatch: report the conflict and leave claims, `
+    + `processes, and worktrees untouched until ownership is resolved. `
     + `Cadence: busy → continue immediately · idle → stop:true (signal-Monitor re-wakes on new `
     + `work; ${q.config.idlePoll} heartbeat only if unmonitored) · paused → ${q.config.pausePoll}.`);
   return 0;

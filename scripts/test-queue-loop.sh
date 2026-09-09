@@ -67,6 +67,7 @@ grep_check "heartbeat is only the fallback" "$(Q loop)" "fall back"
 grep_check "loop polls the signal command"  "$(Q loop)" "signal"
 grep_check "loop: no fire on empty queue"   "$(Q loop)" "empty queue"
 grep_check "loop isolates other sessions"   "$(Q loop)" "must never be stopped, reclaimed, interrupted, or signalled"
+grep_check "loop stops on ownership conflict" "$(Q loop)" "Exit 6 (ownership conflict) stops dispatch"
 
 echo "== signal: pollable drain marker, silent on empty (no fire on empty queue) =="
 S="$TMP/signal.md"

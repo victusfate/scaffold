@@ -281,7 +281,7 @@ outside this session's ownership. Never inspect them for cleanup or send them a
 signal. In particular, `owner` is a queue label and `startedAt` is a lease clock;
 neither is a PID, session identity, heartbeat, or permission to manage a process.
 
-`tick` never reclaims an expired lease: it exits 6 and leaves the task active.
+`tick` and `ready` never reclaim an expired lease: they exit 6 and leave the task active.
 Only the orchestrator that created the worker may release that queue record, after
 its own durable worker handle proves terminal, using `queue fail <id> "owned worker
 ended"` or a deliberate operator edit. It must not run `kill`, `pkill`, `killall`,
