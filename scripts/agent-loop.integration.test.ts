@@ -147,7 +147,7 @@ void test('steering is durable until an acknowledged outcome and rejects a stopp
 
 void test('concurrent steering preserves every message and generation boundaries', async () => {
   const f = fixture();
-  let primary: unknown;
+  let primary: Error | undefined;
   try {
     f.start('setInterval(()=>{},100)');
     await f.until(value => value.running);
@@ -165,14 +165,14 @@ void test('concurrent steering preserves every message and generation boundaries
     assert.equal((f.call(['inbox', '--all']) as unknown as { records: unknown[] }).records.length, 3);
     assert.equal(f.call(['status']).supervisor, 'active');
   } catch (error) {
-    primary = error;
+    primary = error instanceof Error ? error : new Error('Concurrent steering failed', { cause: error });
     console.error('Concurrent steering supervisor evidence:', f.diagnostics());
   }
   try {
     await f.cleanup();
   } catch (cleanup) {
     console.error('Concurrent steering cleanup evidence:', f.diagnostics());
-    if (primary) throw new AggregateError([primary, cleanup], 'concurrent steering and fixture cleanup both failed');
+    if (primary) throw new AggregateError([primary, cleanup], 'concurrent steering and fixture cleanup both failed', { cause: cleanup });
     throw cleanup;
   }
   if (primary) throw primary;
