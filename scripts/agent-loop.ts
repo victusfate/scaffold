@@ -1,23 +1,27 @@
 #!/usr/bin/env node
-// Portable external argv loop: start, status, stop [--cancel], and logs.
+// Portable external argv loop: lifecycle, status/logs, and durable steering.
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readSync, rmSync } from 'node:fs';
+import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, readSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
-import { alive, duration, EMPTY, initialize, location, readConfig, readProgress, save, stopRequest, withControlLock } from './agent-loop-state.ts';
-import type { Config } from './agent-loop-state.ts';
+import { acknowledgeSteering, addSteering, alive, duration, EMPTY, initialize, location, readConfig, readInbox, readProgress, save, stopRequest, withControlLock } from './agent-loop-state.ts';
+import type { Config, SteeringOutcome } from './agent-loop-state.ts';
 import { supervise } from './agent-loop-runner.ts';
 
 const DEFAULT_FAILURES = 3;
 const HANDSHAKE_TIMEOUT_MS = 10_000;
 const HANDSHAKE_POLL_MS = 25;
 const MAX_LOG_BYTES = 64 * 1024;
-interface Input { verb: string; options: Map<string, string>; argv: string[]; cancel: boolean }
+const MAX_MESSAGE_BYTES = 64 * 1024;
+const OUTCOMES = new Set<SteeringOutcome>(['applied', 'deferred', 'blocked']);
+interface Input { verb: string; options: Map<string, string>; argv: string[]; cancel: boolean; all: boolean }
 
 function allowedOptions(verb: string): string[] {
   if (verb === 'start') return ['--cwd', '--interval', '--timeout', '--lifetime', '--max-failures'];
+  if (verb === 'steer') return ['--cwd', '--message', '--message-file'];
+  if (verb === 'ack') return ['--cwd', '--id', '--outcome', '--note'];
   return verb === 'supervise' ? ['--state', '--generation'] : ['--cwd'];
 }
 
@@ -28,18 +32,20 @@ function addOption(options: Map<string, string>, key: string, value: string | un
 
 function parse(args: string[]): Input {
   const verb = args.shift() || '';
-  if (!['start', 'status', 'stop', 'logs', 'supervise'].includes(verb)) throw new Error('Usage: agent-loop.ts start|status|stop|logs --cwd PATH [options] [-- CMD ARG...]');
+  if (!['start', 'status', 'stop', 'logs', 'steer', 'inbox', 'ack', 'supervise'].includes(verb)) throw new Error('Usage: agent-loop.ts start|status|stop|logs|steer|inbox|ack --cwd PATH [options] [-- CMD ARG...]');
   const separator = args.indexOf('--');
   const argv = separator < 0 ? [] : args.splice(separator).slice(1);
   const options = new Map<string, string>();
   let cancel = false;
+  let all = false;
   while (args.length) {
     const key = args.shift()!;
     if (key === '--cancel' && verb === 'stop' && !cancel) { cancel = true; continue; }
+    if (key === '--all' && verb === 'inbox' && !all) { all = true; continue; }
     addOption(options, key, args.shift(), verb);
   }
   if (verb !== 'start' && argv.length) throw new Error('Only start accepts command arguments');
-  return { verb, options, argv, cancel };
+  return { verb, options, argv, cancel, all };
 }
 
 function configuration(input: Input, target: ReturnType<typeof location>): Config {
@@ -59,10 +65,61 @@ function status(dir: string): object {
   const progress = readProgress(dir);
   const live = alive(progress);
   const stopped = stopRequest(dir, config.generation);
+  const pendingSteering = readInbox(dir).filter(item => item.generation === config.generation && !item.outcome).length;
   return { ...config, ...progress, driver: 'node', armed: live && !stopped && Date.now() < config.expiresAt,
     supervisor: live ? 'active' : progress.ended ? 'stopped' : 'stale',
     running: live && progress.running, interrupted: !live && progress.running,
-    stopRequested: !!stopped, log: join(dir, 'output.log') };
+    stopRequested: !!stopped, pendingSteering, log: join(dir, 'output.log') };
+}
+
+function message(input: Input): string {
+  const inline = input.options.get('--message');
+  const path = input.options.get('--message-file');
+  if (!!inline === !!path) throw new Error('steer requires exactly one of --message or --message-file');
+  const value = inline || readFileSync(path!, 'utf8');
+  if (!value.trim() || Buffer.byteLength(value) > MAX_MESSAGE_BYTES) throw new Error('Steering message must be non-empty and at most 64 KiB');
+  return value;
+}
+
+function activeConfig(dir: string): Config {
+  const config = readConfig(dir);
+  const progress = readProgress(dir);
+  if (progress.generation !== config.generation || !alive(progress) || stopRequest(dir, config.generation) || Date.now() >= config.expiresAt) {
+    throw new Error('Steering requires a live, non-stopping, unexpired loop');
+  }
+  return config;
+}
+
+async function steer(input: Input, dir: string): Promise<object> {
+  const text = message(input);
+  return withControlLock(dir, () => {
+    const config = activeConfig(dir);
+    const record = addSteering(dir, config.generation, text);
+    const pending = readInbox(dir).filter(item => item.generation === config.generation && !item.outcome).length;
+    return { id: record.id, pending };
+  });
+}
+
+async function inbox(input: Input, dir: string): Promise<object> {
+  return withControlLock(dir, () => {
+    const config = readConfig(dir);
+    const records = readInbox(dir).filter(item => input.all || (item.generation === config.generation && !item.outcome));
+    return input.all ? { records } : { generation: config.generation, pending: records };
+  });
+}
+
+async function acknowledge(input: Input, dir: string): Promise<object> {
+  const id = input.options.get('--id');
+  const outcome = input.options.get('--outcome') as SteeringOutcome | undefined;
+  const note = input.options.get('--note');
+  if (!id || !outcome || !OUTCOMES.has(outcome)) throw new Error('ack requires --id and --outcome applied|deferred|blocked');
+  if ((outcome === 'deferred' || outcome === 'blocked') && !note?.trim()) throw new Error('ack requires --note for deferred or blocked outcomes');
+  return withControlLock(dir, () => {
+    const config = readConfig(dir);
+    const record = acknowledgeSteering(dir, { generation: config.generation, id, outcome, note });
+    const pending = readInbox(dir).filter(item => item.generation === config.generation && !item.outcome).length;
+    return { id: record.id, outcome: record.outcome, pending };
+  });
 }
 
 async function launch(config: Config, dir: string): Promise<void> {
@@ -132,6 +189,9 @@ async function main(): Promise<void> {
   if (input.verb === 'start') { console.log(JSON.stringify(await start(input, target), null, 2)); return; }
   if (!existsSync(join(target.dir, 'config.json'))) throw new Error('No loop configured for this checkout');
   if (input.verb === 'stop') await stop(target.dir, input.cancel);
+  if (input.verb === 'steer') { console.log(JSON.stringify(await steer(input, target.dir), null, 2)); return; }
+  if (input.verb === 'inbox') { console.log(JSON.stringify(await inbox(input, target.dir), null, 2)); return; }
+  if (input.verb === 'ack') { console.log(JSON.stringify(await acknowledge(input, target.dir), null, 2)); return; }
   const result = status(target.dir);
   console.log(JSON.stringify(input.verb === 'logs' ? { ...result, output: logTail(target.dir) } : result, null, 2));
 }
