@@ -34,7 +34,7 @@ Steering requires a live non-stopping loop; never restart a stopped loop to send
 Use the existing control lock with bounded contention retries and atomic saves.
 Status exposes pending counts, not message text. Preserve arbitrary command argv
 exactly. The skill supplies cooperative polling in generated agent instructions:
-run start, work boundaries, before publishing and before exit. Interactive agents
+run start, every safe tool/worker boundary, before dispatch, publication and exit. Interactive agents
 route relevant user updates by default after checking status. No claim of native
 chat interception or preemption of an in-flight tool call.
 

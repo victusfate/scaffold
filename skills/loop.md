@@ -62,7 +62,8 @@ Include these execution instructions in the agent prompt:
   bounded assignments and are monitored, retasked and joined by that agent;
   they do not arm independent loops. A worker asked to schedule recurrence
   returns that request to its parent rather than starting another driver.
-- Read the steering inbox at run start, between worker batches, before publishing
+- Read the steering inbox at run start and each safe work boundary (when a tool
+  or worker result returns), before dispatching more work, before publishing,
   and before exiting. Apply new direction before resuming the older agenda.
   Retask affected workers, update the durable handoff, then acknowledge each ID
   with its disposition. Only the main orchestrator consumes steering; workers
