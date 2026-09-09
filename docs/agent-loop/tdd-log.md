@@ -1,5 +1,25 @@
 # Agent loop verification
 
+## Steering extension — September 8
+
+- RED: public enqueue/read/ack test failed before steering verbs existed.
+- GREEN: private inbox, explicit disposition, concurrent control locking and
+  main-only cooperative routing implemented; all 9 initial lifecycle tests passed.
+- Review caught literal `--` message parsing and pending direction lost on
+  deliberate restart. Added failing regression checks, then fixed both: restart
+  now requires acknowledgment after preserving applicable direction in the new
+  handoff/prompt. Extracted one canonical pending-message filter.
+- Final local checks: 11 loop integration tests, 2 CLI tests, full `npm test`,
+  strict resolver, generated skill docs, frontmatter and mechanical checks pass.
+  Hoist/sync/linter integrations pass (22/17/36 checks). Cross-OS runner results
+  for this extension remain a separate CI check, not inferred from WSL tests.
+- Independent correctness recheck clear; structural recheck scores all changed
+  source, skill, docs and metadata 10/10 in all four dimensions. Reviewers were
+  reused bounded workers, not fresh isolated sessions.
+- Skill forward-test covers default routing, legacy prompts, main-only recurrence
+  and explicit stop. Cooperating-child tests prove delivery/adoption/ack protocol,
+  not guaranteed language-model obedience or interception of native chat messages.
+
 ## Slice 1: External lifecycle
 
 - RED: public malformed-input test failed before the helper existed.
