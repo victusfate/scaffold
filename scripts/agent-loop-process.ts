@@ -13,13 +13,21 @@ const TASKKILL_TIMEOUT_MS = 5000;
 const RESULT_FILE = 'run-result.json';
 export interface ExecutionResult { outcome: string; directive?: AgentDirective }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isDirectiveStatus(value: unknown): value is AgentDirective['status'] {
+  return value === 'continue' || value === 'complete' || value === 'blocked';
+}
+
 function readDirective(path: string): AgentDirective | undefined {
   if (!existsSync(path)) return;
   try {
     const value = JSON.parse(readFileSync(path, 'utf8')) as unknown;
-    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
-    const { status, summary } = value as Record<string, unknown>;
-    if (status !== 'continue' && status !== 'complete' && status !== 'blocked') return;
+    if (!isRecord(value)) return;
+    const { status, summary } = value;
+    if (!isDirectiveStatus(status)) return;
     if (typeof summary !== 'string' || !summary.trim()) return;
     return { status, summary: summary.trim() };
   } catch { return; }
