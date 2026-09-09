@@ -88,6 +88,33 @@ void test('external supervisor preserves argv, recurs, rejects duplicates and gr
   } finally { await f.cleanup(); }
 });
 
+void test('required structured results distinguish progress, completion and blocked work', async () => {
+  const f = fixture();
+  const report = (status: string, summary = '') =>
+    `require('fs').writeFileSync(process.env.SCAFFOLD_AGENT_LOOP_RESULT, JSON.stringify({status:${JSON.stringify(status)},summary:${JSON.stringify(summary)}}))`;
+  try {
+    f.start('process.exit(0)', ['--require-result']);
+    let ended = await f.until(value => value.ended);
+    assert.equal(ended.reason, 'missing or invalid required result');
+    assert.equal(ended.failures, 1);
+
+    f.start(report('continue'), ['--require-result']);
+    await f.until(value => value.runs >= 2);
+    f.call(['stop']);
+    await f.until(value => value.ended);
+
+    f.start(report('complete', 'objective delivered'), ['--require-result']);
+    ended = await f.until(value => value.ended);
+    assert.equal(ended.reason, 'objective delivered');
+    assert.equal(ended.failures, 0);
+
+    f.start(report('blocked', 'device unavailable'), ['--require-result']);
+    ended = await f.until(value => value.ended);
+    assert.equal(ended.reason, 'blocked: device unavailable');
+    assert.equal(ended.failures, 1);
+  } finally { await f.cleanup(); }
+});
+
 void test('timeouts kill the active descendant tree and trip the failure limit', async () => {
   const f = fixture();
   try {

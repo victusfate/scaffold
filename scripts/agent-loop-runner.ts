@@ -19,6 +19,7 @@ export async function supervise(dir: string, generation: string): Promise<void> 
   publish();
   const heartbeat = setInterval(publish, HEARTBEAT_MS);
   let next = Date.now() + HEARTBEAT_MS;
+  let terminalReason: string | undefined;
   try {
     while (!stopRequest(dir, generation) && Date.now() < config.expiresAt && progress.failures < config.maxFailures) {
       if (Date.now() < next) { await delay(Math.min(HEARTBEAT_MS, next - Date.now())); continue; }
@@ -26,14 +27,22 @@ export async function supervise(dir: string, generation: string): Promise<void> 
       progress.startedAt = Date.now();
       progress.runs++;
       publish();
-      progress.outcome = await execute(config, dir);
+      const result = await execute(config, dir);
+      progress.outcome = result.outcome;
       progress.finishedAt = Date.now();
       progress.running = false;
       progress.failures = progress.outcome === 'exit 0' ? 0 : progress.failures + 1;
       publish();
+      if (config.requireResult && !result.directive) { terminalReason = result.outcome; break; }
+      if (result.directive?.status === 'complete') { terminalReason = result.directive.summary || 'completed'; break; }
+      if (result.directive?.status === 'blocked') {
+        progress.failures++;
+        terminalReason = result.directive.summary ? `blocked: ${result.directive.summary}` : 'blocked';
+        break;
+      }
       next = Date.now() + config.interval;
     }
-    progress.reason = stopRequest(dir, generation) ? 'stopped' : progress.failures >= config.maxFailures ? 'failure limit' : 'lifetime expired';
+    progress.reason = terminalReason || (stopRequest(dir, generation) ? 'stopped' : progress.failures >= config.maxFailures ? 'failure limit' : 'lifetime expired');
   } catch (error) {
     progress.reason = error instanceof Error ? error.message : String(error);
     throw error;

@@ -17,6 +17,7 @@ const UNITS: Record<string, number> = { ms: 1, s: SECOND, m: MINUTE, min: MINUTE
 export interface Config {
   cwd: string; unit: string; generation: string; argv: string[];
   interval: number; timeout: number; expiresAt: number; maxFailures: number;
+  requireResult: boolean;
 }
 export interface Progress {
   runs: number; failures: number; running: boolean; startedAt?: number;

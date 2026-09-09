@@ -117,7 +117,7 @@ agent, not assumed covered by the supervisor's timeout. Do not use a fire-and-fo
 launcher as the recurring command.
 
 ```text
-node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --lifetime 8h --timeout 30min --max-failures 3 -- EXECUTABLE ARG...
+node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --lifetime 8h --timeout 30min --max-failures 3 --require-result -- EXECUTABLE ARG...
 node scripts/agent-loop.ts status --cwd /absolute/checkout
 node scripts/agent-loop.ts logs --cwd /absolute/checkout
 node scripts/agent-loop.ts stop --cwd /absolute/checkout
@@ -140,6 +140,21 @@ workspace. If a required capability is unavailable, do not leave an apparently
 healthy recurrence armed: stop it, report the failed capability, and continue in
 the current session or checkpoint the work instead. Do not change global
 permission, trust, sandbox, or model configuration.
+
+Use `--require-result` for agent-driven work. The driver supplies the writable
+`SCAFFOLD_AGENT_LOOP_RESULT` path to each run. Before exiting successfully, the
+child writes one JSON object there:
+
+```json
+{"status":"continue|complete|blocked","summary":"concrete progress or blocker"}
+```
+
+`continue` schedules another run, `complete` ends the recurrence successfully,
+and `blocked` ends it with the blocker visible in status. A missing, malformed,
+or unknown result fails closed instead of treating exit code zero as progress.
+Grant the child access only to that private result path when its sandbox requires
+an explicit writable path. Explicit command loops that already use meaningful
+process exit codes may omit this protocol.
 An explicitly selected session can be resumed with supported options; never use
 a global “latest session” selector that might pick unrelated work.
 On Windows use an actual `.exe`, or `node.exe` plus the installed CLI's JavaScript
