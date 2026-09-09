@@ -71,6 +71,10 @@ export function readInbox(dir: string): SteeringRecord[] {
   return existsSync(path) ? (JSON.parse(readFileSync(path, 'utf8')) as Inbox).records : [];
 }
 
+export function pendingSteering(dir: string, generation: string): SteeringRecord[] {
+  return readInbox(dir).filter(item => item.generation === generation && !item.outcome);
+}
+
 export function addSteering(dir: string, generation: string, message: string): SteeringRecord {
   const records = readInbox(dir);
   const record: SteeringRecord = { id: randomUUID(), generation, receivedAt: Date.now(), message };

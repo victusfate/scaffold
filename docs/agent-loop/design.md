@@ -50,7 +50,9 @@ The driver stores steering messages in a private generation-scoped inbox under
 the same control lock as lifecycle changes. Polling is non-consuming. Explicit
 acknowledgment records applied/deferred/blocked direction; applied means adopted
 in the plan, not deliverable complete. Crashes before acknowledgment redeliver
-the same ID. Prior generations stay inspectable without replay into new work.
+the same ID within that supervisor generation. Restart refuses pending steering
+until its disposition is explicit and applicable direction has been captured in
+the new handoff/prompt. Prior generations remain inspectable without automatic replay.
 
 Cooperative polling belongs in natural-language agent prompts, not arbitrary
 command argv. No harness-independent chat interception or in-flight preemption

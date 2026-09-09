@@ -203,6 +203,10 @@ only after adopting the direction in the working plan/handoff, not on mere read.
 the handoff/work queue. Deferral is for an unavoidable safe boundary, not lower
 priority than older work. Record superseding direction before acknowledging it.
 Do not silently replay an old generation after a restart.
+The CLI refuses restart while the previous generation has unacknowledged
+steering. Inspect its inbox first, incorporate applicable direction into the new
+handoff/prompt (or record why the user superseded it), then acknowledge that
+disposition. This prevents recovery from silently returning to the old agenda.
 
 This is cooperative delivery, not a native chat interceptor. It cannot preempt an
 in-flight tool call. The chat agent must enqueue the update, and the main worker
