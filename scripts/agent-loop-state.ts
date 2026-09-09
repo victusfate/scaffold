@@ -17,11 +17,17 @@ const UNITS: Record<string, number> = { ms: 1, s: SECOND, m: MINUTE, min: MINUTE
 export interface Config {
   cwd: string; unit: string; generation: string; argv: string[];
   interval: number; timeout: number; expiresAt: number; maxFailures: number;
+  requireResult: boolean;
+}
+export interface AgentDirective {
+  status: 'continue' | 'complete' | 'blocked';
+  summary: string;
 }
 export interface Progress {
   runs: number; failures: number; running: boolean; startedAt?: number;
   finishedAt?: number; outcome?: string; generation?: string; pid?: number;
   heartbeat?: number; ready?: boolean; ended?: boolean; reason?: string;
+  directive?: AgentDirective;
 }
 export type SteeringOutcome = 'applied' | 'deferred' | 'blocked';
 export interface SteeringRecord {

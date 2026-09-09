@@ -16,7 +16,7 @@ const HANDSHAKE_POLL_MS = 25;
 const MAX_LOG_BYTES = 64 * 1024;
 const MAX_MESSAGE_BYTES = 64 * 1024;
 const OUTCOMES = new Set<SteeringOutcome>(['applied', 'deferred', 'blocked']);
-interface Input { verb: string; options: Map<string, string>; argv: string[]; cancel: boolean; all: boolean }
+interface Input { verb: string; options: Map<string, string>; argv: string[]; cancel: boolean; all: boolean; requireResult: boolean }
 
 function allowedOptions(verb: string): string[] {
   if (verb === 'start') return ['--cwd', '--interval', '--timeout', '--lifetime', '--max-failures'];
@@ -37,6 +37,7 @@ function parse(args: string[]): Input {
   const options = new Map<string, string>();
   let cancel = false;
   let all = false;
+  let requireResult = false;
   while (args.length) {
     const key = args.shift()!;
     if (key === '--') {
@@ -46,10 +47,11 @@ function parse(args: string[]): Input {
     }
     if (key === '--cancel' && verb === 'stop' && !cancel) { cancel = true; continue; }
     if (key === '--all' && verb === 'inbox' && !all) { all = true; continue; }
+    if (key === '--require-result' && verb === 'start' && !requireResult) { requireResult = true; continue; }
     addOption(options, key, args.shift(), verb);
   }
   if (verb !== 'start' && argv.length) throw new Error('Only start accepts command arguments');
-  return { verb, options, argv, cancel, all };
+  return { verb, options, argv, cancel, all, requireResult };
 }
 
 function configuration(input: Input, target: ReturnType<typeof location>): Config {
@@ -61,7 +63,7 @@ function configuration(input: Input, target: ReturnType<typeof location>): Confi
   if (!input.argv[0]) throw new Error('start requires -- CMD ARG...');
   if (/\.(cmd|bat)$/i.test(input.argv[0])) throw new Error('Command must be an executable, not a .cmd/.bat shell script');
   return { cwd: target.cwd, unit: target.unit, generation: randomUUID(), argv: input.argv,
-    interval, timeout, expiresAt: Date.now() + lifetime, maxFailures };
+    interval, timeout, expiresAt: Date.now() + lifetime, maxFailures, requireResult: input.requireResult };
 }
 
 function status(dir: string): object {

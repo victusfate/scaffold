@@ -42,8 +42,9 @@ driver starts. Finish native subagent lanes first, or record independently
 surviving process IDs, worktrees, and logs that the next run can reconcile. To
 resume interactive edits, stop the loop and wait for the current run to finish
 (or explicitly cancel it). Status-only check-ins do not require stopping it.
-Put the exact helper path, checkout, and `stop --cwd <checkout>` invocation in
-the child prompt so the child can stop its own future runs without guessing.
+Keep lifecycle control with the parent or supervisor. A scheduled child reports
+its outcome through the structured result below; it never invokes `stop` on its
+own driver.
 
 Include these execution instructions in the agent prompt:
 
@@ -87,7 +88,10 @@ Include these execution instructions in the agent prompt:
 - Integrate completed worktrees into the one active branch, validate, checkpoint,
   and publish only within authorization. Refresh concrete next steps each run.
 - At the completion condition or a blocker requiring user direction, checkpoint
-  and stop future runs. Exit zero alone does not prove the objective complete.
+  and report `complete` or `blocked` through the structured result. When useful
+  work remains and no terminal blocker exists, report `continue`. Do not call the
+  driver's `stop` command from inside the scheduled child. Exit zero alone does
+  not prove the objective complete.
 
 ## Select and arm a driver
 
@@ -117,7 +121,7 @@ agent, not assumed covered by the supervisor's timeout. Do not use a fire-and-fo
 launcher as the recurring command.
 
 ```text
-node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --lifetime 8h --timeout 30min --max-failures 3 -- EXECUTABLE ARG...
+node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --lifetime 8h --timeout 30min --max-failures 3 --require-result -- EXECUTABLE ARG...
 node scripts/agent-loop.ts status --cwd /absolute/checkout
 node scripts/agent-loop.ts logs --cwd /absolute/checkout
 node scripts/agent-loop.ts stop --cwd /absolute/checkout
@@ -140,6 +144,25 @@ workspace. If a required capability is unavailable, do not leave an apparently
 healthy recurrence armed: stop it, report the failed capability, and continue in
 the current session or checkpoint the work instead. Do not change global
 permission, trust, sandbox, or model configuration.
+
+Use `--require-result` for agent-driven work. The driver supplies the writable
+`SCAFFOLD_AGENT_LOOP_RESULT` path to each run. Before exiting successfully, the
+child writes one JSON object there:
+
+```json
+{"status":"continue|complete|blocked","summary":"concrete progress or blocker"}
+```
+
+The summary must be a nonempty description of concrete progress, completion, or
+the blocker. `continue` schedules another run, `complete` ends the recurrence
+successfully, and `blocked` ends it with the typed directive and summary visible
+in status. A missing, empty, malformed, or unknown result fails closed instead
+of treating exit code zero as progress.
+The scheduled child must not also invoke `agent-loop stop`: doing so erases the
+semantic distinction by reducing every terminal outcome to `reason: stopped`.
+Grant the child access only to that private result path when its sandbox requires
+an explicit writable path. Explicit command loops that already use meaningful
+process exit codes may omit this protocol.
 An explicitly selected session can be resumed with supported options; never use
 a global “latest session” selector that might pick unrelated work.
 On Windows use an actual `.exe`, or `node.exe` plus the installed CLI's JavaScript

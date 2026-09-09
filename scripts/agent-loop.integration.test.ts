@@ -9,7 +9,11 @@ import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
 
 const cli = fileURLToPath(new URL('./agent-loop.ts', import.meta.url));
-interface Status { runs: number; failures: number; running: boolean; armed: boolean; ended: boolean; output: string; reason: string; log: string; supervisor: string }
+interface Status {
+  runs: number; failures: number; running: boolean; armed: boolean; ended: boolean;
+  output: string; reason: string; log: string; supervisor: string;
+  directive?: { status: 'continue' | 'complete' | 'blocked'; summary: string };
+}
 function cooperatingChild() {
   return [
     "const {spawnSync}=require('child_process'); const {writeFileSync}=require('fs');",
@@ -85,6 +89,46 @@ void test('external supervisor preserves argv, recurs, rejects duplicates and gr
     assert.equal(existsSync(join(f.cwd, 'BAD')), false);
     assert.equal(f.start('process.exit(1)', ['--max-failures', '1']).armed, true);
     assert.equal((await f.until(value => value.ended)).failures, 1);
+  } finally { await f.cleanup(); }
+});
+
+void test('required structured results distinguish progress, completion and blocked work', async () => {
+  const f = fixture();
+  const report = (status: string, summary: string) =>
+    `require('fs').writeFileSync(process.env.SCAFFOLD_AGENT_LOOP_RESULT, JSON.stringify({status:${JSON.stringify(status)},summary:${JSON.stringify(summary)}}))`;
+  try {
+    const invalidResults = [
+      'process.exit(0)',
+      `require('fs').writeFileSync(process.env.SCAFFOLD_AGENT_LOOP_RESULT, '{')`,
+      report('unknown', 'work remains'),
+      report('complete', ' '),
+      `require('fs').writeFileSync(process.env.SCAFFOLD_AGENT_LOOP_RESULT, JSON.stringify({status:'complete'}))`,
+    ];
+    for (const script of invalidResults) {
+      f.start(script, ['--require-result']);
+      const invalid = await f.until(value => value.ended);
+      assert.equal(invalid.reason, 'missing or invalid required result');
+      assert.equal(invalid.failures, 1);
+      assert.equal(invalid.directive, undefined);
+    }
+
+    f.start(report('continue', 'iteration delivered'), ['--require-result']);
+    const continuing = await f.until(value => value.runs >= 2);
+    assert.deepEqual(continuing.directive, { status: 'continue', summary: 'iteration delivered' });
+    f.call(['stop']);
+    await f.until(value => value.ended);
+
+    f.start(report('complete', 'objective delivered'), ['--require-result']);
+    let ended = await f.until(value => value.ended);
+    assert.equal(ended.reason, 'completed');
+    assert.equal(ended.failures, 0);
+    assert.deepEqual(ended.directive, { status: 'complete', summary: 'objective delivered' });
+
+    f.start(report('blocked', 'device unavailable'), ['--require-result']);
+    ended = await f.until(value => value.ended);
+    assert.equal(ended.reason, 'blocked');
+    assert.equal(ended.failures, 1);
+    assert.deepEqual(ended.directive, { status: 'blocked', summary: 'device unavailable' });
   } finally { await f.cleanup(); }
 });
 
