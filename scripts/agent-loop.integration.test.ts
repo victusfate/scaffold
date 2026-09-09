@@ -1,7 +1,7 @@
 // Real harmless detached-process lifecycle checks on every supported OS.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -53,7 +53,22 @@ function fixture() {
     await until(value => value.ended);
     rmSync(cwd, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
   };
-  return { cwd, call, callAsync, start, until, cleanup };
+  const diagnostics = () => {
+    try {
+      const root = join(cwd, 'state', 'scaffold-agent-loop');
+      if (!existsSync(root)) return 'No supervisor state created';
+      const snapshots = readdirSync(root).map(id => {
+        const files = ['progress.json', 'supervisor.log', 'output.log'];
+        return Object.fromEntries(files.map(name => {
+          const path = join(root, id, name);
+          try { return [name, readFileSync(path, 'utf8')]; }
+          catch (error) { return [name, `Unavailable: ${String(error)}`]; }
+        }));
+      });
+      return JSON.stringify(snapshots);
+    } catch (error) { return `Supervisor evidence unavailable: ${String(error)}`; }
+  };
+  return { cwd, call, callAsync, start, until, cleanup, diagnostics };
 }
 
 void test('external supervisor preserves argv, recurs, rejects duplicates and gracefully stops', async () => {
@@ -132,6 +147,7 @@ void test('steering is durable until an acknowledged outcome and rejects a stopp
 
 void test('concurrent steering preserves every message and generation boundaries', async () => {
   const f = fixture();
+  let primary: Error | undefined;
   try {
     f.start('setInterval(()=>{},100)');
     await f.until(value => value.running);
@@ -147,7 +163,19 @@ void test('concurrent steering preserves every message and generation boundaries
     await f.until(value => value.running);
     assert.deepEqual((f.call(['inbox']) as unknown as { pending: unknown[] }).pending, []);
     assert.equal((f.call(['inbox', '--all']) as unknown as { records: unknown[] }).records.length, 3);
-  } finally { await f.cleanup(); }
+    assert.equal(f.call(['status']).supervisor, 'active');
+  } catch (error) {
+    primary = error instanceof Error ? error : new Error('Concurrent steering failed', { cause: error });
+    console.error('Concurrent steering supervisor evidence:', f.diagnostics());
+  }
+  try {
+    await f.cleanup();
+  } catch (cleanup) {
+    console.error('Concurrent steering cleanup evidence:', f.diagnostics());
+    if (primary) throw new AggregateError([primary, cleanup], 'concurrent steering and fixture cleanup both failed', { cause: cleanup });
+    throw cleanup;
+  }
+  if (primary) throw primary;
 });
 
 void test('a cooperating child polls and acknowledges file-backed steering', async () => {
