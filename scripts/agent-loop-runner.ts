@@ -29,15 +29,16 @@ export async function supervise(dir: string, generation: string): Promise<void> 
       publish();
       const result = await execute(config, dir);
       progress.outcome = result.outcome;
+      progress.directive = result.directive;
       progress.finishedAt = Date.now();
       progress.running = false;
       progress.failures = progress.outcome === 'exit 0' ? 0 : progress.failures + 1;
       publish();
       if (config.requireResult && !result.directive) { terminalReason = result.outcome; break; }
-      if (result.directive?.status === 'complete') { terminalReason = result.directive.summary || 'completed'; break; }
+      if (result.directive?.status === 'complete') { terminalReason = 'completed'; break; }
       if (result.directive?.status === 'blocked') {
         progress.failures++;
-        terminalReason = result.directive.summary ? `blocked: ${result.directive.summary}` : 'blocked';
+        terminalReason = 'blocked';
         break;
       }
       next = Date.now() + config.interval;

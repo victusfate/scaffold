@@ -4,23 +4,24 @@ import type { ChildProcess } from 'node:child_process';
 import { closeSync, existsSync, openSync, readFileSync, renameSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import type { Config } from './agent-loop-state.ts';
+import type { AgentDirective, Config } from './agent-loop-state.ts';
 import { stopRequest } from './agent-loop-state.ts';
 
 const POLL_MS = 100;
 const KILL_GRACE_MS = 500;
 const TASKKILL_TIMEOUT_MS = 5000;
 const RESULT_FILE = 'run-result.json';
-type Directive = { status: 'continue' | 'complete' | 'blocked'; summary?: string };
-export interface ExecutionResult { outcome: string; directive?: Directive }
+export interface ExecutionResult { outcome: string; directive?: AgentDirective }
 
-function readDirective(path: string): Directive | undefined {
+function readDirective(path: string): AgentDirective | undefined {
   if (!existsSync(path)) return;
   try {
-    const value = JSON.parse(readFileSync(path, 'utf8')) as Directive;
-    if (!['continue', 'complete', 'blocked'].includes(value.status)) return;
-    if (value.summary !== undefined && typeof value.summary !== 'string') return;
-    return value;
+    const value = JSON.parse(readFileSync(path, 'utf8')) as unknown;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+    const { status, summary } = value as Record<string, unknown>;
+    if (status !== 'continue' && status !== 'complete' && status !== 'blocked') return;
+    if (typeof summary !== 'string' || !summary.trim()) return;
+    return { status, summary: summary.trim() };
   } catch { return; }
 }
 

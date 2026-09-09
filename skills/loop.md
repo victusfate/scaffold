@@ -149,9 +149,11 @@ child writes one JSON object there:
 {"status":"continue|complete|blocked","summary":"concrete progress or blocker"}
 ```
 
-`continue` schedules another run, `complete` ends the recurrence successfully,
-and `blocked` ends it with the blocker visible in status. A missing, malformed,
-or unknown result fails closed instead of treating exit code zero as progress.
+The summary must be a nonempty description of concrete progress, completion, or
+the blocker. `continue` schedules another run, `complete` ends the recurrence
+successfully, and `blocked` ends it with the typed directive and summary visible
+in status. A missing, empty, malformed, or unknown result fails closed instead
+of treating exit code zero as progress.
 Grant the child access only to that private result path when its sandbox requires
 an explicit writable path. Explicit command loops that already use meaningful
 process exit codes may omit this protocol.
