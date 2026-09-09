@@ -1,7 +1,7 @@
 ## Purpose
 
 Run an instruction or explicit command repeatedly using a real scheduler outside
-the model's turn. Use for `/loop <interval> <instruction>`, `$loop`, recurring
+the model's turn. Use for a loop invocation with an interval and instruction, recurring
 agent work, steering an active loop, and loop status/stop requests. This is an execution driver, not a
 replacement for the queue skill or a promise to remember to continue.
 
@@ -19,10 +19,9 @@ interface and usage docs
 /loop stop --cancel
 ```
 
-In Codex, select `$loop` or use `/skills`. In pi, use the discovered skill or
-explicitly load `.agents/skills/loop/SKILL.md` with its skill-loading option.
-A harness-native `/loop` command takes precedence; do not override it. Read
-linked files explicitly when the harness does not expand `@` imports.
+Use the active client's registered skill invocation. A native recurring-loop
+command takes precedence; do not override it. Read linked files explicitly when
+the client does not expand references.
 
 ## Capture the contract
 
@@ -30,7 +29,7 @@ Text after the interval is an **agent instruction**, not shell code. Use argv
 mode only for an explicitly requested command. Preserve quotes and multiline
 instructions; never interpolate them into `eval`, a shell script, or `sh -c`.
 
-Resolve the checkout, active branch, harness executable, interval, and existing
+Resolve the checkout, active branch, agent executable, interval, and existing
 authorization. Capture a self-contained instruction: agreed objective, next
 tasks, artifact/handoff paths, branch, validation/publication permissions, and
 completion condition. Use the repo's durable handoff convention, preserving any
@@ -129,10 +128,18 @@ Use the absolute helper path outside the scaffold-synced repo. Full scaffold
 sync ships the helper and modules; skill-only hoist may not. Verify the helper
 exists before scheduling. Never claim an unwired wrapper works.
 
-For natural language, inspect installed CLI help and build headless argv.
-Typical forms: `codex exec -- <instruction>` or `pi --print -- <instruction>`.
-Pass the captured prompt as one argument. Preserve selected repo/model settings;
-do not add permission, trust, or sandbox bypass flags. The helper pins the CWD.
+For natural language, inspect the installed agent CLI help and build its
+headless argv. Pass the captured prompt as one argument. The helper pins the
+CWD. A detached invocation may not inherit the parent session's permission,
+trust, sandbox, model, or device-access mode. Preserve those settings in the child
+argv using only the target CLI's reviewed unattended-approval mechanism. Never
+enable an unreviewed permission or sandbox bypass. Before claiming the loop is
+usable, verify that the child can perform the capabilities its task requires,
+including Git-metadata writes, device/GPU access, and required paths outside the
+workspace. If a required capability is unavailable, do not leave an apparently
+healthy recurrence armed: stop it, report the failed capability, and continue in
+the current session or checkpoint the work instead. Do not change global
+permission, trust, sandbox, or model configuration.
 An explicitly selected session can be resumed with supported options; never use
 a global “latest session” selector that might pick unrelated work.
 On Windows use an actual `.exe`, or `node.exe` plus the installed CLI's JavaScript
