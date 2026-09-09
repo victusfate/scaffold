@@ -59,6 +59,8 @@
   a dead config field, naming thresholds, and correcting old timer vocabulary.
 - Supported command contract: foreground commands join their workers. Windows
   cannot reclaim a detached tree after its parent exits; this is documented.
+- Expired queue leases fail closed with exit 6 and preserve their active records;
+  ambiguous ownership cannot trigger redispatch or process cleanup.
 - No paid agent runs or production work loops launched during verification.
 - Merged upstream queue-gate changes required a behavior-preserving handler
   extraction to restore the file-length gate; the isolated worktree fixture

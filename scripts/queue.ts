@@ -9,7 +9,7 @@
 //   node scripts/queue.ts set <id> <field> <value>   # edit a task field
 //   node scripts/queue.ts show <id>                  # print a task's full spec
 //   node scripts/queue.ts next | ready               # serial pick | fan-out candidate set
-//   node scripts/queue.ts tick                       # serial loop entry (reclaim→begin→print)
+//   node scripts/queue.ts tick                       # serial loop entry (ownership-check→begin→print)
 //   node scripts/queue.ts signal                     # print DRAIN-WANTED iff drainable (Monitor poll)
 //   node scripts/queue.ts claim <id> [--worker w]    # atomic claim for a parallel worker
 //   node scripts/queue.ts done <id> [--skip-validate]# run validate, then complete
@@ -52,8 +52,9 @@ const MS_PER_MIN = 60000;
 // Exit codes for the loop entry points (tick, ready, signal) so a driver can branch
 // its next cadence without parsing text: 0 = work dispatched/wanted → continue;
 // 3 = idle → back off to a long fallback; 4 = paused for a usage window → slow-poll;
-// 5 = stopped → halt. A bare `return 1` stays the usage/error code.
-const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5 } as const;
+// 5 = stopped → halt; 6 = ownership conflict → stop and report. A bare `return 1`
+// stays the usage/error code.
+const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5, CONFLICT: 6 } as const;
 
 // ---------------------------------------------------------------- validation
 
@@ -116,8 +117,9 @@ function cmdTick(q: Queue): number {
   q = gate.queue;
   const swept = reclaimStale(q, now(), q.config.leaseMinutes);
   if (swept.reclaimed.length) {
-    for (const t of swept.reclaimed) log(`reclaimed ${t.id} (stale lease)`);
-    q = swept.queue;
+    console.log(`queue: OWNERSHIP CONFLICT — expired lease(s) remain active: ${swept.reclaimed
+      .map(t => t.id).join(', ')}. Do not reclaim or dispatch; resolve ownership explicitly.`);
+    return EXIT.CONFLICT;
   }
   const t = nextActionable(q);
   if (!t) {

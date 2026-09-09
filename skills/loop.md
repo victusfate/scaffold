@@ -205,7 +205,8 @@ Explain defaults when arming unless the user supplied alternatives:
 - Survives chat/terminal closure while the supervisor lives, not reboot/WSL
   shutdown or a supervisor crash. Does not wake the computer or run without CLI
   authentication. Stale/crashed ownership is reported rather than auto-reclaimed;
-  inspect remaining jobs before a deliberate recovery.
+  inspect only current-session handles before a deliberate recovery. Foreign or
+  ambiguous jobs stay untouched and block overlapping dispatch.
 - Stop disables future runs; current work finishes. `--cancel` also terminates
   the current command's process tree. Explain that distinction before cancelling.
   Stop returns after recording the request. Poll status until `ended` before

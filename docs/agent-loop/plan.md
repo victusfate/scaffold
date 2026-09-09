@@ -21,7 +21,9 @@ work concurrently, but must never manage each other's orchestrators, workers, or
 user-launched CLIs. Remove the normal-exit process-group signal, retain owned-tree
 termination only for timeout/cancel, expose the invariant in generated queue-loop
 instructions, and add a regression proving a normally completed command cannot
-signal its surviving descendant. Queue lease metadata never grants process authority.
+signal its surviving descendant. Queue lease metadata never grants process authority;
+an expired lease stops serial dispatch until explicitly resolved by its owner or an
+operator.
 
 ## Steering extension — September 8
 

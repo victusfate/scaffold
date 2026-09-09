@@ -40,7 +40,9 @@ supervisor is reported, not mistaken for a healthy loop or silently duplicated.
 Process ownership is capability-based: only timeout/cancel may terminate the exact
 child tree created by the current driver generation. Normal exit sends no cleanup
 signal. Queue labels, timestamps, PIDs, terminals, and worktrees confer no process
-authority across sessions.
+authority across sessions. An expired queue lease blocks serial dispatch and remains
+active until its creating orchestrator proves its own worker terminal or an operator
+resolves the record.
 
 ## Testing Decisions
 
@@ -48,7 +50,8 @@ Test the CLI from temporary checkouts: argv preservation, validation, duplicate
 start, recurrence, non-overlap, graceful stop, cancellation, failure limits, and
 unsupported manager failure. Use harmless local commands, never real agent calls.
 Prove that normal command completion does not signal a surviving descendant while
-timeout/cancel still terminate the driver-owned descendant tree.
+timeout/cancel still terminate the driver-owned descendant tree. Prove that an
+expired queue lease fails closed without reclaiming its active record.
 Run real harmless supervisor integration tests and scaffold sync/discovery
 checks, including CI on ubuntu-latest, macos-latest, and windows-latest.
 
