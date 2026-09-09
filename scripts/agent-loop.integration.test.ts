@@ -132,6 +132,7 @@ void test('steering is durable until an acknowledged outcome and rejects a stopp
 
 void test('concurrent steering preserves every message and generation boundaries', async () => {
   const f = fixture();
+  let primary: unknown;
   try {
     f.start('setInterval(()=>{},100)');
     await f.until(value => value.running);
@@ -147,7 +148,17 @@ void test('concurrent steering preserves every message and generation boundaries
     await f.until(value => value.running);
     assert.deepEqual((f.call(['inbox']) as unknown as { pending: unknown[] }).pending, []);
     assert.equal((f.call(['inbox', '--all']) as unknown as { records: unknown[] }).records.length, 3);
-  } finally { await f.cleanup(); }
+    assert.equal(f.call(['status']).supervisor, 'active');
+  } catch (error) {
+    primary = error;
+  }
+  try {
+    await f.cleanup();
+  } catch (cleanup) {
+    if (primary) throw new AggregateError([primary, cleanup], 'concurrent steering and fixture cleanup both failed');
+    throw cleanup;
+  }
+  if (primary) throw primary;
 });
 
 void test('a cooperating child polls and acknowledges file-backed steering', async () => {
