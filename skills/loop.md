@@ -2,7 +2,7 @@
 
 Run an instruction or explicit command repeatedly using a real scheduler outside
 the model's turn. Use for `/loop <interval> <instruction>`, `$loop`, recurring
-agent work, and loop status/stop requests. This is an execution driver, not a
+agent work, steering an active loop, and loop status/stop requests. This is an execution driver, not a
 replacement for the queue skill or a promise to remember to continue.
 
 ## Invocation
@@ -58,6 +58,16 @@ Include these execution instructions in the agent prompt:
 - Reconcile existing processes and worktree lanes before spawning. Do not
   duplicate surviving jobs or reclaim live leases. Do not start a second
   orchestrator while a human/session is editing the same checkout.
+- Recurrence belongs to the main orchestrator by default. Subagents receive
+  bounded assignments and are monitored, retasked and joined by that agent;
+  they do not arm independent loops. A worker asked to schedule recurrence
+  returns that request to its parent rather than starting another driver.
+- Read the steering inbox at run start, between worker batches, before publishing
+  and before exiting. Apply new direction before resuming the older agenda.
+  Retask affected workers, update the durable handoff, then acknowledge each ID
+  with its disposition. Only the main orchestrator consumes steering; workers
+  follow its assignments. Include the exact `inbox` and `ack` commands below in
+  the captured prompt, using the absolute helper and checkout paths.
 - Requested lane counts are ceilings. Respect actual client slots and host
   limits; use the repo's memory guard for heavy jobs. A timeout is not a RAM cap.
 - Inspect stuck jobs using logs, elapsed time, and process state. Bound retries,
@@ -150,6 +160,48 @@ verification fails, report **not armed** and resolve the specific failure within
 scope. Never claim background execution without verified driver state.
 
 ## Status, changes, and stopping
+
+### Steering is routed by default
+
+When an interactive user sends a task correction while this checkout has an
+active loop, route it to that loop by default. Do not require `/loop steer` or
+a restart. First inspect the recorded driver's status and confirm the intended
+checkout. Enqueue the user's relevant direction without broadening its scope,
+then report the returned message ID as **queued**, not already applied. Status
+questions alone are not steering; explicit stop/cancel requests use those controls.
+Do not edit the loop-owned checkout to deliver a message.
+
+```text
+node /absolute/scaffold/scripts/agent-loop.ts steer --cwd /absolute/checkout --message "Keep the slide torso more vertical"
+node /absolute/scaffold/scripts/agent-loop.ts steer --cwd /absolute/checkout --message-file /private/steering.txt
+node /absolute/scaffold/scripts/agent-loop.ts inbox --cwd /absolute/checkout
+node /absolute/scaffold/scripts/agent-loop.ts ack --cwd /absolute/checkout --id MESSAGE_ID --outcome applied
+node /absolute/scaffold/scripts/agent-loop.ts ack --cwd /absolute/checkout --id MESSAGE_ID --outcome deferred --note "Finish the current atomic export, then adjust the pose; recorded in handoff"
+node /absolute/scaffold/scripts/agent-loop.ts inbox --cwd /absolute/checkout --all
+```
+
+Use one message source, not both. Preserve text as data, never shell source.
+Prefer a private message file for long/sensitive text; command arguments can be
+visible in process listings. Inbox storage is outside the checkout. Default reads
+return unacknowledged messages for the current generation without consuming them;
+`--all` explicitly inspects history, including prior generations. Messages survive
+run boundaries until acknowledged, so handle redelivery idempotently. Acknowledge
+only after adopting the direction in the working plan/handoff, not on mere read.
+`applied` means direction adopted, **not** that the requested deliverable is done.
+`deferred` and `blocked` require an explanatory note and must remain visible in
+the handoff/work queue. Do not silently replay an old generation after a restart.
+
+This is cooperative delivery, not a native chat interceptor. It cannot preempt an
+in-flight tool call. The chat agent must enqueue the update, and the main worker
+must have the polling instructions in its launch prompt. Do not silently alter
+arbitrary executable argv to add agent behavior. For a native scheduler, use its
+actual steering mechanism if available; otherwise report that steering delivery
+is unsupported. For an older already-running prompt without inbox polling,
+queueing alone is insufficient: report the limitation and use the existing
+stop/wait/handoff procedure before a deliberate restart. Never rearm a user-stopped
+loop. Do not claim automatic delivery is active until the recipient can poll.
+
+### Configuration changes
 
 Status/log requests are read-only: never create or restart a timer. Use the
 recorded driver. Active scheduling does not prove productive progress; inspect

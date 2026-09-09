@@ -19,10 +19,16 @@ TypeScript CLI, with durable command configuration and lifecycle controls.
 5. Refuse duplicates, malformed input, and unsupported scheduler environments.
 6. Bound runaway jobs by runtime, lifetime, and consecutive failures.
 7. Recover scope from a durable handoff, respecting existing queue and lane limits.
+8. Send a task correction to an active main loop without restarting it; receive
+   a durable message ID and distinguish queued direction from acknowledgment.
+9. Read pending steering across recurring runs and acknowledge adoption or explain
+   deferral/blockage. Inspect older generations without replaying them.
 
 ## Implementation Decisions
 
 CLI verbs: start, status, stop, logs, plus an internal supervise entrypoint.
+Steering adds steer, inbox and ack. Only the main orchestrator polls/acknowledges;
+interactive agents route relevant steering by default. Workers remain bounded.
 Inputs: checkout, interval, lifetime, timeout, failure limit, and argv.
 Structured JSON on stdout; child output retained in private logs. Supervisor identity
 is derived from canonical checkout. Configuration never overwrites repo source.

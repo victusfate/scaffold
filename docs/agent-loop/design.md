@@ -40,6 +40,20 @@ an actual work loop or install personal skills as part of developing this PR.
 
 ## Boundaries
 
+### Default steering extension
+
+Main orchestrators own recurrence; subagents are bounded workers, not schedulers.
+Interactive agents forward task corrections to the active loop by default.
+The driver stores steering messages in a private generation-scoped inbox under
+the same control lock as lifecycle changes. Polling is non-consuming. Explicit
+acknowledgment records applied/deferred/blocked direction; applied means adopted
+in the plan, not deliverable complete. Crashes before acknowledgment redeliver
+the same ID. Prior generations stay inspectable without replay into new work.
+
+Cooperative polling belongs in natural-language agent prompts, not arbitrary
+command argv. No harness-independent chat interception or in-flight preemption
+is promised. Existing runs without polling need a deliberate handoff/restart.
+
 The scheduler does not implement queue parsing, GPU scheduling, subagent APIs,
 publication policy, or worktree integration. The instruction delegates these to
 the repo's existing interfaces and limits. No paid agent invocation in tests.
