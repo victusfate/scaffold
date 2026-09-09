@@ -1,6 +1,6 @@
 // Real harmless detached-process lifecycle checks on every supported OS.
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -10,6 +10,15 @@ import test from 'node:test';
 
 const cli = fileURLToPath(new URL('./agent-loop.ts', import.meta.url));
 interface Status { runs: number; failures: number; running: boolean; armed: boolean; ended: boolean; output: string; reason: string; log: string; supervisor: string }
+function cooperatingChild() {
+  return [
+    "const {spawnSync}=require('child_process'); const {writeFileSync}=require('fs');",
+    "const [cli,cwd,receipt]=process.argv.slice(1);",
+    "setTimeout(()=>{const inbox=JSON.parse(spawnSync(process.execPath,[cli,'inbox','--cwd',cwd],{encoding:'utf8'}).stdout);",
+    "const id=inbox.pending[0]?.id; if(id){const ack=spawnSync(process.execPath,[cli,'ack','--cwd',cwd,'--id',id,'--outcome','applied'],{encoding:'utf8'}); writeFileSync(receipt,ack.stdout)}},300);",
+    'setTimeout(()=>{},700);',
+  ].join(' ');
+}
 function fixture() {
   const cwd = mkdtempSync(join(tmpdir(), 'agent-loop-portable-'));
   const env = { ...process.env, XDG_STATE_HOME: join(cwd, 'state') };
@@ -19,6 +28,14 @@ function fixture() {
     assert.equal(result.status, 0, result.stderr);
     return JSON.parse(result.stdout) as Status;
   };
+  const callAsync = (args: string[]) => new Promise<Status>((resolve, reject) => {
+    const child = spawn(process.execPath, [cli, args[0], '--cwd', cwd, ...args.slice(1)], { env });
+    let stdout = '', stderr = '';
+    child.stdout.on('data', chunk => { stdout += chunk; });
+    child.stderr.on('data', chunk => { stderr += chunk; });
+    child.once('error', reject);
+    child.once('close', code => code === 0 ? resolve(JSON.parse(stdout) as Status) : reject(new Error(stderr)));
+  });
   const start = (script: string, options: string[] = [], args: string[] = []) => call(['start', '--interval', '50ms',
     ...(options.includes('--lifetime') ? [] : ['--lifetime', '20s']), ...options, '--', process.execPath, '-e', script, ...args]);
   const until = async (predicate: (value: Status) => boolean) => {
@@ -35,7 +52,7 @@ function fixture() {
     await until(value => value.ended);
     rmSync(cwd, { recursive: true, force: true, maxRetries: 20, retryDelay: 50 });
   };
-  return { cwd, call, start, until, cleanup };
+  return { cwd, call, callAsync, start, until, cleanup };
 }
 
 void test('external supervisor preserves argv, recurs, rejects duplicates and gracefully stops', async () => {
@@ -76,6 +93,68 @@ void test('explicit cancel stops the active command and permits restart', async 
     await f.until(value => value.ended);
     f.start('process.exit(1)', ['--max-failures', '1']);
     assert.equal((await f.until(value => value.ended)).runs, 1);
+  } finally { await f.cleanup(); }
+});
+
+void test('steering is durable until an acknowledged outcome and rejects a stopped loop', async () => {
+  const f = fixture();
+  try {
+    f.start('setInterval(()=>{},100)');
+    await f.until(value => value.running);
+    const messageFile = join(f.cwd, 'message.txt');
+    writeFileSync(messageFile, 'file message');
+    f.call(['steer', '--message', ' ', '--message-file', messageFile], false);
+    f.call(['steer', '--message', ' '], false);
+    const queued = f.call(['steer', '--message', 'preserve this\nmessage']) as unknown as { id: string; pending: number };
+    assert.equal(queued.pending, 1);
+    const first = f.call(['inbox']) as unknown as { pending: Array<{ id: string; message: string }> };
+    assert.equal(first.pending.length, 1);
+    assert.equal(first.pending[0].id, queued.id);
+    assert.equal(first.pending[0].message, 'preserve this\nmessage');
+    const repeated = f.call(['inbox']) as unknown as { pending: Array<{ id: string }> };
+    assert.equal(repeated.pending.length, 1);
+    assert.equal(repeated.pending[0].id, queued.id);
+    const acknowledged = f.call(['ack', '--id', queued.id, '--outcome', 'deferred', '--note', 'waiting on render']) as unknown as { pending: number };
+    assert.equal(acknowledged.pending, 0);
+    assert.equal((f.call(['ack', '--id', queued.id, '--outcome', 'deferred', '--note', 'waiting on render']) as unknown as { pending: number }).pending, 0);
+    f.call(['ack', '--id', queued.id, '--outcome', 'blocked', '--note', 'different'], false);
+    f.call(['stop', '--cancel']);
+    await f.until(value => value.ended);
+    f.call(['steer', '--message', 'do not restart'], false);
+  } finally { await f.cleanup(); }
+});
+
+void test('concurrent steering preserves every message and generation boundaries', async () => {
+  const f = fixture();
+  try {
+    f.start('setInterval(()=>{},100)');
+    await f.until(value => value.running);
+    const queued = await Promise.all(['one', 'two', 'three'].map(message => f.callAsync(['steer', '--message', message])));
+    const inbox = f.call(['inbox']) as unknown as { pending: Array<{ id: string; message: string }> };
+    assert.deepEqual(inbox.pending.map(item => item.message).sort(), ['one', 'three', 'two']);
+    assert.equal(new Set(queued.map(item => (item as unknown as { id: string }).id)).size, 3);
+    f.call(['stop', '--cancel']);
+    await f.until(value => value.ended);
+    f.start('setInterval(()=>{},100)');
+    await f.until(value => value.running);
+    assert.deepEqual((f.call(['inbox']) as unknown as { pending: unknown[] }).pending, []);
+    assert.equal((f.call(['inbox', '--all']) as unknown as { records: unknown[] }).records.length, 3);
+  } finally { await f.cleanup(); }
+});
+
+void test('a cooperating child polls and acknowledges file-backed steering', async () => {
+  const f = fixture();
+  const messageFile = join(f.cwd, 'steering.txt');
+  const receipt = join(f.cwd, 'receipt.json');
+  writeFileSync(messageFile, 'change direction');
+  try {
+    f.start(cooperatingChild(), [], [cli, f.cwd, receipt]);
+    await f.until(value => value.running);
+    f.call(['steer', '--message-file', messageFile]);
+    const deadline = Date.now() + 4_000;
+    while (!existsSync(receipt) && Date.now() < deadline) await delay(50);
+    assert.ok(existsSync(receipt));
+    assert.equal((JSON.parse(readFileSync(receipt, 'utf8')) as { pending: number }).pending, 0);
   } finally { await f.cleanup(); }
 });
 
