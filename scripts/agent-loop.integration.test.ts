@@ -79,6 +79,25 @@ void test('explicit cancel stops the active command and permits restart', async 
   } finally { await f.cleanup(); }
 });
 
+void test('steering is durable until an acknowledged outcome and rejects a stopped loop', async () => {
+  const f = fixture();
+  try {
+    f.start('setInterval(()=>{},100)');
+    await f.until(value => value.running);
+    const queued = f.call(['steer', '--message', 'preserve this\nmessage']) as unknown as { id: string; pending: number };
+    assert.equal(queued.pending, 1);
+    const first = f.call(['inbox']) as unknown as { pending: Array<{ id: string; message: string }> };
+    assert.deepEqual(first.pending, [{ id: queued.id, message: 'preserve this\nmessage' }]);
+    const repeated = f.call(['inbox']) as unknown as { pending: Array<{ id: string }> };
+    assert.deepEqual(repeated.pending, [{ id: queued.id }]);
+    const acknowledged = f.call(['ack', '--id', queued.id, '--outcome', 'deferred', '--note', 'waiting on render']) as unknown as { pending: number };
+    assert.equal(acknowledged.pending, 0);
+    f.call(['stop', '--cancel']);
+    await f.until(value => value.ended);
+    f.call(['steer', '--message', 'do not restart'], false);
+  } finally { await f.cleanup(); }
+});
+
 void test('missing executable counts failures without a shell fallback', async () => {
   const f = fixture();
   try {
