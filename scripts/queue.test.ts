@@ -4,7 +4,7 @@
 import {
   parseQueue, serializeQueue,
   addTask, addMany, setTaskStatus, setField, moveToTop, moveTask, removeTask, setConfig,
-  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask, sweepFinished,
+  beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask, sweepFinished,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
   archivableDone, gateTasks, ungateTasks,
   type Queue,
@@ -129,16 +129,15 @@ integrationBranch: queue/integration
   assert('terminal keeps position', r3.queue.tasks.find(t => t.id === 'task-001') !== undefined);
 }
 
-// ---- lease reclaim ----
+// ---- lease conflict detection ----
 {
   const q = parseQueue(SAMPLE); // task-002 active, started 19:59, NOW 20:00 → 1 min old
-  const fresh = reclaimStale(q, NOW, 30);
-  assert('fresh lease not reclaimed', fresh.reclaimed.length === 0
-    && fresh.queue.tasks[1].status === 'active');
-  const stale = reclaimStale(q, '2026-08-12T21:00:00.000Z', 30); // 61 min old
-  assert('stale lease reclaimed', stale.reclaimed.length === 1 && stale.reclaimed[0].id === 'task-002');
-  assert('reclaimed back to pending', stale.queue.tasks[1].status === 'pending'
-    && stale.queue.tasks[1].owner === null);
+  const before = JSON.stringify(q);
+  const fresh = staleLeases(q, NOW, 30);
+  assert('fresh lease is not expired', fresh.length === 0);
+  const stale = staleLeases(q, '2026-08-12T21:00:00.000Z', 30); // 61 min old
+  assert('expired active lease identified', stale.length === 1 && stale[0].id === 'task-002');
+  assert('lease inspection preserves queue and ownership', JSON.stringify(q) === before);
 }
 
 // ---- eligibility, deadlock, selection ----

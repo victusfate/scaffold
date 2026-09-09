@@ -20,6 +20,20 @@ defaults; infer routine choices from the repository and existing authorization.
   integration is active. Do not change global model, trust, or permission settings
   to make a workflow run.
 
+## Session and process ownership
+
+Each session has exactly one orchestrator. Separate sessions may work concurrently,
+including in the same repository, but they are independent owners. Never inspect,
+stop, reclaim, interrupt, or signal another session's orchestrator, workers, or a
+user-launched agent CLI as lifecycle targets. Read-only aggregate resource checks
+may observe them, but process names, PIDs, terminals, queue owner labels, lease
+timestamps, and worktrees never establish authority over them.
+
+Only a lifecycle controller may terminate the exact child tree it created for its
+current generation, and only on explicit cancel or timeout. Normal child completion
+must not send a cleanup signal. If ownership is ambiguous, leave the process and
+worktree untouched, stop conflicting dispatch, and report the conflict.
+
 ## Iterative Autonomous Enhancement — a core design principle
 
 Iterative autonomous enhancement is a **core driving design principle** of this

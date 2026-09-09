@@ -88,7 +88,7 @@ add "<title>" [flags]                  # append a task (flags below); --top to p
 add-many                               # seed many tasks from stdin, one per line
 set <id> <field> <value>               # edit a field (mode/slug/deps/files/validate/accept)
 next | ready                           # serial pick | fan-out candidate set (under the cap)
-tick                                    # serial loop entry: reclaim → begin → print task
+tick                                    # serial loop entry: ownership check → begin → print task
 signal                                  # print DRAIN-WANTED iff drainable (Monitor poll; exit 0/3)
 claim <id> [--worker w]                # atomic claim for a parallel worker
 done <id> [--skip-validate]            # validate, complete, then auto-archive out of the queue
@@ -257,8 +257,10 @@ The loop body; one task per wake:
 
 1. `node scripts/queue.ts tick` —
    - `STOPPED` → do nothing (paused). `IDLE` → nothing eligible; end the turn.
-   - otherwise it reclaims any stale lease, marks the current task `active`, and
-     prints a `<queue_task>` block with its `mode` and spec. That's your one unit.
+   - `OWNERSHIP CONFLICT` → an active lease expired; stop dispatch and report it.
+     Never infer that its worker died or reclaim it automatically.
+   - otherwise it marks the current task `active` and prints a `<queue_task>`
+     block with its `mode` and spec. That's your one unit.
 2. **Execute** per its mode (`direct` or the `chain` sequence above), honoring the
    no-user-input contract.
 3. **Complete:** `queue done <id>` (runs `validate`; refuses → counts as a failure)
@@ -270,6 +272,23 @@ A resumed `active` task is preferred next wake; otherwise the topmost **eligible
 pending task (all `deps` done) starts. Failures don't halt the queue — a failed
 task retries (dropped to the back) up to `maxFailures`, then goes terminal, and
 independent work keeps flowing.
+
+### Session isolation during recovery
+
+One session has exactly one orchestrator. Other sessions may work concurrently,
+but their orchestrators, workers, terminals, and user-launched agent CLIs are
+outside this session's ownership. Never inspect them for cleanup or send them a
+signal. In particular, `owner` is a queue label and `startedAt` is a lease clock;
+neither is a PID, session identity, heartbeat, or permission to manage a process.
+
+`tick` and `ready` never reclaim an expired lease: they exit 6 and leave the task active.
+Only the orchestrator that created the worker may release that queue record, after
+its own durable worker handle proves terminal, using `queue fail <id> "owned worker
+ended"` or a deliberate operator edit. It must not run `kill`, `pkill`, `killall`,
+taskkill, or infer ownership from process names/PIDs. If a possibly live worker or
+orchestrator cannot be distinguished from a crashed one, fail closed: leave the
+process, record, and worktree untouched; stop new dispatch; report the ambiguity.
+Only the loop driver may cancel the exact child tree it created for its own generation.
 
 ## Fan-out (parallel — `maxParallel: N`)
 
@@ -288,9 +307,10 @@ own git worktree. Two patterns, same primitives:
    <id>` and `queue worktree remove <id>`.
 
 **Pattern B — multiple independent workers (scale-out).** Many loop sessions/crons
-each `queue claim <id> --worker <name>` (assign + verify sole owner), work their
-own worktree, and merge back. The `lease`/`reclaimStale` machinery returns a
-crashed worker's task to `pending`. Use this to drain faster or across machines.
+each `queue claim <id> --worker <name>` (atomically acquire the queue record), work
+their own worktree, and merge back. A queue-record claim grants no process authority.
+An expired lease blocks automatic dispatch until its creating orchestrator or an
+operator explicitly resolves it. Use this to drain faster or across machines.
 
 Merge-back is intentionally **not** a CLI auto-merge — the queue gives you
 isolation (`worktree add`/`remove`) and leaves integration to a judgment-applying
@@ -446,3 +466,6 @@ execution — applied to the queue so overnight drains survive the window.
    a `done` task still depended on by unfinished work is kept until that dependent
    completes (never break the DAG). Terminal `failed` tasks stay visible; sweep them
    with `archive`.
+10. **Session processes are isolated.** One orchestrator owns each session. Never
+    inspect, stop, reclaim, or signal another session's orchestrator/workers or a
+    user-launched agent CLI. Queue metadata is never process authority.

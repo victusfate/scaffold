@@ -14,6 +14,17 @@ Cross-OS revision: replace the initial systemd-only implementation before PR,
 not alongside it. Keep CLI syntax unchanged and test the same public lifecycle
 on Windows, macOS, and Linux through a dedicated CI matrix.
 
+## Session-isolation correction — September 9
+
+User direction: every session has exactly one orchestrator. Separate sessions may
+work concurrently, but must never manage each other's orchestrators, workers, or
+user-launched CLIs. Remove the normal-exit process-group signal, retain owned-tree
+termination only for timeout/cancel, expose the invariant in generated queue-loop
+instructions, and add a regression proving a normally completed command cannot
+signal its surviving descendant. Queue lease metadata never grants process authority;
+an expired lease stops serial dispatch until explicitly resolved by its owner or an
+operator.
+
 ## Steering extension — September 8
 
 User direction: recurring work belongs to the main orchestrator. Interactive

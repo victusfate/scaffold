@@ -23,6 +23,8 @@ TypeScript CLI, with durable command configuration and lifecycle controls.
    a durable message ID and distinguish queued direction from acknowledgment.
 9. Read pending steering across recurring runs and acknowledge adoption or explain
    deferral/blockage. Inspect older generations without replaying them.
+10. Keep exactly one orchestrator per session while allowing independent sessions
+    to coexist without managing or signalling one another's agent processes.
 
 ## Implementation Decisions
 
@@ -35,12 +37,21 @@ is derived from canonical checkout. Configuration never overwrites repo source.
 An external Node supervisor provides non-overlap and timeout, using process
 groups on POSIX and taskkill on Windows. No global settings change. A crashed
 supervisor is reported, not mistaken for a healthy loop or silently duplicated.
+Process ownership is capability-based: only timeout/cancel may terminate the exact
+child tree created by the current driver generation. Normal exit sends no cleanup
+signal. Queue labels, timestamps, PIDs, terminals, and worktrees confer no process
+authority across sessions. An expired queue lease blocks serial dispatch and remains
+active until its creating orchestrator proves its own worker terminal or an operator
+resolves the record.
 
 ## Testing Decisions
 
 Test the CLI from temporary checkouts: argv preservation, validation, duplicate
 start, recurrence, non-overlap, graceful stop, cancellation, failure limits, and
 unsupported manager failure. Use harmless local commands, never real agent calls.
+Prove that normal command completion does not signal a surviving descendant while
+timeout/cancel still terminate the driver-owned descendant tree. Prove that an
+expired queue lease fails closed without reclaiming its active record.
 Run real harmless supervisor integration tests and scaffold sync/discovery
 checks, including CI on ubuntu-latest, macos-latest, and windows-latest.
 

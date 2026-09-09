@@ -1,5 +1,16 @@
 # Agent loop verification
 
+## Session-isolation correction — September 9
+
+- RED: a normally exiting loop command spawned one surviving descendant; the
+  driver immediately sent its process group `SIGTERM`, and the descendant vanished.
+- GREEN: normal completion no longer calls process-tree termination. Timeout and
+  explicit cancel retain the existing driver-owned tree termination path.
+- The generated queue-loop instruction and loop/queue contracts now require one
+  orchestrator per session and forbid lifecycle control of other sessions or
+  user-launched agent CLIs. Read-only aggregate resource observation remains allowed.
+- Focused loop integration and queue-loop behavior tests pass.
+
 ## Steering extension — September 8
 
 - RED: public enqueue/read/ack test failed before steering verbs existed.
@@ -48,6 +59,8 @@
   a dead config field, naming thresholds, and correcting old timer vocabulary.
 - Supported command contract: foreground commands join their workers. Windows
   cannot reclaim a detached tree after its parent exits; this is documented.
+- Expired queue leases fail closed with exit 6 and preserve their active records;
+  ambiguous ownership cannot trigger redispatch or process cleanup.
 - No paid agent runs or production work loops launched during verification.
 - Merged upstream queue-gate changes required a behavior-preserving handler
   extraction to restore the file-length gate; the isolated worktree fixture

@@ -27,6 +27,16 @@ an actual work loop or install personal skills as part of developing this PR.
   scheduling, bounded execution, status, stop, and log retrieval.
 - One external loop per canonical checkout. No concurrent scheduler writes to
   the same checkout. Different worktrees are distinct checkouts.
+- One orchestrator per session. Concurrent sessions are isolated owners even when
+  they share a repository: no session may inspect, stop, reclaim, or signal another
+  session's orchestrator, workers, or user-launched CLI.
+- Process ownership is capability-based, not inferred. Only a driver may terminate
+  the exact child tree it created for its current generation, and only on explicit
+  cancellation or timeout. PIDs, process names, terminals, queue labels, timestamps,
+  and worktrees do not confer authority. Normal command exit sends no cleanup signal.
+- An expired queue lease is an ownership conflict, not proof of worker death. Serial
+  dispatch exits 6 without changing the active record; only the creating orchestrator
+  with a terminal durable handle, or an operator, may explicitly release it.
 - Natural-language runs get an explicit durable handoff of the agreed scope,
   branch, authorization, and progress references, not assumed chat memory.
 - Defaults are finite lifetime 8h, per-run timeout 30min, three consecutive

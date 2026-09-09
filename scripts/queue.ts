@@ -9,7 +9,7 @@
 //   node scripts/queue.ts set <id> <field> <value>   # edit a task field
 //   node scripts/queue.ts show <id>                  # print a task's full spec
 //   node scripts/queue.ts next | ready               # serial pick | fan-out candidate set
-//   node scripts/queue.ts tick                       # serial loop entry (reclaim→begin→print)
+//   node scripts/queue.ts tick                       # serial loop entry (ownership-check→begin→print)
 //   node scripts/queue.ts signal                     # print DRAIN-WANTED iff drainable (Monitor poll)
 //   node scripts/queue.ts claim <id> [--worker w]    # atomic claim for a parallel worker
 //   node scripts/queue.ts done <id> [--skip-validate]# run validate, then complete
@@ -38,7 +38,7 @@ import { cmdGate, cmdUngate, drainKick } from './queue-gates.ts';
 import {
   render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
-  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask,
+  beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type Task,
@@ -52,8 +52,9 @@ const MS_PER_MIN = 60000;
 // Exit codes for the loop entry points (tick, ready, signal) so a driver can branch
 // its next cadence without parsing text: 0 = work dispatched/wanted → continue;
 // 3 = idle → back off to a long fallback; 4 = paused for a usage window → slow-poll;
-// 5 = stopped → halt. A bare `return 1` stays the usage/error code.
-const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5 } as const;
+// 5 = stopped → halt; 6 = ownership conflict → stop and report. A bare `return 1`
+// stays the usage/error code.
+const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5, CONFLICT: 6 } as const;
 
 // ---------------------------------------------------------------- validation
 
@@ -94,9 +95,9 @@ function taskBlock(t: Task): string {
 
 /**
  * Auto-resume a due usage pause, then report whether the queue is drainable.
- * Returns a blocking EXIT code (STOPPED/PAUSED) or null to proceed.
+ * Returns a blocking EXIT code for pauses or ambiguous ownership, or null to proceed.
  */
-function pauseGate(q: Queue): { queue: Queue; blocked: number | null } {
+function dispatchGate(q: Queue): { queue: Queue; blocked: number | null } {
   const due = resumeIfDue(q, now());
   if (due.resumed) { q = due.queue; save(q); log('auto-resumed (usage window reopened)'); }
   if (q.config.status === 'stopped') {
@@ -107,18 +108,19 @@ function pauseGate(q: Queue): { queue: Queue; blocked: number | null } {
     console.log('queue: STOPPED — run `queue start` to resume');
     return { queue: q, blocked: EXIT.STOPPED };
   }
+  const expired = staleLeases(q, now(), q.config.leaseMinutes);
+  if (expired.length) {
+    console.log(`queue: OWNERSHIP CONFLICT — expired lease(s) remain active: ${expired
+      .map(t => t.id).join(', ')}. Do not reclaim or dispatch; resolve ownership explicitly.`);
+    return { queue: q, blocked: EXIT.CONFLICT };
+  }
   return { queue: q, blocked: null };
 }
 
 function cmdTick(q: Queue): number {
-  const gate = pauseGate(q);
+  const gate = dispatchGate(q);
   if (gate.blocked !== null) return gate.blocked;
   q = gate.queue;
-  const swept = reclaimStale(q, now(), q.config.leaseMinutes);
-  if (swept.reclaimed.length) {
-    for (const t of swept.reclaimed) log(`reclaimed ${t.id} (stale lease)`);
-    q = swept.queue;
-  }
   const t = nextActionable(q);
   if (!t) {
     const stuck = deadlocked(q);
@@ -137,7 +139,7 @@ function cmdTick(q: Queue): number {
 }
 
 function cmdReady(q: Queue): number {
-  const gate = pauseGate(q);
+  const gate = dispatchGate(q);
   if (gate.blocked !== null) return gate.blocked;
   q = gate.queue;
   const r = readyTasks(q);
@@ -299,6 +301,9 @@ function cmdLoop(q: Queue): number {
     + `\`while true; do node scripts/queue.ts signal; sleep ${q.config.idlePoll}; done\` — `
     + `it prints a line ONLY when work is drainable, so it never fires on an empty queue`;
   console.log(`/loop ${q.config.idlePoll} drain the work queue: FIRST ${signalPoll}; `
+    + `ONE orchestrator owns this session; other sessions and user-launched agent CLIs are `
+    + `independent and must never be stopped, reclaimed, interrupted, or signalled. Queue lease `
+    + `expiry is metadata only and grants no process authority. `
     + `THEN repeatedly ${drain} — keep going while tick/ready exits 0 (each completed task `
     + `auto-archives out of the queue). On exit 3 (idle/drained) TERMINATE the loop with `
     + `ScheduleWakeup stop:true; the signal-Monitor re-wakes the loop only when a later add `
@@ -306,6 +311,8 @@ function cmdLoop(q: Queue): number {
     + `Only if you could NOT arm a Monitor, fall back to re-arming the ${q.config.idlePoll} `
     + `heartbeat (it must poll, so it may wake on an empty queue). Exit 5 (operator stop) `
     + `always stops the loop; exit 4 slow-polls at ${q.config.pausePoll}. `
+    + `Exit 6 (ownership conflict) stops dispatch: report the conflict and leave claims, `
+    + `processes, and worktrees untouched until ownership is resolved. `
     + `Cadence: busy → continue immediately · idle → stop:true (signal-Monitor re-wakes on new `
     + `work; ${q.config.idlePoll} heartbeat only if unmonitored) · paused → ${q.config.pausePoll}.`);
   return 0;

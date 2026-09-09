@@ -24,6 +24,11 @@ function cooperatingChild() {
     "writeFileSync(receipt,JSON.stringify({adopted,acknowledgments})); clearInterval(timer)},50);",
   ].join(' ');
 }
+async function assertFileStopsChanging(path: string) {
+  const contents = readFileSync(path, 'utf8');
+  await delay(200);
+  assert.equal(readFileSync(path, 'utf8'), contents);
+}
 function fixture() {
   const cwd = mkdtempSync(join(tmpdir(), 'agent-loop-portable-'));
   const env = { ...process.env, XDG_STATE_HOME: join(cwd, 'state') };
@@ -138,19 +143,44 @@ void test('timeouts kill the active descendant tree and trip the failure limit',
     f.start(`require('child_process').spawn(process.execPath, ['-e', "setInterval(()=>require('fs').appendFileSync('ticks','x'),30)"], {stdio:'inherit'}); setInterval(()=>{},100)`, ['--timeout', '400ms', '--max-failures', '1']);
     const ended = await f.until(value => value.ended);
     assert.equal(ended.failures, 1);
-    const ticks = readFileSync(join(f.cwd, 'ticks'), 'utf8');
-    await delay(200);
-    assert.equal(readFileSync(join(f.cwd, 'ticks'), 'utf8'), ticks);
+    await assertFileStopsChanging(join(f.cwd, 'ticks'));
   } finally { await f.cleanup(); }
+});
+
+void test('normal command completion never signals a surviving descendant', { skip: process.platform === 'win32' }, async () => {
+  const f = fixture();
+  const pidFile = join(f.cwd, 'descendant.pid');
+  let descendantPid = 0;
+  try {
+    f.start([
+      "const {existsSync,writeFileSync}=require('fs'); const {spawn}=require('child_process');",
+      `const pidFile=${JSON.stringify(pidFile)};`,
+      "if(!existsSync(pidFile)){const child=spawn(process.execPath,['-e','setInterval(()=>{},100)'],{stdio:'ignore'}); writeFileSync(pidFile,String(child.pid)); child.unref()}",
+    ].join(' '));
+    await f.until(value => value.runs >= 1 && !value.running);
+    descendantPid = Number(readFileSync(pidFile, 'utf8'));
+    assert.doesNotThrow(() => process.kill(descendantPid, 0));
+  } finally {
+    if (descendantPid) {
+      try { process.kill(descendantPid, 'SIGTERM'); } catch { /* already exited */ }
+    }
+    await f.cleanup();
+  }
 });
 
 void test('explicit cancel stops the active command and permits restart', async () => {
   const f = fixture();
   try {
-    f.start('setInterval(()=>{},100)');
-    await f.until(value => value.running);
+    f.start([
+      "require('child_process').spawn(process.execPath,",
+      "['-e', \"setInterval(()=>require('fs').appendFileSync('cancel-ticks','x'),30)\"],",
+      "{stdio:'inherit'}); setInterval(()=>{},100)",
+    ].join(' '));
+    const path = join(f.cwd, 'cancel-ticks');
+    await f.until(value => value.running && existsSync(path));
     f.call(['stop', '--cancel']);
     await f.until(value => value.ended);
+    await assertFileStopsChanging(path);
     f.start('process.exit(1)', ['--max-failures', '1']);
     assert.equal((await f.until(value => value.ended)).runs, 1);
   } finally { await f.cleanup(); }
