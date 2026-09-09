@@ -14,9 +14,10 @@ function cooperatingChild() {
   return [
     "const {spawnSync}=require('child_process'); const {writeFileSync}=require('fs');",
     "const [cli,cwd,receipt]=process.argv.slice(1);",
-    "setTimeout(()=>{const inbox=JSON.parse(spawnSync(process.execPath,[cli,'inbox','--cwd',cwd],{encoding:'utf8'}).stdout);",
-    "const id=inbox.pending[0]?.id; if(id){const ack=spawnSync(process.execPath,[cli,'ack','--cwd',cwd,'--id',id,'--outcome','applied'],{encoding:'utf8'}); writeFileSync(receipt,ack.stdout)}},300);",
-    'setTimeout(()=>{},700);',
+    "const timer=setInterval(()=>{const inbox=JSON.parse(spawnSync(process.execPath,[cli,'inbox','--cwd',cwd],{encoding:'utf8'}).stdout);",
+    "if(inbox.pending.length<2)return; const adopted=inbox.pending.at(-1).message; writeFileSync(receipt+'.adopted',adopted);",
+    "const acknowledgments=inbox.pending.map(({id})=>{const ack=spawnSync(process.execPath,[cli,'ack','--cwd',cwd,'--id',id,'--outcome','applied'],{encoding:'utf8'}); if(ack.status!==0)throw Error(ack.stderr); return JSON.parse(ack.stdout)});",
+    "writeFileSync(receipt,JSON.stringify({adopted,acknowledgments})); clearInterval(timer)},50);",
   ].join(' ');
 }
 function fixture() {
@@ -157,11 +158,39 @@ void test('a cooperating child polls and acknowledges file-backed steering', asy
   try {
     f.start(cooperatingChild(), [], [cli, f.cwd, receipt]);
     await f.until(value => value.running);
-    f.call(['steer', '--message-file', messageFile]);
+    const first = f.call(['steer', '--message-file', messageFile]) as unknown as { id: string };
+    const latest = 'preserve palm; fix sword\nΩ $HOME; touch BAD';
+    const second = f.call(['steer', '--message', latest]) as unknown as { id: string };
     const deadline = Date.now() + 4_000;
     while (!existsSync(receipt) && Date.now() < deadline) await delay(50);
     assert.ok(existsSync(receipt));
-    assert.equal((JSON.parse(readFileSync(receipt, 'utf8')) as { pending: number }).pending, 0);
+    const result = JSON.parse(readFileSync(receipt, 'utf8')) as { adopted: string; acknowledgments: Array<{ id: string; pending: number }> };
+    assert.equal(result.adopted, latest);
+    assert.equal(readFileSync(receipt + '.adopted', 'utf8'), latest);
+    assert.deepEqual(result.acknowledgments.map(item => item.id), [first.id, second.id]);
+    assert.equal(result.acknowledgments.at(-1)?.pending, 0);
+    assert.equal(existsSync(join(f.cwd, 'BAD')), false);
+  } finally { await f.cleanup(); }
+});
+
+void test('unacknowledged steering survives command failure and recurring runs', async () => {
+  const f = fixture();
+  try {
+    f.start('setTimeout(()=>process.exit(1),400)', ['--max-failures', '10']);
+    const queued = f.call(['steer', '--message', 'supersede the previous agenda']) as unknown as { id: string };
+    const status = await f.until(value => value.runs >= 2);
+    assert.ok(status.failures >= 1);
+    const inbox = f.call(['inbox']) as unknown as { pending: Array<{ id: string }> };
+    assert.deepEqual(inbox.pending.map(item => item.id), [queued.id]);
+  } finally { await f.cleanup(); }
+});
+
+void test('expired loops reject steering while their current command finishes', async () => {
+  const f = fixture();
+  try {
+    f.start('setInterval(()=>{},100)', ['--lifetime', '500ms']);
+    await f.until(value => !value.armed && value.running);
+    f.call(['steer', '--message', 'too late'], false);
   } finally { await f.cleanup(); }
 });
 
@@ -194,6 +223,7 @@ void test('stale owned state cannot signal a reused PID or start a duplicate', a
   writeFileSync(join(dir, 'progress.json'), JSON.stringify({ ...stopped, pid: process.pid, heartbeat: 1, ended: false, running: true }));
   try {
     assert.equal(f.call(['status']).supervisor, 'stale');
+    f.call(['steer', '--message', 'stale owner'], false);
     f.call(['stop', '--cancel'], false);
     f.call(['start', '--interval', '1s', '--', process.execPath], false);
   } finally { rmSync(f.cwd, { recursive: true, force: true }); }
