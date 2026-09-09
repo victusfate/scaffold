@@ -271,6 +271,22 @@ pending task (all `deps` done) starts. Failures don't halt the queue — a faile
 task retries (dropped to the back) up to `maxFailures`, then goes terminal, and
 independent work keeps flowing.
 
+### Session isolation during recovery
+
+One session has exactly one orchestrator. Other sessions may work concurrently,
+but their orchestrators, workers, terminals, and user-launched agent CLIs are
+outside this session's ownership. Never inspect them for cleanup or send them a
+signal. In particular, `owner` is a queue label and `startedAt` is a lease clock;
+neither is a PID, session identity, heartbeat, or permission to manage a process.
+
+Stale-lease recovery may change queue metadata after the repository's recovery
+contract is satisfied. It must not run `kill`, `pkill`, `killall`, taskkill, or
+infer ownership from process names/PIDs. If a possibly live worker or orchestrator
+cannot be distinguished from a crashed one, fail closed: leave the process and its
+worktree untouched, stop new dispatch for the conflicting task, and report the
+ownership ambiguity. Only the loop driver may cancel the exact child tree it
+created for its own generation.
+
 ## Fan-out (parallel — `maxParallel: N`)
 
 Set `queue config maxParallel 3` to run independent tasks concurrently, each in its
@@ -446,3 +462,6 @@ execution — applied to the queue so overnight drains survive the window.
    a `done` task still depended on by unfinished work is kept until that dependent
    completes (never break the DAG). Terminal `failed` tasks stay visible; sweep them
    with `archive`.
+10. **Session processes are isolated.** One orchestrator owns each session. Never
+    inspect, stop, reclaim, or signal another session's orchestrator/workers or a
+    user-launched agent CLI. Queue metadata is never process authority.

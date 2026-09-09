@@ -38,8 +38,8 @@ session does not inherit chat memory or native subagent handles.
 
 Before the first external run, finish/checkpoint the current edit and transfer
 checkout ownership: the parent session stops editing that checkout once the
-driver starts. Finish native subagent lanes first, or record independently
-surviving process IDs, worktrees, and logs that the next run can reconcile. To
+driver starts. Finish native subagent lanes first, or record their worktrees and
+logs without transferring authority through raw PIDs. To
 resume interactive edits, stop the loop and wait for the current run to finish
 (or explicitly cancel it). Status-only check-ins do not require stopping it.
 Keep lifecycle control with the parent or supervisor. A scheduled child reports
@@ -55,8 +55,9 @@ Include these execution instructions in the agent prompt:
   changed, stop the loop and report before editing.
 - Work continuously during each run; the interval restarts an ended run, not
   permission to stop after one small action while useful work remains.
-- Reconcile existing processes and worktree lanes before spawning. Do not
-  duplicate surviving jobs or reclaim live leases. Do not start a second
+- Reconcile only driver-owned handles and current-session worktree lanes before
+  spawning. Do not inspect other agent sessions for cleanup, duplicate surviving
+  jobs, or reclaim live leases. Do not start a second
   orchestrator while a human/session is editing the same checkout.
 - Recurrence belongs to the main orchestrator by default. Subagents receive
   bounded assignments and are monitored, retasked and joined by that agent;
@@ -79,7 +80,8 @@ Include these execution instructions in the agent prompt:
   requires a report, not silent continuation of the old instruction.
 - Requested lane counts are ceilings. Respect actual client slots and host
   limits; use the repo's memory guard for heavy jobs. A timeout is not a RAM cap.
-- Inspect stuck jobs using logs, elapsed time, and process state. Bound retries,
+- Inspect current-session stuck jobs using owned handles, logs, elapsed time, and
+  process state. Bound retries,
   keep independent work moving, and never loosen permissions or kill unrelated jobs.
   Launch long jobs nonblockingly, retain their identifiers/logs, and inspect them
   periodically while remaining responsive to steering.
@@ -94,6 +96,24 @@ Include these execution instructions in the agent prompt:
   not prove the objective complete.
 
 ## Select and arm a driver
+
+### Orchestrator and process isolation
+
+One session has exactly one orchestrator. Separate sessions may work concurrently,
+including in the same repository, but they are independent owners. Never inspect,
+stop, reclaim, interrupt, or signal another session's orchestrator, subagents, or a
+user-launched agent CLI as lifecycle targets. Aggregate resource checks may observe
+them read-only, but a process discovered with `ps`, `pgrep`, a terminal, a queue
+owner label, an old timestamp, or a worktree is not thereby owned by the current
+session. Those observations grant no lifecycle authority.
+
+Only the driver may terminate the exact child process tree it created, and only
+for that driver generation after an explicit cancel or timeout. Normal child exit
+must not trigger a cleanup signal. Never use `kill`, `pkill`, `killall`, taskkill,
+process-name matching, or PID inference to reconcile agent sessions. If another
+orchestrator appears to overlap this checkout, leave it untouched, stop dispatching
+new work in the current session, and report the ownership conflict. Queue lease
+recovery changes queue metadata only; it never authorizes an OS signal.
 
 Use an exposed native recurring scheduler if it supports the requested behavior.
 For editing jobs it must prevent overlapping runs in the same checkout; otherwise

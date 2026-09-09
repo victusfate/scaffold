@@ -159,7 +159,7 @@ void test('normal command completion never signals a surviving descendant', { sk
     assert.doesNotThrow(() => process.kill(descendantPid, 0));
   } finally {
     if (descendantPid) {
-      try { process.kill(descendantPid, 'SIGTERM'); } catch {}
+      try { process.kill(descendantPid, 'SIGTERM'); } catch { /* already exited */ }
     }
     await f.cleanup();
   }

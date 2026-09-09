@@ -79,7 +79,6 @@ export async function execute(config: Config, dir: string): Promise<ExecutionRes
       }
       await delay(Math.min(POLL_MS, Math.max(1, deadline - Date.now())));
     }
-    if (child.pid && process.platform !== 'win32') await terminate(child);
     if (outcome !== 'exit 0' || !config.requireResult) return { outcome };
     const directive = readDirective(resultPath);
     return directive ? { outcome, directive } : { outcome: 'missing or invalid required result' };

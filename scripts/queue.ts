@@ -299,6 +299,9 @@ function cmdLoop(q: Queue): number {
     + `\`while true; do node scripts/queue.ts signal; sleep ${q.config.idlePoll}; done\` — `
     + `it prints a line ONLY when work is drainable, so it never fires on an empty queue`;
   console.log(`/loop ${q.config.idlePoll} drain the work queue: FIRST ${signalPoll}; `
+    + `ONE orchestrator owns this session; other sessions and user-launched agent CLIs are `
+    + `independent and must never be stopped, reclaimed, interrupted, or signalled. Queue lease `
+    + `expiry is metadata only and grants no process authority. `
     + `THEN repeatedly ${drain} — keep going while tick/ready exits 0 (each completed task `
     + `auto-archives out of the queue). On exit 3 (idle/drained) TERMINATE the loop with `
     + `ScheduleWakeup stop:true; the signal-Monitor re-wakes the loop only when a later add `
