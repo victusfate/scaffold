@@ -432,6 +432,10 @@ execution — applied to the queue so overnight drains survive the window.
    so an empty queue never wakes it. Only when **no Monitor could be armed** does an
    idle tick re-arm the `idlePoll` heartbeat instead. A registered `CronCreate` drain
    is an equivalent standing driver. An operator stop/pause always ends the loop.
+   When the portable agent-loop is the driver, its child reports `continue` while
+   any active or eligible queue work remains and reports `complete` only after the
+   queue is actually drained. It never calls the driver's `stop` command itself;
+   the supervisor owns recurrence lifecycle and terminal outcomes.
 8. **Tasks are atomic.** One reviewable slice, finishable in one sitting, with a
    checkable `accept`. Never enqueue an "ensure all X"/"cover every Y" umbrella —
    enumerate it into finite children and make the parent a tracking stub
