@@ -19,6 +19,9 @@ on Windows, macOS, and Linux through a dedicated CI matrix.
 User direction: recurring work belongs to the main orchestrator. Interactive
 steering should reach that orchestrator by default; workers receive bounded
 assignments and are retasked by the main agent.
+Latest user steering always overrides conflicting loop instructions and worker
+priorities. Apply it at the next safe boundary; never finish the older agenda
+first or wait for the recurrence interval. Preserve safe atomic cleanup only.
 
 One vertical slice adds `steer --message TEXT` (or `--message-file PATH`),
 `inbox`, and `ack --id ID --outcome applied|deferred|blocked` to the public CLI.

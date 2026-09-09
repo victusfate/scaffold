@@ -68,6 +68,14 @@ Include these execution instructions in the agent prompt:
   with its disposition. Only the main orchestrator consumes steering; workers
   follow its assignments. Include the exact `inbox` and `ack` commands below in
   the captured prompt, using the absolute helper and checkout paths.
+- User steering always supersedes conflicting captured loop instructions, queue
+  priorities and worker assignments, subject to higher-priority safety rules.
+  Process messages in receipt order; the latest user direction wins when they
+  conflict. Stop dispatching conflicting work and retask affected workers at the
+  next safe boundary. Do not defer steering just to finish the old agenda or wait
+  for another interval. An in-flight tool may need to return or an atomic write
+  finish safely, but do not resume superseded work afterward. A real blocker
+  requires a report, not silent continuation of the old instruction.
 - Requested lane counts are ceilings. Respect actual client slots and host
   limits; use the repo's memory guard for heavy jobs. A timeout is not a RAM cap.
 - Inspect stuck jobs using logs, elapsed time, and process state. Bound retries,
@@ -170,6 +178,8 @@ checkout. Enqueue the user's relevant direction without broadening its scope,
 then report the returned message ID as **queued**, not already applied. Status
 questions alone are not steering; explicit stop/cancel requests use those controls.
 Do not edit the loop-owned checkout to deliver a message.
+If several checkouts have active loops, route only to those clearly placed in
+scope by the user; ask which one when ambiguous rather than broadcasting.
 
 ```text
 node /absolute/scaffold/scripts/agent-loop.ts steer --cwd /absolute/checkout --message "Keep the slide torso more vertical"
@@ -189,7 +199,9 @@ run boundaries until acknowledged, so handle redelivery idempotently. Acknowledg
 only after adopting the direction in the working plan/handoff, not on mere read.
 `applied` means direction adopted, **not** that the requested deliverable is done.
 `deferred` and `blocked` require an explanatory note and must remain visible in
-the handoff/work queue. Do not silently replay an old generation after a restart.
+the handoff/work queue. Deferral is for an unavoidable safe boundary, not lower
+priority than older work. Record superseding direction before acknowledging it.
+Do not silently replay an old generation after a restart.
 
 This is cooperative delivery, not a native chat interceptor. It cannot preempt an
 in-flight tool call. The chat agent must enqueue the update, and the main worker

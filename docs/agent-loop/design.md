@@ -44,6 +44,8 @@ an actual work loop or install personal skills as part of developing this PR.
 
 Main orchestrators own recurrence; subagents are bounded workers, not schedulers.
 Interactive agents forward task corrections to the active loop by default.
+Latest user steering overrides conflicting loop/queue/worker instructions at
+the next safe boundary; it is not an optional lower-priority suggestion.
 The driver stores steering messages in a private generation-scoped inbox under
 the same control lock as lifecycle changes. Polling is non-consuming. Explicit
 acknowledgment records applied/deferred/blocked direction; applied means adopted
