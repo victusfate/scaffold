@@ -139,6 +139,9 @@ export function splitList(v: string): string[] {
  * number (minutes — the quick-scan unit). Forgiving: garbage parses to 0 so
  * a hand edit never breaks the file.
  */
+const SECS_PER_MIN = 60;
+const SECS_PER_HOUR = 3600;
+const MS_PER_SEC = 1000;
 export function parseDurationSecs(v: string): number {
   const s = v.trim();
   if (!s) return 0;
@@ -146,7 +149,7 @@ export function parseDurationSecs(v: string): number {
   for (const m of s.matchAll(/(\d+(?:\.\d+)?)\s*([hms])?/g)) {
     matched = true;
     const n = Number(m[1]);
-    total += m[2] === 'h' ? n * 3600 : m[2] === 's' ? n : n * 60;
+    total += m[2] === 'h' ? n * SECS_PER_HOUR : m[2] === 's' ? n : n * SECS_PER_MIN;
   }
   return matched ? Math.max(0, Math.round(total)) : 0;
 }
@@ -157,7 +160,7 @@ export function parseDurationSecs(v: string): number {
  */
 export function formatDurationSecs(s: number): string {
   const secs = Math.max(0, Math.round(s));
-  return secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`;
+  return secs < SECS_PER_MIN ? `${secs}s` : `${Math.floor(secs / SECS_PER_MIN)}m`;
 }
 
 /**
@@ -166,8 +169,8 @@ export function formatDurationSecs(s: number): string {
  */
 export function formatDurationExact(s: number): string {
   let secs = Math.max(0, Math.round(s));
-  const h = Math.floor(secs / 3600); secs -= h * 3600;
-  const m = Math.floor(secs / 60); secs -= m * 60;
+  const h = Math.floor(secs / SECS_PER_HOUR); secs -= h * SECS_PER_HOUR;
+  const m = Math.floor(secs / SECS_PER_MIN); secs -= m * SECS_PER_MIN;
   return (h ? `${h}h` : '') + (m ? `${m}m` : '') + (secs ? `${secs}s` : '') || '0s';
 }
 
@@ -177,7 +180,7 @@ export function formatDurationExact(s: number): string {
  */
 export function bankSession(t: Task, nowIso: string): number {
   if (!t.startedAt) return t.elapsedSecs;
-  const delta = Math.floor((Date.parse(nowIso) - Date.parse(t.startedAt)) / 1000);
+  const delta = Math.floor((Date.parse(nowIso) - Date.parse(t.startedAt)) / MS_PER_SEC);
   return t.elapsedSecs + Math.max(0, delta);
 }
 
