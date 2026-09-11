@@ -48,6 +48,7 @@ scripts/queue-console.template.html
 scripts/queue-console.test.ts
 scripts/queue-lanes.ts
 scripts/queue-lanes.test.ts
+scripts/queue-elapsed.test.ts
 scripts/resolver-phases.ts
 scripts/resolver-utils.ts
 scripts/update-skills-doc.ts
