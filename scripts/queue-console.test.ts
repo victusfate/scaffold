@@ -275,6 +275,12 @@ maxParallel: 2
   has('escape disarms', 'Escape');
   has('dispatch plan mount point', 'id="plan"');
   has('error surface mount point', 'id="error"');
+  has('kanban Queued column', '["Queued"');
+  has('kanban Blocked column', '["Blocked"');
+  has('kanban In Progress column', '["In Progress"');
+  has('kanban Done column', '["Done"');
+  has('kanban Failed column', '["Failed"');
+  has('columns render from ConsoleState', 'S.tasks.filter');
   for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"', '"reassign"', '"stop-lane"', '"claim-lane"', '"release"', '"hold"', '"unhold"', '"mark-done"', '"force-fail"', '"reopen"']) {
     has(`page wires op ${op}`, `op: ${op}`);
   }

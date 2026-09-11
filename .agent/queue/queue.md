@@ -16,8 +16,6 @@ nextId: 8
 Order = priority (top first). Checkboxes: `[ ]` pending · `[>]` active · `[x]` done · `[!]` failed.
 Edit this file freely to reprioritize, add, or remove work; the worker reads it every tick. Task lines and their indented fields survive; freeform prose is not preserved across worker writes.
 
-- [ ] task-002 — Kanban column grouping in board template
-  - accept: Queued/Blocked/In Progress/Done/Failed columns render from ConsoleState
 - [ ] task-001 — Lane heartbeat sidecars + GET /api/lanes
   - mode: chain
   - slug: queue-live-board
