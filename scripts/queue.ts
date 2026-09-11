@@ -47,9 +47,7 @@ import {
   type Queue, type Task,
 } from './queue-model.ts';
 import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
-import {
-  beatLane, readLanes, clearLane, laneStale, requestStop, stopRequested, clearStopRequest,
-} from './queue-lanes.ts';
+import { cmdLane } from './queue-lanes.ts';
 
 // ---------------------------------------------------------------- flags
 
@@ -282,36 +280,6 @@ function cmdWorktree(q: Queue, sub: string, id: string): number {
   if (sub === 'remove' || sub === 'rm') return cmdWorktreeRemove(q, id);
   if (sub === 'list') { console.log(git('worktree list')); return 0; }
   console.error('usage: queue worktree add|remove|list <id>');
-  return 1;
-}
-
-function cmdLane(q: Queue, sub: string, id: string, f: ReturnType<typeof parse>): number {
-  if (sub === 'list') {
-    const lanes = readLanes();
-    if (!lanes.length) { console.log('lanes: none'); return 0; }
-    for (const l of lanes) {
-      const stale = laneStale(l, now(), q.config.leaseMinutes) ? ' (stale)' : '';
-      const stop = stopRequested(l.id) ? ' [stop requested]' : '';
-      console.log(`${l.id} @${l.worker ?? '?'} · ${l.step ?? 'no step'}${stale}${stop}`);
-    }
-    return 0;
-  }
-  if (!id || !q.tasks.some(t => t.id === id)) { console.error(`lane ${sub}: unknown task id`); return 1; }
-  if (sub === 'beat') {
-    const lane = beatLane(id, {
-      worker: f.flags.get('worker') ?? `worker-${process.pid}`,
-      model: f.flags.get('model'),
-      step: f.flags.get('step'),
-      state: f.flags.get('state'),
-      tail: f.flags.get('tail'),
-    });
-    console.log(`lane beat ${id} @${lane.worker ?? '?'} · ${lane.step ?? 'no step'}`);
-    return 0;
-  }
-  if (sub === 'clear') { clearLane(id); console.log(`lane cleared ${id}`); return 0; }
-  if (sub === 'stop') { requestStop(id); log(`lane stop requested ${id}`); console.log(`stop requested ${id} (owner honors it)`); return 0; }
-  if (sub === 'go') { clearStopRequest(id); console.log(`stop cleared ${id}`); return 0; }
-  console.error('usage: queue lane beat|list|clear|stop|go <id> [--worker w --step s --tail t]');
   return 1;
 }
 

@@ -10,7 +10,9 @@
 
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { queueFile, now } from './queue-io.ts';
+import { queueFile, now, log } from './queue-io.ts';
+import type { Queue } from './queue-model.ts';
+import type { Parsed } from './queue-cli-args.ts';
 
 export interface LaneState {
   id: string;
@@ -101,4 +103,40 @@ export function stopRequested(id: string): boolean {
 
 export function clearStopRequest(id: string): void {
   rmSync(stopPath(id), { force: true });
+}
+
+/**
+ * The `queue lane ...` verbs: heartbeat sidecars the live board reads, plus
+ * cooperative stop flags. Read-only toward the queue itself — beats never
+ * touch task state (that is claim/done/fail's job), so this lives with the
+ * sidecars rather than the CLI dispatcher.
+ */
+export function cmdLane(q: Queue, sub: string, id: string, f: Parsed): number {
+  if (sub === 'list') {
+    const lanes = readLanes();
+    if (!lanes.length) { console.log('lanes: none'); return 0; }
+    for (const l of lanes) {
+      const stale = laneStale(l, now(), q.config.leaseMinutes) ? ' (stale)' : '';
+      const stop = stopRequested(l.id) ? ' [stop requested]' : '';
+      console.log(`${l.id} @${l.worker ?? '?'} · ${l.step ?? 'no step'}${stale}${stop}`);
+    }
+    return 0;
+  }
+  if (!id || !q.tasks.some(t => t.id === id)) { console.error(`lane ${sub}: unknown task id`); return 1; }
+  if (sub === 'beat') {
+    const lane = beatLane(id, {
+      worker: f.flags.get('worker') ?? `worker-${process.pid}`,
+      model: f.flags.get('model'),
+      step: f.flags.get('step'),
+      state: f.flags.get('state'),
+      tail: f.flags.get('tail'),
+    });
+    console.log(`lane beat ${id} @${lane.worker ?? '?'} · ${lane.step ?? 'no step'}`);
+    return 0;
+  }
+  if (sub === 'clear') { clearLane(id); console.log(`lane cleared ${id}`); return 0; }
+  if (sub === 'stop') { requestStop(id); log(`lane stop requested ${id}`); console.log(`stop requested ${id} (owner honors it)`); return 0; }
+  if (sub === 'go') { clearStopRequest(id); console.log(`stop cleared ${id}`); return 0; }
+  console.error('usage: queue lane beat|list|clear|stop|go <id> [--worker w --step s --tail t]');
+  return 1;
 }
