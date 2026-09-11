@@ -140,6 +140,53 @@ maxParallel: 2
     freed.ok && freed.queue.tasks.map(t => t.id).join(',') === 'task-001,task-002,task-003,task-004');
 }
 
+// ---- applyOp: hold / mark-done / force-fail / reopen (every column a target) ----
+{
+  const q = parseQueue(SAMPLE);
+  const ids = (r: { ok: boolean; queue?: { tasks: { id: string }[] } }): string =>
+    r.ok && r.queue ? r.queue.tasks.map(t => t.id).join(',') : 'ERR';
+
+  assert('hold unknown id rejected', !applyOp(q, { op: 'hold', id: 'task-999' }).ok);
+  const held = applyOp(q, { op: 'hold', id: 'task-001' });
+  assert('hold parks pending', held.ok && held.queue.tasks[0].held === true);
+  assert('hold keeps order', ids(held) === 'task-001,task-002,task-003,task-004');
+  const unheld = held.ok ? applyOp(held.queue, { op: 'unhold', id: 'task-001' }) : held;
+  assert('unhold clears the flag', unheld.ok && unheld.queue.tasks[0].held === false);
+  assert('unhold unknown id rejected', !applyOp(q, { op: 'unhold', id: 'task-999' }).ok);
+  assert('claim-lane on held rejected', (() => {
+    const h = applyOp(q, { op: 'hold', id: 'task-002' });
+    return h.ok && !applyOp(h.queue, { op: 'claim-lane', id: 'task-002' }).ok;
+  })());
+
+  const done = applyOp(q, { op: 'mark-done', id: 'task-001' });
+  assert('mark-done completes without validation',
+    done.ok && !done.queue.tasks.some(t => t.id === 'task-001'));
+  assert('mark-done archives the swept task',
+    done.ok && done.archived.map(t => t.id).join(',') === 'task-001');
+  assert('mark-done on done is an idempotent success', (() => {
+    const dq = parseQueue('- [x] task-001 — base\n- [ ] task-002 — child\n  - deps: task-001\n');
+    const r = applyOp(dq, { op: 'mark-done', id: 'task-001' });
+    return r.ok && r.queue.tasks.length === 2 && r.archived.length === 0;
+  })());
+  assert('mark-done unknown id rejected', !applyOp(q, { op: 'mark-done', id: 'task-999' }).ok);
+
+  const failed = applyOp(q, { op: 'force-fail', id: 'task-002' });
+  const f2 = failed.ok ? failed.queue.tasks.find(t => t.id === 'task-002')! : null;
+  assert('force-fail goes terminal with operator note',
+    failed.ok && f2 !== null && f2.status === 'failed' && (f2.note ?? '').includes('operator'));
+  const noted = applyOp(q, { op: 'force-fail', id: 'task-002', note: 'wrong direction' });
+  assert('force-fail honors a custom note',
+    noted.ok && noted.queue.tasks.find(t => t.id === 'task-002')!.note === 'wrong direction');
+  assert('force-fail on failed is a no-op success',
+    applyOp(parseQueue('- [!] task-001 — x\n'), { op: 'force-fail', id: 'task-001' }).ok);
+
+  const open = applyOp(parseQueue('- [x] task-001 — old\n- [ ] task-002 — live\n'),
+    { op: 'reopen', id: 'task-001' });
+  assert('reopen done → pending', open.ok && open.queue.tasks[0].status === 'pending');
+  assert('reopen on pending rejected', !applyOp(q, { op: 'reopen', id: 'task-001' }).ok);
+  assert('reopen unknown id rejected', !applyOp(q, { op: 'reopen', id: 'task-999' }).ok);
+}
+
 // ---- applyOp: archive returns the swept tasks for the caller to persist ----
 {
   const q = parseQueue('- [x] task-001 — done\n- [!] task-002 — dead\n- [ ] task-003 — live\n');
@@ -216,12 +263,15 @@ maxParallel: 2
   has('status header mount point', 'id="status"');
   has('changed-on-disk banner mount point', 'id="stale"');
   has('free-lane drop placeholder', 'drop a task here');
+  has('held chip', '>held<');
   has('dispatch plan mount point', 'id="plan"');
   has('error surface mount point', 'id="error"');
-  for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"', '"reassign"', '"stop-lane"', '"claim-lane"', '"release"']) {
+  for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"', '"reassign"', '"stop-lane"', '"claim-lane"', '"release"', '"hold"', '"unhold"', '"mark-done"', '"force-fail"', '"reopen"']) {
     has(`page wires op ${op}`, `op: ${op}`);
   }
   has('rows are draggable', 'draggable');
+  has('drag carries data (Firefox)', 'setData');
+  has('dragend fallback', '"dragend"');
   has('whole card body grabs', 'cursor: grab');
   has('controls keep their clicks', 'button, input, select, textarea, a');
   assert('page has no execution verbs',

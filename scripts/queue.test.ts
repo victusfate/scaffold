@@ -4,7 +4,8 @@
 import {
   parseQueue, serializeQueue,
   addTask, addMany, setTaskStatus, setField, moveToTop, moveTask, removeTask, setConfig,
-  beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask, unclaimTask, sweepFinished,
+  beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask, unclaimTask,
+  holdTask, forceFail, reopenTask, sweepFinished,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
   archivableDone, gateTasks, ungateTasks,
   type Queue,
@@ -368,6 +369,32 @@ integrationBranch: queue/integration
     JSON.stringify(unclaimTask(q, 'task-002')) === JSON.stringify(q));
   assert('unclaim unknown id is a no-op',
     JSON.stringify(unclaimTask(q, 'task-999')) === JSON.stringify(q));
+}
+
+// ---- hold / forceFail / reopenTask: operator parking and terminal moves ----
+{
+  const md = '- [ ] task-001 — a\n- [>] task-002 — running\n  - owner: lane-1\n  - started: 2026-08-12T19:00:00.000Z\n'
+    + '- [!] task-003 — boom\n  - failures: 3\n- [x] task-004 — old\n';
+  const q = parseQueue(md);
+
+  const held = holdTask(q, 'task-001', true).tasks[0];
+  assert('hold sets the flag', held.held === true && held.status === 'pending');
+  assert('held task not eligible', isEligible(held, holdTask(q, 'task-001', true)) === false);
+  assert('unhold clears the flag', holdTask(q, 'task-001', false).tasks[0].held === false);
+  assert('hold survives round-trip',
+    parseQueue(serializeQueue(holdTask(q, 'task-001', true))).tasks[0].held === true);
+
+  const failed = forceFail(q, 'task-002', 'operator: parked wrong lane').tasks[1];
+  assert('forceFail goes terminal in place', failed.status === 'failed');
+  assert('forceFail stamps the operator note + clears the lease',
+    failed.note === 'operator: parked wrong lane' && failed.owner === null && failed.startedAt === null);
+  assert('forceFail keeps position', forceFail(q, 'task-002', 'x').tasks.map(t => t.id).join(',')
+    === 'task-001,task-002,task-003,task-004');
+
+  const open = reopenTask(q, 'task-004').tasks[3];
+  assert('reopen done → pending', open.status === 'pending');
+  assert('reopen pending is a no-op',
+    JSON.stringify(reopenTask(q, 'task-001')) === JSON.stringify(q));
 }
 
 // ---- sweepFinished: archive failed + done, but never a done task still depended on ----
