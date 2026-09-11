@@ -25,8 +25,8 @@ Edit this file freely to reprioritize, add, or remove work; the worker reads it 
   - held: true
   - deps: task-001
   - accept: skills/queue.md documents Reassign; docs/queue-live-board has prd/plan/tdd-log
-- [ ] task-004 — DEMO: stuck widget (will fail)
+- [!] task-004 — DEMO: stuck widget (will fail)
   - accept: demo
-  - failures: 2
-  - elapsed: 11m31s
-  - note: needs-spec: still no concrete end state; accept 'demo' is not checkable (retry)
+  - failures: 3
+  - elapsed: 11m32s
+  - note: needs-spec: still no concrete end state; accept 'demo' is not checkable (final retry)
