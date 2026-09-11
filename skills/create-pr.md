@@ -1,16 +1,16 @@
 ## Instructions
 
-> **Multi-harness:** This skill works in Claude Code, pi, and agy. Cross-references
+> **Multi-harness:** This skill works in Claude Code, Codex, pi, and agy. Cross-references
 > to other scaffold skills use slash-command notation (`/name`). In **Claude Code**
 > and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under pi, read `.agents/skills/<name>/SKILL.md` instead — the canonical
+> Under Codex (`$name` or `/skills`) and pi, read `.agents/skills/<name>/SKILL.md` instead — the canonical
 > instructions in `skills/<name>.md` are identical.
 >
-> **GitHub operations:** Where Claude Code uses `mcp__github__*` tools, pi and agy
+> **GitHub operations:** Where Claude Code uses `mcp__github__*` tools, other clients can
 > use `gh` CLI commands. The `gh` path works in all harnesses and is the canonical
 > form below.
 
-Create a pull request for the current branch and immediately subscribe to its activity. These two steps are atomic — never create without subscribing.
+Create a pull request for the current branch and immediately establish available monitoring. Subscribe when a subscription tool is exposed; otherwise check CI with `gh` and report that webhook monitoring is unavailable.
 
 ### Step 1 — verify state
 
@@ -245,14 +245,19 @@ This makes the LOCAL pre-merge gate — not GitHub CI — the gate the PR's read
 ### Step 8 — subscribe immediately
 
 Without pausing or asking, subscribe to PR activity for the PR number just returned.
-Under Claude Code: `mcp__github__subscribe_pr_activity`. Under pi: use `gh pr view <pr> --watch`
-to track CI status, and note that pi lacks a webhook-based subscription mechanism.
+Use `subscribe_pr_activity` (including a namespaced equivalent) when exposed by
+the current client. Otherwise run `gh pr checks <pr> --watch` to wait for CI.
+Capture its exit status directly; poll the running command in short intervals so
+steering remains responsive. This watches checks only, not reviews or merge events.
+For those, use `gh pr view <pr> --json state,reviews,comments` when needed.
+Report that no webhook subscription is active.
 
-**Never ask the user whether to subscribe. Always do it.**
+**Do not ask whether to monitor. Use the available path immediately.**
 
 ### Step 9 — report
 
-Return the PR URL and confirm subscription is active. One line each.
+Return the PR URL, check results, and whether a subscription is active or only
+a CLI check was performed. Never claim a CLI check is a persistent subscription.
 
 ### Verifying a real green (before any merge)
 

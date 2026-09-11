@@ -1,96 +1,211 @@
 <!doctype html>
 <!-- queue-console.template.html — the console page, served verbatim at GET /.
      Single file, inline CSS/JS, no external assets (design.md D4/D9). All
-     mutations POST typed ops to /api/op; the page never edits queue text. -->
+     mutations POST typed ops to /api/op; the page never edits queue text.
+     quality-ok: file-length — single-file-by-design (offline tool: splitting
+     would introduce asset requests); columns/cards/header are sectioned. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Queue Console</title>
+<script>
+// Theme before first paint: stored choice wins, otherwise dark. Inline so
+// there is no flash and no request — the page stays fully asset-free.
+try { document.documentElement.dataset.theme = localStorage.getItem("qc-theme") || "dark"; }
+catch (e) { document.documentElement.dataset.theme = "dark"; }
+</script>
 <style>
-  :root {
-    --bg: #f6f7f9; --panel: #ffffff; --ink: #1c2330; --muted: #66707f;
-    --line: #d9dee6; --accent: #2563eb; --ok: #16a34a; --warn: #d97706;
-    --bad: #dc2626; --chip: #eef1f5;
+  :root, :root[data-theme="dark"] {
+    --bg: #0b0e13; --panel: #141922; --panel2: #181e29; --ink: #e6edf3; --muted: #8b94a3;
+    --line: #2a313c; --accent: #60a5fa; --ok: #4ade80; --warn: #fbbf24;
+    --bad: #f87171; --chip: #202734;
+    --sig-queue: #58a6ff; --sig-blocked: #d29922; --sig-active: #3fb950;
+    --sig-done: #6e7681; --sig-failed: #f85149;
+    --gridline: rgba(230, 237, 243, 0.045);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
+    --glow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+    color-scheme: dark;
   }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #12151a; --panel: #1a1f27; --ink: #e6eaf0; --muted: #8b94a3;
-      --line: #2a313c; --accent: #60a5fa; --ok: #4ade80; --warn: #fbbf24;
-      --bad: #f87171; --chip: #242b36;
-    }
+  /* Dark is the default. The toggle pins an explicit choice to <html> and
+     localStorage; the OS preference never overrides either of them. */
+  :root[data-theme="light"] {
+    --bg: #eceef1; --panel: #ffffff; --panel2: #f5f7fa; --ink: #1c2330; --muted: #66707f;
+    --line: #d6dbe2; --accent: #2563eb; --ok: #16a34a; --warn: #b45309;
+    --bad: #dc2626; --chip: #e9edf2;
+    --sig-queue: #2563eb; --sig-blocked: #b45309; --sig-active: #16a34a;
+    --sig-done: #64748b; --sig-failed: #dc2626;
+    --gridline: rgba(28, 35, 48, 0.055);
+    --shadow: 0 1px 2px rgba(28, 35, 48, 0.08), 0 4px 14px rgba(28, 35, 48, 0.07);
+    --glow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+    color-scheme: light;
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0 auto; max-width: 60rem; padding: 1rem;
-    background: var(--bg); color: var(--ink);
+    margin: 0 auto; max-width: 82rem; padding: 1rem 1.25rem 3rem;
+    color: var(--ink);
     font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse 90% 55% at 50% -8%, color-mix(in srgb, var(--accent) 9%, transparent), transparent),
+      repeating-linear-gradient(0deg, var(--gridline) 0 1px, transparent 1px 28px),
+      repeating-linear-gradient(90deg, var(--gridline) 0 1px, transparent 1px 28px);
   }
-  h1 { font-size: 1.15rem; margin: 0; }
+  h1 {
+    font-family: Georgia, "Times New Roman", serif; font-style: italic;
+    font-size: 1.5rem; margin: 0; letter-spacing: 0.01em;
+  }
+  h1 .sub {
+    display: block; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-style: normal; font-size: 0.68rem; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--muted); margin-top: 0.1rem;
+  }
   button {
     font: inherit; color: inherit; background: var(--chip);
-    border: 1px solid var(--line); border-radius: 6px;
-    padding: 0.25rem 0.6rem; cursor: pointer;
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 0.3rem 0.7rem; cursor: pointer;
+    transition: border-color 0.12s ease, transform 0.06s ease, box-shadow 0.12s ease;
   }
-  button:hover { border-color: var(--accent); }
-  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button:hover { border-color: var(--accent); box-shadow: var(--glow); }
+  button:active { transform: translateY(1px); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
   input, select, textarea {
     font: inherit; color: inherit; background: var(--panel);
-    border: 1px solid var(--line); border-radius: 6px; padding: 0.25rem 0.5rem;
+    border: 1px solid var(--line); border-radius: 8px; padding: 0.3rem 0.55rem;
   }
-  #status { display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; margin: 0.8rem 0; }
-  .pill { padding: 0.1rem 0.6rem; border-radius: 999px; font-weight: 600; }
-  .pill.running { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
-  .pill.stopped { background: color-mix(in srgb, var(--bad) 18%, transparent); color: var(--bad); }
-  .pill.paused  { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
-  .counts { color: var(--muted); }
-  #status label { color: var(--muted); }
-  #status input { width: 4.5rem; }
-  #drain { color: var(--warn); font-weight: 600; }
+  input:focus-visible, select:focus-visible, button:focus-visible { outline: none; box-shadow: var(--glow); border-color: var(--accent); }
+  /* -- instrument header -- */
+  #status {
+    position: sticky; top: 0.6rem; z-index: 20;
+    display: flex; flex-wrap: wrap; gap: 0.55rem 0.8rem; align-items: center;
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--line); border-radius: 14px;
+    padding: 0.65rem 0.9rem; margin: 0.4rem 0 0.9rem; box-shadow: var(--shadow);
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem;
+    letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 0.2rem 0.65rem; border-radius: 999px; font-weight: 600;
+    border: 1px solid var(--line);
+  }
+  .pill::before {
+    content: ""; width: 0.55em; height: 0.55em; border-radius: 50%; background: currentColor;
+  }
+  .pill.running { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); border-color: transparent; }
+  .pill.running::before { box-shadow: 0 0 8px currentColor; animation: lamp 2.2s ease-in-out infinite; }
+  .pill.stopped { background: color-mix(in srgb, var(--bad) 14%, transparent); color: var(--bad); border-color: transparent; }
+  .pill.paused  { background: color-mix(in srgb, var(--warn) 16%, transparent); color: var(--warn); border-color: transparent; }
+  @keyframes lamp { 50% { opacity: 0.45; } }
+  .counts { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; }
+  #status label { color: var(--muted); font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.3rem; }
+  #status input { width: 4.5rem; padding: 0.15rem 0.45rem; }
+  #drain {
+    color: var(--warn); font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.82rem;
+  }
+  #status #plan {
+    color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem;
+    border-left: 2px solid var(--accent); padding-left: 0.55rem;
+  }
   #stale, #error {
-    display: none; margin: 0.5rem 0; padding: 0.5rem 0.8rem; border-radius: 8px;
+    display: none; margin: 0 0 0.7rem; padding: 0.55rem 0.85rem; border-radius: 10px;
+    border: 1px solid var(--line);
   }
-  #stale { background: color-mix(in srgb, var(--warn) 15%, transparent); }
-  #error { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+  #stale { background: color-mix(in srgb, var(--warn) 12%, var(--panel)); }
+  #error { background: color-mix(in srgb, var(--bad) 12%, var(--panel)); color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+  /* -- add panel -- */
   #add {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-    padding: 0.7rem; margin: 0.8rem 0;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    padding: 0.75rem 0.9rem; margin: 0 0 0.9rem; box-shadow: var(--shadow);
   }
   #add .row { display: flex; gap: 0.5rem; }
   #add input[name=title] { flex: 1; }
   #add details { margin-top: 0.5rem; }
-  #add summary { color: var(--muted); cursor: pointer; }
+  #add summary { color: var(--muted); cursor: pointer; font-size: 0.85rem; }
   .grid {
     display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 0.6rem;
     margin-top: 0.5rem; align-items: center;
   }
-  .grid label { color: var(--muted); text-align: right; }
+  .grid label { color: var(--muted); text-align: right; font-size: 0.85rem; }
+  /* -- board -- */
   #tasks { list-style: none; margin: 0; padding: 0; }
-  #tasks li {
-    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-    padding: 0.5rem 0.7rem; margin-bottom: 0.45rem;
+  #tasks.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr)); gap: 0.75rem; align-items: start; }
+  #tasks li.col {
+    background: color-mix(in srgb, var(--panel) 72%, transparent);
+    border: 1px solid var(--line); border-radius: 14px; padding: 0.6rem;
+    margin: 0; min-height: 7rem;
   }
-  #tasks li.dragover { border-color: var(--accent); }
-  .task-line { display: flex; gap: 0.55rem; align-items: baseline; flex-wrap: wrap; }
-  .handle { cursor: grab; color: var(--muted); user-select: none; }
+  #tasks li.col > h2 {
+    display: flex; align-items: center; gap: 0.45rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.74rem;
+    text-transform: uppercase; letter-spacing: 0.14em; color: var(--muted);
+    margin: 0 0 0.55rem; padding: 0 0.15rem;
+  }
+  #tasks li.col > h2::before {
+    content: ""; width: 0.6em; height: 0.6em; border-radius: 50%;
+    background: var(--sig, var(--muted)); box-shadow: 0 0 7px var(--sig, transparent);
+  }
+  #tasks li.col[data-col="Queued"] { --sig: var(--sig-queue); }
+  #tasks li.col[data-col="Blocked"] { --sig: var(--sig-blocked); }
+  #tasks li.col[data-col="In Progress"] { --sig: var(--sig-active); }
+  #tasks li.col[data-col="Done"] { --sig: var(--sig-done); }
+  #tasks li.col[data-col="Failed"] { --sig: var(--sig-failed); }
+  .cards { list-style: none; margin: 0; padding: 0.15rem; min-height: 2.5rem; border-radius: 10px; transition: box-shadow 0.12s ease; }
+  body.dragging .cards { outline: 1px dashed var(--line); outline-offset: -4px; }
+  body.dragging .cards:has(.dragover) { outline: 2px solid var(--sig-queue); outline-offset: -4px; }
+  .cards li.card {
+    background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--sig, var(--line));
+    border-radius: 10px; padding: 0.55rem 0.7rem; margin-bottom: 0.5rem;
+    box-shadow: var(--shadow);
+    transition: transform 0.1s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+  }
+  .cards li.card:hover { transform: translateY(-1px); }
+  .cards li.card.dragover { border-color: var(--accent); box-shadow: var(--glow); transform: translateY(-1px) scale(1.01); }
+  .cards li.card.selected { border-color: var(--accent); box-shadow: var(--glow); }
+  .cards li.card.selected .handle { color: var(--accent); opacity: 1; }
+  .cards li.card.stale { opacity: 0.55; }
+  .cards li.slot {
+    border: 1px dashed color-mix(in srgb, var(--sig-active) 55%, var(--line)); border-radius: 10px;
+    color: var(--muted); padding: 0.6rem 0.7rem; margin-bottom: 0.5rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.76rem;
+    letter-spacing: 0.06em; text-transform: uppercase; text-align: center;
+  }
+  .chip.stop { color: var(--bad); }
+  .task-line { display: flex; gap: 0.55rem; align-items: baseline; flex-wrap: wrap; cursor: grab; user-select: none; -webkit-user-select: none; }
+  .task-line:active { cursor: grabbing; }
+  .editor, .editor input, .editor select { user-select: text; -webkit-user-select: text; cursor: auto; }
+  .handle { cursor: grab; color: var(--muted); user-select: none; opacity: 0.6; }
   .badge { font-weight: 700; width: 1em; display: inline-block; }
   .badge.pending { color: var(--muted); }
-  .badge.active  { color: var(--accent); }
-  .badge.done    { color: var(--ok); }
+  .badge.active  { color: var(--sig-active); }
+  .badge.active { animation: lamp 2.2s ease-in-out infinite; }
+  .badge.done    { color: var(--sig-done); }
   .badge.failed  { color: var(--bad); }
-  .tid { color: var(--muted); font-family: ui-monospace, monospace; font-size: 0.85em; }
-  .title { flex: 1; min-width: 12rem; }
+  .tid { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82em; }
+  .title { flex: 1; min-width: 10rem; font-weight: 550; overflow-wrap: anywhere; }
   .chip {
-    background: var(--chip); border-radius: 999px; padding: 0 0.5rem;
-    font-size: 0.8em; color: var(--muted); white-space: nowrap;
+    background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 0.05rem 0.5rem;
+    font-size: 0.76em; color: var(--muted); white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   }
-  .chip.ready { color: var(--ok); }
-  .chip.deadlocked, .chip.note { color: var(--warn); }
-  .actions { display: flex; gap: 0.3rem; }
-  .actions button { padding: 0.05rem 0.45rem; }
+  .chip.ready { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 40%, transparent); }
+  .chip.deadlocked, .chip.note { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 40%, transparent); }
+  .actions { display: flex; gap: 0.3rem; margin-left: auto; }
+  .actions button { padding: 0.1rem 0.5rem; font-size: 0.85em; }
+  @media (hover: hover) {
+    .actions { opacity: 0.4; transition: opacity 0.12s ease; }
+    .card:hover .actions, .card:focus-within .actions { opacity: 1; }
+  }
   .editor { border-top: 1px solid var(--line); margin-top: 0.5rem; padding-top: 0.2rem; }
   .editor .buttons { grid-column: 2; display: flex; gap: 0.5rem; margin-top: 0.3rem; }
-  .empty { color: var(--muted); padding: 1rem; text-align: center; }
+  .empty { color: var(--muted); padding: 2.5rem 1rem; text-align: center; font-family: Georgia, serif; font-style: italic; }
+  @media (prefers-reduced-motion: reduce) {
+    .pill.running::before, .badge.active { animation: none; }
+    .cards li.card:hover, .cards li.card.dragover { transform: none; }
+    button, .cards li.card, .actions { transition: none; }
+  }
 </style>
 </head>
 <body>
@@ -124,8 +239,19 @@
 const $ = (sel, el) => (el || document).querySelector(sel);
 const ERROR_HIDE_MS = 6000;
 let S = null;          // last ConsoleState
+let L = [];           // last lane views from /api/lanes
 let editingId = null;  // task id whose editor is open (or "add" while typing)
 let draggingId = null;
+let armedId = null;   // click-to-move selection (touch/mouse fallback when drags fail)
+let lastDrop = 0;     // timestamp of the last drop — clicks right after one belong to the drag
+
+const laneById = id => L.find(l => l.id === id);
+const theme = () => document.documentElement.dataset.theme || "dark";
+function setTheme(next) {
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("qc-theme", next); } catch (e) { /* private mode */ }
+  render();
+}
 
 const busy = () => editingId !== null || draggingId !== null;
 const esc = s => String(s ?? "").replace(/[&<>"']/g,
@@ -134,6 +260,8 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g,
 async function refresh() {
   const res = await fetch("/api/queue");
   S = await res.json();
+  const lanes = await fetch("/api/lanes");
+  L = (await lanes.json()).lanes;
   render();
 }
 
@@ -144,6 +272,7 @@ async function post(op) {
   const body = await res.json();
   if (!res.ok) { showError(body.error || "operation rejected"); return false; }
   S = body;
+  L = (await (await fetch("/api/lanes")).json()).lanes;
   // Close the editor only when this op consumed or destroyed it — a save
   // (set/add) or removing the edited row. Other ops keep it open, and
   // render() carries the typed-but-unsaved values across the re-render.
@@ -168,18 +297,29 @@ function renderStatus() {
   const cls = paused ? "paused" : c.status;
   const label = paused ? "paused until " + c.resumeAt : c.status;
   const n = s => S.tasks.filter(t => t.status === s).length;
+  const active = S.tasks.filter(t => t.status === "active").map(t => t.id);
+  const slots = Math.max(0, S.config.maxParallel - active.length);
+  const next = S.tasks.filter(t => t.status === "pending" && t.eligible).slice(0, slots).map(t => t.id);
+  const plan = (active.length || next.length)
+    ? '<span id="plan">continues: ' + esc(active.length ? active.join(", ") : "—")
+      + ' · up next: ' + esc(next.length ? next.join(", ") : "—") + '</span>' : '';
   $("#status").innerHTML =
-    '<h1>Queue Console</h1>' +
+    '<h1>Dispatch<span class="sub">queue console</span></h1>' +
     '<span class="pill ' + cls + '">' + esc(label) + '</span>' +
     '<span class="counts">' + n("pending") + ' pending · ' + n("active") + ' active · '
       + n("done") + ' done · ' + n("failed") + ' failed</span>' +
     '<label>every <input id="cfg-interval" value="' + esc(c.interval) + '"></label>' +
     '<label>parallel <input id="cfg-parallel" type="number" min="1" value="' + c.maxParallel + '"></label>' +
     '<button id="toggle">' + (c.status === "running" ? "Stop" : "Start") + '</button>' +
+    '<button id="theme" title="toggle light / dark">' + (theme() === "dark" ? "☀" : "☾") + '</button>' +
+    '<button id="reassign" title="recompute who runs next from the current order">Reassign</button>' +
     '<button id="sweep">Archive done/failed</button>' +
-    (S.drain ? '<span id="drain">' + esc(S.drain) + '</span>' : '');
+    (S.drain ? '<span id="drain">' + esc(S.drain) + '</span>' : '') +
+    plan;
   $("#toggle").onclick = () =>
     post(S.config.status === "running" ? { op: "stop" } : { op: "start" });
+  $("#theme").onclick = () => setTheme(theme() === "dark" ? "light" : "dark");
+  $("#reassign").onclick = () => post({ op: "reassign" });
   $("#sweep").onclick = () => post({ op: "archive" });
   $("#cfg-interval").onchange = e => post({ op: "config", key: "interval", value: e.target.value });
   $("#cfg-parallel").onchange = e => post({ op: "config", key: "maxParallel", value: e.target.value });
@@ -189,12 +329,42 @@ function renderStatus() {
 
 const BADGE = { pending: "·", active: "▶", done: "✓", failed: "✗" };
 
+// Quick-scan agent time, two tiers like the model: seconds under a minute,
+// whole minutes above. Active cards fold in the live session (client clock —
+// same machine as the loopback server, so no skew worth worrying about).
+function fmtDur(s) {
+  s = Math.max(0, Math.round(s));
+  return s < 60 ? s + "s" : Math.floor(s / 60) + "m";
+}
+function elapsedChip(t) {
+  let total = t.elapsedSecs || 0, live = 0;
+  if (t.status === "active" && t.startedAt) {
+    live = Math.max(0, Math.round((Date.now() - Date.parse(t.startedAt)) / 60000));
+    total += live * 60;
+  }
+  if (!total) return "";
+  return '<span class="chip" title="' + (live ? "total agent time incl. live session" : "total agent time")
+    + '">⏱ ' + fmtDur(total) + '</span>';
+}
+
 function chips(t) {
   const out = [];
   if (t.mode === "chain") out.push('<span class="chip">chain</span>');
+  if (t.held) out.push('<span class="chip">held</span>');
+  const elapsed = elapsedChip(t);
+  if (elapsed) out.push(elapsed);
   if (t.dependsOn.length) out.push('<span class="chip">deps: ' + esc(t.dependsOn.join(", ")) + '</span>');
   if (t.failures) out.push('<span class="chip">retries: ' + t.failures + '</span>');
   if (t.owner) out.push('<span class="chip">@' + esc(t.owner) + '</span>');
+  const lane = t.status === "active" ? laneById(t.id) : null;
+  if (lane) {
+    if (lane.step) out.push('<span class="chip">' + esc(lane.step) + '</span>');
+    if (lane.tail) out.push('<span class="chip" title="' + esc(lane.tail) + '">log</span>');
+    if (lane.stale) out.push('<span class="chip deadlocked">stale</span>');
+    if (lane.stop) out.push('<span class="chip stop">stop requested</span>');
+  } else if (t.status === "active" && t.startedAt) {
+    out.push('<span class="chip">since ' + esc(t.startedAt.slice(11, 16)) + '</span>');
+  }
   if (t.note) out.push('<span class="chip note">' + esc(t.note) + '</span>');
   if (t.deadlocked) out.push('<span class="chip deadlocked">blocked by failed dep</span>');
   else if (t.eligible) out.push('<span class="chip ready">ready</span>');
@@ -224,6 +394,7 @@ function taskHtml(t) {
   // Never offer requeue on an active task — resetting a live claim would let
   // two workers run it at once (the model refuses too; this hides the trap).
   const canRequeue = t.status === "failed" || (t.failures > 0 && t.status !== "active");
+  const lane = t.status === "active" ? laneById(t.id) : null;
   return '<div class="task-line">'
     + '<span class="handle" title="drag to reorder">⋮⋮</span>'
     + '<span class="badge ' + t.status + '">' + BADGE[t.status] + '</span>'
@@ -232,6 +403,7 @@ function taskHtml(t) {
     + chips(t)
     + '<span class="actions">'
     + '<button data-act="top" title="move to top">⤒</button>'
+    + (t.status === "active" ? '<button data-act="stop-lane" title="request the lane stop">■</button>' : "")
     + (canRequeue ? '<button data-act="requeue" title="reset to pending">↻</button>' : "")
     + '<button data-act="edit" title="edit fields">✎</button>'
     + '<button data-act="remove" title="remove">✕</button>'
@@ -242,23 +414,148 @@ function taskHtml(t) {
 function renderTasks() {
   const ul = $("#tasks");
   if (!S.tasks.length) {
-    ul.innerHTML = '<li class="empty">(empty — add a task above)</li>';
+    ul.classList.remove("cols");
+    ul.innerHTML = '<li class="empty">(empty — add a task above · tip: click a card, then a column, to move it)</li>';
     return;
   }
-  ul.innerHTML = S.tasks.map(t =>
-    '<li draggable="true" data-id="' + t.id + '">' + taskHtml(t) + '</li>').join("");
-  ul.querySelectorAll("li").forEach(li => {
+  // Kanban grouping over the priority order. Queued cards reorder (the
+  // global `move` op); Queued ⇄ In Progress drags claim/release lane slots;
+  // Blocked/Done/Failed are drag-free views.
+  const cols = [
+    ["Queued", S.tasks.filter(t => t.status === "pending" && t.eligible)],
+    ["Blocked", S.tasks.filter(t => t.status === "pending" && !t.eligible)],
+    ["In Progress", S.tasks.filter(t => t.status === "active")],
+    ["Done", S.tasks.filter(t => t.status === "done")],
+    ["Failed", S.tasks.filter(t => t.status === "failed")],
+  ];
+  ul.classList.add("cols");
+  ul.innerHTML = cols.map(([name, items]) => {
+    let cards = items.map(t => {
+      const lane = t.status === "active" ? laneById(t.id) : null;
+      const cls = "card" + (lane && lane.stale ? " stale" : "") + (armedId === t.id ? " selected" : "");
+      // Every card grabs from anywhere on its body (the ⋮⋮ is just the
+      // affordance); buttons/inputs inside still click/type normally. Only
+      // Queued ⇄ In Progress drops do anything — the router no-ops the rest.
+      return '<li class="' + cls + '" data-id="' + t.id + '" draggable="true">' + taskHtml(t) + '</li>';
+    }).join("");
+    // Free lane slots are visible drop targets: dropping a Queued card on
+    // the column claims it into the next free slot (server assigns lane-N).
+    if (name === "In Progress") {
+      const free = S.config.maxParallel - items.length;
+      if (free > 0) cards += '<li class="slot">drop a task here — ' + free + ' lane'
+        + (free > 1 ? 's' : '') + ' free</li>';
+    }
+    return '<li class="col" data-col="' + name + '"><h2>' + name + ' (' + items.length + ')</h2>'
+      + '<ul class="cards">' + cards + '</ul></li>';
+  }).join("");
+  const dropOf = async (from, targetId, targetCol) => {
+    // Every column is a real drop target. Terminal columns act directly;
+    // the flow columns normalize to pending first, then apply the column.
+    const prep = async id => {
+      const cur = S.tasks.find(x => x.id === id);
+      if (!cur) return false;
+      if (cur.status === "active") return post({ op: "release", id });
+      if (cur.status === "failed") return post({ op: "requeue", id });
+      if (cur.status === "done") return post({ op: "reopen", id });
+      return true;
+    };
+    const at = id => S.tasks.findIndex(x => x.id === id);
+    if (targetCol === "Done") {
+      if (from !== targetId) post({ op: "mark-done", id: from });
+      return;
+    }
+    if (targetCol === "Failed") {
+      if (from !== targetId) post({ op: "force-fail", id: from });
+      return;
+    }
+    if (!await prep(from)) return;
+    const t = S.tasks.find(x => x.id === from);
+    if (targetCol === "Blocked") {
+      if (!t.held) await post({ op: "hold", id: from });
+      if (targetId && targetId !== from) post({ op: "move", id: from, to: at(targetId) });
+    } else if (targetCol === "In Progress") {
+      if (t.held) await post({ op: "unhold", id: from });
+      post({ op: "claim-lane", id: from });
+    } else if (targetCol === "Queued") {
+      if (t.held) await post({ op: "unhold", id: from });
+      if (targetId && targetId !== from) post({ op: "move", id: from, to: at(targetId) });
+      else if (!targetId) {
+        const queued = S.tasks.filter(x => x.status === "pending" && x.eligible);
+        if (queued.length && queued[queued.length - 1].id !== from) {
+          post({ op: "move", id: from, to: S.tasks.indexOf(queued[queued.length - 1]) + 1 });
+        }
+      }
+    }
+  };
+  ul.querySelectorAll(".col").forEach(col => {
+    const name = col.dataset.col;
+    col.addEventListener("dragover", e => {
+      // Every column accepts every card — the router maps the drop to the
+      // column's meaning (move/hold/claim/done/fail). Self-drops no-op there.
+      if (draggingId) e.preventDefault();
+    });
+    col.addEventListener("drop", e => {
+      const from = draggingId;
+      draggingId = null;
+      lastDrop = Date.now();
+      if (from) dropOf(from, null, name);
+    });
+    col.addEventListener("click", e => {
+      // Click-to-move: an armed card travels to the clicked column. The
+      // guards keep it from firing on controls, mid-edit, or as the echo of
+      // a real drag-and-drop (whose click lands within milliseconds).
+      const el = e.target;
+      if (!armedId || editingId || Date.now() - lastDrop < 400) return;
+      if (el && el.closest && el.closest("button, input, select, textarea, a, .editor")) return;
+      const from = armedId;
+      armedId = null;
+      dropOf(from, null, name);
+    });
+  });
+  ul.querySelectorAll(".card").forEach(li => {
     const id = li.dataset.id;
-    li.addEventListener("dragstart", () => { draggingId = id; });
-    li.addEventListener("dragend", () => { draggingId = null; li.classList.remove("dragover"); });
-    li.addEventListener("dragover", e => { e.preventDefault(); li.classList.add("dragover"); });
+    li.addEventListener("dragstart", e => {
+      // A grab that starts on a button/input belongs to that control (click
+      // or text selection), not to the card — everywhere else drags the card.
+      const el = e.target;
+      if (el && el.closest && el.closest("button, input, select, textarea, a")) {
+        e.preventDefault();
+        return;
+      }
+      draggingId = id;
+      document.body.classList.add("dragging");
+      // Firefox only fires drop when the gesture carries data — Chrome is
+      // lenient, so set it unconditionally.
+      e.dataTransfer.setData("text/plain", id);
+      e.dataTransfer.effectAllowed = "move";
+    });
+    // dragend on the card can be missed (drop outside the window, DOM rebuilt
+    // mid-gesture): the window fallback guarantees draggingId never sticks,
+    // which would otherwise freeze auto-refresh behind a stale banner forever.
+    // (Registered once below, next to the other global listeners.)
+    li.addEventListener("dragend", () => {
+      draggingId = null;
+      document.body.classList.remove("dragging");
+      ul.querySelectorAll(".dragover").forEach(d => d.classList.remove("dragover"));
+    });
+    li.addEventListener("dragover", e => {
+      if (draggingId) { e.preventDefault(); li.classList.add("dragover"); }
+    });
     li.addEventListener("dragleave", () => li.classList.remove("dragover"));
     li.addEventListener("drop", e => {
       e.preventDefault();
-      const to = S.tasks.findIndex(t => t.id === id);
+      e.stopPropagation(); // the card (with its target id) wins over the column
       const from = draggingId;
       draggingId = null;
-      if (from && from !== id) post({ op: "move", id: from, to });
+      lastDrop = Date.now();
+      if (from && from !== id) dropOf(from, id, li.closest(".col").dataset.col);
+    });
+    li.addEventListener("click", e => {
+      const el = e.target;
+      if (editingId || Date.now() - lastDrop < 400) return;
+      if (el && el.closest && el.closest("button, input, select, textarea, a, .editor")) return;
+      armedId = armedId === id ? null : id;
+      render();
     });
     li.querySelectorAll("[data-act]").forEach(btn => {
       btn.onclick = () => {
@@ -266,6 +563,7 @@ function renderTasks() {
         if (act === "edit") { editingId = editingId === id ? null : id; render(); }
         else if (act === "remove") { if (confirm("Remove " + id + "?")) post({ op: "remove", id }); }
         else if (act === "top") post({ op: "top", id });
+        else if (act === "stop-lane") post({ op: "stop-lane", id });
         else if (act === "requeue") post({ op: "requeue", id });
       };
     });
@@ -316,6 +614,19 @@ $("#add").addEventListener("submit", e => {
 });
 
 // ------------------------------------------------------------------ live
+
+// A missed card-level dragend (drop outside the window, DOM rebuilt
+// mid-gesture) must never stick draggingId — that would freeze auto-refresh
+// behind the stale banner forever. Registered once: renderTasks rebuilds the
+// cards on every state change, so a per-card registration would leak.
+window.addEventListener("dragend", () => {
+  draggingId = null;
+  document.body.classList.remove("dragging");
+  document.querySelectorAll(".dragover").forEach(d => d.classList.remove("dragover"));
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && armedId) { armedId = null; render(); }
+});
 
 $("#refresh").onclick = refresh;
 new EventSource("/events").onmessage = () => {

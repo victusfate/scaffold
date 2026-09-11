@@ -1,7 +1,7 @@
 ## Purpose
 
 > **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
 
 A **visible, editable Markdown work queue** that agents drain **autonomously** so
 you can augment a long-running project without babysitting it. You stack up work;
@@ -18,6 +18,20 @@ many units of work** on an ongoing project, unattended.
 The reliable read/mutate layer is `scripts/queue.ts` (pure model in
 `scripts/queue-model.ts`). Humans edit the file freely; agents mutate it **only**
 through the CLI so the format never corrupts.
+
+## Client capability fallback
+
+Before arming a driver, check which tools are exposed. In Codex or another client
+without `Monitor`, `ScheduleWakeup`, or `CronCreate`, the [loop skill](loop.md)
+provides an external macOS/Linux/WSL/Windows driver when unattended recurrence is requested.
+If this drain already runs inside a loop, reuse it; never create a nested driver.
+Without an available, successfully armed driver, drain ready tasks in the active
+turn using the CLI below. Stop on idle, operator stop, or a real usage limit;
+checkpoint remaining work and explain that future additions need another
+invocation. Never claim automatic restart without verified scheduler state.
+The native persistent-driver rules below apply only when those tools are exposed.
+Batch worktree lanes within the client’s concurrency limit, or drain serially if
+subagents are unavailable.
 
 ## The queue file
 
@@ -74,7 +88,7 @@ add "<title>" [flags]                  # append a task (flags below); --top to p
 add-many                               # seed many tasks from stdin, one per line
 set <id> <field> <value>               # edit a field (mode/slug/deps/files/validate/accept)
 next | ready                           # serial pick | fan-out candidate set (under the cap)
-tick                                    # serial loop entry: reclaim → begin → print task
+tick                                    # serial loop entry: ownership check → begin → print task
 signal                                  # print DRAIN-WANTED iff drainable (Monitor poll; exit 0/3)
 claim <id> [--worker w]                # atomic claim for a parallel worker
 done <id> [--skip-validate]            # validate, complete, then auto-archive out of the queue
@@ -83,6 +97,8 @@ top <id> | move <id> <pos> | remove <id>   # reprioritize (1-based pos, as `list
 requeue <id>                           # revive a failed task (pending again, failures cleared)
 start | stop                           # run or pause the whole queue
 interval <dur> | config <key> <value>  # cadence | maxFailures|leaseMinutes|maxParallel|integrationBranch
+gate <gate-id> [--only f] [--dry-run]  # add deps:<gate-id> to every other task (block; see Gating work)
+ungate <gate-id> [--keep-gate]         # remove <gate-id> from all deps + mark it done (unblock)
 worktree add|remove|list <id>          # isolated git worktree per task
 archive | loop                          # sweep done/failed | print the /loop invocation
 ```
@@ -90,6 +106,41 @@ archive | loop                          # sweep done/failed | print the /loop in
 `add`/`set` flags: `--mode chain` · `--slug <s>` · `--deps a,b` · `--files a,b` ·
 `--validate "<cmd>"` · `--accept "<criteria>"` · `--top`. Override the file with
 `QUEUE_FILE=<path>`.
+
+## Gating work (dependency gates)
+
+A **gate** is just a task that everything else depends on: while it's unfinished,
+`isEligible` blocks every task carrying `deps: <gate-id>`, so nothing else runs. It
+is the mechanical form of a **temporary priority block** — e.g. the 2026
+model-fidelity block, where every non-model task carried `deps: task-591` so only
+the character pipeline could run until the user opened the gate.
+
+`gate` / `ungate` are the **mechanical interface** for this. **Never hand-edit
+`queue.md` deps to apply or lift a block** (critical rule 4) — that is exactly the
+corruption the queue exists to prevent. Applying the block by hand once meant
+text-editing the dep off 72 tasks to lift it; these verbs do it in one call:
+
+```bash
+node scripts/queue.ts add "model-fidelity gate" --accept "user opens the gate"
+node scripts/queue.ts gate task-591            # block: deps: task-591 on every other task
+node scripts/queue.ts gate task-591 --dry-run  # preview the plan, write nothing
+node scripts/queue.ts gate task-591 --only web # only tasks whose id/title contains "web"
+node scripts/queue.ts ungate task-591          # lift: strip the dep everywhere + mark the gate done
+```
+
+- **`gate <gate-id> [--only <filter>] [--dry-run]`** — adds `deps: <gate-id>` to
+  every **other** unfinished task. Idempotent (a task already gated is skipped) and
+  cycle-safe (a task the gate itself depends on is never gated). Skips the gate task
+  itself and any `done`/`failed` task. `--only` restricts to tasks whose id or title
+  contains the (case-insensitive) substring; `--dry-run` prints the plan without
+  writing. Prints how many tasks were gated.
+- **`ungate <gate-id> [--keep-gate] [--dry-run]`** — removes `<gate-id>` from every
+  task's deps (trimming a multi-dep list, dropping an empty one) and marks the gate
+  task `done` so its blocked dependents become eligible. `--keep-gate` leaves the
+  gate task's status untouched; `--dry-run` previews. Prints how many were ungated.
+
+Opening a real block (like model-fidelity) is a deliberate call — `ungate` is the
+one command that does it, cleanly and reversibly, instead of a bulk text edit.
 
 ## Console (`scripts/queue-console.ts`)
 
@@ -108,6 +159,43 @@ op that is validated before it touches the file, and the interface guards the
 dependency DAG: deps naming nonexistent tasks, self-deps, cycles, and removing
 a task that unfinished work still depends on are all rejected. Agents get the
 same guarantees through `queue.ts`; humans can still hand-edit the file freely.
+
+Concurrent CLI and console mutations share an exclusive queue sidecar lock. It
+waits for at most one minute and never steals an old lock: a slow live holder
+cannot be distinguished from a crashed one. If it times out, confirm the holder
+is dead before removing `<queue-file>.lock`, then retry the command. Inspect
+that file first: it records the holder PID and acquisition timestamp.
+Validation releases and retakes the lock before it commits; worktree add/remove
+keeps it for the lifecycle so a checkout reference cannot be lost. A slow
+checkout can therefore make another mutation time out rather than interleave.
+
+The page is a kanban board — Queued / Blocked / In Progress / Done / Failed —
+grouped from the same state (drag reorder works inside Queued; status changes
+stay with workers). The header shows the dispatch plan (`continues: … · up
+next: …`); after reordering or editing deps, hit **Reassign** to recompute it
+from the current order and kick an armed drain awake (it never preempts an
+active lane). Active cards show live lane chips — worker, current step, log
+tail — from heartbeat sidecars (`.agent/queue/lanes/<id>.json`, written via
+`queue lane beat <id> --step "…" --tail "…"`); stale lanes grey out but are
+never reaped by the board. The ■ button on an active card (or `queue lane
+stop <id>`) files a cooperative stop request the owning driver honors at its
+next safe point — the console never kills a process.
+
+Drag a Queued card onto In Progress to claim it into the next free lane slot
+(server assigns `lane-N`, refused at `maxParallel` capacity); drag an active
+card back to Queued to release it to pending. **Every column accepts drops**:
+Blocked parks the card (`held` — the drain skips it until dragged out, no
+fake deps); Done marks it operator-done (the `--skip-validate` twin, logged
+as such — validation never runs from the board); Failed fails it terminally
+with an operator note. Drags out of Done/Failed normalize through
+reopen/requeue first.
+
+Every card shows its banked agent time (`⏱3s` → `⏱45m`, seconds under a
+minute, whole minutes above); active cards fold in the live session. Time is
+a first-class model field (`- elapsed: 2h15m30s`, exact to the second,
+hand-editable, `set`-able) banked at every session end — done, fail, release,
+operator-done, operator-fail — so retries accumulate across a task's life and
+archive lines carry each task's total after it sweeps out.
 
 ## Creating a queue from in-memory items
 
@@ -197,8 +285,10 @@ The loop body; one task per wake:
 
 1. `node scripts/queue.ts tick` —
    - `STOPPED` → do nothing (paused). `IDLE` → nothing eligible; end the turn.
-   - otherwise it reclaims any stale lease, marks the current task `active`, and
-     prints a `<queue_task>` block with its `mode` and spec. That's your one unit.
+   - `OWNERSHIP CONFLICT` → an active lease expired; stop dispatch and report it.
+     Never infer that its worker died or reclaim it automatically.
+   - otherwise it marks the current task `active` and prints a `<queue_task>`
+     block with its `mode` and spec. That's your one unit.
 2. **Execute** per its mode (`direct` or the `chain` sequence above), honoring the
    no-user-input contract.
 3. **Complete:** `queue done <id>` (runs `validate`; refuses → counts as a failure)
@@ -210,6 +300,23 @@ A resumed `active` task is preferred next wake; otherwise the topmost **eligible
 pending task (all `deps` done) starts. Failures don't halt the queue — a failed
 task retries (dropped to the back) up to `maxFailures`, then goes terminal, and
 independent work keeps flowing.
+
+### Session isolation during recovery
+
+One session has exactly one orchestrator. Other sessions may work concurrently,
+but their orchestrators, workers, terminals, and user-launched agent CLIs are
+outside this session's ownership. Never inspect them for cleanup or send them a
+signal. In particular, `owner` is a queue label and `startedAt` is a lease clock;
+neither is a PID, session identity, heartbeat, or permission to manage a process.
+
+`tick` and `ready` never reclaim an expired lease: they exit 6 and leave the task active.
+Only the orchestrator that created the worker may release that queue record, after
+its own durable worker handle proves terminal, using `queue fail <id> "owned worker
+ended"` or a deliberate operator edit. It must not run `kill`, `pkill`, `killall`,
+taskkill, or infer ownership from process names/PIDs. If a possibly live worker or
+orchestrator cannot be distinguished from a crashed one, fail closed: leave the
+process, record, and worktree untouched; stop new dispatch; report the ambiguity.
+Only the loop driver may cancel the exact child tree it created for its own generation.
 
 ## Fan-out (parallel — `maxParallel: N`)
 
@@ -228,9 +335,10 @@ own git worktree. Two patterns, same primitives:
    <id>` and `queue worktree remove <id>`.
 
 **Pattern B — multiple independent workers (scale-out).** Many loop sessions/crons
-each `queue claim <id> --worker <name>` (assign + verify sole owner), work their
-own worktree, and merge back. The `lease`/`reclaimStale` machinery returns a
-crashed worker's task to `pending`. Use this to drain faster or across machines.
+each `queue claim <id> --worker <name>` (atomically acquire the queue record), work
+their own worktree, and merge back. A queue-record claim grants no process authority.
+An expired lease blocks automatic dispatch until its creating orchestrator or an
+operator explicitly resolves it. Use this to drain faster or across machines.
 
 Merge-back is intentionally **not** a CLI auto-merge — the queue gives you
 isolation (`worktree add`/`remove`) and leaves integration to a judgment-applying
@@ -372,6 +480,10 @@ execution — applied to the queue so overnight drains survive the window.
    so an empty queue never wakes it. Only when **no Monitor could be armed** does an
    idle tick re-arm the `idlePoll` heartbeat instead. A registered `CronCreate` drain
    is an equivalent standing driver. An operator stop/pause always ends the loop.
+   When the portable agent-loop is the driver, its child reports `continue` while
+   any active or eligible queue work remains and reports `complete` only after the
+   queue is actually drained. It never calls the driver's `stop` command itself;
+   the supervisor owns recurrence lifecycle and terminal outcomes.
 8. **Tasks are atomic.** One reviewable slice, finishable in one sitting, with a
    checkable `accept`. Never enqueue an "ensure all X"/"cover every Y" umbrella —
    enumerate it into finite children and make the parent a tracking stub
@@ -382,3 +494,6 @@ execution — applied to the queue so overnight drains survive the window.
    a `done` task still depended on by unfinished work is kept until that dependent
    completes (never break the DAG). Terminal `failed` tasks stay visible; sweep them
    with `archive`.
+10. **Session processes are isolated.** One orchestrator owns each session. Never
+    inspect, stop, reclaim, or signal another session's orchestrator/workers or a
+    user-launched agent CLI. Queue metadata is never process authority.

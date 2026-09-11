@@ -1,4 +1,4 @@
-> **Multi-harness:** This skill works identically in Claude Code, pi, and agy. All paths
+> **Multi-harness:** This skill works identically in Claude Code, Codex, pi, and agy. All paths
 > and commands are harness-agnostic.
 
 ## Mode

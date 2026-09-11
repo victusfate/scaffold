@@ -1,7 +1,8 @@
 ## Purpose
 
 > **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
+> Codex pause: use `$pause` for this workflow; `codex resume --last` restores local chat history.
 > Also: `claude -c` (Claude Code session resume) is `pi -c` in pi. For agy, use `agy -c`.
 
 Checkpoint the current working session into git so it survives a close and can
@@ -9,7 +10,9 @@ be picked up from anywhere — your laptop or Claude mobile/web. Writes a
 human-readable handoff, commits whatever is in flight (code *or* prose — docs,
 notes, decision logs), and pushes so a cold session elsewhere can resume.
 
-Pairs with `/resume`, which reads what this writes.
+Pairs with `/resume`, which reads what this writes. For frequent, incremental
+checkpointing through a long autonomous run, use `/save` instead — same handoff
+file, low ceremony, fired every step.
 
 ## When it matters
 

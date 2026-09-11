@@ -1,12 +1,10 @@
 ## Purpose
 
-> **Multi-harness:** Under **Claude Code**, a skill is registered in
-> `.claude/skills/RESOLVER.md` with a regex anchor. Under **pi** and **agy**, skills
-> are discovered by directory presence — no resolver file needed. When running under
-> pi (`PI_CODING_AGENT=true`) or agy (`AGY=true`), place the skill directly in
-> `.agents/skills/<slug>/` and skip resolver registration. For agy, also emit
-> `.agent/workflows/<slug>.md`. The `.agents/skills/<slug>/SKILL.md` wrapper and
-> `skills/<slug>.md` canonical file are produced for all harnesses.
+> **Multi-harness:** Codex, pi, and agy discover `.agents/skills/<slug>/SKILL.md`
+> by directory presence. Scaffold's distribution registry is separate: every
+> skill contributed here must also register in `.claude/skills/RESOLVER.md`,
+> regardless of the authoring client. Produce the canonical `skills/<slug>.md`
+> and all supported harness forms so downstream installs remain complete.
 
 Turn a completed piece of work into a durable skill: a file other agents
 (Claude, Codex, Gemini, Cursor) can invoke, registered in the routing table and
@@ -19,11 +17,9 @@ propagated upstream to `scaffold` so every downstream repo inherits it.
 - **Slug is canonical.** kebab-case, drop articles, ≤30 chars. State it before
   writing the first file so the user can correct it. The slug is the directory
   name AND the RESOLVER `Skill` cell AND the `^\/<slug>` regex anchor.
-- **Register or it doesn't exist.** Under Claude Code, a skill not in
-  `.claude/skills/RESOLVER.md` and `.github/scaffold-files.txt` is orphaned.
-  Under pi, the `.agents/skills/<slug>/SKILL.md` wrapper is sufficient — pi
-  discovers skills by directory presence. Both harnesses require the canonical
-  `skills/<slug>.md` file.
+- **Register or it doesn't ship.** A scaffold skill needs a registry row,
+  canonical body, harness wrappers, and sync manifest entries. Client discovery
+  alone does not make it available through scaffold export or sync.
 - **Stay MECE.** Before generating, scan RESOLVER for a skill with overlapping
   purpose. If one exists, extend it with a parameterized arg instead of adding a
   near-duplicate.
@@ -61,7 +57,7 @@ Stop early if all four are already unambiguous from Phase 0.
 Write five files per skill (the validator requires every form):
 
 1. **`skills/<slug>.md`** — canonical instructions, no frontmatter. This is the
-   single source of truth; all harnesses read from here via `@` includes.
+   single source of truth; harness wrappers reference it; Codex explicitly reads the linked file.
 
 2. **`.claude/skills/<slug>/SKILL.md`** — thin Claude wrapper:
    ```markdown
@@ -107,7 +103,9 @@ Write five files per skill (the validator requires every form):
    Read and follow the complete skill instructions in [`skills/<slug>.md`](../../skills/<slug>.md).
    ```
 
-Codex and Gemini read through `AGENTS.md` — no separate file needed.
+Codex uses the shared `.agents/skills` wrapper above and reads `AGENTS.md`
+directly. Gemini also reads the repository instructions; no Codex-only copy of
+the skill body is needed.
 
 Keep `description:` trigger-rich (it's how non-Claude harnesses decide to activate
 the skill) and **identical across all four wrapper forms** — the validator's
@@ -116,10 +114,10 @@ repeating them.
 
 ### Phase 3 — Review, Save, and PR to scaffold
 
-1. **Register** — Under Claude Code: add a row to `.claude/skills/RESOLVER.md`
-   (unique `^\/<slug>` anchor, path pointing to `skills/<slug>.md`). Under pi:
-   ensure `.agents/skills/<slug>/SKILL.md` exists (it does, from Phase 2).
-   Append all new file paths to `.github/scaffold-files.txt` for both harnesses.
+1. **Register** — In every client, add a row to `.claude/skills/RESOLVER.md`
+   (unique `^\/<slug>` anchor, path pointing to `skills/<slug>.md`). Verify all
+   harness forms from Phase 2 exist, including the shared Codex/pi/agy wrapper.
+   Append all new file paths to `.github/scaffold-files.txt`.
 2. **Tests** — the skill must survive `node scripts/check-resolvable.ts`. Add a
    focused test for any logic the skill ships in a script.
 3. **Validate** — `node scripts/check-resolvable.ts`. Fix every error.

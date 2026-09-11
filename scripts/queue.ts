@@ -9,75 +9,56 @@
 //   node scripts/queue.ts set <id> <field> <value>   # edit a task field
 //   node scripts/queue.ts show <id>                  # print a task's full spec
 //   node scripts/queue.ts next | ready               # serial pick | fan-out candidate set
-//   node scripts/queue.ts tick                       # serial loop entry (reclaim→begin→print)
+//   node scripts/queue.ts tick                       # serial loop entry (ownership-check→begin→print)
 //   node scripts/queue.ts signal                     # print DRAIN-WANTED iff drainable (Monitor poll)
 //   node scripts/queue.ts claim <id> [--worker w]    # atomic claim for a parallel worker
 //   node scripts/queue.ts done <id> [--skip-validate]# run validate, then complete
 //   node scripts/queue.ts fail <id> [reason...]      # record a failure (retries then terminal)
 //   node scripts/queue.ts top <id> | remove <id>
 //   node scripts/queue.ts move <id> <pos>            # reorder to a 1-based position (as in `list`)
+//   node scripts/queue.ts hold <id> | unhold <id>    # park a task (drain skips it) | release it
 //   node scripts/queue.ts requeue <id>               # revive a failed task (pending, failures cleared)
 //   node scripts/queue.ts start | stop               # run/pause the worker
 //   node scripts/queue.ts interval 6m                # edit the wake interval
 //   node scripts/queue.ts config <key> <value>       # maxFailures|leaseMinutes|maxParallel|integrationBranch
+//   node scripts/queue.ts gate <gate-id> [--only f]  # deps: <gate-id> on every other task (block)
+//   node scripts/queue.ts ungate <gate-id>           # remove <gate-id> from deps + mark it done (unblock)
 //   node scripts/queue.ts archive                    # sweep done/failed into archive.md
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
+//   node scripts/queue.ts lane beat|list|clear|stop|go <id>  # lane heartbeats (the live board reads these)
 //
 // add/set flags: --mode chain --slug <s> --deps a,b --files a,b --validate "<cmd>"
 //   --accept "<criteria>" --top --worker <name>
 
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { execSync } from 'node:child_process';
-import { ROOT, sidecar, now, load, save, log, appendArchive } from './queue-io.ts';
+import { ROOT, sidecar, now, load, save, log, appendArchive, withLock, unlocked } from './queue-io.ts';
+import { cmdGate, cmdUngate, drainKick } from './queue-gates.ts';
 import {
   render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
-  beginTask, markDone, recordFailure, reclaimStale, pauseUntil, resumeIfDue, requeueTask,
+  beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask,
+  holdTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
-  fieldPatch, sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
+  sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type Task,
 } from './queue-model.ts';
+import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
+import { cmdLane } from './queue-lanes.ts';
 
 // ---------------------------------------------------------------- flags
 
-interface Parsed { positionals: string[]; flags: Map<string, string>; bools: Set<string>; }
-
-const VALUE_FLAGS = new Set([
-  'mode', 'slug', 'deps', 'files', 'validate', 'accept', 'worker', 'note', 'until', 'minutes',
-]);
 const MS_PER_MIN = 60000;
 
 // Exit codes for the loop entry points (tick, ready, signal) so a driver can branch
 // its next cadence without parsing text: 0 = work dispatched/wanted → continue;
 // 3 = idle → back off to a long fallback; 4 = paused for a usage window → slow-poll;
-// 5 = stopped → halt. A bare `return 1` stays the usage/error code.
-const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5 } as const;
-
-function parse(rest: string[]): Parsed {
-  const positionals: string[] = [];
-  const flags = new Map<string, string>();
-  const bools = new Set<string>();
-  for (let i = 0; i < rest.length; i++) {
-    const a = rest[i];
-    if (a.startsWith('--')) {
-      const key = a.slice(2);
-      if (VALUE_FLAGS.has(key)) flags.set(key, rest[++i] ?? '');
-      else bools.add(key);
-    } else positionals.push(a);
-  }
-  return { positionals, flags, bools };
-}
-
-const SPEC_FLAGS = ['mode', 'slug', 'deps', 'files', 'validate', 'accept'];
-
-function taskOverrides(f: Parsed): Partial<Task> {
-  const o: Partial<Task> = {};
-  for (const key of SPEC_FLAGS) {
-    if (f.flags.has(key)) Object.assign(o, fieldPatch(key, f.flags.get(key) ?? ''));
-  }
-  return o;
-}
+// 5 = stopped → halt; 6 = ownership conflict → stop and report. A bare `return 1`
+// stays the usage/error code.
+const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5, CONFLICT: 6 } as const;
 
 // ---------------------------------------------------------------- validation
 
@@ -118,9 +99,9 @@ function taskBlock(t: Task): string {
 
 /**
  * Auto-resume a due usage pause, then report whether the queue is drainable.
- * Returns a blocking EXIT code (STOPPED/PAUSED) or null to proceed.
+ * Returns a blocking EXIT code for pauses or ambiguous ownership, or null to proceed.
  */
-function pauseGate(q: Queue): { queue: Queue; blocked: number | null } {
+function dispatchGate(q: Queue): { queue: Queue; blocked: number | null } {
   const due = resumeIfDue(q, now());
   if (due.resumed) { q = due.queue; save(q); log('auto-resumed (usage window reopened)'); }
   if (q.config.status === 'stopped') {
@@ -131,18 +112,19 @@ function pauseGate(q: Queue): { queue: Queue; blocked: number | null } {
     console.log('queue: STOPPED — run `queue start` to resume');
     return { queue: q, blocked: EXIT.STOPPED };
   }
+  const expired = staleLeases(q, now(), q.config.leaseMinutes);
+  if (expired.length) {
+    console.log(`queue: OWNERSHIP CONFLICT — expired lease(s) remain active: ${expired
+      .map(t => t.id).join(', ')}. Do not reclaim or dispatch; resolve ownership explicitly.`);
+    return { queue: q, blocked: EXIT.CONFLICT };
+  }
   return { queue: q, blocked: null };
 }
 
 function cmdTick(q: Queue): number {
-  const gate = pauseGate(q);
+  const gate = dispatchGate(q);
   if (gate.blocked !== null) return gate.blocked;
   q = gate.queue;
-  const swept = reclaimStale(q, now(), q.config.leaseMinutes);
-  if (swept.reclaimed.length) {
-    for (const t of swept.reclaimed) log(`reclaimed ${t.id} (stale lease)`);
-    q = swept.queue;
-  }
   const t = nextActionable(q);
   if (!t) {
     const stuck = deadlocked(q);
@@ -161,7 +143,7 @@ function cmdTick(q: Queue): number {
 }
 
 function cmdReady(q: Queue): number {
-  const gate = pauseGate(q);
+  const gate = dispatchGate(q);
   if (gate.blocked !== null) return gate.blocked;
   q = gate.queue;
   const r = readyTasks(q);
@@ -178,9 +160,15 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
   const t = q.tasks.find(x => x.id === id);
   if (!t) { console.error(`done: unknown task id ${id}`); return 1; }
   if (t.validate && !skip) {
-    const r = runValidate(t);
+    const r = unlocked(() => runValidate(t));
+    q = load();
+    const refreshed = q.tasks.find(task => task.id === id);
+    if (!refreshed || !isDeepStrictEqual(t, refreshed)) {
+      console.error(`done: ${id} changed during validation; inspect and retry`);
+      return 1;
+    }
     if (!r.ok) {
-      const res = recordFailure(q, id, `validation failed: ${r.tail}`, q.config.maxFailures);
+      const res = recordFailure(q, id, `validation failed: ${r.tail}`, q.config.maxFailures, now());
       save(res.queue);
       log(`validate-fail ${id} (${res.failures}/${q.config.maxFailures})`);
       console.log(`✗ validation failed for ${id} → ${res.terminal ? 'failed' : 'retry'} (${r.tail})`);
@@ -191,7 +179,7 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
   // earlier done task this completion just freed (one whose last unfinished
   // dependent was this one). A done task still depended on by unfinished work is
   // kept until that work finishes, so dependency resolution never breaks.
-  let dq = markDone(q, id);
+  let dq = markDone(q, id, now());
   const sweep = archivableDone(dq);
   if (sweep.length) {
     appendArchive(sweep);
@@ -226,6 +214,7 @@ function cmdArchive(q: Queue): number {
   console.log(`archived ${swept.length} task(s) → ${sidecar('archive.md')}`);
   return 0;
 }
+
 
 /**
  * The drain signal as a pollable command for a Monitor: prints the DRAIN-WANTED
@@ -316,6 +305,9 @@ function cmdLoop(q: Queue): number {
     + `\`while true; do node scripts/queue.ts signal; sleep ${q.config.idlePoll}; done\` — `
     + `it prints a line ONLY when work is drainable, so it never fires on an empty queue`;
   console.log(`/loop ${q.config.idlePoll} drain the work queue: FIRST ${signalPoll}; `
+    + `ONE orchestrator owns this session; other sessions and user-launched agent CLIs are `
+    + `independent and must never be stopped, reclaimed, interrupted, or signalled. Queue lease `
+    + `expiry is metadata only and grants no process authority. `
     + `THEN repeatedly ${drain} — keep going while tick/ready exits 0 (each completed task `
     + `auto-archives out of the queue). On exit 3 (idle/drained) TERMINATE the loop with `
     + `ScheduleWakeup stop:true; the signal-Monitor re-wakes the loop only when a later add `
@@ -323,6 +315,8 @@ function cmdLoop(q: Queue): number {
     + `Only if you could NOT arm a Monitor, fall back to re-arming the ${q.config.idlePoll} `
     + `heartbeat (it must poll, so it may wake on an empty queue). Exit 5 (operator stop) `
     + `always stops the loop; exit 4 slow-polls at ${q.config.pausePoll}. `
+    + `Exit 6 (ownership conflict) stops dispatch: report the conflict and leave claims, `
+    + `processes, and worktrees untouched until ownership is resolved. `
     + `Cadence: busy → continue immediately · idle → stop:true (signal-Monitor re-wakes on new `
     + `work; ${q.config.idlePoll} heartbeat only if unmonitored) · paused → ${q.config.pausePoll}.`);
   return 0;
@@ -331,6 +325,12 @@ function cmdLoop(q: Queue): number {
 // ---------------------------------------------------------------- dispatch
 
 function main(argv: string[]): number {
+  const stdinItems = argv[0] === 'add-many' && parse(argv.slice(1)).positionals.length === 0
+    ? readStdin() : undefined;
+  return withLock(() => dispatch(argv, stdinItems));
+}
+
+function dispatch(argv: string[], stdinItems?: string[]): number {
   const [cmd = 'list', ...rest] = argv;
   const f = parse(rest);
   const id = f.positionals[0];
@@ -352,7 +352,7 @@ function main(argv: string[]): number {
       console.log(`added ${t.id}${t.mode === 'chain' ? ' (chain)' : ''} — ${title}${drainKick(q)}`); return 0;
     }
     case 'add-many': {
-      const raw = f.positionals.length ? f.positionals : readStdin();
+      const raw = f.positionals.length ? f.positionals : stdinItems ?? [];
       const items = raw.map(cleanItem).filter(Boolean);
       if (!items.length) { console.error('add-many: no items (pass args or pipe lines on stdin)'); return 1; }
       q = addMany(q, items, { top: f.bools.has('top') });
@@ -362,6 +362,9 @@ function main(argv: string[]): number {
     case 'set': {
       const [, field, ...v] = f.positionals;
       if (!needId() || !field) { console.error('usage: queue set <id> <field> <value>'); return 1; }
+      if (!(SPEC_FLAGS as readonly string[]).includes(field) || (field === 'title' && !v.join(' ').trim())) {
+        console.error('queue set: unsupported field or empty title'); return 1;
+      }
       q = setField(q, id, taskOverrides(parse([`--${field}`, v.join(' ')])));
       save(q);
       console.log(`set ${id}.${field}${drainKick(q)}`); return 0;
@@ -380,6 +383,7 @@ function main(argv: string[]): number {
       if (!needId()) { console.error('claim: unknown task id'); return 1; }
       const t = q.tasks.find(x => x.id === id)!;
       if (t.status !== 'pending') { console.log(`claim: ${id} is ${t.status}, not claimable`); return 1; }
+      if (t.held) { console.log(`claim: ${id} is held — unhold it first`); return 1; }
       const worker = f.flags.get('worker') ?? `worker-${process.pid}`;
       save(beginTask(q, id, now(), worker)); log(`claim ${id} by ${worker}`);
       console.log(`claimed ${id} for ${worker}\n${taskBlock({ ...t, owner: worker })}`); return 0;
@@ -392,7 +396,7 @@ function main(argv: string[]): number {
     case 'fail': {
       if (!needId()) { console.error('fail: unknown task id'); return 1; }
       const reason = f.positionals.slice(1).join(' ') || null;
-      const r = recordFailure(q, id, reason, q.config.maxFailures);
+      const r = recordFailure(q, id, reason, q.config.maxFailures, now());
       save(r.queue); log(`fail ${id} (${r.failures}/${q.config.maxFailures})${reason ? ': ' + reason : ''}`);
       console.log(`${id} → ${r.terminal ? 'failed (terminal)' : `retry ${r.failures}/${q.config.maxFailures}`}`);
       return 0;
@@ -410,6 +414,14 @@ function main(argv: string[]): number {
       q = moveTask(q, id, pos - 1); save(q); log(`move ${id} → ${pos}`);
       console.log(`${id} moved to position ${pos}${drainKick(q)}`); return 0;
     }
+    case 'hold':
+      if (!needId()) { console.error('hold: unknown task id'); return 1; }
+      q = holdTask(q, id, true); save(q); log(`hold ${id}`);
+      console.log(`${id} held (parked — the drain skips it until unhold)`); return 0;
+    case 'unhold':
+      if (!needId()) { console.error('unhold: unknown task id'); return 1; }
+      q = holdTask(q, id, false); save(q); log(`unhold ${id}`);
+      console.log(`${id} unheld${drainKick(q)}`); return 0;
     case 'requeue': {
       if (!needId()) { console.error('requeue: unknown task id'); return 1; }
       const before = q.tasks.find(t => t.id === id)!;
@@ -442,13 +454,17 @@ function main(argv: string[]): number {
       if (!id) { console.error('usage: queue interval <duration>'); return 1; }
       save(setConfig(q, { interval: id })); console.log(`interval: ${id}`); return 0;
     case 'config': return cmdConfig(q, f.positionals[0], f.positionals.slice(1).join(' '));
+    case 'gate': return cmdGate(q, f.positionals[0] ?? '', f.flags.get('only') ?? '', f.bools.has('dry-run'));
+    case 'ungate': return cmdUngate(q, f.positionals[0] ?? '', f.bools.has('keep-gate'), f.bools.has('dry-run'));
     case 'archive': return cmdArchive(q);
     case 'loop': return cmdLoop(q);
     case 'worktree': case 'wt': return cmdWorktree(q, f.positionals[0] ?? '', f.positionals[1] ?? '');
+    case 'lane': return cmdLane(q, f.positionals[0] ?? '', f.positionals[1] ?? '', f);
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
-        + `signal claim begin done fail top move requeue remove start stop pause interval config archive loop worktree`);
+        + `signal claim begin done fail top move hold unhold requeue remove start stop pause interval config `
+        + `gate ungate archive loop worktree lane`);
       return 1;
   }
 }
@@ -460,19 +476,7 @@ function cleanItem(line: string): string {
   return line.replace(/^\s*[-*]\s*(\[[ >xX!]?\]\s*)?/, '').trim();
 }
 
-/**
- * Emit the stable DRAIN-WANTED marker (plus a human hint) when a mutation leaves a
- * running queue drainable with no driver attached. This is a machine signal — a
- * Monitor on the queue file, a cron, or an agent keys on `queue: DRAIN-WANTED` to
- * (re)start the drain — not just prose a human has to be watching to notice. Empty
- * string when a driver is already active, nothing is eligible, or the queue is
- * stopped/paused (an operator halt is not a stalled drain).
- */
-function drainKick(q: Queue): string {
-  const sig = drainSignal(q);
-  return sig ? `\n${sig}  → start now: \`node scripts/queue.ts tick\` (or the loop)` : '';
-}
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   process.exit(main(process.argv.slice(2)));
 }

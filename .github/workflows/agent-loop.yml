@@ -1,0 +1,23 @@
+name: Agent loop and queue portability
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  loop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/agent-loop.test.ts
+      - run: node scripts/agent-loop.integration.test.ts
+      - run: node scripts/queue-edit.test.ts
+      - run: node scripts/queue-lock.test.ts

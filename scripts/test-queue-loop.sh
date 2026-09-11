@@ -66,6 +66,8 @@ grep_check "loop terminates on idle"        "$(Q loop)" "stop:true"
 grep_check "heartbeat is only the fallback" "$(Q loop)" "fall back"
 grep_check "loop polls the signal command"  "$(Q loop)" "signal"
 grep_check "loop: no fire on empty queue"   "$(Q loop)" "empty queue"
+grep_check "loop isolates other sessions"   "$(Q loop)" "must never be stopped, reclaimed, interrupted, or signalled"
+grep_check "loop stops on ownership conflict" "$(Q loop)" "Exit 6 (ownership conflict) stops dispatch"
 
 echo "== signal: pollable drain marker, silent on empty (no fire on empty queue) =="
 S="$TMP/signal.md"
@@ -97,6 +99,30 @@ grep_check "top re-emits DRAIN-WANTED" "$(QD top task-002)" "queue: DRAIN-WANTED
 QD stop >/dev/null
 missing_check "stop suppresses marker (operator halt ≠ stall)" "$(QD add 'd3')" "DRAIN-WANTED"
 grep_check "start re-attaches a driver" "$(QD start)" "queue: DRAIN-WANTED 3 pending"
+
+echo "== stale ownership fails closed =="
+S="$TMP/stale.md"
+cat >"$S" <<'EOF'
+# Work Queue
+
+<!-- queue:config
+status: running
+leaseMinutes: 1
+maxParallel: 2
+-->
+
+- [>] task-001 — possibly live in another session
+  - owner: another-session
+  - started: 2020-01-01T00:00:00.000Z
+
+- [ ] task-002 — pending parallel work
+EOF
+QSTALE() { QUEUE_FILE="$S" node "$HERE/queue.ts" "$@"; }
+codeSTALE() { QSTALE "$@" >/dev/null 2>&1; echo $?; }
+check "stale lease → ownership conflict" "$(codeSTALE tick)" 6
+check "stale lease blocks parallel dispatch" "$(codeSTALE ready)" 6
+missing_check "conflict exposes no pending task" "$(QSTALE ready)" "task-002"
+grep_check "conflicting task stays active" "$(QSTALE list)" "▶ task-001"
 
 echo
 echo "queue-loop: $pass passed, $fail failed"

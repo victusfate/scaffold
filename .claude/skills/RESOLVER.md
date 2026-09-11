@@ -7,6 +7,7 @@ the first match.
 
 | Skill | Invocation Regex | Path | Purpose |
 |---|---|---|---|
+| loop | `/(?:^\/loop\b)/i` | `skills/loop.md` | Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver |
 | feature-chain | `/(?:^\/feature-chain\b)\|(?:build\|implement\|add)\s+(?:a\s+)?(?:new\s+)?(?:feature\|capability)/i` | `skills/feature-chain.md` | Orchestrate design → PRD → TDD → review end to end |
 | grill-with-docs | `/(?:^\/grill-with-docs\b)\|(?:stress[-\s]?test\|sharpen)\s+(?:the\s+)?(?:plan\|design\|idea)/i` | `skills/grill-with-docs.md` | Design Q&A → design.md + canonical vocabulary |
 | to-prd | `/(?:^\/to-prd\b)\|(?:write\|create\|generate)\s+(?:a\s+)?prd/i` | `skills/to-prd.md` | Synthesize context + codebase → prd.md |
@@ -21,6 +22,7 @@ the first match.
 | prune | `/(?:^\/prune\b)|(?:deep\s+clean|full\s+quality\s+rework)\s+(?:the\s+)?codebase/i` | `skills/prune.md` | Run all quality review skills and funnel findings into design→PRD→TDD→PR |
 | pause | `/(?:^\/pause\b)|(?:pause|checkpoint)\s+(?:the\s+)?(?:session|work)|cache\s+(?:this\s+)?session|save\s+my\s+place|stepping\s+away/i` | `skills/pause.md` | Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume |
 | resume | `/(?:^\/resume\b)|resume\s+(?:the\s+)?(?:session|work)|pick\s+up\s+where|continue\s+from\s+(?:the\s+)?handoff|load\s+(?:the\s+)?handoff/i` | `skills/resume.md` | Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device |
+| save | `/(?:^\/save\b)|save\s+(?:the\s+)?(?:session|progress|checkpoint|state)|checkpoint\s+(?:this\s+)?(?:step|progress)|incremental\s+(?:save|checkpoint)/i` | `skills/save.md` | Lightweight incremental checkpoint for a long run — refresh the handoff, commit, and push after each merge or step, and near the usage limit schedule a wakeup past the reset; complements /pause and /resume |
 | hoist-skill | `/(?:^\/hoist-skill\b)\|(?:hoist\|export\|copy\|add)\s+(?:scaffold\s+)?skills?\s+(?:to\|into)\b/i` | `skills/hoist-skill.md` | Hoist scaffold capabilities into a consumer repo in the target harness format |
 | protect-branch | `/(?:^\/protect-branch\b)\|(?:set\s+up\|configure\|check)\s+(?:branch\s+protection\|protected\s+branch)/i` | `skills/protect-branch.md` | Open GitHub branch protection settings for the current repo and show a targeted configuration checklist |
 | frontend-design | `/(?:^\/frontend-design\b)/i` | `skills/frontend-design.md` | Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics |
@@ -29,9 +31,9 @@ the first match.
 | ponytail | `/(?:^\/ponytail\b)|lazy\s+senior\s+dev\s+mode/i` | `skills/ponytail.md` | Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions) |
 | diagram | `/(?:^\/diagram\b)|(?:diagram\s+this|draw\s+the\s+architecture|make\s+(?:a\s+)?mermaid|render\s+(?:this\s+)?mermaid|sequence\s+diagram\s+for)/i` | `skills/diagram.md` | Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives |
 | council | `/(?:^\/council\b)|(?:council\|war[-\s]?room\|pressure[-\s]?test\|stress[-\s]?test\|debate)\s+(?:this\|it\|the)\b/i` | `skills/council.md` | Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step |
-| statusline | `/(?:^\/statusline\b)\|(?:enable\|turn\s+on\|show)\s+(?:the\s+)?(?:usage\s+)?status[-\s]?line/i` | `skills/statusline.md` | Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing |
+| statusline | `/(?:^\/statusline\b)\|(?:enable\|turn\s+on\|show)\s+(?:the\s+)?(?:usage\s+)?status[-\s]?line/i` | `skills/statusline.md` | Configure model, context, and usage status display: Codex uses its built-in statusline picker; Claude Code uses bin/install-statusline.sh. Turn the status line on or off without clobbering other settings. |
 | queue | `/(?:^\/queue\b)|(?:work\|task)\s+queue\|drain\s+(?:the\s+)?queue/i` | `skills/queue.md` | Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume |
-| voice-chat | `/(?:^\/voice-chat\b)|(?:voice\s+chat\|voice\s+loop\|talk\s+to\s+(?:the\s+)?agent\|hands[-\s]?free\s+voice)/i` | `skills/voice-chat.md` | Hands-free, headphones-only voice loop: speak → whisper.cpp STT → `claude -p` (full tools, flat-rate under your subscription) → local TTS (say/espeak/piper/xtts); cross-platform (macOS/Linux/WSL), everything local except the LLM call |
+| voice-chat | `/(?:^\/voice-chat\b)|(?:voice\s+chat\|voice\s+loop\|talk\s+to\s+(?:the\s+)?agent\|hands[-\s]?free\s+voice)/i` | `skills/voice-chat.md` | Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL. |
 
 ## Column contract
 
@@ -58,8 +60,9 @@ Self-contained Anthropic Agent Skills vendored from upstream — they own their
 ship as a single `.claude/skills/<slug>/` tree. Registered here so they are not
 flagged as orphaned and are covered by the manifest, but **exempt** from the
 prompt-skill wrapper contract: no canonical `skills/<slug>.md`, no
-`.cursor`/`.agents`/`.agent` wrappers, no Invocation Regex (the skill's own
-`description` drives loading). Claude-harness only.
+required cross-harness wrappers, no Invocation Regex (the skill's own
+`description` drives loading). The bundled `improve` skill also has a Codex-compatible
+`.agents/skills/improve/SKILL.md` bridge to its unchanged source tree.
 
 | Skill | Source (license) | Purpose |
 |---|---|---|

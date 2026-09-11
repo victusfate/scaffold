@@ -1,5 +1,39 @@
 # Agent Guidelines
 
+## Harness capabilities
+
+These instructions support Claude Code, Codex, Cursor, Gemini, pi, and agy.
+Use the tools actually exposed by the current client. A named tool below is not
+a guarantee that it is installed. User instructions take precedence over skill
+defaults; infer routine choices from the repository and existing authorization.
+
+- **Skills:** `/name` below denotes a scaffold skill. In Codex, invoke `$name`
+  or select it via `/skills`; read `.agents/skills/<name>/SKILL.md`, then its
+  linked `skills/<name>.md`. Explicitly read referenced `@path` files relative
+  to the containing document; do not assume Claude's import expansion.
+- **Delegation:** use native subagents when available. Respect client concurrency
+  limits by batching independent reviewers. Use fresh context for review when
+  supported; otherwise disclose the limitation and apply the criteria serially.
+  Editing lanes use explicit git worktrees if the client lacks an isolation flag.
+- **Optional tools:** PR subscriptions, monitors, timers, memory, and file-delivery
+  tools depend on the client. Use the fallbacks below; never claim an unavailable
+  integration is active. Do not change global model, trust, or permission settings
+  to make a workflow run.
+
+## Session and process ownership
+
+Each session has exactly one orchestrator. Separate sessions may work concurrently,
+including in the same repository, but they are independent owners. Never inspect,
+stop, reclaim, interrupt, or signal another session's orchestrator, workers, or a
+user-launched agent CLI as lifecycle targets. Read-only aggregate resource checks
+may observe them, but process names, PIDs, terminals, queue owner labels, lease
+timestamps, and worktrees never establish authority over them.
+
+Only a lifecycle controller may terminate the exact child tree it created for its
+current generation, and only on explicit cancel or timeout. Normal child completion
+must not send a cleanup signal. If ownership is ambiguous, leave the process and
+worktree untouched, stop conflicting dispatch, and report the conflict.
+
 ## Iterative Autonomous Enhancement — a core design principle
 
 Iterative autonomous enhancement is a **core driving design principle** of this
@@ -44,17 +78,21 @@ checkpoint) and *Veracity* (evidence, not claims).
 
 On your first response in a new session:
 
-1. **Sync check** — A `SessionStart` hook fetches `origin/main` and warns if
+1. **Sync check** — Claude Code's `SessionStart` hook fetches `origin/main` and warns if
    the current branch is behind. If you see that warning, rebase before
    starting new feature work (`git rebase origin/main`) or pull if on `main`
-   (`git pull origin main`).
+   (`git pull origin main`). Without that hook, run `git fetch origin main`
+   and `git rev-list --count HEAD..origin/main` explicitly. On a fetch failure,
+   report that freshness is unverified and continue local work where possible.
 2. **PR watch** — If the current branch has an open PR, subscribe to it with
    `subscribe_pr_activity`. Only watch the PR for this session's branch — not
-   PRs from other branches.
+   PRs from other branches. If no subscription tool is available, inspect with
+   `gh pr view` and `gh pr checks`; this is a snapshot, not a webhook subscription.
 3. **Artifacts check** — Check `./docs/` for existing feature artifacts
    (`design.md`, `prd.md`, `plan.md`).
 
-- **Artifacts exist:** acknowledge them and ask how to continue.
+- **Artifacts exist:** resume artifacts relevant to the user's request. Acknowledge
+  unrelated artifacts without blocking new work; ask only if intent is unclear.
 - **No artifacts:** start `/feature-chain` — no permission needed. If the user's
   intent is vague or unstated, the grill (Phase 1) resolves it through Q&A.
   Do not ask a pre-question first.
@@ -121,6 +159,9 @@ When given a standing directive to work autonomously toward a goal — an explic
     until it refills and continue.
   - **Crash-safety net:** if a turn genuinely ends with work remaining, re-arm with
     the minimum delay so the loop survives — never as cadence.
+- These timer rules apply only when the client exposes scheduling. Without it,
+  keep working in-turn; at a real limit, checkpoint and state how to resume.
+  Never claim a background restart has been armed without a successful tool call.
 - **Steering always preempts.** A mid-turn user message is handled before resuming
   (see *Responsiveness & Steerability*). "Unless I'm actively steering" is the
   point: continuous ≠ uninterruptible — stop or redirect the instant the user speaks.
@@ -321,7 +362,7 @@ Skip the chain for:
 2. Create a clean branch: `git checkout -b <prefix>/<short-descriptive-name>`
 3. Do the work, verify with build/tests
 4. Commit, push: `git push -u origin <branch>`
-5. When changes are ready for review, run `/create-pr` — it creates the PR and subscribes to activity atomically. Do not split these steps.
+5. When changes are ready for review, run `/create-pr` — it creates the PR and subscribes where supported, or checks CI with `gh` and reports the monitoring limit.
 6. Before merging, verify the green is **real** (see below).
 7. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
 
@@ -342,7 +383,7 @@ a dependency fails — and the gate passes silently. (Same for path-filtered or
 
 Never commit directly to main for feature work.
 A session spans the full lifetime of a branch — from creation until it is merged or discarded. Only switch branches after the current feature branch is merged or the user explicitly asks; keep committing to the current branch until then. The one permitted exception is checking out main solely to pull and immediately create a new feature branch.
-A new session always starts from a fresh branch off main.
+Start a fresh branch off main when no active feature branch is being resumed.
 
 ## ONE Working Branch — fan-out integration (NON-NEGOTIABLE)
 
@@ -386,4 +427,6 @@ push race.
 
 ## File Delivery
 
-When the user asks to copy, download, or share a file (any type), always use the SendUserFile tool to deliver it — never print the contents inline.
+When the user asks to copy, download, or share a file, use SendUserFile when
+available. Otherwise use the client's supported attachment or clickable file link
+and state what was delivered. Do not substitute an inline dump for a file.

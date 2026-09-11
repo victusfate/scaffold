@@ -32,6 +32,7 @@ tsconfig.json
 
 # Scaffold's own CI (consumers get sync-scaffold.yml + quality.yml + release.yml)
 .github/workflows/ci.yml
+.github/workflows/agent-loop.yml
 
 # Session checkpoints
 .pause
@@ -62,3 +63,10 @@ tools/sync
 # Per-repo work-queue state (see skills/queue.md). Each repo owns its own queue;
 # scaffold ships the /queue skill + scripts/queue.ts, not this runtime file.
 .agent/queue/queue.md
+
+# Codex consumer acceptance tests
+tools/hoist-skill/codex.test.ts
+# Pi consumer acceptance tests
+tools/hoist-skill/pi.test.ts
+scripts/voice/agent.test.ts
+scripts/voice/fixtures/cli.ts

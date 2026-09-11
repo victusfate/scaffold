@@ -5,11 +5,12 @@ status: running
 interval: 6m
 maxFailures: 3
 leaseMinutes: 30
-maxParallel: 1
+maxParallel: 2
 integrationBranch: 
 resumeAt: 
 idlePoll: 20m
 pausePoll: 30m
+nextId: 10
 -->
 
 Order = priority (top first). Checkboxes: `[ ]` pending · `[>]` active · `[x]` done · `[!]` failed.

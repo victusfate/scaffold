@@ -5,9 +5,11 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/queue`, `/voice-chat`.
+Skills can be invoked individually: `/loop`, `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/queue`, `/voice-chat`.
 
-Bundled skills (self-contained Anthropic Agent Skills, Claude harness; loaded by description rather than a slash command): `improve`.
+In Codex, use `$skill-name` or `/skills` to select these workflows from `.agents/skills`. See [Codex support](codex.md) for setup and client-specific behavior.
+
+Bundled skills (self-contained upstream Agent Skills): `improve`. The bundled `improve` advisor is also available to Codex through `.agents/skills/improve/SKILL.md`.
 <!-- END_SKILLS_INVOCATION -->
 
 ## Structure
@@ -37,6 +39,7 @@ tools/
 .claude/
   skills/
     RESOLVER.md               # central routing table — skill → regex → path
+    loop/SKILL.md             # Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver
     feature-chain/SKILL.md    # Orchestrate design → PRD → TDD → review end to end
     grill-with-docs/SKILL.md  # Design Q&A → design.md + canonical vocabulary
     to-prd/SKILL.md           # Synthesize context + codebase → prd.md
@@ -51,6 +54,7 @@ tools/
     prune/SKILL.md            # Run all quality review skills and funnel findings into design→PRD→TDD→PR
     pause/SKILL.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume/SKILL.md           # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
+    save/SKILL.md             # Lightweight incremental checkpoint for a long run — refresh the handoff, commit, and push after each merge or step, and near the usage limit schedule a wakeup past the reset; complements /pause and /resume
     hoist-skill/SKILL.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md  # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
@@ -59,9 +63,9 @@ tools/
     ponytail/SKILL.md         # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
     diagram/SKILL.md          # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council/SKILL.md          # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
-    statusline/SKILL.md       # Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing
+    statusline/SKILL.md       # Configure model, context, and usage status display: Codex uses its built-in statusline picker; Claude Code uses bin/install-statusline.sh. Turn the status line on or off without clobbering other settings.
     queue/SKILL.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
-    voice-chat/SKILL.md       # Hands-free, headphones-only voice loop: speak → whisper.cpp STT → `claude -p` (full tools, flat-rate under your subscription) → local TTS (say/espeak/piper/xtts); cross-platform (macOS/Linux/WSL), everything local except the LLM call
+    voice-chat/SKILL.md       # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
     improve/SKILL.md          # (bundled) Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
@@ -72,6 +76,7 @@ tools/
 .cursor/
   rules/
     agents.mdc           # thin pointer to AGENTS.md
+    loop.mdc             # mirrors loop for Cursor
     feature-chain.mdc    # mirrors feature-chain for Cursor
     grill-with-docs.mdc  # mirrors grill-with-docs for Cursor
     to-prd.mdc           # mirrors to-prd for Cursor
@@ -86,6 +91,7 @@ tools/
     prune.mdc            # mirrors prune for Cursor
     pause.mdc            # mirrors pause for Cursor
     resume.mdc           # mirrors resume for Cursor
+    save.mdc             # mirrors save for Cursor
     hoist-skill.mdc      # mirrors hoist-skill for Cursor
     protect-branch.mdc   # mirrors protect-branch for Cursor
     frontend-design.mdc  # mirrors frontend-design for Cursor
@@ -99,6 +105,7 @@ tools/
     voice-chat.mdc       # mirrors voice-chat for Cursor
 .agents/
   skills/
+    loop/SKILL.md             # Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver
     feature-chain/SKILL.md    # Orchestrate design → PRD → TDD → review end to end
     grill-with-docs/SKILL.md  # Design Q&A → design.md + canonical vocabulary
     to-prd/SKILL.md           # Synthesize context + codebase → prd.md
@@ -113,6 +120,7 @@ tools/
     prune/SKILL.md            # Run all quality review skills and funnel findings into design→PRD→TDD→PR
     pause/SKILL.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume/SKILL.md           # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
+    save/SKILL.md             # Lightweight incremental checkpoint for a long run — refresh the handoff, commit, and push after each merge or step, and near the usage limit schedule a wakeup past the reset; complements /pause and /resume
     hoist-skill/SKILL.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md  # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
@@ -121,13 +129,15 @@ tools/
     ponytail/SKILL.md         # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
     diagram/SKILL.md          # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council/SKILL.md          # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
-    statusline/SKILL.md       # Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing
+    statusline/SKILL.md       # Configure model, context, and usage status display: Codex uses its built-in statusline picker; Claude Code uses bin/install-statusline.sh. Turn the status line on or off without clobbering other settings.
     queue/SKILL.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
-    voice-chat/SKILL.md       # Hands-free, headphones-only voice loop: speak → whisper.cpp STT → `claude -p` (full tools, flat-rate under your subscription) → local TTS (say/espeak/piper/xtts); cross-platform (macOS/Linux/WSL), everything local except the LLM call
+    voice-chat/SKILL.md       # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
+    improve/SKILL.md              # bridge to the bundled advisor and its references
 .agent/
   rules/
     agents.md           # thin pointer to AGENTS.md (always-on)
   workflows/
+    loop.md             # Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver
     feature-chain.md    # Orchestrate design → PRD → TDD → review end to end
     grill-with-docs.md  # Design Q&A → design.md + canonical vocabulary
     to-prd.md           # Synthesize context + codebase → prd.md
@@ -142,6 +152,7 @@ tools/
     prune.md            # Run all quality review skills and funnel findings into design→PRD→TDD→PR
     pause.md            # Checkpoint the session into git — write a handoff, commit work in flight, and push so any device can resume
     resume.md           # Reload a checkpointed session from the pushed handoff and continue from its next steps, cold or cross-device
+    save.md             # Lightweight incremental checkpoint for a long run — refresh the handoff, commit, and push after each merge or step, and near the usage limit schedule a wakeup past the reset; complements /pause and /resume
     hoist-skill.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design.md  # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
@@ -150,9 +161,9 @@ tools/
     ponytail.md         # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
     diagram.md          # Generate or update a mermaid diagram as `.mmd` text-source-of-truth; defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council.md          # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
-    statusline.md       # Turn the usage statusLine (model + context% + 5h usage%) on or off globally via bin/install-statusline.sh, no manual config editing
+    statusline.md       # Configure model, context, and usage status display: Codex uses its built-in statusline picker; Claude Code uses bin/install-statusline.sh. Turn the status line on or off without clobbering other settings.
     queue.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
-    voice-chat.md       # Hands-free, headphones-only voice loop: speak → whisper.cpp STT → `claude -p` (full tools, flat-rate under your subscription) → local TTS (say/espeak/piper/xtts); cross-platform (macOS/Linux/WSL), everything local except the LLM call
+    voice-chat.md       # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
 scripts/
   check-resolvable.ts            # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-skills-doc.ts           # regenerate docs/skills.md skill sections from RESOLVER.md

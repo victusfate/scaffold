@@ -46,6 +46,9 @@ export interface Task {
   title: string;
   status: TaskStatus;
   mode: TaskMode;
+  held: boolean;
+  /** Cumulative agent seconds banked across all work sessions on this task. */
+  elapsedSecs: number;
   slug: string | null;
   dependsOn: string[];
   files: string[];
@@ -58,6 +61,9 @@ export interface Task {
   worktree: string | null;
   startedAt: string | null;
 }
+
+/** Fields user-facing queue editors may change. */
+export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'held', 'elapsed', 'slug', 'deps', 'files', 'validate', 'accept', 'note'] as const;
 
 export interface QueueConfig {
   status: 'running' | 'stopped';
@@ -110,7 +116,8 @@ const STATUS_OF: Record<string, TaskStatus> = {
 /** A fresh task with all optional fields empty. */
 export function newTask(id: string, title: string): Task {
   return {
-    id, title, status: 'pending', mode: 'direct', slug: null, dependsOn: [], files: [],
+    id, title, status: 'pending', mode: 'direct', held: false, elapsedSecs: 0,
+    slug: null, dependsOn: [], files: [],
     validate: null, accept: null, note: null, failures: 0, owner: null, branch: null,
     worktree: null, startedAt: null,
   };
@@ -125,6 +132,56 @@ const ID_TITLE_RE = /^(task-\d+)\s+[—:-]+\s+(.*)$/;
 /** Split a comma-separated field value into trimmed, non-empty items. */
 export function splitList(v: string): string[] {
   return v.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+/**
+ * Parse a human duration into seconds: `2h15m30s`, `90m`, `45s`, or a bare
+ * number (minutes — the quick-scan unit). Forgiving: garbage parses to 0 so
+ * a hand edit never breaks the file.
+ */
+const SECS_PER_MIN = 60;
+const SECS_PER_HOUR = 3600;
+const MS_PER_SEC = 1000;
+export function parseDurationSecs(v: string): number {
+  const s = v.trim();
+  if (!s) return 0;
+  let total = 0, matched = false;
+  for (const m of s.matchAll(/(\d+(?:\.\d+)?)\s*([hms])?/g)) {
+    matched = true;
+    const n = Number(m[1]);
+    total += m[2] === 'h' ? n * SECS_PER_HOUR : m[2] === 's' ? n : n * SECS_PER_MIN;
+  }
+  return matched ? Math.max(0, Math.round(total)) : 0;
+}
+
+/**
+ * Quick-scan display, two tiers: seconds under a minute (`45s`), whole
+ * minutes above (`135m`, floored — never hours, so columns stay comparable).
+ */
+export function formatDurationSecs(s: number): string {
+  const secs = Math.max(0, Math.round(s));
+  return secs < SECS_PER_MIN ? `${secs}s` : `${Math.floor(secs / SECS_PER_MIN)}m`;
+}
+
+/**
+ * Exact serializer: every nonzero unit survives the round-trip (`2h15m30s`),
+ * so worker rewrites never bleed precision the display chose to hide.
+ */
+export function formatDurationExact(s: number): string {
+  let secs = Math.max(0, Math.round(s));
+  const h = Math.floor(secs / SECS_PER_HOUR); secs -= h * SECS_PER_HOUR;
+  const m = Math.floor(secs / SECS_PER_MIN); secs -= m * SECS_PER_MIN;
+  return (h ? `${h}h` : '') + (m ? `${m}m` : '') + (secs ? `${secs}s` : '') || '0s';
+}
+
+/**
+ * The banking rule, one home: ending a session adds now−startedAt (floored
+ * at zero for missing leases and clock skew) to the running total.
+ */
+export function bankSession(t: Task, nowIso: string): number {
+  if (!t.startedAt) return t.elapsedSecs;
+  const delta = Math.floor((Date.parse(nowIso) - Date.parse(t.startedAt)) / MS_PER_SEC);
+  return t.elapsedSecs + Math.max(0, delta);
 }
 
 function applyConfig(config: QueueConfig, key: string, val: string): void {
@@ -153,7 +210,10 @@ function applyConfig(config: QueueConfig, key: string, val: string): void {
 export function fieldPatch(key: string, val: string): Partial<Task> {
   const v = val.trim();
   switch (key) {
+    case 'title': return v ? { title: v } : {};
     case 'mode': return { mode: v === 'chain' ? 'chain' : 'direct' };
+    case 'held': return { held: v === 'true' };
+    case 'elapsed': return { elapsedSecs: parseDurationSecs(v) };
     case 'slug': return { slug: v || null };
     case 'deps': case 'dependsOn': return { dependsOn: splitList(v) };
     case 'files': return { files: splitList(v) };
@@ -248,6 +308,7 @@ function assignIds(q: Queue): { tasks: Task[]; nextId: number } {
 export function taskFields(t: Task, alwaysMode = false): Array<[string, string]> {
   const pairs: Array<[string, string]> = [];
   if (alwaysMode || t.mode !== 'direct') pairs.push(['mode', t.mode]);
+  if (t.held) pairs.push(['held', 'true']);
   const push = (k: string, v: string): void => { if (v) pairs.push([k, v]); };
   push('slug', t.slug ?? '');
   push('deps', t.dependsOn.join(', '));
@@ -255,6 +316,7 @@ export function taskFields(t: Task, alwaysMode = false): Array<[string, string]>
   push('validate', t.validate ?? '');
   push('accept', t.accept ?? '');
   push('failures', t.failures ? String(t.failures) : '');
+  if (t.elapsedSecs) pairs.push(['elapsed', formatDurationExact(t.elapsedSecs)]);
   push('note', t.note ?? '');
   push('owner', t.owner ?? '');
   push('branch', t.branch ?? '');
@@ -366,8 +428,11 @@ export function beginTask(q: Queue, id: string, nowIso: string, owner: string | 
   return mapTask(q, id, t => ({ ...t, status: 'active', owner, startedAt: nowIso }));
 }
 
-export function markDone(q: Queue, id: string): Queue {
-  return mapTask(q, id, t => ({ ...t, status: 'done', owner: null, worktree: null, startedAt: null }));
+export function markDone(q: Queue, id: string, nowIso: string): Queue {
+  return mapTask(q, id, t => ({
+    ...t, status: 'done', owner: null, worktree: null, startedAt: null,
+    elapsedSecs: bankSession(t, nowIso),
+  }));
 }
 
 /**
@@ -377,7 +442,7 @@ export function markDone(q: Queue, id: string): Queue {
  * terminal and the running failure count.
  */
 export function recordFailure(
-  q: Queue, id: string, reason: string | null, maxFailures: number,
+  q: Queue, id: string, reason: string | null, maxFailures: number, nowIso: string,
 ): { queue: Queue; terminal: boolean; failures: number } {
   const task = q.tasks.find(t => t.id === id);
   if (!task) return { queue: q, terminal: false, failures: 0 };
@@ -386,6 +451,7 @@ export function recordFailure(
   const updated: Task = {
     ...task, failures, note: reason ?? task.note,
     status: terminal ? 'failed' : 'pending', owner: null, worktree: null, startedAt: null,
+    elapsedSecs: bankSession(task, nowIso),
   };
   const rest = q.tasks.filter(t => t.id !== id);
   // terminal keeps position; a retry drops to the back so other work proceeds first.
@@ -406,6 +472,51 @@ export function requeueTask(q: Queue, id: string): Queue {
   return mapTask(q, id, t => ({
     ...t, status: 'pending', failures: 0, note: null, owner: null, startedAt: null,
   }));
+}
+
+/**
+ * Operator release of a lane: an active task goes back to pending with its
+ * lease cleared, position kept. The explicit-steer counterpart to `claim` —
+ * used by board drag-back. Anything not active (or unknown) is untouched.
+ */
+export function unclaimTask(q: Queue, id: string, nowIso: string): Queue {
+  const hit = q.tasks.find(t => t.id === id);
+  if (!hit || hit.status !== 'active') return q;
+  return mapTask(q, id, t => ({
+    ...t, status: 'pending', owner: null, startedAt: null, elapsedSecs: bankSession(t, nowIso),
+  }));
+}
+
+/**
+ * Park or unpark a task: held tasks stay pending but are never eligible, so
+ * the drain skips them with no fake dependency edits. Position and spec kept.
+ */
+export function holdTask(q: Queue, id: string, held: boolean): Queue {
+  return mapTask(q, id, t => ({ ...t, held }));
+}
+
+/**
+ * Operator terminal-fail: any unfinished task goes `failed` in place with the
+ * operator's note, lease cleared. The board's "drag to Failed" — explicit,
+ * immediate, and audited — versus `recordFailure`'s retry counting.
+ */
+export function forceFail(q: Queue, id: string, reason: string, nowIso: string): Queue {
+  return mapTask(q, id, t => (t.status === 'done' || t.status === 'failed'
+    ? t
+    : {
+      ...t, status: 'failed', note: reason, owner: null, worktree: null, startedAt: null,
+      elapsedSecs: bankSession(t, nowIso),
+    }));
+}
+
+/**
+ * Reopen a finished task to pending, position kept. The board's "drag out of
+ * Done" — the operator's explicit steer; dependents re-resolve on next tick.
+ */
+export function reopenTask(q: Queue, id: string): Queue {
+  const hit = q.tasks.find(t => t.id === id);
+  if (!hit || hit.status !== 'done') return q;
+  return mapTask(q, id, t => ({ ...t, status: 'pending' }));
 }
 
 /** Pause the queue until an ISO time, to ride out a usage-limit window. */
@@ -430,24 +541,11 @@ function ageMinutes(fromIso: string | null, nowIso: string): number {
   return (Date.parse(nowIso) - Date.parse(fromIso)) / MS_PER_MIN;
 }
 
-/**
- * Return any active task whose lease has gone stale (worker likely crashed) to
- * pending, releasing its claim. Returns the reclaimed ids so the caller can tear
- * down orphaned worktrees.
- */
-export function reclaimStale(
+/** Expired leases identify ownership conflicts; they never authorize releasing claims. */
+export function staleLeases(
   q: Queue, nowIso: string, leaseMinutes: number,
-): { queue: Queue; reclaimed: Task[] } {
-  const reclaimed: Task[] = [];
-  const tasks = q.tasks.map(t => {
-    if (t.status === 'active' && ageMinutes(t.startedAt, nowIso) >= leaseMinutes) {
-      reclaimed.push(t);
-      return { ...t, status: 'pending' as TaskStatus, owner: null, startedAt: null,
-        note: 'reclaimed stale lease' };
-    }
-    return t;
-  });
-  return { queue: withTasks(q, tasks), reclaimed };
+): Task[] {
+  return q.tasks.filter(t => t.status === 'active' && ageMinutes(t.startedAt, nowIso) >= leaseMinutes);
 }
 
 // ---------------------------------------------------------------- rendering
@@ -465,6 +563,7 @@ export function render(q: Queue): string {
   const rows = assignIds(q).tasks.map((t, i) => {
     const tags = [
       t.mode === 'chain' ? 'chain' : '',
+      t.elapsedSecs ? `⏱${formatDurationSecs(t.elapsedSecs)}` : '',
       t.dependsOn.length ? `deps:${t.dependsOn.join('+')}` : '',
       t.failures ? `retries:${t.failures}` : '',
       t.owner ? `@${t.owner}` : '',
@@ -476,9 +575,77 @@ export function render(q: Queue): string {
 
 // ---------------------------------------------------------------- selection
 
-/** A pending task is eligible only when every dependency is done. */
+/**
+ * The set of task ids `id` transitively depends on (its ancestors in the dep
+ * DAG). Used by `gateTasks` to never add a gate dep to a task the gate itself
+ * already depends on — that would close a cycle and deadlock both.
+ */
+function dependencyClosure(q: Queue, id: string): Set<string> {
+  const seen = new Set<string>();
+  const stack = [id];
+  while (stack.length) {
+    const cur = stack.pop()!;
+    const task = q.tasks.find(t => t.id === cur);
+    if (!task) continue;
+    for (const d of task.dependsOn) {
+      if (!seen.has(d)) { seen.add(d); stack.push(d); }
+    }
+  }
+  return seen;
+}
+
+/**
+ * Apply a dependency gate: add `gateId` to the deps of every OTHER unfinished
+ * task so nothing runs until the gate task is done. This is the mechanical form
+ * of a temporary priority block (e.g. the 2026 model-fidelity block, where every
+ * non-model task carried `deps: task-591`) — never hand-edit deps to do this.
+ *
+ * Idempotent and cycle-safe. A task is skipped when it: is the gate itself; is
+ * already `done`/`failed` (a finished task can't be blocked); already lists the
+ * gate in its deps; is an ancestor the gate transitively depends on (adding the
+ * dep would close a cycle); or, when `only` is given, does not match that
+ * case-insensitive substring against its id or title. Returns the new queue and
+ * the ids actually gated (empty when the gate task doesn't exist).
+ */
+export function gateTasks(
+  q: Queue, gateId: string, only?: string,
+): { queue: Queue; gated: string[] } {
+  if (!q.tasks.some(t => t.id === gateId)) return { queue: q, gated: [] };
+  const ancestors = dependencyClosure(q, gateId);
+  const needle = only?.trim().toLowerCase() ?? '';
+  const gated: string[] = [];
+  const tasks = q.tasks.map(t => {
+    if (t.id === gateId) return t;
+    if (t.status === 'done' || t.status === 'failed') return t;
+    if (t.dependsOn.includes(gateId)) return t;
+    if (ancestors.has(t.id)) return t;
+    if (needle && !`${t.id} ${t.title}`.toLowerCase().includes(needle)) return t;
+    gated.push(t.id);
+    return { ...t, dependsOn: [...t.dependsOn, gateId] };
+  });
+  return { queue: withTasks(q, tasks), gated };
+}
+
+/**
+ * Lift a dependency gate: strip `gateId` from every task's deps (trimming a
+ * multi-dep list, dropping an empty one). The inverse of `gateTasks` — the
+ * mechanical way to open a block like the model-fidelity gate rather than
+ * text-editing `queue.md`. Returns the new queue and the ids actually ungated.
+ * The gate task itself is untouched here; the CLI marks it done separately.
+ */
+export function ungateTasks(q: Queue, gateId: string): { queue: Queue; ungated: string[] } {
+  const ungated: string[] = [];
+  const tasks = q.tasks.map(t => {
+    if (!t.dependsOn.includes(gateId)) return t;
+    ungated.push(t.id);
+    return { ...t, dependsOn: t.dependsOn.filter(d => d !== gateId) };
+  });
+  return { queue: withTasks(q, tasks), ungated };
+}
+
+/** A pending task is eligible only when it isn't held and every dependency is done. */
 export function isEligible(task: Task, q: Queue): boolean {
-  return task.status === 'pending'
+  return task.status === 'pending' && !task.held
     && task.dependsOn.every(d => q.tasks.find(x => x.id === d)?.status === 'done');
 }
 
