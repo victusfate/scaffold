@@ -57,3 +57,15 @@
   `dragend` fallback against stuck gestures.
 - Tests: 9 model + 17 dispatch + 6 template; gate green; live matrix on
   scratch tasks (hold/unhold/claim-guard/claim/fail/requeue/done→archive).
+
+## Slice 9 — design pass + theme toggle ✅
+- Dispatch control-room restyle (signal lamps, mono readouts, grid texture,
+  sticky header, restrained motion); dark default + ☀/☾ toggle pinned to
+  localStorage, OS preference out of the loop.
+
+## Slice 10 — agent time tracking ✅
+- Model `elapsedSecs` banked at done/fail/release/mark-done/force-fail via
+  one `bankSession` rule; `2h15m30s` grammar (bare numbers are minutes),
+  exact serializer, two-tier scan display (seconds → minutes).
+- Board ⏱ chip incl. live session; CLI `list` tags; archive lines carry each
+  task's total after sweep-out.

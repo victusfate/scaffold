@@ -71,6 +71,21 @@
   wins over the font guidance); asset-free suite assertion still green.
 - Tests untouched in behavior: 135/135 green.
 
+## Slice 10 — agent time tracking
+- Status: done
+- Decision (user-steered): cumulative seconds in the model over log parsing
+  — banked in-transaction with the status flip, durable in committed
+  `queue.md`, testable pure rule; archive lines carry totals past sweep-out.
+- Display per user call: raw seconds under a minute, whole minutes above
+  (no hours tier).
+- RED: missing exports + unmigrated call sites; GREEN: `elapsedSecs` +
+  grammar/exact/scan formatters + `bankSession` in 4 session-ending ops
+  (markDone/recordFailure/unclaimTask/forceFail, all clock-explicit);
+  CLI + gates + console call sites migrated; ⏱ chip (live session folded
+  in), `list` tags, archive carry.
+- Gate: 152/152 model, 141/141 console, typecheck, lint 0 errors; live loop
+  verified (claim → fail banks `3s` end to end, archived demo removed).
+
 ## Full gate
 - `queue.test` 124/124 · `queue-console.test` 97/97 · `queue-lanes.test`
   14/14 · `queue-edit` + `queue-lock` PASS · `tsc --noEmit` clean ·

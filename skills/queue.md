@@ -190,6 +190,13 @@ as such — validation never runs from the board); Failed fails it terminally
 with an operator note. Drags out of Done/Failed normalize through
 reopen/requeue first.
 
+Every card shows its banked agent time (`⏱3s` → `⏱45m`, seconds under a
+minute, whole minutes above); active cards fold in the live session. Time is
+a first-class model field (`- elapsed: 2h15m30s`, exact to the second,
+hand-editable, `set`-able) banked at every session end — done, fail, release,
+operator-done, operator-fail — so retries accumulate across a task's life and
+archive lines carry each task's total after it sweeps out.
+
 ## Creating a queue from in-memory items
 
 When you already hold a list of work, pipe it in — one item per line (leading
