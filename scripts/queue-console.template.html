@@ -161,6 +161,8 @@ catch (e) { document.documentElement.dataset.theme = "dark"; }
   }
   .cards li.card:hover { transform: translateY(-1px); }
   .cards li.card.dragover { border-color: var(--accent); box-shadow: var(--glow); transform: translateY(-1px) scale(1.01); }
+  .cards li.card.selected { border-color: var(--accent); box-shadow: var(--glow); }
+  .cards li.card.selected .handle { color: var(--accent); opacity: 1; }
   .cards li.card.stale { opacity: 0.55; }
   .cards li.slot {
     border: 1px dashed color-mix(in srgb, var(--sig-active) 55%, var(--line)); border-radius: 10px;
@@ -238,6 +240,8 @@ let S = null;          // last ConsoleState
 let L = [];           // last lane views from /api/lanes
 let editingId = null;  // task id whose editor is open (or "add" while typing)
 let draggingId = null;
+let armedId = null;   // click-to-move selection (touch/mouse fallback when drags fail)
+let lastDrop = 0;     // timestamp of the last drop — clicks right after one belong to the drag
 
 const laneById = id => L.find(l => l.id === id);
 const theme = () => document.documentElement.dataset.theme || "dark";
@@ -426,7 +430,7 @@ function renderTasks() {
   ul.innerHTML = cols.map(([name, items]) => {
     let cards = items.map(t => {
       const lane = t.status === "active" ? laneById(t.id) : null;
-      const cls = "card" + (lane && lane.stale ? " stale" : "");
+      const cls = "card" + (lane && lane.stale ? " stale" : "") + (armedId === t.id ? " selected" : "");
       // Every card grabs from anywhere on its body (the ⋮⋮ is just the
       // affordance); buttons/inputs inside still click/type normally. Only
       // Queued ⇄ In Progress drops do anything — the router no-ops the rest.
@@ -491,7 +495,19 @@ function renderTasks() {
     col.addEventListener("drop", e => {
       const from = draggingId;
       draggingId = null;
+      lastDrop = Date.now();
       if (from) dropOf(from, null, name);
+    });
+    col.addEventListener("click", e => {
+      // Click-to-move: an armed card travels to the clicked column. The
+      // guards keep it from firing on controls, mid-edit, or as the echo of
+      // a real drag-and-drop (whose click lands within milliseconds).
+      const el = e.target;
+      if (!armedId || editingId || Date.now() - lastDrop < 400) return;
+      if (el && el.closest && el.closest("button, input, select, textarea, a, .editor")) return;
+      const from = armedId;
+      armedId = null;
+      dropOf(from, null, name);
     });
   });
   ul.querySelectorAll(".card").forEach(li => {
@@ -529,7 +545,15 @@ function renderTasks() {
       e.stopPropagation(); // the card (with its target id) wins over the column
       const from = draggingId;
       draggingId = null;
+      lastDrop = Date.now();
       if (from && from !== id) dropOf(from, id, li.closest(".col").dataset.col);
+    });
+    li.addEventListener("click", e => {
+      const el = e.target;
+      if (editingId || Date.now() - lastDrop < 400) return;
+      if (el && el.closest && el.closest("button, input, select, textarea, a, .editor")) return;
+      armedId = armedId === id ? null : id;
+      render();
     });
     li.querySelectorAll("[data-act]").forEach(btn => {
       btn.onclick = () => {
@@ -597,6 +621,9 @@ window.addEventListener("dragend", () => {
   draggingId = null;
   document.body.classList.remove("dragging");
   document.querySelectorAll(".dragover").forEach(d => d.classList.remove("dragover"));
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && armedId) { armedId = null; render(); }
 });
 
 $("#refresh").onclick = refresh;

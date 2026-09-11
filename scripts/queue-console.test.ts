@@ -270,6 +270,9 @@ maxParallel: 2
   has('dark default with toggle', 'data-theme');
   has('theme toggle button', 'id="theme"');
   has('theme persists', 'qc-theme');
+  has('click-to-move fallback', 'armedId');
+  has('armed card highlight', 'selected');
+  has('escape disarms', 'Escape');
   has('dispatch plan mount point', 'id="plan"');
   has('error surface mount point', 'id="error"');
   for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"', '"reassign"', '"stop-lane"', '"claim-lane"', '"release"', '"hold"', '"unhold"', '"mark-done"', '"force-fail"', '"reopen"']) {
