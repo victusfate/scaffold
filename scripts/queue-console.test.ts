@@ -99,6 +99,17 @@ maxParallel: 2
   assert('reassign on empty queue is ok', empty.ok);
 }
 
+// ---- applyOp: stop-lane validates without mutating ----
+{
+  const q = parseQueue(SAMPLE);
+  const bad = applyOp(q, { op: 'stop-lane', id: 'task-999' });
+  assert('stop-lane unknown id rejected', !bad.ok);
+  const r = applyOp(q, { op: 'stop-lane', id: 'task-001' });
+  assert('stop-lane accepted', r.ok);
+  assert('stop-lane touches no task', r.ok
+    && r.queue.tasks.map(t => t.id).join(',') === q.tasks.map(t => t.id).join(','));
+}
+
 // ---- applyOp: archive returns the swept tasks for the caller to persist ----
 {
   const q = parseQueue('- [x] task-001 — done\n- [!] task-002 — dead\n- [ ] task-003 — live\n');
@@ -168,7 +179,7 @@ maxParallel: 2
     assert(label, html.includes(needle), `missing ${needle}`);
 
   has('page posts to the op endpoint', '/api/op');
-  has('page reads state from the api', '/api/queue');
+  has('page reads lanes from the api', '/api/lanes');
   has('page subscribes to SSE', '/events');
   has('task list mount point', 'id="tasks"');
   has('add form mount point', 'id="add"');
@@ -176,7 +187,7 @@ maxParallel: 2
   has('changed-on-disk banner mount point', 'id="stale"');
   has('dispatch plan mount point', 'id="plan"');
   has('error surface mount point', 'id="error"');
-  for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"', '"reassign"']) {
+  for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"', '"reassign"', '"stop-lane"']) {
     has(`page wires op ${op}`, `op: ${op}`);
   }
   has('rows are draggable', 'draggable');
@@ -228,6 +239,9 @@ maxParallel: 2
   assert('archive op sweeps the file', swept.status === 200 && !readFileSync(file, 'utf8').includes('task-002'));
   assert('archive op persists the sidecar', existsSync(join(dir, 'archive.md'))
     && readFileSync(join(dir, 'archive.md'), 'utf8').includes('task-002'));
+
+  const lanes = await (await fetch(`${base}/api/lanes`)).json() as { lanes: { id: string }[] };
+  assert('GET /api/lanes reflects sidecars', Array.isArray(lanes.lanes));
 
   const events = await fetch(`${base}/events`);
   assert('SSE endpoint speaks event-stream',
