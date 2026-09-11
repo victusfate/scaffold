@@ -82,7 +82,9 @@
     padding: 0.5rem 0.7rem; margin-bottom: 0.45rem; font-size: 0.85em; text-align: center;
   }
   .chip.stop { color: var(--bad); }
-  .task-line { display: flex; gap: 0.55rem; align-items: baseline; flex-wrap: wrap; }
+  .task-line { display: flex; gap: 0.55rem; align-items: baseline; flex-wrap: wrap; cursor: grab; user-select: none; -webkit-user-select: none; }
+  .task-line:active { cursor: grabbing; }
+  .editor, .editor input, .editor select { user-select: text; -webkit-user-select: text; cursor: auto; }
   .handle { cursor: grab; color: var(--muted); user-select: none; }
   .badge { font-weight: 700; width: 1em; display: inline-block; }
   .badge.pending { color: var(--muted); }
@@ -298,8 +300,10 @@ function renderTasks() {
     let cards = items.map(t => {
       const lane = t.status === "active" ? laneById(t.id) : null;
       const cls = "card" + (lane && lane.stale ? " stale" : "");
-      const drag = (name === "Queued" || name === "In Progress") ? ' draggable="true"' : "";
-      return '<li class="' + cls + '" data-id="' + t.id + '"' + drag + '>' + taskHtml(t) + '</li>';
+      // Every card grabs from anywhere on its body (the ⋮⋮ is just the
+      // affordance); buttons/inputs inside still click/type normally. Only
+      // Queued ⇄ In Progress drops do anything — the router no-ops the rest.
+      return '<li class="' + cls + '" data-id="' + t.id + '" draggable="true">' + taskHtml(t) + '</li>';
     }).join("");
     // Free lane slots are visible drop targets: dropping a Queued card on
     // the column claims it into the next free slot (server assigns lane-N).
@@ -348,8 +352,20 @@ function renderTasks() {
   });
   ul.querySelectorAll(".card").forEach(li => {
     const id = li.dataset.id;
-    li.addEventListener("dragstart", () => { draggingId = id; });
-    li.addEventListener("dragend", () => { draggingId = null; li.classList.remove("dragover"); });
+    li.addEventListener("dragstart", e => {
+      // A grab that starts on a button/input belongs to that control (click
+      // or text selection), not to the card — everywhere else drags the card.
+      const el = e.target;
+      if (el && el.closest && el.closest("button, input, select, textarea, a")) {
+        e.preventDefault();
+        return;
+      }
+      draggingId = id;
+    });
+    li.addEventListener("dragend", () => {
+      draggingId = null;
+      ul.querySelectorAll(".dragover").forEach(d => d.classList.remove("dragover"));
+    });
     li.addEventListener("dragover", e => {
       const t = S.tasks.find(x => x.id === draggingId);
       const col = li.closest(".col").dataset.col;

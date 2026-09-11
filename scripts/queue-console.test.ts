@@ -222,6 +222,8 @@ maxParallel: 2
     has(`page wires op ${op}`, `op: ${op}`);
   }
   has('rows are draggable', 'draggable');
+  has('whole card body grabs', 'cursor: grab');
+  has('controls keep their clicks', 'button, input, select, textarea, a');
   assert('page has no execution verbs',
     !html.includes("op: 'done'") && !html.includes("op: 'fail'") && !html.includes("op: 'claim'"));
   assert('page loads no external assets',
