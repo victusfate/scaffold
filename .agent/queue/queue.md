@@ -27,6 +27,6 @@ Edit this file freely to reprioritize, add, or remove work; the worker reads it 
   - accept: skills/queue.md documents Reassign; docs/queue-live-board has prd/plan/tdd-log
 - [ ] task-004 — DEMO: stuck widget (will fail)
   - accept: demo
-  - failures: 1
-  - elapsed: 11m22s
-  - note: needs-spec: title 'DEMO: stuck widget (will fail)' has no concrete end state; accept 'demo' is not checkable; no mode/files/validate to resolve from codebase
+  - failures: 2
+  - elapsed: 11m31s
+  - note: needs-spec: still no concrete end state; accept 'demo' is not checkable (retry)
