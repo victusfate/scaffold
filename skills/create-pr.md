@@ -75,8 +75,9 @@ Track auto-fixes applied (scope + one-liner) to include in the PR body.
 
 Run the repo's **local pre-merge gate** — the CI-equivalent that validates everything BEFORE any
 GitHub run. Under the two-tier CI model (GitHub Actions = instant unit checks only; the heavy
-integration gates — Godot import + boot/reachability/render, full test suites — run **locally**),
-this local gate is the authoritative merge gate. Run it and it must be GREEN before a non-draft PR.
+integration gates — whatever is too slow or too environment-bound for GitHub, e.g. build/import,
+boot/reachability/render, or end-to-end and full test suites — run **locally**), this local gate is
+the authoritative merge gate. Run it and it must be GREEN before a non-draft PR.
 
 ```bash
 # full local gate: Tier-1 unit + Tier-2 heavy integration. Prefer `make ci`.
@@ -189,10 +190,10 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 **Readiness: READY** &nbsp;(or `DRAFT — <red gate(s)>`, or `UNVERIFIED — no local gate`)
 | Gate (local) | Result |
 |------|--------|
-| rust unit + clippy + license-audit | ✅ pass |
-| shellcheck / mechanical | ✅ pass |
-| godot-gates (integration, run locally) | ✅ pass |
-| <other phases make ci reported> | ✅ / ❌ |
+| <unit + lint phase, e.g. `<lang> test + linter`> | ✅ pass |
+| <static / mechanical phase, e.g. shellcheck / quality checks> | ✅ pass |
+| <heavy integration phase, run locally> | ✅ pass |
+| <other phases the local gate reported> | ✅ / ❌ |
 
 ## Quality Scores
 | File | Quality | Readability | Encapsulation | Clarity |
