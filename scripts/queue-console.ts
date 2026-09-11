@@ -43,7 +43,7 @@ export type Op =
   | { op: 'set'; id: string; fields: TaskPatch }
   | { op: 'remove' | 'top' | 'requeue'; id: string }
   | { op: 'move'; id: string; to: number }
-  | { op: 'start' | 'stop' | 'archive' }
+  | { op: 'start' | 'stop' | 'archive' | 'reassign' }
   | { op: 'config'; key: ConfigKey; value: string };
 
 export type OpResult =
@@ -178,6 +178,12 @@ export function applyOp(q: Queue, op: Op): OpResult {
       const { queue, swept } = sweepFinished(q);
       return ok(queue, swept);
     }
+    // Reassign recomputes nothing server-side: it re-reads the file, records
+    // the request in the audit log (via handleOp), and returns fresh state —
+    // whose drain marker is the kick that wakes an armed Monitor/loop. Active
+    // claims are never touched; the page derives the { active, next } plan
+    // from the returned state. Drivers honor the new order on their next tick.
+    case 'reassign': return ok(q);
     case 'set':
       return unknownId(q, op) ?? applyTaskPatch(q, op.id, op.fields ?? {});
     case 'remove': {

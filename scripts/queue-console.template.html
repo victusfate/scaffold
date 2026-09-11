@@ -47,6 +47,7 @@
   #status label { color: var(--muted); }
   #status input { width: 4.5rem; }
   #drain { color: var(--warn); font-weight: 600; }
+  #status #plan { color: var(--muted); }
   #stale, #error {
     display: none; margin: 0.5rem 0; padding: 0.5rem 0.8rem; border-radius: 8px;
   }
@@ -168,6 +169,12 @@ function renderStatus() {
   const cls = paused ? "paused" : c.status;
   const label = paused ? "paused until " + c.resumeAt : c.status;
   const n = s => S.tasks.filter(t => t.status === s).length;
+  const active = S.tasks.filter(t => t.status === "active").map(t => t.id);
+  const slots = Math.max(0, S.config.maxParallel - active.length);
+  const next = S.tasks.filter(t => t.status === "pending" && t.eligible).slice(0, slots).map(t => t.id);
+  const plan = (active.length || next.length)
+    ? '<span id="plan">continues: ' + esc(active.length ? active.join(", ") : "—")
+      + ' · up next: ' + esc(next.length ? next.join(", ") : "—") + '</span>' : '';
   $("#status").innerHTML =
     '<h1>Queue Console</h1>' +
     '<span class="pill ' + cls + '">' + esc(label) + '</span>' +
@@ -176,10 +183,13 @@ function renderStatus() {
     '<label>every <input id="cfg-interval" value="' + esc(c.interval) + '"></label>' +
     '<label>parallel <input id="cfg-parallel" type="number" min="1" value="' + c.maxParallel + '"></label>' +
     '<button id="toggle">' + (c.status === "running" ? "Stop" : "Start") + '</button>' +
+    '<button id="reassign" title="recompute who runs next from the current order">Reassign</button>' +
     '<button id="sweep">Archive done/failed</button>' +
-    (S.drain ? '<span id="drain">' + esc(S.drain) + '</span>' : '');
+    (S.drain ? '<span id="drain">' + esc(S.drain) + '</span>' : '') +
+    plan;
   $("#toggle").onclick = () =>
     post(S.config.status === "running" ? { op: "stop" } : { op: "start" });
+  $("#reassign").onclick = () => post({ op: "reassign" });
   $("#sweep").onclick = () => post({ op: "archive" });
   $("#cfg-interval").onchange = e => post({ op: "config", key: "interval", value: e.target.value });
   $("#cfg-parallel").onchange = e => post({ op: "config", key: "maxParallel", value: e.target.value });

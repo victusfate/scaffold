@@ -50,10 +50,13 @@ authority rule as `owner`/`startedAt` (labels, never PIDs).
 After futzing with order/deps, one **Reassign** button in the header tells
 the system "recompute who should run now":
 
-- Pure op `reassign`: touches **no** task. It reloads, runs the existing
-  selectors (`readyTasks` under `maxParallel`, `nextActionable`), writes
-  `console reassign` to the audit log, and returns the fresh dispatch
-  plan `{ active: string[], next: string[] }` alongside `ConsoleState`.
+- Pure op `reassign`: touches **no** task. It reloads, writes
+  `console reassign` to the audit log, and returns the fresh state —
+  whose `drain` marker is the kick that wakes an armed Monitor/loop.
+  The page derives the plan `{ active, next }` client-side from the
+  returned state (active ids continue; top eligible pendings fill the
+  `maxParallel` slots) and shows it as a header banner, so the API
+  shape never changes.
 - Active claims are **never stolen or reset** — an active task keeps its
   lane even if it is no longer top priority (the `requeueTask` no-steal
   rule). If the user wants a lane off a task, they stop/fail it first
