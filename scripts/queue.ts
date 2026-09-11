@@ -195,7 +195,17 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
 
 function cmdConfig(q: Queue, key: string, val: string): number {
   if ((TEXT_CONFIG_KEYS as readonly string[]).includes(key)) save(setConfig(q, { [key]: val }));
-  else if ((NUMERIC_CONFIG_KEYS as readonly string[]).includes(key)) save(setConfig(q, { [key]: Number(val) }));
+  else if ((NUMERIC_CONFIG_KEYS as readonly string[]).includes(key)) {
+    // Reject non-numeric input instead of persisting NaN (which serializes as
+    // `NaN` and silently self-heals to a default on reload). Mirrors the
+    // console's applyConfigOp guard so both surfaces validate identically.
+    const n = Number(val);
+    if (!Number.isFinite(n) || n < 1) {
+      console.error(`config: ${key} needs a positive number (got "${val}")`);
+      return 1;
+    }
+    save(setConfig(q, { [key]: n }));
+  }
   else {
     console.error(`config: unknown key ${key} `
       + `(${[...NUMERIC_CONFIG_KEYS, ...TEXT_CONFIG_KEYS].join('|')})`);

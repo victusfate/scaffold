@@ -2,7 +2,7 @@
 
 [![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?style=for-the-badge&logo=github)](https://github.com/victusfate/scaffold/generate)
 
-An opinionated, cross-harness project scaffold for AI-assisted development. Drop it into any new project to get a consistent design → PRD → TDD workflow with scored quality gates, whether you're using Claude Code, Codex, Cursor, or Gemini CLI.
+An opinionated, cross-harness project scaffold for AI-assisted development. Drop it into any new project to get a consistent design → PRD → TDD workflow with scored quality gates, whether you're using Claude Code, Codex, Cursor, Gemini CLI, or pi.dev.
 
 ## Usage
 
@@ -91,6 +91,7 @@ is itself a `[Clarity/minor]` violation.
 | Google Antigravity | `GEMINI.md` + `AGENTS.md`; `.agents/skills/` (lazy-loaded) + `.agent/workflows/` (slash commands) |
 | Gemini CLI | `GEMINI.md` → references `AGENTS.md` |
 | OpenAI Codex | `AGENTS.md` directly; `.agents/skills/` via `$skill-name` or `/skills` |
+| pi.dev | `AGENTS.md` directly; `.pi/skills/<name>/SKILL.md` (lazy-loaded) |
 
 ## Codex quick start
 
@@ -208,6 +209,7 @@ node tools/hoist-skill/run --list
 | `cursor` | `skills/<name>.md` + `.cursor/rules/<name>.mdc` |
 | `codex` | `skills/<name>.md` + `.agents/skills/<name>/SKILL.md` |
 | `antigravity` | `skills/<name>.md` + `.agents/skills/<name>/SKILL.md` + `.agent/workflows/<name>.md` |
+| `pi` | `skills/<name>.md` + `.pi/skills/<name>/SKILL.md` |
 
 The same clobber-safe contract applies as with the sync script: `.scaffold-keep` paths are never touched, differing files become `<file>.scaffold-new` sidecars, and `--force` overrides that.
 
