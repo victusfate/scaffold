@@ -5,7 +5,8 @@ import {
   parseQueue, serializeQueue,
   addTask, addMany, setTaskStatus, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask, unclaimTask,
-  holdTask, forceFail, reopenTask, sweepFinished,
+  holdTask, forceFail, reopenTask, sweepFinished, parseDurationSecs, formatDurationSecs,
+  fieldPatch,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
   archivableDone, gateTasks, ungateTasks,
   type Queue,
@@ -118,13 +119,13 @@ integrationBranch: queue/integration
 {
   let q: Queue = parseQueue('- [>] task-001 — flaky\n- [ ] task-002 — other\n');
   q = setConfig(q, { maxFailures: 3 });
-  const r1 = recordFailure(q, 'task-001', 'boom', 3);
+  const r1 = recordFailure(q, 'task-001', 'boom', 3, '2026-08-12T20:00:00.000Z');
   assert('fail 1 retries (pending)', r1.queue.tasks.find(t => t.id === 'task-001')?.status === 'pending');
   assert('fail 1 not terminal', !r1.terminal && r1.failures === 1);
   assert('retry moves to back', r1.queue.tasks[r1.queue.tasks.length - 1].id === 'task-001');
   assert('retry records note', r1.queue.tasks.find(t => t.id === 'task-001')?.note === 'boom');
-  const r2 = recordFailure(r1.queue, 'task-001', null, 3);
-  const r3 = recordFailure(r2.queue, 'task-001', 'still broken', 3);
+  const r2 = recordFailure(r1.queue, 'task-001', null, 3, '2026-08-12T20:00:00.000Z');
+  const r3 = recordFailure(r2.queue, 'task-001', 'still broken', 3, '2026-08-12T20:00:00.000Z');
   assert('fail 3 terminal', r3.terminal && r3.failures === 3);
   assert('terminal is failed', r3.queue.tasks.find(t => t.id === 'task-001')?.status === 'failed');
   assert('terminal keeps position', r3.queue.tasks.find(t => t.id === 'task-001') !== undefined);
@@ -182,7 +183,7 @@ integrationBranch: queue/integration
   q = beginTask(q, 'task-001', NOW, 'w1');
   assert('begin sets active+owner+lease', q.tasks[0].status === 'active'
     && q.tasks[0].owner === 'w1' && q.tasks[0].startedAt === NOW);
-  q = markDone(q, 'task-001');
+  q = markDone(q, 'task-001', NOW);
   assert('done clears claim', q.tasks[0].status === 'done' && q.tasks[0].owner === null
     && q.tasks[0].startedAt === null);
 }
@@ -258,7 +259,7 @@ integrationBranch: queue/integration
   assert('done kept while an active task depends on it', archivableDone(activeDep).length === 0);
 
   // once the dependent finishes, the whole chain becomes archivable
-  const chainDone = markDone(chain, 'task-002');
+  const chainDone = markDone(chain, 'task-002', '2026-08-12T20:00:00.000Z');
   assert('chain archivable after dependent done', ids(archivableDone(chainDone)) === 'task-001,task-002');
 
   // failed tasks are never auto-archived (kept for deadlock visibility)
@@ -360,15 +361,61 @@ integrationBranch: queue/integration
     + '- [ ] task-002 — waiting\n';
   const q = parseQueue(md);
 
-  const freed = unclaimTask(q, 'task-001').tasks[0];
+  const freed = unclaimTask(q, 'task-001', '2026-08-12T19:30:00.000Z').tasks[0];
   assert('unclaim active → pending', freed.status === 'pending');
   assert('unclaim clears owner/started', freed.owner === null && freed.startedAt === null);
-  assert('unclaim keeps position', unclaimTask(q, 'task-001').tasks.map(t => t.id).join(',')
+  assert('unclaim banks the session', freed.elapsedSecs === 1800);
+  assert('unclaim keeps position', unclaimTask(q, 'task-001', '2026-08-12T19:30:00.000Z').tasks.map(t => t.id).join(',')
     === 'task-001,task-002');
   assert('unclaim pending is a no-op',
-    JSON.stringify(unclaimTask(q, 'task-002')) === JSON.stringify(q));
+    JSON.stringify(unclaimTask(q, 'task-002', '2026-08-12T19:30:00.000Z')) === JSON.stringify(q));
   assert('unclaim unknown id is a no-op',
-    JSON.stringify(unclaimTask(q, 'task-999')) === JSON.stringify(q));
+    JSON.stringify(unclaimTask(q, 'task-999', '2026-08-12T19:30:00.000Z')) === JSON.stringify(q));
+}
+
+// ---- elapsed banking: every session end adds now−startedAt to the total ----
+{
+  const T0 = '2026-09-11T15:00:00.000Z';
+  const T1 = '2026-09-11T16:30:00.000Z'; // +90m
+  const T2 = '2026-09-11T17:00:00.000Z'; // +30m more
+  let q = parseQueue('- [ ] task-001 — a\n');
+  q = beginTask(q, 'task-001', T0, 'w1');
+  assert('fresh task starts at zero', q.tasks[0].elapsedSecs === 0);
+  q = markDone(q, 'task-001', T1);
+  assert('done banks the session in seconds', q.tasks[0].elapsedSecs === 5400);
+
+  // sub-minute sessions keep their seconds
+  let s = beginTask(parseQueue('- [ ] task-001 — a\n'), 'task-001', T0, 'w1');
+  s = markDone(s, 'task-001', '2026-09-11T15:00:45.000Z');
+  assert('seconds survive', s.tasks[0].elapsedSecs === 45);
+
+  // accumulation across sessions: reopen, work again, release
+  q = reopenTask(q, 'task-001');
+  q = beginTask(q, 'task-001', T1, 'w2');
+  q = unclaimTask(q, 'task-001', T2);
+  assert('sessions accumulate', q.tasks[0].elapsedSecs === 7200);
+
+  // fail banks the attempt too, then retries keep the total
+  q = beginTask(q, 'task-001', T2, 'w3');
+  const failed = recordFailure(q, 'task-001', 'boom', 3, '2026-09-11T17:05:00.000Z');
+  assert('fail banks the attempt', failed.queue.tasks[0].elapsedSecs === 7500);
+
+  // ending a session with no lease banks nothing
+  const idle = markDone(parseQueue('- [ ] task-001 — a\n'), 'task-001', T1);
+  assert('no lease banks zero', idle.tasks[0].elapsedSecs === 0);
+
+  // duration grammar round-trips (bare numbers are minutes)
+  assert('parses 2h15m30s', parseDurationSecs('2h15m30s') === 8130);
+  assert('parses bare minutes', parseDurationSecs('45') === 2700);
+  assert('parses seconds', parseDurationSecs('30s') === 30);
+  assert('scales 45s', formatDurationSecs(45) === '45s');
+  assert('scales 90m not hours', formatDurationSecs(5400) === '90m');
+  assert('floors to whole minutes', formatDurationSecs(8130) === '135m');
+  const withed = setField(parseQueue('- [ ] task-001 — a\n'), 'task-001', fieldPatch('elapsed', '1h'));
+  assert('elapsed settable + serialized exact',
+    withed.tasks[0].elapsedSecs === 3600
+    && serializeQueue(withed).includes('- elapsed: 1h')
+    && parseQueue(serializeQueue(withed)).tasks[0].elapsedSecs === 3600);
 }
 
 // ---- hold / forceFail / reopenTask: operator parking and terminal moves ----
@@ -384,11 +431,11 @@ integrationBranch: queue/integration
   assert('hold survives round-trip',
     parseQueue(serializeQueue(holdTask(q, 'task-001', true))).tasks[0].held === true);
 
-  const failed = forceFail(q, 'task-002', 'operator: parked wrong lane').tasks[1];
+  const failed = forceFail(q, 'task-002', 'operator: parked wrong lane', '2026-08-12T19:30:00.000Z').tasks[1];
   assert('forceFail goes terminal in place', failed.status === 'failed');
   assert('forceFail stamps the operator note + clears the lease',
     failed.note === 'operator: parked wrong lane' && failed.owner === null && failed.startedAt === null);
-  assert('forceFail keeps position', forceFail(q, 'task-002', 'x').tasks.map(t => t.id).join(',')
+  assert('forceFail keeps position', forceFail(q, 'task-002', 'x', '2026-08-12T19:30:00.000Z').tasks.map(t => t.id).join(',')
     === 'task-001,task-002,task-003,task-004');
 
   const open = reopenTask(q, 'task-004').tasks[3];

@@ -132,10 +132,11 @@ maxParallel: 2
   const badRelease = applyOp(q, { op: 'release', id: 'task-999' });
   assert('release unknown id rejected', !badRelease.ok);
   assert('release on pending rejected', !applyOp(q, { op: 'release', id: 'task-001' }).ok);
-  const freed = claimed.ok ? applyOp(claimed.queue, { op: 'release', id: 'task-001' }) : claimed;
+  const freed = claimed.ok ? applyOp(claimed.queue, { op: 'release', id: 'task-001' }, '2026-09-11T15:25:00.000Z') : claimed;
   const f1 = freed.ok ? freed.queue.tasks[0] : null;
   assert('release returns the lane to pending',
     freed.ok && f1 !== null && f1.status === 'pending' && f1.owner === null && f1.startedAt === null);
+  assert('release banks the session (25m)', freed.ok && f1 !== null && f1.elapsedSecs === 1500);
   assert('release keeps position',
     freed.ok && freed.queue.tasks.map(t => t.id).join(',') === 'task-001,task-002,task-003,task-004');
 }
@@ -264,6 +265,8 @@ maxParallel: 2
   has('changed-on-disk banner mount point', 'id="stale"');
   has('free-lane drop placeholder', 'drop a task here');
   has('held chip', '>held<');
+  has('elapsed chip', '⏱');
+  has('elapsed live session', 'live session');
   has('dark default with toggle', 'data-theme');
   has('theme toggle button', 'id="theme"');
   has('theme persists', 'qc-theme');
