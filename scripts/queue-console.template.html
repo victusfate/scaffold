@@ -7,8 +7,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Queue Console</title>
+<script>
+// Theme before first paint: stored choice wins, otherwise dark. Inline so
+// there is no flash and no request — the page stays fully asset-free.
+try { document.documentElement.dataset.theme = localStorage.getItem("qc-theme") || "dark"; }
+catch (e) { document.documentElement.dataset.theme = "dark"; }
+</script>
 <style>
-  :root {
+  :root, :root[data-theme="dark"] {
+    --bg: #0b0e13; --panel: #141922; --panel2: #181e29; --ink: #e6edf3; --muted: #8b94a3;
+    --line: #2a313c; --accent: #60a5fa; --ok: #4ade80; --warn: #fbbf24;
+    --bad: #f87171; --chip: #202734;
+    --sig-queue: #58a6ff; --sig-blocked: #d29922; --sig-active: #3fb950;
+    --sig-done: #6e7681; --sig-failed: #f85149;
+    --gridline: rgba(230, 237, 243, 0.045);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
+    --glow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
+    color-scheme: dark;
+  }
+  /* Dark is the default. The toggle pins an explicit choice to <html> and
+     localStorage; the OS preference never overrides either of them. */
+  :root[data-theme="light"] {
     --bg: #eceef1; --panel: #ffffff; --panel2: #f5f7fa; --ink: #1c2330; --muted: #66707f;
     --line: #d6dbe2; --accent: #2563eb; --ok: #16a34a; --warn: #b45309;
     --bad: #dc2626; --chip: #e9edf2;
@@ -17,18 +36,7 @@
     --gridline: rgba(28, 35, 48, 0.055);
     --shadow: 0 1px 2px rgba(28, 35, 48, 0.08), 0 4px 14px rgba(28, 35, 48, 0.07);
     --glow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0b0e13; --panel: #141922; --panel2: #181e29; --ink: #e6edf3; --muted: #8b94a3;
-      --line: #2a313c; --accent: #60a5fa; --ok: #4ade80; --warn: #fbbf24;
-      --bad: #f87171; --chip: #202734;
-      --sig-queue: #58a6ff; --sig-blocked: #d29922; --sig-active: #3fb950;
-      --sig-done: #6e7681; --sig-failed: #f85149;
-      --gridline: rgba(230, 237, 243, 0.045);
-      --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
-      --glow: 0 0 0 3px color-mix(in srgb, var(--accent) 28%, transparent);
-    }
+    color-scheme: light;
   }
   * { box-sizing: border-box; }
   body {
@@ -232,6 +240,12 @@ let editingId = null;  // task id whose editor is open (or "add" while typing)
 let draggingId = null;
 
 const laneById = id => L.find(l => l.id === id);
+const theme = () => document.documentElement.dataset.theme || "dark";
+function setTheme(next) {
+  document.documentElement.dataset.theme = next;
+  try { localStorage.setItem("qc-theme", next); } catch (e) { /* private mode */ }
+  render();
+}
 
 const busy = () => editingId !== null || draggingId !== null;
 const esc = s => String(s ?? "").replace(/[&<>"']/g,
@@ -291,12 +305,14 @@ function renderStatus() {
     '<label>every <input id="cfg-interval" value="' + esc(c.interval) + '"></label>' +
     '<label>parallel <input id="cfg-parallel" type="number" min="1" value="' + c.maxParallel + '"></label>' +
     '<button id="toggle">' + (c.status === "running" ? "Stop" : "Start") + '</button>' +
+    '<button id="theme" title="toggle light / dark">' + (theme() === "dark" ? "☀" : "☾") + '</button>' +
     '<button id="reassign" title="recompute who runs next from the current order">Reassign</button>' +
     '<button id="sweep">Archive done/failed</button>' +
     (S.drain ? '<span id="drain">' + esc(S.drain) + '</span>' : '') +
     plan;
   $("#toggle").onclick = () =>
     post(S.config.status === "running" ? { op: "stop" } : { op: "start" });
+  $("#theme").onclick = () => setTheme(theme() === "dark" ? "light" : "dark");
   $("#reassign").onclick = () => post({ op: "reassign" });
   $("#sweep").onclick = () => post({ op: "archive" });
   $("#cfg-interval").onchange = e => post({ op: "config", key: "interval", value: e.target.value });
