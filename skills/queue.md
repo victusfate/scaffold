@@ -169,6 +169,18 @@ Validation releases and retakes the lock before it commits; worktree add/remove
 keeps it for the lifecycle so a checkout reference cannot be lost. A slow
 checkout can therefore make another mutation time out rather than interleave.
 
+The page is a kanban board — Queued / Blocked / In Progress / Done / Failed —
+grouped from the same state (drag reorder works inside Queued; status changes
+stay with workers). The header shows the dispatch plan (`continues: … · up
+next: …`); after reordering or editing deps, hit **Reassign** to recompute it
+from the current order and kick an armed drain awake (it never preempts an
+active lane). Active cards show live lane chips — worker, current step, log
+tail — from heartbeat sidecars (`.agent/queue/lanes/<id>.json`, written via
+`queue lane beat <id> --step "…" --tail "…"`); stale lanes grey out but are
+never reaped by the board. The ■ button on an active card (or `queue lane
+stop <id>`) files a cooperative stop request the owning driver honors at its
+next safe point — the console never kills a process.
+
 ## Creating a queue from in-memory items
 
 When you already hold a list of work, pipe it in — one item per line (leading
