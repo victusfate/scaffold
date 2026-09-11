@@ -44,3 +44,16 @@
   everything else a no-op.
 - Tests: 5 model + 9 dispatch + 3 template contract; live curl triple
   (claim → capacity-400 → release, order preserved).
+
+## Slice 8 — Every column a drop target ✅
+- Model: `held` field (parse/serialize/`set`able), `isEligible` skips held,
+  `holdTask`/`forceFail`/`reopenTask`; CLI `hold`/`unhold` + `claim` refuses
+  held (else Pattern-B workers bypass the park).
+- Ops `hold`/`unhold`/`mark-done` (CLI `--skip-validate` twin incl. archive
+  sweep)/`force-fail` (lease cleared, operator note)/`reopen`;
+  `claim-lane` refuses held (router unholds first when implied).
+- Template: async `dropOf` matrix router, all-column dragover, `held` chip.
+- Drag reliability: whole-body grab guard, `setData` (Firefox drop), window
+  `dragend` fallback against stuck gestures.
+- Tests: 9 model + 17 dispatch + 6 template; gate green; live matrix on
+  scratch tasks (hold/unhold/claim-guard/claim/fail/requeue/done→archive).

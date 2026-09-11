@@ -47,6 +47,19 @@
   dragover gating; 129/129 model, 109/109 console green; live triple verified
   against :8722 (claim stamps lane-1, full → 400, release keeps order).
 
+## Slice 8 — every column a drop target + drag reliability
+- Status: done
+- RED: 13 dispatch failures (hold/done/fail/reopen) + 4 op-wiring + model
+  export-not-found (then 9 model asserts green after the model landed).
+- GREEN: `held`/`holdTask`/`forceFail`/`reopenTask`; CLI hold/unhold +
+  claim-held guard; ops hold/unhold/mark-done/force-fail/reopen (+held guard
+  on claim-lane); async matrix router; 138/138 model, 135/135 console.
+- Drag reliability (user-reported): whole-body grab, `setData` for Firefox,
+  window `dragend` fallback (a missed dragend stuck `draggingId` and froze
+  auto-refresh behind the stale banner).
+- Live matrix on scratch tasks via :8722: hold→Blocked, claim-held→400,
+  unhold, claim, force-fail, requeue, mark-done→archive; scratch removed.
+
 ## Full gate
 - `queue.test` 124/124 · `queue-console.test` 97/97 · `queue-lanes.test`
   14/14 · `queue-edit` + `queue-lock` PASS · `tsc --noEmit` clean ·

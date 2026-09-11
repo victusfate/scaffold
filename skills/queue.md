@@ -183,8 +183,12 @@ next safe point — the console never kills a process.
 
 Drag a Queued card onto In Progress to claim it into the next free lane slot
 (server assigns `lane-N`, refused at `maxParallel` capacity); drag an active
-card back to Queued to release it to pending. Drops onto Blocked/Done/Failed
-are no-ops.
+card back to Queued to release it to pending. **Every column accepts drops**:
+Blocked parks the card (`held` — the drain skips it until dragged out, no
+fake deps); Done marks it operator-done (the `--skip-validate` twin, logged
+as such — validation never runs from the board); Failed fails it terminally
+with an operator note. Drags out of Done/Failed normalize through
+reopen/requeue first.
 
 ## Creating a queue from in-memory items
 

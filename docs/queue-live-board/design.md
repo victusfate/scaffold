@@ -26,9 +26,11 @@ truth instead of re-deriving it in JS:
 - Each card: id, title, slug, deps, mode, owner/lease age when active,
   `accept:` on expand.
 - Drag reorder applies **only within Queued** (the priority order); it
-  emits the existing `move` op. Drags **between Queued and In Progress**
-  claim/release lane slots (D6) — the operator's explicit steer. Drops onto
-  Blocked/Done/Failed are no-ops: status never changes by accident.
+  emits the existing `move` op. Every other column is a drop target with
+  real semantics (D7): Blocked parks via `held`, In Progress claims a lane,
+  Done is operator-done (`--skip-validate` twin, never runs validation),
+  Failed is immediate terminal fail with an operator note. Drags out
+  normalize back to pending first (release/requeue/reopen chained).
 
 ### D2 — Live lanes come from sidecars the server only reads
 
@@ -92,6 +94,26 @@ are validated ops like the rest — so it deliberately crosses the old "no
 claim on the console" line while staying a state transition (never command
 execution). Reversibility is the orphan guard: a lane claimed by mistake is
 dragged back; the lease-conflict path remains the backstop.
+
+### D7 — Every column is a drop target (added)
+
+The drop matrix, all validated ops, all reversible except terminal states:
+
+| from \ to | Queued | Blocked | In Progress | Done | Failed |
+|---|---|---|---|---|---|
+| pending | move | hold (+move) | claim-lane | mark-done | force-fail |
+| active | release (+move) | release+hold | — | mark-done | force-fail |
+| failed | requeue (+move) | requeue+hold | requeue+claim | mark-done | — |
+| done | reopen (+move) | reopen+hold | reopen+claim | — | force-fail |
+
+`held` is a first-class model field (`- held: true`, survives round-trip):
+held tasks stay pending but are never eligible, so `tick`/`ready`/`claim`
+all skip them with no fake dependency edits. `claim-lane` refuses held tasks
+(the router unholds first when the gesture implies it). `mark-done` mirrors
+`queue done --skip-validate` including the archivable sweep; the operator's
+drop is the approval and the audit log says so — the console still never
+*executes* a validate command. `force-fail` clears the lease and stamps an
+operator note; `reopen` flips done → pending with position kept.
 
 ### D5 — Ships as the same skill, same launcher
 
