@@ -170,7 +170,7 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
       return 1;
     }
     if (!r.ok) {
-      const res = recordFailure(q, id, `validation failed: ${r.tail}`, q.config.maxFailures);
+      const res = recordFailure(q, id, `validation failed: ${r.tail}`, q.config.maxFailures, now());
       save(res.queue);
       log(`validate-fail ${id} (${res.failures}/${q.config.maxFailures})`);
       console.log(`✗ validation failed for ${id} → ${res.terminal ? 'failed' : 'retry'} (${r.tail})`);
@@ -181,7 +181,7 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
   // earlier done task this completion just freed (one whose last unfinished
   // dependent was this one). A done task still depended on by unfinished work is
   // kept until that work finishes, so dependency resolution never breaks.
-  let dq = markDone(q, id);
+  let dq = markDone(q, id, now());
   const sweep = archivableDone(dq);
   if (sweep.length) {
     appendArchive(sweep);
@@ -428,7 +428,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     case 'fail': {
       if (!needId()) { console.error('fail: unknown task id'); return 1; }
       const reason = f.positionals.slice(1).join(' ') || null;
-      const r = recordFailure(q, id, reason, q.config.maxFailures);
+      const r = recordFailure(q, id, reason, q.config.maxFailures, now());
       save(r.queue); log(`fail ${id} (${r.failures}/${q.config.maxFailures})${reason ? ': ' + reason : ''}`);
       console.log(`${id} → ${r.terminal ? 'failed (terminal)' : `retry ${r.failures}/${q.config.maxFailures}`}`);
       return 0;

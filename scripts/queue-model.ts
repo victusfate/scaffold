@@ -47,6 +47,8 @@ export interface Task {
   status: TaskStatus;
   mode: TaskMode;
   held: boolean;
+  /** Cumulative agent seconds banked across all work sessions on this task. */
+  elapsedSecs: number;
   slug: string | null;
   dependsOn: string[];
   files: string[];
@@ -61,7 +63,7 @@ export interface Task {
 }
 
 /** Fields user-facing queue editors may change. */
-export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'held', 'slug', 'deps', 'files', 'validate', 'accept', 'note'] as const;
+export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'held', 'elapsed', 'slug', 'deps', 'files', 'validate', 'accept', 'note'] as const;
 
 export interface QueueConfig {
   status: 'running' | 'stopped';
@@ -114,7 +116,8 @@ const STATUS_OF: Record<string, TaskStatus> = {
 /** A fresh task with all optional fields empty. */
 export function newTask(id: string, title: string): Task {
   return {
-    id, title, status: 'pending', mode: 'direct', held: false, slug: null, dependsOn: [], files: [],
+    id, title, status: 'pending', mode: 'direct', held: false, elapsedSecs: 0,
+    slug: null, dependsOn: [], files: [],
     validate: null, accept: null, note: null, failures: 0, owner: null, branch: null,
     worktree: null, startedAt: null,
   };
@@ -129,6 +132,53 @@ const ID_TITLE_RE = /^(task-\d+)\s+[—:-]+\s+(.*)$/;
 /** Split a comma-separated field value into trimmed, non-empty items. */
 export function splitList(v: string): string[] {
   return v.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+/**
+ * Parse a human duration into seconds: `2h15m30s`, `90m`, `45s`, or a bare
+ * number (minutes — the quick-scan unit). Forgiving: garbage parses to 0 so
+ * a hand edit never breaks the file.
+ */
+export function parseDurationSecs(v: string): number {
+  const s = v.trim();
+  if (!s) return 0;
+  let total = 0, matched = false;
+  for (const m of s.matchAll(/(\d+(?:\.\d+)?)\s*([hms])?/g)) {
+    matched = true;
+    const n = Number(m[1]);
+    total += m[2] === 'h' ? n * 3600 : m[2] === 's' ? n : n * 60;
+  }
+  return matched ? Math.max(0, Math.round(total)) : 0;
+}
+
+/**
+ * Quick-scan display, two tiers: seconds under a minute (`45s`), whole
+ * minutes above (`135m`, floored — never hours, so columns stay comparable).
+ */
+export function formatDurationSecs(s: number): string {
+  const secs = Math.max(0, Math.round(s));
+  return secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m`;
+}
+
+/**
+ * Exact serializer: every nonzero unit survives the round-trip (`2h15m30s`),
+ * so worker rewrites never bleed precision the display chose to hide.
+ */
+export function formatDurationExact(s: number): string {
+  let secs = Math.max(0, Math.round(s));
+  const h = Math.floor(secs / 3600); secs -= h * 3600;
+  const m = Math.floor(secs / 60); secs -= m * 60;
+  return (h ? `${h}h` : '') + (m ? `${m}m` : '') + (secs ? `${secs}s` : '') || '0s';
+}
+
+/**
+ * The banking rule, one home: ending a session adds now−startedAt (floored
+ * at zero for missing leases and clock skew) to the running total.
+ */
+export function bankSession(t: Task, nowIso: string): number {
+  if (!t.startedAt) return t.elapsedSecs;
+  const delta = Math.floor((Date.parse(nowIso) - Date.parse(t.startedAt)) / 1000);
+  return t.elapsedSecs + Math.max(0, delta);
 }
 
 function applyConfig(config: QueueConfig, key: string, val: string): void {
@@ -160,6 +210,7 @@ export function fieldPatch(key: string, val: string): Partial<Task> {
     case 'title': return v ? { title: v } : {};
     case 'mode': return { mode: v === 'chain' ? 'chain' : 'direct' };
     case 'held': return { held: v === 'true' };
+    case 'elapsed': return { elapsedSecs: parseDurationSecs(v) };
     case 'slug': return { slug: v || null };
     case 'deps': case 'dependsOn': return { dependsOn: splitList(v) };
     case 'files': return { files: splitList(v) };
@@ -262,6 +313,7 @@ export function taskFields(t: Task, alwaysMode = false): Array<[string, string]>
   push('validate', t.validate ?? '');
   push('accept', t.accept ?? '');
   push('failures', t.failures ? String(t.failures) : '');
+  if (t.elapsedSecs) pairs.push(['elapsed', formatDurationExact(t.elapsedSecs)]);
   push('note', t.note ?? '');
   push('owner', t.owner ?? '');
   push('branch', t.branch ?? '');
@@ -373,8 +425,11 @@ export function beginTask(q: Queue, id: string, nowIso: string, owner: string | 
   return mapTask(q, id, t => ({ ...t, status: 'active', owner, startedAt: nowIso }));
 }
 
-export function markDone(q: Queue, id: string): Queue {
-  return mapTask(q, id, t => ({ ...t, status: 'done', owner: null, worktree: null, startedAt: null }));
+export function markDone(q: Queue, id: string, nowIso: string): Queue {
+  return mapTask(q, id, t => ({
+    ...t, status: 'done', owner: null, worktree: null, startedAt: null,
+    elapsedSecs: bankSession(t, nowIso),
+  }));
 }
 
 /**
@@ -384,7 +439,7 @@ export function markDone(q: Queue, id: string): Queue {
  * terminal and the running failure count.
  */
 export function recordFailure(
-  q: Queue, id: string, reason: string | null, maxFailures: number,
+  q: Queue, id: string, reason: string | null, maxFailures: number, nowIso: string,
 ): { queue: Queue; terminal: boolean; failures: number } {
   const task = q.tasks.find(t => t.id === id);
   if (!task) return { queue: q, terminal: false, failures: 0 };
@@ -393,6 +448,7 @@ export function recordFailure(
   const updated: Task = {
     ...task, failures, note: reason ?? task.note,
     status: terminal ? 'failed' : 'pending', owner: null, worktree: null, startedAt: null,
+    elapsedSecs: bankSession(task, nowIso),
   };
   const rest = q.tasks.filter(t => t.id !== id);
   // terminal keeps position; a retry drops to the back so other work proceeds first.
@@ -420,10 +476,12 @@ export function requeueTask(q: Queue, id: string): Queue {
  * lease cleared, position kept. The explicit-steer counterpart to `claim` —
  * used by board drag-back. Anything not active (or unknown) is untouched.
  */
-export function unclaimTask(q: Queue, id: string): Queue {
+export function unclaimTask(q: Queue, id: string, nowIso: string): Queue {
   const hit = q.tasks.find(t => t.id === id);
   if (!hit || hit.status !== 'active') return q;
-  return mapTask(q, id, t => ({ ...t, status: 'pending', owner: null, startedAt: null }));
+  return mapTask(q, id, t => ({
+    ...t, status: 'pending', owner: null, startedAt: null, elapsedSecs: bankSession(t, nowIso),
+  }));
 }
 
 /**
@@ -439,10 +497,13 @@ export function holdTask(q: Queue, id: string, held: boolean): Queue {
  * operator's note, lease cleared. The board's "drag to Failed" — explicit,
  * immediate, and audited — versus `recordFailure`'s retry counting.
  */
-export function forceFail(q: Queue, id: string, reason: string): Queue {
+export function forceFail(q: Queue, id: string, reason: string, nowIso: string): Queue {
   return mapTask(q, id, t => (t.status === 'done' || t.status === 'failed'
     ? t
-    : { ...t, status: 'failed', note: reason, owner: null, worktree: null, startedAt: null }));
+    : {
+      ...t, status: 'failed', note: reason, owner: null, worktree: null, startedAt: null,
+      elapsedSecs: bankSession(t, nowIso),
+    }));
 }
 
 /**
@@ -499,6 +560,7 @@ export function render(q: Queue): string {
   const rows = assignIds(q).tasks.map((t, i) => {
     const tags = [
       t.mode === 'chain' ? 'chain' : '',
+      t.elapsedSecs ? `⏱${formatDurationSecs(t.elapsedSecs)}` : '',
       t.dependsOn.length ? `deps:${t.dependsOn.join('+')}` : '',
       t.failures ? `retries:${t.failures}` : '',
       t.owner ? `@${t.owner}` : '',

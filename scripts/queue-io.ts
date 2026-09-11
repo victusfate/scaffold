@@ -8,7 +8,7 @@ import {
 } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseQueue, serializeQueue, type Queue, type Task } from './queue-model.ts';
+import { parseQueue, serializeQueue, formatDurationSecs, type Queue, type Task } from './queue-model.ts';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const QUEUE_DIR = join(ROOT, '.agent', 'queue');
@@ -104,6 +104,7 @@ export function log(msg: string): void {
 /** Append a batch of finished tasks to the git-ignored archive.md audit log. */
 export function appendArchive(tasks: Task[]): void {
   const block = `\n## Archived ${now()}\n\n`
-    + tasks.map(t => `- [${t.status === 'done' ? 'x' : '!'}] ${t.id} — ${t.title}`).join('\n') + '\n';
+    + tasks.map(t => `- [${t.status === 'done' ? 'x' : '!'}] ${t.id} — ${t.title}`
+      + (t.elapsedSecs ? ` · ⏱${formatDurationSecs(t.elapsedSecs)}` : '')).join('\n') + '\n';
   appendFileSync(sidecar('archive.md'), block);
 }

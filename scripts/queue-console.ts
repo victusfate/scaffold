@@ -33,7 +33,7 @@ import {
 // ---------------------------------------------------------------- contracts
 
 export interface TaskPatch {
-  title?: string; mode?: string; held?: string; slug?: string; deps?: string;
+  title?: string; mode?: string; held?: string; elapsed?: string; slug?: string; deps?: string;
   files?: string; validate?: string; accept?: string; note?: string;
 }
 
@@ -229,7 +229,7 @@ export function applyOp(q: Queue, op: Op, nowIso: string = now()): OpResult {
       if (bad) return bad;
       const t = q.tasks.find(x => x.id === op.id)!;
       if (t.status !== 'active') return reject(`release: ${op.id} is ${t.status}, not active`);
-      return ok(unclaimTask(q, op.id));
+      return ok(unclaimTask(q, op.id, nowIso));
     }
     case 'hold': {
       const bad = unknownId(q, op);
@@ -253,7 +253,7 @@ export function applyOp(q: Queue, op: Op, nowIso: string = now()): OpResult {
       const bad = unknownId(q, op);
       if (bad) return bad;
       if (q.tasks.find(x => x.id === op.id)!.status === 'done') return ok(q);
-      let dq = markDone(q, op.id);
+      let dq = markDone(q, op.id, nowIso);
       const sweep = archivableDone(dq);
       for (const s of sweep) dq = removeTask(dq, s.id);
       return ok(dq, sweep);
@@ -265,7 +265,7 @@ export function applyOp(q: Queue, op: Op, nowIso: string = now()): OpResult {
       if (t.status === 'failed') return ok(q);
       if (t.status === 'done') return reject(`force-fail: ${op.id} is done — reopen it first`);
       const note = typeof op.note === 'string' && op.note.trim() ? op.note.trim() : 'operator moved to Failed';
-      return ok(forceFail(q, op.id, note));
+      return ok(forceFail(q, op.id, note, nowIso));
     }
     case 'stop-lane': return unknownId(q, op) ?? ok(q);
     case 'requeue': return unknownId(q, op) ?? ok(requeueTask(q, op.id));

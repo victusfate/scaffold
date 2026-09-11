@@ -323,10 +323,30 @@ function renderStatus() {
 
 const BADGE = { pending: "·", active: "▶", done: "✓", failed: "✗" };
 
+// Quick-scan agent time, two tiers like the model: seconds under a minute,
+// whole minutes above. Active cards fold in the live session (client clock —
+// same machine as the loopback server, so no skew worth worrying about).
+function fmtDur(s) {
+  s = Math.max(0, Math.round(s));
+  return s < 60 ? s + "s" : Math.floor(s / 60) + "m";
+}
+function elapsedChip(t) {
+  let total = t.elapsedSecs || 0, live = 0;
+  if (t.status === "active" && t.startedAt) {
+    live = Math.max(0, Math.round((Date.now() - Date.parse(t.startedAt)) / 60000));
+    total += live * 60;
+  }
+  if (!total) return "";
+  return '<span class="chip" title="' + (live ? "total agent time incl. live session" : "total agent time")
+    + '">⏱ ' + fmtDur(total) + '</span>';
+}
+
 function chips(t) {
   const out = [];
   if (t.mode === "chain") out.push('<span class="chip">chain</span>');
   if (t.held) out.push('<span class="chip">held</span>');
+  const elapsed = elapsedChip(t);
+  if (elapsed) out.push(elapsed);
   if (t.dependsOn.length) out.push('<span class="chip">deps: ' + esc(t.dependsOn.join(", ")) + '</span>');
   if (t.failures) out.push('<span class="chip">retries: ' + t.failures + '</span>');
   if (t.owner) out.push('<span class="chip">@' + esc(t.owner) + '</span>');

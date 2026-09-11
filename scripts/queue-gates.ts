@@ -1,5 +1,5 @@
 // Queue gate CLI actions and their shared drain-restart hint.
-import { save, log } from './queue-io.ts';
+import { save, log, now } from './queue-io.ts';
 import { gateTasks, ungateTasks, markDone, drainSignal, type Queue } from './queue-model.ts';
 
 /**
@@ -41,7 +41,7 @@ export function cmdUngate(q: Queue, gateId: string, keepGate: boolean, dryRun: b
       + (ungated.length ? `\n  ${ungated.join(', ')}` : ''));
     return 0;
   }
-  const finalQ = markGate ? markDone(queue, gateId) : queue;
+  const finalQ = markGate ? markDone(queue, gateId, now()) : queue;
   save(finalQ); log(`ungate ${gateId} → ${ungated.length} task(s)${markGate ? ' + done' : ''}`);
   console.log(`ungated ${ungated.length} task(s) from ${gateId}`
     + (markGate ? `; ${gateId} marked done` : '')
