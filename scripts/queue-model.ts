@@ -412,6 +412,17 @@ export function requeueTask(q: Queue, id: string): Queue {
   }));
 }
 
+/**
+ * Operator release of a lane: an active task goes back to pending with its
+ * lease cleared, position kept. The explicit-steer counterpart to `claim` —
+ * used by board drag-back. Anything not active (or unknown) is untouched.
+ */
+export function unclaimTask(q: Queue, id: string): Queue {
+  const hit = q.tasks.find(t => t.id === id);
+  if (!hit || hit.status !== 'active') return q;
+  return mapTask(q, id, t => ({ ...t, status: 'pending', owner: null, startedAt: null }));
+}
+
 /** Pause the queue until an ISO time, to ride out a usage-limit window. */
 export function pauseUntil(q: Queue, resumeAtIso: string): Queue {
   return setConfig(q, { status: 'stopped', resumeAt: resumeAtIso });

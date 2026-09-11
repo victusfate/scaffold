@@ -77,6 +77,10 @@
   }
   .cards li.card.dragover { border-color: var(--accent); }
   .cards li.card.stale { opacity: 0.55; }
+  .cards li.slot {
+    border: 1px dashed var(--line); border-radius: 10px; color: var(--muted);
+    padding: 0.5rem 0.7rem; margin-bottom: 0.45rem; font-size: 0.85em; text-align: center;
+  }
   .chip.stop { color: var(--bad); }
   .task-line { display: flex; gap: 0.55rem; align-items: baseline; flex-wrap: wrap; }
   .handle { cursor: grab; color: var(--muted); user-select: none; }
@@ -279,9 +283,9 @@ function renderTasks() {
     ul.innerHTML = '<li class="empty">(empty — add a task above)</li>';
     return;
   }
-  // Kanban grouping over the priority order: only Queued is reorderable
-  // (drag there emits the same global `move` op); status transitions stay
-  // with workers and the CLI, so other columns are drag-free views.
+  // Kanban grouping over the priority order. Queued cards reorder (the
+  // global `move` op); Queued ⇄ In Progress drags claim/release lane slots;
+  // Blocked/Done/Failed are drag-free views.
   const cols = [
     ["Queued", S.tasks.filter(t => t.status === "pending" && t.eligible)],
     ["Blocked", S.tasks.filter(t => t.status === "pending" && !t.eligible)],
@@ -290,26 +294,75 @@ function renderTasks() {
     ["Failed", S.tasks.filter(t => t.status === "failed")],
   ];
   ul.classList.add("cols");
-  ul.innerHTML = cols.map(([name, items]) =>
-    '<li class="col" data-col="' + name + '"><h2>' + name + ' (' + items.length + ')</h2>'
-    + '<ul class="cards">' + items.map(t => {
+  ul.innerHTML = cols.map(([name, items]) => {
+    let cards = items.map(t => {
       const lane = t.status === "active" ? laneById(t.id) : null;
       const cls = "card" + (lane && lane.stale ? " stale" : "");
-      const drag = name === "Queued" ? ' draggable="true"' : "";
+      const drag = (name === "Queued" || name === "In Progress") ? ' draggable="true"' : "";
       return '<li class="' + cls + '" data-id="' + t.id + '"' + drag + '>' + taskHtml(t) + '</li>';
-    }).join("") + '</ul></li>').join("");
+    }).join("");
+    // Free lane slots are visible drop targets: dropping a Queued card on
+    // the column claims it into the next free slot (server assigns lane-N).
+    if (name === "In Progress") {
+      const free = S.config.maxParallel - items.length;
+      if (free > 0) cards += '<li class="slot">drop a task here — ' + free + ' lane'
+        + (free > 1 ? 's' : '') + ' free</li>';
+    }
+    return '<li class="col" data-col="' + name + '"><h2>' + name + ' (' + items.length + ')</h2>'
+      + '<ul class="cards">' + cards + '</ul></li>';
+  }).join("");
+  const dropOf = (from, targetId, targetCol) => {
+    const t = S.tasks.find(x => x.id === from);
+    if (!t) return;
+    if (targetCol === "Queued" && t.status === "pending" && targetId && targetId !== from) {
+      post({ op: "move", id: from, to: S.tasks.findIndex(x => x.id === targetId) });
+    } else if (targetCol === "Queued" && t.status === "pending" && !targetId) {
+      const queued = S.tasks.filter(x => x.status === "pending" && x.eligible);
+      post({ op: "move", id: from, to: S.tasks.indexOf(queued[queued.length - 1]) + 1 });
+    } else if (targetCol === "In Progress" && t.status === "pending") {
+      post({ op: "claim-lane", id: from });
+    } else if (targetCol === "Queued" && t.status === "active") {
+      post({ op: "release", id: from }).then(ok => {
+        if (ok && targetId && targetId !== from) {
+          post({ op: "move", id: from, to: S.tasks.findIndex(x => x.id === targetId) });
+        }
+      });
+    }
+    // every other combination (Blocked/Done/Failed targets, active→active)
+    // is a no-op: status never changes by accident.
+  };
+  ul.querySelectorAll(".col").forEach(col => {
+    const name = col.dataset.col;
+    col.addEventListener("dragover", e => {
+      const t = S.tasks.find(x => x.id === draggingId);
+      if (!t) return;
+      const okDrop = (name === "Queued")
+        || (name === "In Progress" && t.status === "pending");
+      if (okDrop) e.preventDefault();
+    });
+    col.addEventListener("drop", e => {
+      const from = draggingId;
+      draggingId = null;
+      if (from) dropOf(from, null, name);
+    });
+  });
   ul.querySelectorAll(".card").forEach(li => {
     const id = li.dataset.id;
     li.addEventListener("dragstart", () => { draggingId = id; });
     li.addEventListener("dragend", () => { draggingId = null; li.classList.remove("dragover"); });
-    li.addEventListener("dragover", e => { e.preventDefault(); li.classList.add("dragover"); });
+    li.addEventListener("dragover", e => {
+      const t = S.tasks.find(x => x.id === draggingId);
+      const col = li.closest(".col").dataset.col;
+      const okDrop = t && (col === "Queued" || (col === "In Progress" && t.status === "pending"));
+      if (okDrop) { e.preventDefault(); li.classList.add("dragover"); }
+    });
     li.addEventListener("dragleave", () => li.classList.remove("dragover"));
     li.addEventListener("drop", e => {
       e.preventDefault();
-      const to = S.tasks.findIndex(t => t.id === id);
+      e.stopPropagation(); // the card (with its target id) wins over the column
       const from = draggingId;
       draggingId = null;
-      if (from && from !== id) post({ op: "move", id: from, to });
+      if (from && from !== id) dropOf(from, id, li.closest(".col").dataset.col);
     });
     li.querySelectorAll("[data-act]").forEach(btn => {
       btn.onclick = () => {

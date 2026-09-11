@@ -23,7 +23,7 @@ import { load, save, log, appendArchive, queueFile, withLock, now } from './queu
 import { laneDir, readLanes, laneStale, requestStop, stopRequested, type LaneState } from './queue-lanes.ts';
 import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
-  addTask, setField, removeTask, moveToTop, moveTask, requeueTask, setConfig,
+  addTask, setField, removeTask, moveToTop, moveTask, requeueTask, unclaimTask, beginTask, setConfig,
   isEligible, deadlocked, drainSignal, EDITABLE_TASK_FIELDS, fieldPatch, sweepFinished,
   NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type QueueConfig, type Task,
@@ -42,7 +42,8 @@ export type ConfigKey = typeof CONFIG_KEYS[number];
 export type Op =
   | { op: 'add'; title: string; top?: boolean; fields?: TaskPatch }
   | { op: 'set'; id: string; fields: TaskPatch }
-  | { op: 'remove' | 'top' | 'requeue' | 'stop-lane'; id: string }
+  | { op: 'remove' | 'top' | 'requeue' | 'stop-lane' | 'release'; id: string }
+  | { op: 'claim-lane'; id: string }
   | { op: 'move'; id: string; to: number }
   | { op: 'start' | 'stop' | 'archive' | 'reassign' }
   | { op: 'config'; key: ConfigKey; value: string };
@@ -177,7 +178,7 @@ function unknownId(q: Queue, op: { op: string; id: string }): OpResult | null {
  * rejection with the queue untouched. The single mutation gateway for every
  * console surface, so the file format and the dependency DAG stay intact.
  */
-export function applyOp(q: Queue, op: Op): OpResult {
+export function applyOp(q: Queue, op: Op, nowIso: string = now()): OpResult {
   if (!op || typeof op !== 'object' || typeof op.op !== 'string') return reject('missing op');
 
   switch (op.op) {
@@ -207,6 +208,26 @@ export function applyOp(q: Queue, op: Op): OpResult {
       return ok(removeTask(q, op.id));
     }
     case 'top': return unknownId(q, op) ?? ok(moveToTop(q, op.id));
+    case 'claim-lane': {
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      const t = q.tasks.find(x => x.id === op.id)!;
+      if (t.status !== 'pending') return reject(`claim-lane: ${op.id} is ${t.status}, not claimable`);
+      const taken = new Set(q.tasks.filter(x => x.status === 'active').map(x => x.owner));
+      if (taken.size >= q.config.maxParallel) {
+        return reject(`claim-lane: no free lane (maxParallel ${q.config.maxParallel})`);
+      }
+      let n = 1;
+      while (taken.has(`lane-${n}`)) n++;
+      return ok(beginTask(q, op.id, nowIso, `lane-${n}`));
+    }
+    case 'release': {
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      const t = q.tasks.find(x => x.id === op.id)!;
+      if (t.status !== 'active') return reject(`release: ${op.id} is ${t.status}, not active`);
+      return ok(unclaimTask(q, op.id));
+    }
     case 'stop-lane': return unknownId(q, op) ?? ok(q);
     case 'requeue': return unknownId(q, op) ?? ok(requeueTask(q, op.id));
     case 'move': {
