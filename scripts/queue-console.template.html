@@ -413,7 +413,7 @@ function renderTasks() {
   const ul = $("#tasks");
   if (!S.tasks.length) {
     ul.classList.remove("cols");
-    ul.innerHTML = '<li class="empty">(empty — add a task above)</li>';
+    ul.innerHTML = '<li class="empty">(empty — add a task above · tip: click a card, then a column, to move it)</li>';
     return;
   }
   // Kanban grouping over the priority order. Queued cards reorder (the

@@ -270,6 +270,7 @@ maxParallel: 2
   has('dark default with toggle', 'data-theme');
   has('theme toggle button', 'id="theme"');
   has('theme persists', 'qc-theme');
+  has('empty-state click-to-move hint', 'click a card, then a column');
   has('click-to-move fallback', 'armedId');
   has('armed card highlight', 'selected');
   has('escape disarms', 'Escape');
