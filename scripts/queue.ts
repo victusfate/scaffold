@@ -16,6 +16,7 @@
 //   node scripts/queue.ts fail <id> [reason...]      # record a failure (retries then terminal)
 //   node scripts/queue.ts top <id> | remove <id>
 //   node scripts/queue.ts move <id> <pos>            # reorder to a 1-based position (as in `list`)
+//   node scripts/queue.ts hold <id> | unhold <id>    # park a task (drain skips it) | release it
 //   node scripts/queue.ts requeue <id>               # revive a failed task (pending, failures cleared)
 //   node scripts/queue.ts start | stop               # run/pause the worker
 //   node scripts/queue.ts interval 6m                # edit the wake interval
@@ -24,6 +25,7 @@
 //   node scripts/queue.ts ungate <gate-id>           # remove <gate-id> from deps + mark it done (unblock)
 //   node scripts/queue.ts archive                    # sweep done/failed into archive.md
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
+//   node scripts/queue.ts lane beat|list|clear|stop|go <id>  # lane heartbeats (the live board reads these)
 //
 // add/set flags: --mode chain --slug <s> --deps a,b --files a,b --validate "<cmd>"
 //   --accept "<criteria>" --top --worker <name>
@@ -39,11 +41,13 @@ import {
   render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask,
+  holdTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type Task,
 } from './queue-model.ts';
 import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
+import { cmdLane } from './queue-lanes.ts';
 
 // ---------------------------------------------------------------- flags
 
@@ -164,7 +168,7 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
       return 1;
     }
     if (!r.ok) {
-      const res = recordFailure(q, id, `validation failed: ${r.tail}`, q.config.maxFailures);
+      const res = recordFailure(q, id, `validation failed: ${r.tail}`, q.config.maxFailures, now());
       save(res.queue);
       log(`validate-fail ${id} (${res.failures}/${q.config.maxFailures})`);
       console.log(`✗ validation failed for ${id} → ${res.terminal ? 'failed' : 'retry'} (${r.tail})`);
@@ -175,7 +179,7 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
   // earlier done task this completion just freed (one whose last unfinished
   // dependent was this one). A done task still depended on by unfinished work is
   // kept until that work finishes, so dependency resolution never breaks.
-  let dq = markDone(q, id);
+  let dq = markDone(q, id, now());
   const sweep = archivableDone(dq);
   if (sweep.length) {
     appendArchive(sweep);
@@ -379,6 +383,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       if (!needId()) { console.error('claim: unknown task id'); return 1; }
       const t = q.tasks.find(x => x.id === id)!;
       if (t.status !== 'pending') { console.log(`claim: ${id} is ${t.status}, not claimable`); return 1; }
+      if (t.held) { console.log(`claim: ${id} is held — unhold it first`); return 1; }
       const worker = f.flags.get('worker') ?? `worker-${process.pid}`;
       save(beginTask(q, id, now(), worker)); log(`claim ${id} by ${worker}`);
       console.log(`claimed ${id} for ${worker}\n${taskBlock({ ...t, owner: worker })}`); return 0;
@@ -391,7 +396,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     case 'fail': {
       if (!needId()) { console.error('fail: unknown task id'); return 1; }
       const reason = f.positionals.slice(1).join(' ') || null;
-      const r = recordFailure(q, id, reason, q.config.maxFailures);
+      const r = recordFailure(q, id, reason, q.config.maxFailures, now());
       save(r.queue); log(`fail ${id} (${r.failures}/${q.config.maxFailures})${reason ? ': ' + reason : ''}`);
       console.log(`${id} → ${r.terminal ? 'failed (terminal)' : `retry ${r.failures}/${q.config.maxFailures}`}`);
       return 0;
@@ -409,6 +414,14 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       q = moveTask(q, id, pos - 1); save(q); log(`move ${id} → ${pos}`);
       console.log(`${id} moved to position ${pos}${drainKick(q)}`); return 0;
     }
+    case 'hold':
+      if (!needId()) { console.error('hold: unknown task id'); return 1; }
+      q = holdTask(q, id, true); save(q); log(`hold ${id}`);
+      console.log(`${id} held (parked — the drain skips it until unhold)`); return 0;
+    case 'unhold':
+      if (!needId()) { console.error('unhold: unknown task id'); return 1; }
+      q = holdTask(q, id, false); save(q); log(`unhold ${id}`);
+      console.log(`${id} unheld${drainKick(q)}`); return 0;
     case 'requeue': {
       if (!needId()) { console.error('requeue: unknown task id'); return 1; }
       const before = q.tasks.find(t => t.id === id)!;
@@ -446,11 +459,12 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     case 'archive': return cmdArchive(q);
     case 'loop': return cmdLoop(q);
     case 'worktree': case 'wt': return cmdWorktree(q, f.positionals[0] ?? '', f.positionals[1] ?? '');
+    case 'lane': return cmdLane(q, f.positionals[0] ?? '', f.positionals[1] ?? '', f);
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
-        + `signal claim begin done fail top move requeue remove start stop pause interval config `
-        + `gate ungate archive loop worktree`);
+        + `signal claim begin done fail top move hold unhold requeue remove start stop pause interval config `
+        + `gate ungate archive loop worktree lane`);
       return 1;
   }
 }

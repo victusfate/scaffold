@@ -4,7 +4,8 @@
 import {
   parseQueue, serializeQueue,
   addTask, addMany, setTaskStatus, setField, moveToTop, moveTask, removeTask, setConfig,
-  beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask, sweepFinished,
+  beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask, unclaimTask,
+  holdTask, forceFail, reopenTask, sweepFinished,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
   archivableDone, gateTasks, ungateTasks,
   type Queue,
@@ -117,13 +118,13 @@ integrationBranch: queue/integration
 {
   let q: Queue = parseQueue('- [>] task-001 — flaky\n- [ ] task-002 — other\n');
   q = setConfig(q, { maxFailures: 3 });
-  const r1 = recordFailure(q, 'task-001', 'boom', 3);
+  const r1 = recordFailure(q, 'task-001', 'boom', 3, '2026-08-12T20:00:00.000Z');
   assert('fail 1 retries (pending)', r1.queue.tasks.find(t => t.id === 'task-001')?.status === 'pending');
   assert('fail 1 not terminal', !r1.terminal && r1.failures === 1);
   assert('retry moves to back', r1.queue.tasks[r1.queue.tasks.length - 1].id === 'task-001');
   assert('retry records note', r1.queue.tasks.find(t => t.id === 'task-001')?.note === 'boom');
-  const r2 = recordFailure(r1.queue, 'task-001', null, 3);
-  const r3 = recordFailure(r2.queue, 'task-001', 'still broken', 3);
+  const r2 = recordFailure(r1.queue, 'task-001', null, 3, '2026-08-12T20:00:00.000Z');
+  const r3 = recordFailure(r2.queue, 'task-001', 'still broken', 3, '2026-08-12T20:00:00.000Z');
   assert('fail 3 terminal', r3.terminal && r3.failures === 3);
   assert('terminal is failed', r3.queue.tasks.find(t => t.id === 'task-001')?.status === 'failed');
   assert('terminal keeps position', r3.queue.tasks.find(t => t.id === 'task-001') !== undefined);
@@ -181,7 +182,7 @@ integrationBranch: queue/integration
   q = beginTask(q, 'task-001', NOW, 'w1');
   assert('begin sets active+owner+lease', q.tasks[0].status === 'active'
     && q.tasks[0].owner === 'w1' && q.tasks[0].startedAt === NOW);
-  q = markDone(q, 'task-001');
+  q = markDone(q, 'task-001', NOW);
   assert('done clears claim', q.tasks[0].status === 'done' && q.tasks[0].owner === null
     && q.tasks[0].startedAt === null);
 }
@@ -257,7 +258,7 @@ integrationBranch: queue/integration
   assert('done kept while an active task depends on it', archivableDone(activeDep).length === 0);
 
   // once the dependent finishes, the whole chain becomes archivable
-  const chainDone = markDone(chain, 'task-002');
+  const chainDone = markDone(chain, 'task-002', '2026-08-12T20:00:00.000Z');
   assert('chain archivable after dependent done', ids(archivableDone(chainDone)) === 'task-001,task-002');
 
   // failed tasks are never auto-archived (kept for deadlock visibility)
@@ -345,13 +346,55 @@ integrationBranch: queue/integration
     JSON.stringify(requeueTask(q, 'task-001')) === JSON.stringify(q));
   assert('requeue unknown id is a no-op',
     JSON.stringify(requeueTask(q, 'task-999')) === JSON.stringify(q));
-
   // an active task is never reset, even with failures — that would steal a live claim
   const activeRetry = parseQueue('- [>] task-001 — running\n  - failures: 2\n  - owner: worker-a\n');
   assert('requeue active task is a no-op',
     JSON.stringify(requeueTask(activeRetry, 'task-001')) === JSON.stringify(activeRetry));
   assert('requeue survives round-trip',
     parseQueue(serializeQueue(requeueTask(q, 'task-002'))).tasks[1].status === 'pending');
+}
+
+// ---- unclaimTask: operator releases an active lane back to pending ----
+{
+  const md = '- [>] task-001 — running\n  - owner: lane-1\n  - started: 2026-08-12T19:00:00.000Z\n'
+    + '- [ ] task-002 — waiting\n';
+  const q = parseQueue(md);
+
+  const freed = unclaimTask(q, 'task-001', '2026-08-12T19:30:00.000Z').tasks[0];
+  assert('unclaim active → pending', freed.status === 'pending');
+  assert('unclaim clears owner/started', freed.owner === null && freed.startedAt === null);
+  assert('unclaim banks the session', freed.elapsedSecs === 1800);
+  assert('unclaim keeps position', unclaimTask(q, 'task-001', '2026-08-12T19:30:00.000Z').tasks.map(t => t.id).join(',')
+    === 'task-001,task-002');
+  assert('unclaim pending is a no-op',
+    JSON.stringify(unclaimTask(q, 'task-002', '2026-08-12T19:30:00.000Z')) === JSON.stringify(q));
+  assert('unclaim unknown id is a no-op',
+    JSON.stringify(unclaimTask(q, 'task-999', '2026-08-12T19:30:00.000Z')) === JSON.stringify(q));
+}
+// ---- hold / forceFail / reopenTask: operator parking and terminal moves ----
+{
+  const md = '- [ ] task-001 — a\n- [>] task-002 — running\n  - owner: lane-1\n  - started: 2026-08-12T19:00:00.000Z\n'
+    + '- [!] task-003 — boom\n  - failures: 3\n- [x] task-004 — old\n';
+  const q = parseQueue(md);
+
+  const held = holdTask(q, 'task-001', true).tasks[0];
+  assert('hold sets the flag', held.held === true && held.status === 'pending');
+  assert('held task not eligible', isEligible(held, holdTask(q, 'task-001', true)) === false);
+  assert('unhold clears the flag', holdTask(q, 'task-001', false).tasks[0].held === false);
+  assert('hold survives round-trip',
+    parseQueue(serializeQueue(holdTask(q, 'task-001', true))).tasks[0].held === true);
+
+  const failed = forceFail(q, 'task-002', 'operator: parked wrong lane', '2026-08-12T19:30:00.000Z').tasks[1];
+  assert('forceFail goes terminal in place', failed.status === 'failed');
+  assert('forceFail stamps the operator note + clears the lease',
+    failed.note === 'operator: parked wrong lane' && failed.owner === null && failed.startedAt === null);
+  assert('forceFail keeps position', forceFail(q, 'task-002', 'x', '2026-08-12T19:30:00.000Z').tasks.map(t => t.id).join(',')
+    === 'task-001,task-002,task-003,task-004');
+
+  const open = reopenTask(q, 'task-004').tasks[3];
+  assert('reopen done → pending', open.status === 'pending');
+  assert('reopen pending is a no-op',
+    JSON.stringify(reopenTask(q, 'task-001')) === JSON.stringify(q));
 }
 
 // ---- sweepFinished: archive failed + done, but never a done task still depended on ----

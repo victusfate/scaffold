@@ -169,6 +169,34 @@ Validation releases and retakes the lock before it commits; worktree add/remove
 keeps it for the lifecycle so a checkout reference cannot be lost. A slow
 checkout can therefore make another mutation time out rather than interleave.
 
+The page is a kanban board — Queued / Blocked / In Progress / Done / Failed —
+grouped from the same state (drag reorder works inside Queued; status changes
+stay with workers). The header shows the dispatch plan (`continues: … · up
+next: …`); after reordering or editing deps, hit **Reassign** to recompute it
+from the current order and kick an armed drain awake (it never preempts an
+active lane). Active cards show live lane chips — worker, current step, log
+tail — from heartbeat sidecars (`.agent/queue/lanes/<id>.json`, written via
+`queue lane beat <id> --step "…" --tail "…"`); stale lanes grey out but are
+never reaped by the board. The ■ button on an active card (or `queue lane
+stop <id>`) files a cooperative stop request the owning driver honors at its
+next safe point — the console never kills a process.
+
+Drag a Queued card onto In Progress to claim it into the next free lane slot
+(server assigns `lane-N`, refused at `maxParallel` capacity); drag an active
+card back to Queued to release it to pending. **Every column accepts drops**:
+Blocked parks the card (`held` — the drain skips it until dragged out, no
+fake deps); Done marks it operator-done (the `--skip-validate` twin, logged
+as such — validation never runs from the board); Failed fails it terminally
+with an operator note. Drags out of Done/Failed normalize through
+reopen/requeue first.
+
+Every card shows its banked agent time (`⏱3s` → `⏱45m`, seconds under a
+minute, whole minutes above); active cards fold in the live session. Time is
+a first-class model field (`- elapsed: 2h15m30s`, exact to the second,
+hand-editable, `set`-able) banked at every session end — done, fail, release,
+operator-done, operator-fail — so retries accumulate across a task's life and
+archive lines carry each task's total after it sweeps out.
+
 ## Creating a queue from in-memory items
 
 When you already hold a list of work, pipe it in — one item per line (leading

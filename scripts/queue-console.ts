@@ -16,13 +16,15 @@
 // Usage: node scripts/queue-console.ts [--port 8722]   (QUEUE_FILE honored)
 
 import http from 'node:http';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { load, save, log, appendArchive, queueFile, withLock } from './queue-io.ts';
+import { load, save, log, appendArchive, queueFile, withLock, now } from './queue-io.ts';
+import { laneDir, readLanes, laneStale, requestStop, stopRequested, type LaneState } from './queue-lanes.ts';
 import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
-  addTask, setField, removeTask, moveToTop, moveTask, requeueTask, setConfig,
+  addTask, setField, removeTask, moveToTop, moveTask, requeueTask, unclaimTask, beginTask, setConfig,
+  holdTask, forceFail, reopenTask, markDone, archivableDone,
   isEligible, deadlocked, drainSignal, EDITABLE_TASK_FIELDS, fieldPatch, sweepFinished,
   NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type QueueConfig, type Task,
@@ -31,7 +33,7 @@ import {
 // ---------------------------------------------------------------- contracts
 
 export interface TaskPatch {
-  title?: string; mode?: string; slug?: string; deps?: string;
+  title?: string; mode?: string; held?: string; elapsed?: string; slug?: string; deps?: string;
   files?: string; validate?: string; accept?: string; note?: string;
 }
 
@@ -41,9 +43,11 @@ export type ConfigKey = typeof CONFIG_KEYS[number];
 export type Op =
   | { op: 'add'; title: string; top?: boolean; fields?: TaskPatch }
   | { op: 'set'; id: string; fields: TaskPatch }
-  | { op: 'remove' | 'top' | 'requeue'; id: string }
+  | { op: 'remove' | 'top' | 'requeue' | 'stop-lane' | 'release' | 'hold' | 'unhold' | 'reopen' | 'mark-done'; id: string }
+  | { op: 'claim-lane'; id: string }
+  | { op: 'force-fail'; id: string; note?: string }
   | { op: 'move'; id: string; to: number }
-  | { op: 'start' | 'stop' | 'archive' }
+  | { op: 'start' | 'stop' | 'archive' | 'reassign' }
   | { op: 'config'; key: ConfigKey; value: string };
 
 export type OpResult =
@@ -52,6 +56,16 @@ export type OpResult =
 
 export interface ConsoleTask extends Task { eligible: boolean; deadlocked: boolean }
 export interface ConsoleState { config: QueueConfig; tasks: ConsoleTask[]; drain: string | null }
+
+export interface LaneView extends LaneState { stale: boolean; stop: boolean }
+
+/** Live lane records for the board: heartbeats plus derived staleness. */
+export function laneViews(q: Queue): LaneView[] {
+  const at = now();
+  return readLanes().map(l => ({
+    ...l, stale: laneStale(l, at, q.config.leaseMinutes), stop: stopRequested(l.id),
+  }));
+}
 
 // ---------------------------------------------------------------- state
 
@@ -166,7 +180,7 @@ function unknownId(q: Queue, op: { op: string; id: string }): OpResult | null {
  * rejection with the queue untouched. The single mutation gateway for every
  * console surface, so the file format and the dependency DAG stay intact.
  */
-export function applyOp(q: Queue, op: Op): OpResult {
+export function applyOp(q: Queue, op: Op, nowIso: string = now()): OpResult {
   if (!op || typeof op !== 'object' || typeof op.op !== 'string') return reject('missing op');
 
   switch (op.op) {
@@ -178,6 +192,12 @@ export function applyOp(q: Queue, op: Op): OpResult {
       const { queue, swept } = sweepFinished(q);
       return ok(queue, swept);
     }
+    // Reassign recomputes nothing server-side: it re-reads the file, records
+    // the request in the audit log (via handleOp), and returns fresh state —
+    // whose drain marker is the kick that wakes an armed Monitor/loop. Active
+    // claims are never touched; the page derives the { active, next } plan
+    // from the returned state. Drivers honor the new order on their next tick.
+    case 'reassign': return ok(q);
     case 'set':
       return unknownId(q, op) ?? applyTaskPatch(q, op.id, op.fields ?? {});
     case 'remove': {
@@ -190,6 +210,64 @@ export function applyOp(q: Queue, op: Op): OpResult {
       return ok(removeTask(q, op.id));
     }
     case 'top': return unknownId(q, op) ?? ok(moveToTop(q, op.id));
+    case 'claim-lane': {
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      const t = q.tasks.find(x => x.id === op.id)!;
+      if (t.status !== 'pending') return reject(`claim-lane: ${op.id} is ${t.status}, not claimable`);
+      const taken = new Set(q.tasks.filter(x => x.status === 'active').map(x => x.owner));
+      if (t.held) return reject(`claim-lane: ${op.id} is held — unhold it first`);
+      if (taken.size >= q.config.maxParallel) {
+        return reject(`claim-lane: no free lane (maxParallel ${q.config.maxParallel})`);
+      }
+      let n = 1;
+      while (taken.has(`lane-${n}`)) n++;
+      return ok(beginTask(q, op.id, nowIso, `lane-${n}`));
+    }
+    case 'release': {
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      const t = q.tasks.find(x => x.id === op.id)!;
+      if (t.status !== 'active') return reject(`release: ${op.id} is ${t.status}, not active`);
+      return ok(unclaimTask(q, op.id, nowIso));
+    }
+    case 'hold': {
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      const t = q.tasks.find(x => x.id === op.id)!;
+      if (t.status !== 'pending') return reject(`hold: ${op.id} is ${t.status} — only pending tasks park`);
+      return ok(holdTask(q, op.id, true));
+    }
+    case 'unhold': return unknownId(q, op) ?? ok(holdTask(q, op.id, false));
+    case 'reopen': {
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      const t = q.tasks.find(x => x.id === op.id)!;
+      if (t.status !== 'done') return reject(`reopen: ${op.id} is ${t.status}, not done`);
+      return ok(reopenTask(q, op.id));
+    }
+    case 'mark-done': {
+      // Operator-done: the board twin of `queue done --skip-validate`. The
+      // console never runs the task's validate command (D3); the operator's
+      // explicit drop is the approval, recorded in the audit log by handleOp.
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      if (q.tasks.find(x => x.id === op.id)!.status === 'done') return ok(q);
+      let dq = markDone(q, op.id, nowIso);
+      const sweep = archivableDone(dq);
+      for (const s of sweep) dq = removeTask(dq, s.id);
+      return ok(dq, sweep);
+    }
+    case 'force-fail': {
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      const t = q.tasks.find(x => x.id === op.id)!;
+      if (t.status === 'failed') return ok(q);
+      if (t.status === 'done') return reject(`force-fail: ${op.id} is done — reopen it first`);
+      const note = typeof op.note === 'string' && op.note.trim() ? op.note.trim() : 'operator moved to Failed';
+      return ok(forceFail(q, op.id, note, nowIso));
+    }
+    case 'stop-lane': return unknownId(q, op) ?? ok(q);
     case 'requeue': return unknownId(q, op) ?? ok(requeueTask(q, op.id));
     case 'move': {
       const bad = unknownId(q, op);
@@ -268,6 +346,9 @@ async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Pr
     const applied = applyOp(load(), op);
     if (applied.ok) {
       if (applied.archived.length) appendArchive(applied.archived);
+      // stop-lane is validated by applyOp but takes effect here: the flag
+      // file is the cooperative signal the owning driver honors (never a kill).
+      if (op.op === 'stop-lane') requestStop(op.id);
       save(applied.queue);
     }
     return applied;
@@ -295,6 +376,8 @@ export function startServer(port: number): http.Server {
       res.end(readFileSync(TEMPLATE, 'utf8'));
     } else if (req.method === 'GET' && req.url === '/api/queue') {
       sendJson(res, HTTP_OK, consoleState(load()));
+    } else if (req.method === 'GET' && req.url === '/api/lanes') {
+      sendJson(res, HTTP_OK, { lanes: laneViews(load()) });
     } else if (req.method === 'POST' && req.url === '/api/op') {
       handleOp(req, res).catch((e: unknown) => {
         if (!res.headersSent) sendJson(res, HTTP_SERVER_ERROR, { error: (e as Error).message });
@@ -308,10 +391,13 @@ export function startServer(port: number): http.Server {
     }
   });
 
+  mkdirSync(laneDir(), { recursive: true });
   const unwatch = watchFileChanges(queueFile(), WATCH_INTERVAL_MS, () => sse.broadcast('changed'));
+  const unwatchLanes = watchFileChanges(laneDir(), WATCH_INTERVAL_MS, () => sse.broadcast('changed'));
   const netClose = server.close.bind(server);
   server.close = (cb?: (err?: Error) => void): http.Server => {
     unwatch();
+    unwatchLanes();
     sse.end();
     server.closeAllConnections();
     return netClose(cb);
