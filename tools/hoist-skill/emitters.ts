@@ -18,6 +18,7 @@ export interface Emitters {
   cursor: Emitter;
   antigravity: Emitter;
   codex: Emitter;
+  pi: Emitter;
 }
 
 function safeWrite(dest: string, relPath: string, content: string, kept: KeepMatcher, results: WriteResult[], force: boolean): void {
@@ -79,11 +80,23 @@ export function emitAntigravity(cap: Capability, dest: string, kept: KeepMatcher
   safeWrite(dest, workflowRel, workflowContent, kept, results, force);
 }
 
+export function emitPi(cap: Capability, dest: string, kept: KeepMatcher, results: WriteResult[], srcRoot: string, force: boolean): void {
+  writeBody(cap, dest, srcRoot, kept, results, force);
+
+  const piSkillRel = `.pi/skills/${cap.name}/SKILL.md`;
+  const piSkillSrc = join(srcRoot, '.pi', 'skills', cap.name, 'SKILL.md');
+  const piSkillContent = existsSync(piSkillSrc)
+    ? readFileSync(piSkillSrc, 'utf8')
+    : `---\nname: ${cap.name}\ndescription: |\n  ${cap.purpose}\nlicense: MIT\nmetadata:\n  version: "1.0"\n---\n\nRead and follow the complete skill instructions in [\`${cap.path}\`](../../../${cap.path}).\n`;
+  safeWrite(dest, piSkillRel, piSkillContent, kept, results, force);
+}
+
 export function makeEmitters(srcRoot: string, force: boolean): Emitters {
   return {
     claude:      (cap, dest, kept, results) => emitClaude(cap, dest, kept, results, srcRoot, force),
     cursor:      (cap, dest, kept, results) => emitCursor(cap, dest, kept, results, srcRoot, force),
     antigravity: (cap, dest, kept, results) => emitAntigravity(cap, dest, kept, results, srcRoot, force),
     codex:      (cap, dest, kept, results) => emitCodex(cap, dest, kept, results, srcRoot, force),
+    pi:          (cap, dest, kept, results) => emitPi(cap, dest, kept, results, srcRoot, force),
   };
 }

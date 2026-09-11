@@ -8,7 +8,7 @@ inputs:
   harness:
     type: string
     default: claude
-    enum: [claude, cursor, antigravity, codex, all]
+    enum: [claude, cursor, antigravity, codex, pi, all]
     description: Target harness. "all" writes every harness.
   into:
     type: string
