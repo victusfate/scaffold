@@ -11,7 +11,7 @@ import { readManifest, upsertManifest } from './manifest.ts';
 import { makeEmitters, type Capability, type Emitter } from './emitters.ts';
 import { parseResolverRows, type ResolverRow } from '../lib/resolver-parse.ts';
 
-export type Harness = 'claude' | 'cursor' | 'antigravity' | 'codex';
+export type Harness = 'claude' | 'cursor' | 'antigravity' | 'codex' | 'pi';
 
 interface EmitPair {
   name: string;
@@ -65,7 +65,7 @@ export { readManifest } from './manifest.ts';
 
 const SCAFFOLD_ROOT = process.env.HOIST_SCAFFOLD_ROOT
   ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
-const HARNESSES: readonly Harness[] = ['claude', 'cursor', 'antigravity', 'codex'];
+const HARNESSES: readonly Harness[] = ['claude', 'cursor', 'antigravity', 'codex', 'pi'];
 const TOOL_REL      = 'tools/hoist-skill/run';
 const RESOLVER_REL  = '.claude/skills/RESOLVER.md';
 const RAW_BASE      = process.env.HOIST_RAW_BASE
@@ -89,6 +89,8 @@ function capSourcePaths(cap: Capability, harness: Harness): SourcePath[] {
     paths.push({ path: `.agents/skills/${cap.name}/SKILL.md`, required: false });
     if (harness === 'antigravity')
       paths.push({ path: `.agent/workflows/${cap.name}.md`, required: false });
+  } else if (harness === 'pi') {
+    paths.push({ path: `.pi/skills/${cap.name}/SKILL.md`, required: false });
   }
   return paths;
 }

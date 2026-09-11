@@ -1,9 +1,9 @@
 ## Instructions
 
 > **Multi-harness:** Output paths below show `.claude/skills/` (Claude Code),
-> `.agents/skills/` (Codex, pi, agy), and `.agent/workflows/` (agy). The `--harness` flag
+> `.agents/skills/` (Codex, pi, agy), `.pi/skills/` (pi project-local), and `.agent/workflows/` (agy). The `--harness` flag
 > controls which format is emitted: `claude` writes Claude Code wrappers,
-> `codex` writes Agent Skills wrappers; `antigravity` adds agy workflows.
+> `codex` writes Agent Skills wrappers; `antigravity` adds agy workflows; `pi` writes pi project-local wrappers.
 
 Export one or more scaffold skills into a target repo in the requested harness format. Wraps `tools/hoist-skill/run` — do not reimplement its logic here.
 
@@ -12,7 +12,7 @@ Export one or more scaffold skills into a target repo in the requested harness f
 Collect from what the user said (or ask once if missing):
 
 - **Names** — which capabilities to export. Accept a comma-separated list or `all`. If the user is unsure, run `--list` first and show them.
-- **Harness** — `claude` (default), `cursor`, `antigravity`, `codex`, or `all`.
+- **Harness** — `claude` (default), `cursor`, `antigravity`, `codex`, `pi`, or `all`.
 - **Destination** — the `--into` path (the target repo root). Must be provided; do not guess.
 - **Force** — whether to overwrite differing files. Default: no (sidecars are written instead). Only set `--force` if the user explicitly asks.
 - **Ref** — optional scaffold ref to stamp in the manifest (`--ref <tag|commit>`, default `main`). Use when the consumer pins to a specific release.

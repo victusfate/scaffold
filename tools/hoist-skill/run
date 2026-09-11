@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // hoist-skill — emit scaffold capabilities into a consumer repo.
-// Usage: node run [--names <n1,n2|all>] [--harness <claude|cursor|antigravity|codex|all>]
+// Usage: node run [--names <n1,n2|all>] [--harness <claude|cursor|antigravity|codex|pi|all>]
 //                [--into <path>] [--force] [--list]
 //                [--ref <ref>] [--no-record] [--from-manifest [path]] [--plan] [--fetch]
 //

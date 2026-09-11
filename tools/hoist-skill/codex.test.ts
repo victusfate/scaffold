@@ -82,10 +82,10 @@ await test('generated Codex wrappers resolve and all harnesses share the same wr
     assert.equal(readFileSync(resolve(dirname(wrapperPath), link), 'utf8'), 'fixture body\n');
     assert.match(wrapper, /^---\nname: tdd\ndescription: \|/);
     assert.ok(!existsSync(`${wrapperPath}.scaffold-new`));
-    for (const path of ['.claude/skills/tdd/SKILL.md', '.cursor/rules/tdd.mdc', '.agent/workflows/tdd.md'])
+    for (const path of ['.claude/skills/tdd/SKILL.md', '.cursor/rules/tdd.mdc', '.agent/workflows/tdd.md', '.pi/skills/tdd/SKILL.md'])
       assert.ok(existsSync(join(dest, path)), path);
     const manifest = readFileSync(join(dest, '.sync/hoisted'), 'utf8');
-    for (const harness of ['claude', 'cursor', 'antigravity', 'codex'])
+    for (const harness of ['claude', 'cursor', 'antigravity', 'codex', 'pi'])
       assert.ok(manifest.includes(`tdd\t${harness}\tmain`));
   } finally {
     rmSync(dest, { recursive: true, force: true });
