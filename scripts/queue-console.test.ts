@@ -87,6 +87,18 @@ maxParallel: 2
   assert('config sets a numeric key', ok({ op: 'config', key: 'maxParallel', value: '4' }).queue.config.maxParallel === 4);
 }
 
+// ---- applyOp: reassign recomputes dispatch without mutating ----
+{
+  const q = parseQueue(SAMPLE);
+  const before = q.tasks.map(t => t.id).join(',');
+  const r = applyOp(q, { op: 'reassign' });
+  assert('reassign accepted', r.ok);
+  assert('reassign touches no task', r.ok && r.queue.tasks.map(t => t.id).join(',') === before);
+  assert('reassign touches no config', r.ok && r.queue.config.maxParallel === 2);
+  const empty = applyOp(parseQueue(''), { op: 'reassign' });
+  assert('reassign on empty queue is ok', empty.ok);
+}
+
 // ---- applyOp: archive returns the swept tasks for the caller to persist ----
 {
   const q = parseQueue('- [x] task-001 — done\n- [!] task-002 — dead\n- [ ] task-003 — live\n');
@@ -162,8 +174,9 @@ maxParallel: 2
   has('add form mount point', 'id="add"');
   has('status header mount point', 'id="status"');
   has('changed-on-disk banner mount point', 'id="stale"');
+  has('dispatch plan mount point', 'id="plan"');
   has('error surface mount point', 'id="error"');
-  for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"']) {
+  for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"', '"reassign"']) {
     has(`page wires op ${op}`, `op: ${op}`);
   }
   has('rows are draggable', 'draggable');
