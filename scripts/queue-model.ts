@@ -46,6 +46,7 @@ export interface Task {
   title: string;
   status: TaskStatus;
   mode: TaskMode;
+  held: boolean;
   slug: string | null;
   dependsOn: string[];
   files: string[];
@@ -60,7 +61,7 @@ export interface Task {
 }
 
 /** Fields user-facing queue editors may change. */
-export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'slug', 'deps', 'files', 'validate', 'accept', 'note'] as const;
+export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'held', 'slug', 'deps', 'files', 'validate', 'accept', 'note'] as const;
 
 export interface QueueConfig {
   status: 'running' | 'stopped';
@@ -113,7 +114,7 @@ const STATUS_OF: Record<string, TaskStatus> = {
 /** A fresh task with all optional fields empty. */
 export function newTask(id: string, title: string): Task {
   return {
-    id, title, status: 'pending', mode: 'direct', slug: null, dependsOn: [], files: [],
+    id, title, status: 'pending', mode: 'direct', held: false, slug: null, dependsOn: [], files: [],
     validate: null, accept: null, note: null, failures: 0, owner: null, branch: null,
     worktree: null, startedAt: null,
   };
@@ -158,6 +159,7 @@ export function fieldPatch(key: string, val: string): Partial<Task> {
   switch (key) {
     case 'title': return v ? { title: v } : {};
     case 'mode': return { mode: v === 'chain' ? 'chain' : 'direct' };
+    case 'held': return { held: v === 'true' };
     case 'slug': return { slug: v || null };
     case 'deps': case 'dependsOn': return { dependsOn: splitList(v) };
     case 'files': return { files: splitList(v) };
@@ -252,6 +254,7 @@ function assignIds(q: Queue): { tasks: Task[]; nextId: number } {
 export function taskFields(t: Task, alwaysMode = false): Array<[string, string]> {
   const pairs: Array<[string, string]> = [];
   if (alwaysMode || t.mode !== 'direct') pairs.push(['mode', t.mode]);
+  if (t.held) pairs.push(['held', 'true']);
   const push = (k: string, v: string): void => { if (v) pairs.push([k, v]); };
   push('slug', t.slug ?? '');
   push('deps', t.dependsOn.join(', '));
@@ -423,6 +426,35 @@ export function unclaimTask(q: Queue, id: string): Queue {
   return mapTask(q, id, t => ({ ...t, status: 'pending', owner: null, startedAt: null }));
 }
 
+/**
+ * Park or unpark a task: held tasks stay pending but are never eligible, so
+ * the drain skips them with no fake dependency edits. Position and spec kept.
+ */
+export function holdTask(q: Queue, id: string, held: boolean): Queue {
+  return mapTask(q, id, t => ({ ...t, held }));
+}
+
+/**
+ * Operator terminal-fail: any unfinished task goes `failed` in place with the
+ * operator's note, lease cleared. The board's "drag to Failed" — explicit,
+ * immediate, and audited — versus `recordFailure`'s retry counting.
+ */
+export function forceFail(q: Queue, id: string, reason: string): Queue {
+  return mapTask(q, id, t => (t.status === 'done' || t.status === 'failed'
+    ? t
+    : { ...t, status: 'failed', note: reason, owner: null, worktree: null, startedAt: null }));
+}
+
+/**
+ * Reopen a finished task to pending, position kept. The board's "drag out of
+ * Done" — the operator's explicit steer; dependents re-resolve on next tick.
+ */
+export function reopenTask(q: Queue, id: string): Queue {
+  const hit = q.tasks.find(t => t.id === id);
+  if (!hit || hit.status !== 'done') return q;
+  return mapTask(q, id, t => ({ ...t, status: 'pending' }));
+}
+
 /** Pause the queue until an ISO time, to ride out a usage-limit window. */
 export function pauseUntil(q: Queue, resumeAtIso: string): Queue {
   return setConfig(q, { status: 'stopped', resumeAt: resumeAtIso });
@@ -546,9 +578,9 @@ export function ungateTasks(q: Queue, gateId: string): { queue: Queue; ungated: 
   return { queue: withTasks(q, tasks), ungated };
 }
 
-/** A pending task is eligible only when every dependency is done. */
+/** A pending task is eligible only when it isn't held and every dependency is done. */
 export function isEligible(task: Task, q: Queue): boolean {
-  return task.status === 'pending'
+  return task.status === 'pending' && !task.held
     && task.dependsOn.every(d => q.tasks.find(x => x.id === d)?.status === 'done');
 }
 

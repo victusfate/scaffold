@@ -220,6 +220,7 @@ const BADGE = { pending: "·", active: "▶", done: "✓", failed: "✗" };
 function chips(t) {
   const out = [];
   if (t.mode === "chain") out.push('<span class="chip">chain</span>');
+  if (t.held) out.push('<span class="chip">held</span>');
   if (t.dependsOn.length) out.push('<span class="chip">deps: ' + esc(t.dependsOn.join(", ")) + '</span>');
   if (t.failures) out.push('<span class="chip">retries: ' + t.failures + '</span>');
   if (t.owner) out.push('<span class="chip">@' + esc(t.owner) + '</span>');
@@ -315,34 +316,51 @@ function renderTasks() {
     return '<li class="col" data-col="' + name + '"><h2>' + name + ' (' + items.length + ')</h2>'
       + '<ul class="cards">' + cards + '</ul></li>';
   }).join("");
-  const dropOf = (from, targetId, targetCol) => {
-    const t = S.tasks.find(x => x.id === from);
-    if (!t) return;
-    if (targetCol === "Queued" && t.status === "pending" && targetId && targetId !== from) {
-      post({ op: "move", id: from, to: S.tasks.findIndex(x => x.id === targetId) });
-    } else if (targetCol === "Queued" && t.status === "pending" && !targetId) {
-      const queued = S.tasks.filter(x => x.status === "pending" && x.eligible);
-      post({ op: "move", id: from, to: S.tasks.indexOf(queued[queued.length - 1]) + 1 });
-    } else if (targetCol === "In Progress" && t.status === "pending") {
-      post({ op: "claim-lane", id: from });
-    } else if (targetCol === "Queued" && t.status === "active") {
-      post({ op: "release", id: from }).then(ok => {
-        if (ok && targetId && targetId !== from) {
-          post({ op: "move", id: from, to: S.tasks.findIndex(x => x.id === targetId) });
-        }
-      });
+  const dropOf = async (from, targetId, targetCol) => {
+    // Every column is a real drop target. Terminal columns act directly;
+    // the flow columns normalize to pending first, then apply the column.
+    const prep = async id => {
+      const cur = S.tasks.find(x => x.id === id);
+      if (!cur) return false;
+      if (cur.status === "active") return post({ op: "release", id });
+      if (cur.status === "failed") return post({ op: "requeue", id });
+      if (cur.status === "done") return post({ op: "reopen", id });
+      return true;
+    };
+    const at = id => S.tasks.findIndex(x => x.id === id);
+    if (targetCol === "Done") {
+      if (from !== targetId) post({ op: "mark-done", id: from });
+      return;
     }
-    // every other combination (Blocked/Done/Failed targets, active→active)
-    // is a no-op: status never changes by accident.
+    if (targetCol === "Failed") {
+      if (from !== targetId) post({ op: "force-fail", id: from });
+      return;
+    }
+    if (!await prep(from)) return;
+    const t = S.tasks.find(x => x.id === from);
+    if (targetCol === "Blocked") {
+      if (!t.held) await post({ op: "hold", id: from });
+      if (targetId && targetId !== from) post({ op: "move", id: from, to: at(targetId) });
+    } else if (targetCol === "In Progress") {
+      if (t.held) await post({ op: "unhold", id: from });
+      post({ op: "claim-lane", id: from });
+    } else if (targetCol === "Queued") {
+      if (t.held) await post({ op: "unhold", id: from });
+      if (targetId && targetId !== from) post({ op: "move", id: from, to: at(targetId) });
+      else if (!targetId) {
+        const queued = S.tasks.filter(x => x.status === "pending" && x.eligible);
+        if (queued.length && queued[queued.length - 1].id !== from) {
+          post({ op: "move", id: from, to: S.tasks.indexOf(queued[queued.length - 1]) + 1 });
+        }
+      }
+    }
   };
   ul.querySelectorAll(".col").forEach(col => {
     const name = col.dataset.col;
     col.addEventListener("dragover", e => {
-      const t = S.tasks.find(x => x.id === draggingId);
-      if (!t) return;
-      const okDrop = (name === "Queued")
-        || (name === "In Progress" && t.status === "pending");
-      if (okDrop) e.preventDefault();
+      // Every column accepts every card — the router maps the drop to the
+      // column's meaning (move/hold/claim/done/fail). Self-drops no-op there.
+      if (draggingId) e.preventDefault();
     });
     col.addEventListener("drop", e => {
       const from = draggingId;
@@ -361,16 +379,21 @@ function renderTasks() {
         return;
       }
       draggingId = id;
+      // Firefox only fires drop when the gesture carries data — Chrome is
+      // lenient, so set it unconditionally.
+      e.dataTransfer.setData("text/plain", id);
+      e.dataTransfer.effectAllowed = "move";
     });
+    // dragend on the card can be missed (drop outside the window, DOM rebuilt
+    // mid-gesture): the window fallback guarantees draggingId never sticks,
+    // which would otherwise freeze auto-refresh behind a stale banner forever.
+    // (Registered once below, next to the other global listeners.)
     li.addEventListener("dragend", () => {
       draggingId = null;
       ul.querySelectorAll(".dragover").forEach(d => d.classList.remove("dragover"));
     });
     li.addEventListener("dragover", e => {
-      const t = S.tasks.find(x => x.id === draggingId);
-      const col = li.closest(".col").dataset.col;
-      const okDrop = t && (col === "Queued" || (col === "In Progress" && t.status === "pending"));
-      if (okDrop) { e.preventDefault(); li.classList.add("dragover"); }
+      if (draggingId) { e.preventDefault(); li.classList.add("dragover"); }
     });
     li.addEventListener("dragleave", () => li.classList.remove("dragover"));
     li.addEventListener("drop", e => {
@@ -437,6 +460,15 @@ $("#add").addEventListener("submit", e => {
 });
 
 // ------------------------------------------------------------------ live
+
+// A missed card-level dragend (drop outside the window, DOM rebuilt
+// mid-gesture) must never stick draggingId — that would freeze auto-refresh
+// behind the stale banner forever. Registered once: renderTasks rebuilds the
+// cards on every state change, so a per-card registration would leak.
+window.addEventListener("dragend", () => {
+  draggingId = null;
+  document.querySelectorAll(".dragover").forEach(d => d.classList.remove("dragover"));
+});
 
 $("#refresh").onclick = refresh;
 new EventSource("/events").onmessage = () => {

@@ -24,6 +24,7 @@ import { laneDir, readLanes, laneStale, requestStop, stopRequested, type LaneSta
 import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
   addTask, setField, removeTask, moveToTop, moveTask, requeueTask, unclaimTask, beginTask, setConfig,
+  holdTask, forceFail, reopenTask, markDone, archivableDone,
   isEligible, deadlocked, drainSignal, EDITABLE_TASK_FIELDS, fieldPatch, sweepFinished,
   NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type QueueConfig, type Task,
@@ -32,7 +33,7 @@ import {
 // ---------------------------------------------------------------- contracts
 
 export interface TaskPatch {
-  title?: string; mode?: string; slug?: string; deps?: string;
+  title?: string; mode?: string; held?: string; slug?: string; deps?: string;
   files?: string; validate?: string; accept?: string; note?: string;
 }
 
@@ -42,8 +43,9 @@ export type ConfigKey = typeof CONFIG_KEYS[number];
 export type Op =
   | { op: 'add'; title: string; top?: boolean; fields?: TaskPatch }
   | { op: 'set'; id: string; fields: TaskPatch }
-  | { op: 'remove' | 'top' | 'requeue' | 'stop-lane' | 'release'; id: string }
+  | { op: 'remove' | 'top' | 'requeue' | 'stop-lane' | 'release' | 'hold' | 'unhold' | 'reopen' | 'mark-done'; id: string }
   | { op: 'claim-lane'; id: string }
+  | { op: 'force-fail'; id: string; note?: string }
   | { op: 'move'; id: string; to: number }
   | { op: 'start' | 'stop' | 'archive' | 'reassign' }
   | { op: 'config'; key: ConfigKey; value: string };
@@ -214,6 +216,7 @@ export function applyOp(q: Queue, op: Op, nowIso: string = now()): OpResult {
       const t = q.tasks.find(x => x.id === op.id)!;
       if (t.status !== 'pending') return reject(`claim-lane: ${op.id} is ${t.status}, not claimable`);
       const taken = new Set(q.tasks.filter(x => x.status === 'active').map(x => x.owner));
+      if (t.held) return reject(`claim-lane: ${op.id} is held — unhold it first`);
       if (taken.size >= q.config.maxParallel) {
         return reject(`claim-lane: no free lane (maxParallel ${q.config.maxParallel})`);
       }
@@ -227,6 +230,42 @@ export function applyOp(q: Queue, op: Op, nowIso: string = now()): OpResult {
       const t = q.tasks.find(x => x.id === op.id)!;
       if (t.status !== 'active') return reject(`release: ${op.id} is ${t.status}, not active`);
       return ok(unclaimTask(q, op.id));
+    }
+    case 'hold': {
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      const t = q.tasks.find(x => x.id === op.id)!;
+      if (t.status !== 'pending') return reject(`hold: ${op.id} is ${t.status} — only pending tasks park`);
+      return ok(holdTask(q, op.id, true));
+    }
+    case 'unhold': return unknownId(q, op) ?? ok(holdTask(q, op.id, false));
+    case 'reopen': {
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      const t = q.tasks.find(x => x.id === op.id)!;
+      if (t.status !== 'done') return reject(`reopen: ${op.id} is ${t.status}, not done`);
+      return ok(reopenTask(q, op.id));
+    }
+    case 'mark-done': {
+      // Operator-done: the board twin of `queue done --skip-validate`. The
+      // console never runs the task's validate command (D3); the operator's
+      // explicit drop is the approval, recorded in the audit log by handleOp.
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      if (q.tasks.find(x => x.id === op.id)!.status === 'done') return ok(q);
+      let dq = markDone(q, op.id);
+      const sweep = archivableDone(dq);
+      for (const s of sweep) dq = removeTask(dq, s.id);
+      return ok(dq, sweep);
+    }
+    case 'force-fail': {
+      const bad = unknownId(q, op);
+      if (bad) return bad;
+      const t = q.tasks.find(x => x.id === op.id)!;
+      if (t.status === 'failed') return ok(q);
+      if (t.status === 'done') return reject(`force-fail: ${op.id} is done — reopen it first`);
+      const note = typeof op.note === 'string' && op.note.trim() ? op.note.trim() : 'operator moved to Failed';
+      return ok(forceFail(q, op.id, note));
     }
     case 'stop-lane': return unknownId(q, op) ?? ok(q);
     case 'requeue': return unknownId(q, op) ?? ok(requeueTask(q, op.id));

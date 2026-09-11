@@ -16,6 +16,7 @@
 //   node scripts/queue.ts fail <id> [reason...]      # record a failure (retries then terminal)
 //   node scripts/queue.ts top <id> | remove <id>
 //   node scripts/queue.ts move <id> <pos>            # reorder to a 1-based position (as in `list`)
+//   node scripts/queue.ts hold <id> | unhold <id>    # park a task (drain skips it) | release it
 //   node scripts/queue.ts requeue <id>               # revive a failed task (pending, failures cleared)
 //   node scripts/queue.ts start | stop               # run/pause the worker
 //   node scripts/queue.ts interval 6m                # edit the wake interval
@@ -40,6 +41,7 @@ import {
   render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask,
+  holdTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type Task,
@@ -413,6 +415,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       if (!needId()) { console.error('claim: unknown task id'); return 1; }
       const t = q.tasks.find(x => x.id === id)!;
       if (t.status !== 'pending') { console.log(`claim: ${id} is ${t.status}, not claimable`); return 1; }
+      if (t.held) { console.log(`claim: ${id} is held — unhold it first`); return 1; }
       const worker = f.flags.get('worker') ?? `worker-${process.pid}`;
       save(beginTask(q, id, now(), worker)); log(`claim ${id} by ${worker}`);
       console.log(`claimed ${id} for ${worker}\n${taskBlock({ ...t, owner: worker })}`); return 0;
@@ -443,6 +446,14 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       q = moveTask(q, id, pos - 1); save(q); log(`move ${id} → ${pos}`);
       console.log(`${id} moved to position ${pos}${drainKick(q)}`); return 0;
     }
+    case 'hold':
+      if (!needId()) { console.error('hold: unknown task id'); return 1; }
+      q = holdTask(q, id, true); save(q); log(`hold ${id}`);
+      console.log(`${id} held (parked — the drain skips it until unhold)`); return 0;
+    case 'unhold':
+      if (!needId()) { console.error('unhold: unknown task id'); return 1; }
+      q = holdTask(q, id, false); save(q); log(`unhold ${id}`);
+      console.log(`${id} unheld${drainKick(q)}`); return 0;
     case 'requeue': {
       if (!needId()) { console.error('requeue: unknown task id'); return 1; }
       const before = q.tasks.find(t => t.id === id)!;
@@ -484,7 +495,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
-        + `signal claim begin done fail top move requeue remove start stop pause interval config `
+        + `signal claim begin done fail top move hold unhold requeue remove start stop pause interval config `
         + `gate ungate archive loop worktree lane`);
       return 1;
   }
