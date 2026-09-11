@@ -67,11 +67,17 @@
   }
   .grid label { color: var(--muted); text-align: right; }
   #tasks { list-style: none; margin: 0; padding: 0; }
-  #tasks li {
+  #tasks.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.6rem; align-items: start; }
+  #tasks li.col { background: transparent; border: none; padding: 0; margin: 0; }
+  #tasks li.col > h2 { font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 0.4rem; }
+  .cards { list-style: none; margin: 0; padding: 0.1rem; min-height: 2rem; border-radius: 10px; }
+  .cards li.card {
     background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
     padding: 0.5rem 0.7rem; margin-bottom: 0.45rem;
   }
-  #tasks li.dragover { border-color: var(--accent); }
+  .cards li.card.dragover { border-color: var(--accent); }
+  .cards li.card.stale { opacity: 0.55; }
+  .chip.stop { color: var(--bad); }
   .task-line { display: flex; gap: 0.55rem; align-items: baseline; flex-wrap: wrap; }
   .handle { cursor: grab; color: var(--muted); user-select: none; }
   .badge { font-weight: 700; width: 1em; display: inline-block; }
@@ -125,8 +131,11 @@
 const $ = (sel, el) => (el || document).querySelector(sel);
 const ERROR_HIDE_MS = 6000;
 let S = null;          // last ConsoleState
+let L = [];           // last lane views from /api/lanes
 let editingId = null;  // task id whose editor is open (or "add" while typing)
 let draggingId = null;
+
+const laneById = id => L.find(l => l.id === id);
 
 const busy = () => editingId !== null || draggingId !== null;
 const esc = s => String(s ?? "").replace(/[&<>"']/g,
@@ -135,6 +144,8 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g,
 async function refresh() {
   const res = await fetch("/api/queue");
   S = await res.json();
+  const lanes = await fetch("/api/lanes");
+  L = (await lanes.json()).lanes;
   render();
 }
 
@@ -145,6 +156,7 @@ async function post(op) {
   const body = await res.json();
   if (!res.ok) { showError(body.error || "operation rejected"); return false; }
   S = body;
+  L = (await (await fetch("/api/lanes")).json()).lanes;
   // Close the editor only when this op consumed or destroyed it — a save
   // (set/add) or removing the edited row. Other ops keep it open, and
   // render() carries the typed-but-unsaved values across the re-render.
@@ -205,6 +217,15 @@ function chips(t) {
   if (t.dependsOn.length) out.push('<span class="chip">deps: ' + esc(t.dependsOn.join(", ")) + '</span>');
   if (t.failures) out.push('<span class="chip">retries: ' + t.failures + '</span>');
   if (t.owner) out.push('<span class="chip">@' + esc(t.owner) + '</span>');
+  const lane = t.status === "active" ? laneById(t.id) : null;
+  if (lane) {
+    if (lane.step) out.push('<span class="chip">' + esc(lane.step) + '</span>');
+    if (lane.tail) out.push('<span class="chip" title="' + esc(lane.tail) + '">log</span>');
+    if (lane.stale) out.push('<span class="chip deadlocked">stale</span>');
+    if (lane.stop) out.push('<span class="chip stop">stop requested</span>');
+  } else if (t.status === "active" && t.startedAt) {
+    out.push('<span class="chip">since ' + esc(t.startedAt.slice(11, 16)) + '</span>');
+  }
   if (t.note) out.push('<span class="chip note">' + esc(t.note) + '</span>');
   if (t.deadlocked) out.push('<span class="chip deadlocked">blocked by failed dep</span>');
   else if (t.eligible) out.push('<span class="chip ready">ready</span>');
@@ -234,6 +255,7 @@ function taskHtml(t) {
   // Never offer requeue on an active task — resetting a live claim would let
   // two workers run it at once (the model refuses too; this hides the trap).
   const canRequeue = t.status === "failed" || (t.failures > 0 && t.status !== "active");
+  const lane = t.status === "active" ? laneById(t.id) : null;
   return '<div class="task-line">'
     + '<span class="handle" title="drag to reorder">⋮⋮</span>'
     + '<span class="badge ' + t.status + '">' + BADGE[t.status] + '</span>'
@@ -242,6 +264,7 @@ function taskHtml(t) {
     + chips(t)
     + '<span class="actions">'
     + '<button data-act="top" title="move to top">⤒</button>'
+    + (t.status === "active" ? '<button data-act="stop-lane" title="request the lane stop">■</button>' : "")
     + (canRequeue ? '<button data-act="requeue" title="reset to pending">↻</button>' : "")
     + '<button data-act="edit" title="edit fields">✎</button>'
     + '<button data-act="remove" title="remove">✕</button>'
@@ -252,12 +275,30 @@ function taskHtml(t) {
 function renderTasks() {
   const ul = $("#tasks");
   if (!S.tasks.length) {
+    ul.classList.remove("cols");
     ul.innerHTML = '<li class="empty">(empty — add a task above)</li>';
     return;
   }
-  ul.innerHTML = S.tasks.map(t =>
-    '<li draggable="true" data-id="' + t.id + '">' + taskHtml(t) + '</li>').join("");
-  ul.querySelectorAll("li").forEach(li => {
+  // Kanban grouping over the priority order: only Queued is reorderable
+  // (drag there emits the same global `move` op); status transitions stay
+  // with workers and the CLI, so other columns are drag-free views.
+  const cols = [
+    ["Queued", S.tasks.filter(t => t.status === "pending" && t.eligible)],
+    ["Blocked", S.tasks.filter(t => t.status === "pending" && !t.eligible)],
+    ["In Progress", S.tasks.filter(t => t.status === "active")],
+    ["Done", S.tasks.filter(t => t.status === "done")],
+    ["Failed", S.tasks.filter(t => t.status === "failed")],
+  ];
+  ul.classList.add("cols");
+  ul.innerHTML = cols.map(([name, items]) =>
+    '<li class="col" data-col="' + name + '"><h2>' + name + ' (' + items.length + ')</h2>'
+    + '<ul class="cards">' + items.map(t => {
+      const lane = t.status === "active" ? laneById(t.id) : null;
+      const cls = "card" + (lane && lane.stale ? " stale" : "");
+      const drag = name === "Queued" ? ' draggable="true"' : "";
+      return '<li class="' + cls + '" data-id="' + t.id + '"' + drag + '>' + taskHtml(t) + '</li>';
+    }).join("") + '</ul></li>').join("");
+  ul.querySelectorAll(".card").forEach(li => {
     const id = li.dataset.id;
     li.addEventListener("dragstart", () => { draggingId = id; });
     li.addEventListener("dragend", () => { draggingId = null; li.classList.remove("dragover"); });
@@ -276,6 +317,7 @@ function renderTasks() {
         if (act === "edit") { editingId = editingId === id ? null : id; render(); }
         else if (act === "remove") { if (confirm("Remove " + id + "?")) post({ op: "remove", id }); }
         else if (act === "top") post({ op: "top", id });
+        else if (act === "stop-lane") post({ op: "stop-lane", id });
         else if (act === "requeue") post({ op: "requeue", id });
       };
     });

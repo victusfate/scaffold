@@ -16,10 +16,11 @@
 // Usage: node scripts/queue-console.ts [--port 8722]   (QUEUE_FILE honored)
 
 import http from 'node:http';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { load, save, log, appendArchive, queueFile, withLock } from './queue-io.ts';
+import { load, save, log, appendArchive, queueFile, withLock, now } from './queue-io.ts';
+import { laneDir, readLanes, laneStale, requestStop, stopRequested, type LaneState } from './queue-lanes.ts';
 import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
   addTask, setField, removeTask, moveToTop, moveTask, requeueTask, setConfig,
@@ -41,7 +42,7 @@ export type ConfigKey = typeof CONFIG_KEYS[number];
 export type Op =
   | { op: 'add'; title: string; top?: boolean; fields?: TaskPatch }
   | { op: 'set'; id: string; fields: TaskPatch }
-  | { op: 'remove' | 'top' | 'requeue'; id: string }
+  | { op: 'remove' | 'top' | 'requeue' | 'stop-lane'; id: string }
   | { op: 'move'; id: string; to: number }
   | { op: 'start' | 'stop' | 'archive' | 'reassign' }
   | { op: 'config'; key: ConfigKey; value: string };
@@ -52,6 +53,16 @@ export type OpResult =
 
 export interface ConsoleTask extends Task { eligible: boolean; deadlocked: boolean }
 export interface ConsoleState { config: QueueConfig; tasks: ConsoleTask[]; drain: string | null }
+
+export interface LaneView extends LaneState { stale: boolean; stop: boolean }
+
+/** Live lane records for the board: heartbeats plus derived staleness. */
+export function laneViews(q: Queue): LaneView[] {
+  const at = now();
+  return readLanes().map(l => ({
+    ...l, stale: laneStale(l, at, q.config.leaseMinutes), stop: stopRequested(l.id),
+  }));
+}
 
 // ---------------------------------------------------------------- state
 
@@ -196,6 +207,7 @@ export function applyOp(q: Queue, op: Op): OpResult {
       return ok(removeTask(q, op.id));
     }
     case 'top': return unknownId(q, op) ?? ok(moveToTop(q, op.id));
+    case 'stop-lane': return unknownId(q, op) ?? ok(q);
     case 'requeue': return unknownId(q, op) ?? ok(requeueTask(q, op.id));
     case 'move': {
       const bad = unknownId(q, op);
@@ -274,6 +286,9 @@ async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Pr
     const applied = applyOp(load(), op);
     if (applied.ok) {
       if (applied.archived.length) appendArchive(applied.archived);
+      // stop-lane is validated by applyOp but takes effect here: the flag
+      // file is the cooperative signal the owning driver honors (never a kill).
+      if (op.op === 'stop-lane') requestStop(op.id);
       save(applied.queue);
     }
     return applied;
@@ -301,6 +316,8 @@ export function startServer(port: number): http.Server {
       res.end(readFileSync(TEMPLATE, 'utf8'));
     } else if (req.method === 'GET' && req.url === '/api/queue') {
       sendJson(res, HTTP_OK, consoleState(load()));
+    } else if (req.method === 'GET' && req.url === '/api/lanes') {
+      sendJson(res, HTTP_OK, { lanes: laneViews(load()) });
     } else if (req.method === 'POST' && req.url === '/api/op') {
       handleOp(req, res).catch((e: unknown) => {
         if (!res.headersSent) sendJson(res, HTTP_SERVER_ERROR, { error: (e as Error).message });
@@ -314,10 +331,13 @@ export function startServer(port: number): http.Server {
     }
   });
 
+  mkdirSync(laneDir(), { recursive: true });
   const unwatch = watchFileChanges(queueFile(), WATCH_INTERVAL_MS, () => sse.broadcast('changed'));
+  const unwatchLanes = watchFileChanges(laneDir(), WATCH_INTERVAL_MS, () => sse.broadcast('changed'));
   const netClose = server.close.bind(server);
   server.close = (cb?: (err?: Error) => void): http.Server => {
     unwatch();
+    unwatchLanes();
     sse.end();
     server.closeAllConnections();
     return netClose(cb);

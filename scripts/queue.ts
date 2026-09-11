@@ -24,6 +24,7 @@
 //   node scripts/queue.ts ungate <gate-id>           # remove <gate-id> from deps + mark it done (unblock)
 //   node scripts/queue.ts archive                    # sweep done/failed into archive.md
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
+//   node scripts/queue.ts lane beat|list|clear|stop|go <id>  # lane heartbeats (the live board reads these)
 //
 // add/set flags: --mode chain --slug <s> --deps a,b --files a,b --validate "<cmd>"
 //   --accept "<criteria>" --top --worker <name>
@@ -44,6 +45,9 @@ import {
   type Queue, type Task,
 } from './queue-model.ts';
 import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
+import {
+  beatLane, readLanes, clearLane, laneStale, requestStop, stopRequested, clearStopRequest,
+} from './queue-lanes.ts';
 
 // ---------------------------------------------------------------- flags
 
@@ -279,6 +283,36 @@ function cmdWorktree(q: Queue, sub: string, id: string): number {
   return 1;
 }
 
+function cmdLane(q: Queue, sub: string, id: string, f: ReturnType<typeof parse>): number {
+  if (sub === 'list') {
+    const lanes = readLanes();
+    if (!lanes.length) { console.log('lanes: none'); return 0; }
+    for (const l of lanes) {
+      const stale = laneStale(l, now(), q.config.leaseMinutes) ? ' (stale)' : '';
+      const stop = stopRequested(l.id) ? ' [stop requested]' : '';
+      console.log(`${l.id} @${l.worker ?? '?'} · ${l.step ?? 'no step'}${stale}${stop}`);
+    }
+    return 0;
+  }
+  if (!id || !q.tasks.some(t => t.id === id)) { console.error(`lane ${sub}: unknown task id`); return 1; }
+  if (sub === 'beat') {
+    const lane = beatLane(id, {
+      worker: f.flags.get('worker') ?? `worker-${process.pid}`,
+      model: f.flags.get('model'),
+      step: f.flags.get('step'),
+      state: f.flags.get('state'),
+      tail: f.flags.get('tail'),
+    });
+    console.log(`lane beat ${id} @${lane.worker ?? '?'} · ${lane.step ?? 'no step'}`);
+    return 0;
+  }
+  if (sub === 'clear') { clearLane(id); console.log(`lane cleared ${id}`); return 0; }
+  if (sub === 'stop') { requestStop(id); log(`lane stop requested ${id}`); console.log(`stop requested ${id} (owner honors it)`); return 0; }
+  if (sub === 'go') { clearStopRequest(id); console.log(`stop cleared ${id}`); return 0; }
+  console.error('usage: queue lane beat|list|clear|stop|go <id> [--worker w --step s --tail t]');
+  return 1;
+}
+
 function cmdLoop(q: Queue): number {
   const paused = q.config.status === 'stopped' && q.config.resumeAt !== '';
   if (paused) {
@@ -446,11 +480,12 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     case 'archive': return cmdArchive(q);
     case 'loop': return cmdLoop(q);
     case 'worktree': case 'wt': return cmdWorktree(q, f.positionals[0] ?? '', f.positionals[1] ?? '');
+    case 'lane': return cmdLane(q, f.positionals[0] ?? '', f.positionals[1] ?? '', f);
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
         + `signal claim begin done fail top move requeue remove start stop pause interval config `
-        + `gate ungate archive loop worktree`);
+        + `gate ungate archive loop worktree lane`);
       return 1;
   }
 }
