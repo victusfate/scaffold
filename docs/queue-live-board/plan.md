@@ -69,3 +69,12 @@
   exact serializer, two-tier scan display (seconds → minutes).
 - Board ⏱ chip incl. live session; CLI `list` tags; archive lines carry each
   task's total after sweep-out.
+
+## Slice 11 — loop driver + board-governed pace (ops, no code) ✅
+- Armed `agent-loop` 10min drain (headless `pi --print` child, require-result
+  protocol); verified run 1 (needs-spec refusals, dones, archives), then
+  killed per user request.
+- Re-armed at 1min floor with board-as-source-of-truth pacing (`interval` /
+  `maxParallel` re-read every run via `loop-state.json`; arming syncs the
+  cadence back into queue config). Verified: full demo drain in ~35s.
+- Pre-PR: demo tasks removed, `interval` restored to `6m` (driver follows).
