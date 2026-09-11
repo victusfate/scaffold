@@ -110,6 +110,36 @@ maxParallel: 2
     && r.queue.tasks.map(t => t.id).join(',') === q.tasks.map(t => t.id).join(','));
 }
 
+// ---- applyOp: claim-lane / release move tasks between queue and lanes ----
+{
+  const q = parseQueue(SAMPLE); // maxParallel 2, nothing active
+  const badClaim = applyOp(q, { op: 'claim-lane', id: 'task-999' });
+  assert('claim-lane unknown id rejected', !badClaim.ok);
+  const badState = applyOp(q, { op: 'claim-lane', id: 'task-003' });
+  assert('claim-lane on failed rejected', !badState.ok);
+  const claimed = applyOp(q, { op: 'claim-lane', id: 'task-001' }, '2026-09-11T15:00:00.000Z');
+  const c1 = claimed.ok ? claimed.queue.tasks[0] : null;
+  assert('claim-lane activates with first free slot',
+    claimed.ok && c1 !== null && c1.status === 'active' && c1.owner === 'lane-1'
+    && c1.startedAt === '2026-09-11T15:00:00.000Z');
+  const second = claimed.ok
+    ? applyOp(claimed.queue, { op: 'claim-lane', id: 'task-002' }, '2026-09-11T15:01:00.000Z') : claimed;
+  assert('claim-lane takes the next free slot',
+    second.ok && second.queue.tasks[1].owner === 'lane-2');
+  const full = second.ok ? applyOp(second.queue, { op: 'claim-lane', id: 'task-004' }) : second;
+  assert('claim-lane at capacity rejected', !full.ok);
+
+  const badRelease = applyOp(q, { op: 'release', id: 'task-999' });
+  assert('release unknown id rejected', !badRelease.ok);
+  assert('release on pending rejected', !applyOp(q, { op: 'release', id: 'task-001' }).ok);
+  const freed = claimed.ok ? applyOp(claimed.queue, { op: 'release', id: 'task-001' }) : claimed;
+  const f1 = freed.ok ? freed.queue.tasks[0] : null;
+  assert('release returns the lane to pending',
+    freed.ok && f1 !== null && f1.status === 'pending' && f1.owner === null && f1.startedAt === null);
+  assert('release keeps position',
+    freed.ok && freed.queue.tasks.map(t => t.id).join(',') === 'task-001,task-002,task-003,task-004');
+}
+
 // ---- applyOp: archive returns the swept tasks for the caller to persist ----
 {
   const q = parseQueue('- [x] task-001 — done\n- [!] task-002 — dead\n- [ ] task-003 — live\n');
@@ -185,9 +215,10 @@ maxParallel: 2
   has('add form mount point', 'id="add"');
   has('status header mount point', 'id="status"');
   has('changed-on-disk banner mount point', 'id="stale"');
+  has('free-lane drop placeholder', 'drop a task here');
   has('dispatch plan mount point', 'id="plan"');
   has('error surface mount point', 'id="error"');
-  for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"', '"reassign"', '"stop-lane"']) {
+  for (const op of ['"add"', '"set"', '"remove"', '"move"', '"top"', '"requeue"', '"start"', '"stop"', '"config"', '"archive"', '"reassign"', '"stop-lane"', '"claim-lane"', '"release"']) {
     has(`page wires op ${op}`, `op: ${op}`);
   }
   has('rows are draggable', 'draggable');

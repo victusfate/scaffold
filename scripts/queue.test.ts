@@ -4,7 +4,7 @@
 import {
   parseQueue, serializeQueue,
   addTask, addMany, setTaskStatus, setField, moveToTop, moveTask, removeTask, setConfig,
-  beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask, sweepFinished,
+  beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask, unclaimTask, sweepFinished,
   isEligible, deadlocked, nextActionable, readyTasks, drainSignal, DRAIN_MARKER,
   archivableDone, gateTasks, ungateTasks,
   type Queue,
@@ -345,13 +345,29 @@ integrationBranch: queue/integration
     JSON.stringify(requeueTask(q, 'task-001')) === JSON.stringify(q));
   assert('requeue unknown id is a no-op',
     JSON.stringify(requeueTask(q, 'task-999')) === JSON.stringify(q));
-
   // an active task is never reset, even with failures — that would steal a live claim
   const activeRetry = parseQueue('- [>] task-001 — running\n  - failures: 2\n  - owner: worker-a\n');
   assert('requeue active task is a no-op',
     JSON.stringify(requeueTask(activeRetry, 'task-001')) === JSON.stringify(activeRetry));
   assert('requeue survives round-trip',
     parseQueue(serializeQueue(requeueTask(q, 'task-002'))).tasks[1].status === 'pending');
+}
+
+// ---- unclaimTask: operator releases an active lane back to pending ----
+{
+  const md = '- [>] task-001 — running\n  - owner: lane-1\n  - started: 2026-08-12T19:00:00.000Z\n'
+    + '- [ ] task-002 — waiting\n';
+  const q = parseQueue(md);
+
+  const freed = unclaimTask(q, 'task-001').tasks[0];
+  assert('unclaim active → pending', freed.status === 'pending');
+  assert('unclaim clears owner/started', freed.owner === null && freed.startedAt === null);
+  assert('unclaim keeps position', unclaimTask(q, 'task-001').tasks.map(t => t.id).join(',')
+    === 'task-001,task-002');
+  assert('unclaim pending is a no-op',
+    JSON.stringify(unclaimTask(q, 'task-002')) === JSON.stringify(q));
+  assert('unclaim unknown id is a no-op',
+    JSON.stringify(unclaimTask(q, 'task-999')) === JSON.stringify(q));
 }
 
 // ---- sweepFinished: archive failed + done, but never a done task still depended on ----
