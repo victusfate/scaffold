@@ -60,6 +60,17 @@
 - Live matrix on scratch tasks via :8722: hold→Blocked, claim-held→400,
   unhold, claim, force-fail, requeue, mark-done→archive; scratch removed.
 
+## Slice 9 — design pass: dispatch control-room
+- Status: done
+- Direction: dark-first instrument panel — serif-italic masthead + mono
+  readout chips, per-column signal lamps (dot + card spine), blueprint grid
+  texture + vignette in pure CSS, sticky blurred header, pulsing run lamp.
+- Motion restrained on purpose (board re-renders live): hover lifts,
+  drop-target glow while dragging, lamp pulse — all off under
+  `prefers-reduced-motion`. No webfonts/downloads (offline-tool constraint
+  wins over the font guidance); asset-free suite assertion still green.
+- Tests untouched in behavior: 135/135 green.
+
 ## Full gate
 - `queue.test` 124/124 · `queue-console.test` 97/97 · `queue-lanes.test`
   14/14 · `queue-edit` + `queue-lock` PASS · `tsc --noEmit` clean ·
