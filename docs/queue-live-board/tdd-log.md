@@ -38,6 +38,15 @@
 - Status: done
 - `skills/queue.md` Console subsection; design/prd/plan/tdd-log committed.
 
+## Slice 7 — drag-and-drop into lanes
+- Status: done
+- RED: 6 failures (claim slot assignment ×2, release ×2, op wiring ×2).
+- GREEN: `unclaimTask` in queue-model; `claim-lane`/`release` in applyOp
+  (server-assigned `lane-N`, capacity guard, explicit-now param for
+  determinism); template `dropOf` router + slot placeholder + valid-target
+  dragover gating; 129/129 model, 109/109 console green; live triple verified
+  against :8722 (claim stamps lane-1, full → 400, release keeps order).
+
 ## Full gate
 - `queue.test` 124/124 · `queue-console.test` 97/97 · `queue-lanes.test`
   14/14 · `queue-edit` + `queue-lock` PASS · `tsc --noEmit` clean ·

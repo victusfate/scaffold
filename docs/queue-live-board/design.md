@@ -26,8 +26,9 @@ truth instead of re-deriving it in JS:
 - Each card: id, title, slug, deps, mode, owner/lease age when active,
   `accept:` on expand.
 - Drag reorder applies **only within Queued** (the priority order); it
-  emits the existing `move` op. Cross-column drag is refused — status
-  transitions stay with workers/CLI (D3).
+  emits the existing `move` op. Drags **between Queued and In Progress**
+  claim/release lane slots (D6) — the operator's explicit steer. Drops onto
+  Blocked/Done/Failed are no-ops: status never changes by accident.
 
 ### D2 — Live lanes come from sidecars the server only reads
 
@@ -78,6 +79,19 @@ mid-run = existing `move`/`top` + Reassign. Re-queue failed = existing
 `requeue`. All three already flow through validated ops; the board only
 adds the lane flag writer (a file write, not a signal — session
 isolation holds).
+
+### D6 — Lanes are drop targets: claim on drop, release on drag-back (added)
+
+Dropping a Queued card onto In Progress claims it into the first free slot
+(`lane-N`, server-assigned, capacity-checked against `maxParallel`); the
+`startedAt` lease is stamped so staleness and ownership-conflict reporting
+work exactly as for CLI claims. Dragging an active card back to Queued
+releases it to pending with position kept (optionally then reordered in the
+same gesture). This is the operator's explicit steer — `claim-lane`/`release`
+are validated ops like the rest — so it deliberately crosses the old "no
+claim on the console" line while staying a state transition (never command
+execution). Reversibility is the orphan guard: a lane claimed by mistake is
+dragged back; the lease-conflict path remains the backstop.
 
 ### D5 — Ships as the same skill, same launcher
 

@@ -33,3 +33,14 @@
   task, terminal-failed demo; `maxParallel 2`; console live on :8722.
 - Demo tasks (`DEMO:` + task-004) removed before the PR; lane sidecars are
   git-ignored runtime state.
+
+## Slice 7 — Drag-and-drop into lanes ✅
+- Model `unclaimTask` (active → pending, lease cleared, position kept).
+- Ops `claim-lane` (first free `lane-N`, capacity-checked, lease stamped;
+  explicit steer may claim a dep-blocked task) and `release` (active only).
+- Template: free-slot placeholder in In Progress, column + card drop routing
+  (Queued→Queued move incl. drop-to-end; pending→In Progress claim;
+  active→Queued release with optional reorder in the same gesture),
+  everything else a no-op.
+- Tests: 5 model + 9 dispatch + 3 template contract; live curl triple
+  (claim → capacity-400 → release, order preserved).

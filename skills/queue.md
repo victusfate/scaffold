@@ -181,6 +181,11 @@ never reaped by the board. The ■ button on an active card (or `queue lane
 stop <id>`) files a cooperative stop request the owning driver honors at its
 next safe point — the console never kills a process.
 
+Drag a Queued card onto In Progress to claim it into the next free lane slot
+(server assigns `lane-N`, refused at `maxParallel` capacity); drag an active
+card back to Queued to release it to pending. Drops onto Blocked/Done/Failed
+are no-ops.
+
 ## Creating a queue from in-memory items
 
 When you already hold a list of work, pipe it in — one item per line (leading
