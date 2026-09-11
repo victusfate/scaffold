@@ -27,6 +27,16 @@ try {
     assert.notEqual(run('set', 'task-001', field, value).status, 0);
     assert.equal(readFileSync(file, 'utf8'), saved);
   }
+  // Non-numeric config for a numeric key is rejected, not persisted as NaN.
+  for (const bad of ['abc', '0', '-1']) {
+    assert.notEqual(run('config', 'maxParallel', bad).status, 0);
+    assert.equal(readFileSync(file, 'utf8'), saved);
+  }
+  assert.equal(run('config', 'maxParallel', '4').status, 0);
+  assert.equal(parseQueue(readFileSync(file, 'utf8')).config.maxParallel, 4);
+  // Restore so the saved-snapshot assertions below still hold.
+  assert.equal(run('config', 'maxParallel', '1').status, 0);
+  assert.equal(readFileSync(file, 'utf8'), saved);
   assert.equal(run('add', 'Gate task').status, 0);
   const beforeGate = readFileSync(file, 'utf8');
   assert.equal(run('gate', 'task-002', '--dry-run').status, 0);
