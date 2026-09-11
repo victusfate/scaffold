@@ -20,9 +20,11 @@ grep -qE '10/10|score.*10|all.*10|10 on all' "$FILE" \
 grep -qE 'quality.override|override' "$FILE" \
   && ok "override mechanism referenced" || fail "override mechanism not referenced"
 
-# Gate (Step 5) must appear before Step 6 (PR body drafting)
-gate_line=$(grep -n 'Step 5' "$FILE" | head -1 | cut -d: -f1)
-step6_line=$(grep -n 'Step 6' "$FILE" | head -1 | cut -d: -f1)
+# Gate (Step 5) must appear before Step 6 (PR body drafting). Match the section
+# HEADINGS, not prose cross-references, so an earlier "(Step 6)" mention in the
+# body of another step can't invert the check.
+gate_line=$(grep -nE '^#+[[:space:]].*Step 5' "$FILE" | head -1 | cut -d: -f1)
+step6_line=$(grep -nE '^#+[[:space:]].*Step 6' "$FILE" | head -1 | cut -d: -f1)
 if [ -n "$gate_line" ] && [ -n "$step6_line" ] && [ "$gate_line" -lt "$step6_line" ]; then
   ok "quality gate (Step 5) appears before PR body drafting (Step 6)"
 else
