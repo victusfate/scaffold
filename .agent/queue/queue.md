@@ -22,9 +22,9 @@ Edit this file freely to reprioritize, add, or remove work; the worker reads it 
   - failures: 3
   - elapsed: 12m1s
   - note: demo auto-fail: intentional failure attempt
-- [ ] task-008 — DEMO: auto-fail B
+- [!] task-008 — DEMO: auto-fail B
   - validate: false
   - accept: terminal failed after 3 attempts
-  - failures: 2
-  - elapsed: 8s
+  - failures: 3
+  - elapsed: 9s
   - note: demo auto-fail: intentional failure attempt
