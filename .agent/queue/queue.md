@@ -16,10 +16,11 @@ nextId: 8
 Order = priority (top first). Checkboxes: `[ ]` pending · `[>]` active · `[x]` done · `[!]` failed.
 Edit this file freely to reprioritize, add, or remove work; the worker reads it every tick. Task lines and their indented fields survive; freeform prose is not preserved across worker writes.
 
-- [ ] task-001 — Lane heartbeat sidecars + GET /api/lanes
+- [x] task-001 — Lane heartbeat sidecars + GET /api/lanes
   - mode: chain
   - slug: queue-live-board
   - accept: active tasks show worker, elapsed, step and tail on the board
+  - elapsed: 14s
 - [ ] task-003 — Docs: Console subsection + live-board artifacts
   - held: true
   - deps: task-001
