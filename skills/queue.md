@@ -152,6 +152,13 @@ browser, auto-refreshing as workers write the file:
 node scripts/queue-console.ts [--port 8722]   # → http://localhost:8722  (QUEUE_FILE honored)
 ```
 
+Two repos means two consoles — one per repo, each with its own `QUEUE_FILE`
+and its own port (e.g. `QUEUE_FILE=/a/.agent/queue/queue.md ... --port 8722`
+and `QUEUE_FILE=/b/.agent/queue/queue.md ... --port 8723`). Bookmark both;
+`start`/`stop` apply per repo. Consoles are fully independent (own locks,
+sidecars, lanes) — proven by `scripts/queue-isolation.test.ts`, which runs
+two real servers and asserts ops, locks, and heartbeats never cross.
+
 Zero dependencies, loopback-only, **management surface only**: it exposes no
 done/fail/claim/worktree actions and never executes a task's `validate` (or any
 shell command) — execution stays with workers. Every page action posts a typed
