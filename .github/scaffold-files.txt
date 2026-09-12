@@ -46,6 +46,7 @@ scripts/queue.test.ts
 scripts/queue-console.ts
 scripts/queue-console.template.html
 scripts/queue-console.test.ts
+scripts/queue-isolation.test.ts
 scripts/queue-lanes.ts
 scripts/queue-lanes.test.ts
 scripts/queue-elapsed.test.ts
