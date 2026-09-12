@@ -9,7 +9,7 @@
 
 import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
@@ -25,11 +25,10 @@ const CLI = join(HERE, 'queue.ts');
 const LISTEN_RE = /http:\/\/localhost:(\d+)/;
 const START_TIMEOUT_MS = 10_000;
 
-interface ConsoleProc { proc: ChildProcess; port: number; file: string; dir: string }
+interface ConsoleProc { proc: ChildProcess; port: number; file: string }
 
 function startConsole(file: string): Promise<ConsoleProc> {
   return new Promise((resolve, reject) => {
-    const dir = dirname(file);
     const proc = spawn(process.execPath, [CONSOLE, '--port', '0'], {
       env: { ...process.env, QUEUE_FILE: file },
       stdio: ['ignore', 'pipe', 'inherit'],
@@ -43,7 +42,7 @@ function startConsole(file: string): Promise<ConsoleProc> {
     proc.stdout!.on('data', (chunk: Buffer) => {
       out += chunk.toString('utf8');
       const m = out.match(LISTEN_RE);
-      if (m) { clearTimeout(timer); resolve({ proc, port: Number(m[1]), file, dir }); }
+      if (m) { clearTimeout(timer); resolve({ proc, port: Number(m[1]), file }); }
     });
   });
 }
