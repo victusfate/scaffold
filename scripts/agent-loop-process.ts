@@ -55,13 +55,21 @@ async function terminate(child: ChildProcess): Promise<void> {
   signal('SIGKILL');
 }
 
-export async function execute(config: Config, dir: string): Promise<ExecutionResult> {
+// Pick the cold argv on run 1 and the warm argv (when configured) on later runs, then substitute the
+// minted session id for every `{{SESSION}}` token so the child can set the id once and resume it after.
+export function runArgv(config: Config, run: number): string[] {
+  const base = run > 1 && config.warmArgv?.length ? config.warmArgv : config.argv;
+  return config.session ? base.map(token => token.split('{{SESSION}}').join(config.session!)) : base;
+}
+
+export async function execute(config: Config, dir: string, run = 1): Promise<ExecutionResult> {
   const log = join(dir, 'output.log');
   const resultPath = join(dir, RESULT_FILE);
   rmSync(resultPath, { force: true });
   if (existsSync(log)) renameSync(log, join(dir, 'previous.log'));
   const fd = openSync(log, 'w', 0o600);
-  const child = spawn(config.argv[0], config.argv.slice(1), {
+  const argv = runArgv(config, run);
+  const child = spawn(argv[0], argv.slice(1), {
     cwd: config.cwd, stdio: ['ignore', fd, fd], detached: process.platform !== 'win32', windowsHide: true,
     env: { ...process.env, SCAFFOLD_AGENT_LOOP_RESULT: resultPath },
   });

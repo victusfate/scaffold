@@ -27,7 +27,7 @@ export async function supervise(dir: string, generation: string): Promise<void> 
       progress.startedAt = Date.now();
       progress.runs++;
       publish();
-      const result = await execute(config, dir);
+      const result = await execute(config, dir, progress.runs);
       progress.outcome = result.outcome;
       progress.directive = result.directive;
       progress.finishedAt = Date.now();

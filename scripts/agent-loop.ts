@@ -16,7 +16,18 @@ const HANDSHAKE_POLL_MS = 25;
 const MAX_LOG_BYTES = 64 * 1024;
 const MAX_MESSAGE_BYTES = 64 * 1024;
 const OUTCOMES = new Set<SteeringOutcome>(['applied', 'deferred', 'blocked']);
-interface Input { verb: string; options: Map<string, string>; argv: string[]; cancel: boolean; all: boolean; requireResult: boolean }
+interface Input { verb: string; options: Map<string, string>; argv: string[]; warmArgv: string[]; cancel: boolean; all: boolean; requireResult: boolean }
+
+// A `:::` token in the start command splits it into the cold argv (run 1) and the warm argv (runs 2+).
+const WARM_SENTINEL = ':::';
+function splitWarm(argv: string[]): { argv: string[]; warmArgv: string[] } {
+  const at = argv.indexOf(WARM_SENTINEL);
+  if (at < 0) return { argv, warmArgv: [] };
+  const warmArgv = argv.slice(at + 1);
+  if (!warmArgv[0]) throw new Error('start: `:::` must be followed by the warm command');
+  if (/\.(cmd|bat)$/i.test(warmArgv[0])) throw new Error('Warm command must be an executable, not a .cmd/.bat shell script');
+  return { argv: argv.slice(0, at), warmArgv };
+}
 
 function allowedOptions(verb: string): string[] {
   if (verb === 'start') return ['--cwd', '--interval', '--timeout', '--lifetime', '--max-failures'];
@@ -34,6 +45,7 @@ function parse(args: string[]): Input {
   const verb = args.shift() || '';
   if (!['start', 'status', 'stop', 'logs', 'steer', 'inbox', 'ack', 'supervise'].includes(verb)) throw new Error('Usage: agent-loop.ts start|status|stop|logs|steer|inbox|ack --cwd PATH [options] [-- CMD ARG...]');
   let argv: string[] = [];
+  let warmArgv: string[] = [];
   const options = new Map<string, string>();
   let cancel = false;
   let all = false;
@@ -42,7 +54,9 @@ function parse(args: string[]): Input {
     const key = args.shift()!;
     if (key === '--') {
       if (verb !== 'start') throw new Error('Only start accepts command arguments');
-      argv = args.splice(0);
+      const split = splitWarm(args.splice(0));
+      argv = split.argv;
+      warmArgv = split.warmArgv;
       break;
     }
     if (key === '--cancel' && verb === 'stop' && !cancel) { cancel = true; continue; }
@@ -51,7 +65,7 @@ function parse(args: string[]): Input {
     addOption(options, key, args.shift(), verb);
   }
   if (verb !== 'start' && argv.length) throw new Error('Only start accepts command arguments');
-  return { verb, options, argv, cancel, all, requireResult };
+  return { verb, options, argv, warmArgv, cancel, all, requireResult };
 }
 
 function configuration(input: Input, target: ReturnType<typeof location>): Config {
@@ -62,8 +76,10 @@ function configuration(input: Input, target: ReturnType<typeof location>): Confi
   if (!Number.isSafeInteger(maxFailures) || maxFailures < 1) throw new Error('max-failures must be a positive integer');
   if (!input.argv[0]) throw new Error('start requires -- CMD ARG...');
   if (/\.(cmd|bat)$/i.test(input.argv[0])) throw new Error('Command must be an executable, not a .cmd/.bat shell script');
+  const warmArgv = input.warmArgv.length ? input.warmArgv : undefined;
   return { cwd: target.cwd, unit: target.unit, generation: randomUUID(), argv: input.argv,
-    interval, timeout, expiresAt: Date.now() + lifetime, maxFailures, requireResult: input.requireResult };
+    interval, timeout, expiresAt: Date.now() + lifetime, maxFailures, requireResult: input.requireResult,
+    warmArgv, session: warmArgv ? randomUUID() : undefined };
 }
 
 function status(dir: string): object {

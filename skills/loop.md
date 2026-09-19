@@ -183,6 +183,29 @@ semantic distinction by reducing every terminal outcome to `reason: stopped`.
 Grant the child access only to that private result path when its sandbox requires
 an explicit writable path. Explicit command loops that already use meaningful
 process exit codes may omit this protocol.
+
+**Session continuity (opt-in, cuts per-run token cost).** A fresh agent each run
+re-reads its whole context (repo instructions, handoff, playbook) and re-probes
+capabilities — a large cold-start tax paid every interval. To avoid it, split the
+start command with a `:::` sentinel into a COLD command (run 1, full prompt) and a
+WARM command (runs 2+, a short continuation prompt), and let the agent keep one
+conversation: the driver mints a session id and substitutes it for every
+`{{SESSION}}` token in either command, so the child sets the id once and resumes it
+after. The warm run inherits the cold run's context and prompt cache instead of
+rebuilding it. The result/steering/timeout protocol is unchanged.
+
+```text
+node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --require-result -- \
+  claude -p "<FULL cold-start prompt: read repo instructions + handoff, probe, work, write result>" --session-id {{SESSION}} --permission-mode <mode> \
+  ::: \
+  claude -p "<SHORT warm prompt: read the steering inbox + handoff delta, keep working to the timeout, write result>" --resume {{SESSION}} --permission-mode <mode>
+```
+
+Without a `:::` sentinel the behavior is unchanged (the same command runs cold each
+interval). Keep the warm prompt self-sufficient anyway: a run may be the first after
+a supervisor restart, and steering/handoff remain the durable memory the session
+must reconcile. `--fork-session` is available if a run should branch rather than
+extend the thread.
 An explicitly selected session can be resumed with supported options; never use
 a global “latest session” selector that might pick unrelated work.
 On Windows use an actual `.exe`, or `node.exe` plus the installed CLI's JavaScript
