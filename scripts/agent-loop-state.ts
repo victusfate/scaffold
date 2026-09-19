@@ -18,6 +18,12 @@ export interface Config {
   cwd: string; unit: string; generation: string; argv: string[];
   interval: number; timeout: number; expiresAt: number; maxFailures: number;
   requireResult: boolean;
+  // Session continuity (opt-in): when a `:::` sentinel splits the start argv, `argv` is the COLD
+  // command (run 1, full context) and `warmArgv` is the WARM command (runs 2+, a short continuation
+  // prompt). `session` is a driver-minted id substituted for the `{{SESSION}}` token in either argv,
+  // so the child can set it once (`--session-id {{SESSION}}`) and resume it thereafter
+  // (`--resume {{SESSION}}`), keeping its context/prompt cache warm instead of cold-reading each run.
+  warmArgv?: string[]; session?: string;
 }
 export interface AgentDirective {
   status: 'continue' | 'complete' | 'blocked';
