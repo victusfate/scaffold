@@ -170,13 +170,16 @@ Use `--require-result` for agent-driven work. The driver supplies the writable
 child writes one JSON object there:
 
 ```json
-{"status":"continue|complete|blocked","summary":"concrete progress or blocker"}
+{"status":"continue|complete|blocked","summary":"concrete progress or blocker","resume":"<optional id for next run's {{SESSION}}>"}
 ```
 
 The summary must be a nonempty description of concrete progress, completion, or
 the blocker. `continue` schedules another run, `complete` ends the recurrence
 successfully, and `blocked` ends it with the typed directive and summary visible
-in status. A missing, empty, malformed, or unknown result fails closed instead
+in status. The optional `resume` string is the capture path for session continuity
+(see below): when present, the driver substitutes it for `{{SESSION}}` on the next
+run, overriding the minted id. When absent, the minted id is kept. A missing, empty,
+malformed, or unknown result fails closed instead
 of treating exit code zero as progress.
 The scheduled child must not also invoke `agent-loop stop`: doing so erases the
 semantic distinction by reducing every terminal outcome to `reason: stopped`.
@@ -189,17 +192,53 @@ re-reads its whole context (repo instructions, handoff, playbook) and re-probes
 capabilities — a large cold-start tax paid every interval. To avoid it, split the
 start command with a `:::` sentinel into a COLD command (run 1, full prompt) and a
 WARM command (runs 2+, a short continuation prompt), and let the agent keep one
-conversation: the driver mints a session id and substitutes it for every
-`{{SESSION}}` token in either command, so the child sets the id once and resumes it
-after. The warm run inherits the cold run's context and prompt cache instead of
-rebuilding it. The result/steering/timeout protocol is unchanged.
+conversation: the driver substitutes the effective session id for every
+`{{SESSION}}` token in either command. The warm run inherits the cold run's context
+and prompt cache instead of rebuilding it. The result/steering/timeout protocol is unchanged.
+
+Two paths feed `{{SESSION}}`, and the driver knows nothing CLI-specific about either:
+
+- **Pre-set path (CLIs that accept a caller-chosen id).** The driver mints a uuid at
+  `start` time. The child sets it once on the cold run and resumes it on warm runs.
+  No `resume` field needed — when a run omits `resume`, the minted id is kept.
+- **Capture path (CLIs that generate their own id).** The child reports the
+  CLI-generated id as `"resume"` in its result object. The driver stores it and
+  substitutes it for `{{SESSION}}` on the NEXT run, overriding the minted id.
+  The cold command ignores `{{SESSION}}` (there is nothing to resume yet); the warm
+  command resumes `{{SESSION}}`.
+
+Per-harness cold/warm argv (verified headless; keep each warm prompt self-sufficient —
+a run may be the first after a supervisor restart, and steering/handoff remain the
+durable memory the session must reconcile):
 
 ```text
+# Claude Code — pre-set path (driver-minted id set once, resumed after)
 node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --require-result -- \
-  claude -p "<FULL cold-start prompt: read repo instructions + handoff, probe, work, write result>" --session-id {{SESSION}} --permission-mode <mode> \
+  claude -p "<FULL cold-start prompt>" --session-id {{SESSION}} --permission-mode <mode> \
   ::: \
-  claude -p "<SHORT warm prompt: read the steering inbox + handoff delta, keep working to the timeout, write result>" --resume {{SESSION}} --permission-mode <mode>
+  claude -p "<SHORT warm prompt>" --resume {{SESSION}} --permission-mode <mode>
+
+# pi.dev — pre-set path (same shape; verified: cold creates the session file,
+# warm with the same id resumes it and recalls prior context)
+node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --require-result -- \
+  pi -p --session-id {{SESSION}} "<FULL cold-start prompt>" \
+  ::: \
+  pi -p --session-id {{SESSION}} "<SHORT warm prompt>"
+
+# Codex — capture path (first run generates thread_id; child reports it as resume)
+# Cold: run with --json, extract thread.started thread_id, write it as "resume".
+# Warm: resume the captured id explicitly — never --last (it may pick unrelated work).
+node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --require-result -- \
+  codex exec "<FULL cold-start prompt>" \
+  ::: \
+  codex exec resume {{SESSION}} "<SHORT warm prompt>"
 ```
+
+Codex cold-run wrapper sketch: `codex exec --json "<FULL>"` emits
+`{"type":"thread.started","thread_id":"<id>"}` on stdout; the wrapper captures that
+id and writes `{"status":"continue","summary":"...","resume":"<thread_id>"}` to
+`$SCAFFOLD_AGENT_LOOP_RESULT`. From run 2 on, the driver substitutes the captured
+id for `{{SESSION}}` in the warm command above.
 
 Without a `:::` sentinel the behavior is unchanged (the same command runs cold each
 interval). Keep the warm prompt self-sufficient anyway: a run may be the first after

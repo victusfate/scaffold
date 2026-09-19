@@ -20,6 +20,10 @@ export async function supervise(dir: string, generation: string): Promise<void> 
   const heartbeat = setInterval(publish, HEARTBEAT_MS);
   let next = Date.now() + HEARTBEAT_MS;
   let terminalReason: string | undefined;
+  // Effective session id for `{{SESSION}}` substitution. Starts as the minted pre-set id;
+  // a run's reported `resume` (capture path for CLIs that generate their own id) overrides it
+  // for all subsequent runs and is persisted to config.json so status shows it and restarts recover.
+  let session = config.session;
   try {
     while (!stopRequest(dir, generation) && Date.now() < config.expiresAt && progress.failures < config.maxFailures) {
       if (Date.now() < next) { await delay(Math.min(HEARTBEAT_MS, next - Date.now())); continue; }
@@ -27,7 +31,12 @@ export async function supervise(dir: string, generation: string): Promise<void> 
       progress.startedAt = Date.now();
       progress.runs++;
       publish();
-      const result = await execute(config, dir, progress.runs);
+      const result = await execute(config, dir, progress.runs, session);
+      if (result.directive?.resume) {
+        session = result.directive.resume;
+        config.session = session;
+        save(dir, 'config.json', config);
+      }
       progress.outcome = result.outcome;
       progress.directive = result.directive;
       progress.finishedAt = Date.now();
