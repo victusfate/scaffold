@@ -21,15 +21,17 @@ function isDirectiveStatus(value: unknown): value is AgentDirective['status'] {
   return value === 'continue' || value === 'complete' || value === 'blocked';
 }
 
-function readDirective(path: string): AgentDirective | undefined {
+export function readDirective(path: string): AgentDirective | undefined {
   if (!existsSync(path)) return;
   try {
     const value = JSON.parse(readFileSync(path, 'utf8')) as unknown;
     if (!isRecord(value)) return;
-    const { status, summary } = value;
+    const { status, summary, resume } = value;
     if (!isDirectiveStatus(status)) return;
     if (typeof summary !== 'string' || !summary.trim()) return;
-    return { status, summary: summary.trim() };
+    const directive: AgentDirective = { status, summary: summary.trim() };
+    if (typeof resume === 'string' && resume.trim()) directive.resume = resume.trim();
+    return directive;
   } catch { return; }
 }
 
@@ -56,19 +58,23 @@ async function terminate(child: ChildProcess): Promise<void> {
 }
 
 // Pick the cold argv on run 1 and the warm argv (when configured) on later runs, then substitute the
-// minted session id for every `{{SESSION}}` token so the child can set the id once and resume it after.
-export function runArgv(config: Config, run: number): string[] {
+// effective session id for every `{{SESSION}}` token. `sessionOverride` is the capture path: a previous
+// run's reported `resume` id, which takes precedence over the minted `config.session` (the pre-set path).
+// Settable-id CLIs (claude, pi) use the minted id directly; capture-id CLIs (codex) report the
+// CLI-generated id back so the next run can resume it — the driver still knows nothing CLI-specific.
+export function runArgv(config: Config, run: number, sessionOverride?: string): string[] {
   const base = run > 1 && config.warmArgv?.length ? config.warmArgv : config.argv;
-  return config.session ? base.map(token => token.split('{{SESSION}}').join(config.session!)) : base;
+  const session = sessionOverride ?? config.session;
+  return session ? base.map(token => token.split('{{SESSION}}').join(session)) : base;
 }
 
-export async function execute(config: Config, dir: string, run = 1): Promise<ExecutionResult> {
+export async function execute(config: Config, dir: string, run = 1, sessionOverride?: string): Promise<ExecutionResult> {
   const log = join(dir, 'output.log');
   const resultPath = join(dir, RESULT_FILE);
   rmSync(resultPath, { force: true });
   if (existsSync(log)) renameSync(log, join(dir, 'previous.log'));
   const fd = openSync(log, 'w', 0o600);
-  const argv = runArgv(config, run);
+  const argv = runArgv(config, run, sessionOverride);
   const child = spawn(argv[0], argv.slice(1), {
     cwd: config.cwd, stdio: ['ignore', fd, fd], detached: process.platform !== 'win32', windowsHide: true,
     env: { ...process.env, SCAFFOLD_AGENT_LOOP_RESULT: resultPath },

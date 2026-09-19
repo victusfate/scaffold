@@ -1,11 +1,14 @@
 // Fast public CLI validation tests, independent of scheduler services.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { duration } from './agent-loop-state.ts';
 import type { Config } from './agent-loop-state.ts';
-import { runArgv } from './agent-loop-process.ts';
+import { execute, runArgv } from './agent-loop-process.ts';
 
 const cli = fileURLToPath(new URL('./agent-loop.ts', import.meta.url));
 
@@ -26,6 +29,51 @@ void test('runArgv without warm/session keeps the original argv every run', () =
   const config = baseConfig({ argv: ['echo', 'hi'] });
   assert.deepEqual(runArgv(config, 1), ['echo', 'hi']);
   assert.deepEqual(runArgv(config, 5), ['echo', 'hi']);
+});
+void test('runArgv capture path: session override wins over the minted id', () => {
+  const config = baseConfig({
+    warmArgv: ['codex', 'exec', 'resume', '{{SESSION}}', 'WARM'], session: 'minted-uuid',
+  });
+  // Cold run ignores the override (nothing captured yet); warm runs use the captured id.
+  assert.deepEqual(runArgv(config, 1, undefined), ['claude', '-p', '--session-id', 'minted-uuid', 'COLD']);
+  assert.deepEqual(runArgv(config, 2, 'captured-thread-id'),
+    ['codex', 'exec', 'resume', 'captured-thread-id', 'WARM']);
+  assert.deepEqual(runArgv(config, 9, 'captured-thread-id'),
+    ['codex', 'exec', 'resume', 'captured-thread-id', 'WARM']);
+});
+void test('execute captures the reported resume id and substitutes it on the next run', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'agent-loop-resume-'));
+  try {
+    const config = baseConfig({
+      cwd: dir,
+      argv: ['codex', 'exec', 'COLD'],
+      warmArgv: ['codex', 'exec', 'resume', '{{SESSION}}', 'WARM'],
+      session: 'minted-uuid', timeout: 10_000,
+    });
+    // Run 1 (cold): child reports the CLI-generated id via `resume`.
+    const coldChild = [
+      "const {writeFileSync}=require('fs');",
+      "writeFileSync(process.env.SCAFFOLD_AGENT_LOOP_RESULT,",
+      " JSON.stringify({status:'continue',summary:'cold work',resume:'thread-abc'}));",
+    ].join(' ');
+    const cold = await execute({ ...config, argv: [process.execPath, '-e', coldChild] }, dir, 1, undefined);
+    assert.equal(cold.directive?.resume, 'thread-abc');
+    // Next run's warm argv must carry the captured id, not the minted one.
+    assert.deepEqual(runArgv(config, 2, cold.directive?.resume),
+      ['codex', 'exec', 'resume', 'thread-abc', 'WARM']);
+    // Blank resume is ignored (pre-set path unchanged).
+    const blankChild = [
+      "const {writeFileSync}=require('fs');",
+      "writeFileSync(process.env.SCAFFOLD_AGENT_LOOP_RESULT,",
+      " JSON.stringify({status:'continue',summary:'warm work',resume:'  '}));",
+    ].join(' ');
+    const warmConfig = baseConfig({
+      cwd: dir, argv: [process.execPath, '-e', blankChild], timeout: 10_000,
+    });
+    const warm = await execute(warmConfig, dir, 1, 'thread-abc');
+    assert.equal(warm.directive?.resume, undefined);
+    assert.deepEqual(warm.directive, { status: 'continue', summary: 'warm work' });
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 void test('start rejects a warm command that is a shell launcher after the ::: sentinel', () => {
   const args = ['--interval', '1s', '--', 'true', ':::', 'warm.cmd'];

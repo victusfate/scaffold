@@ -20,14 +20,21 @@ export interface Config {
   requireResult: boolean;
   // Session continuity (opt-in): when a `:::` sentinel splits the start argv, `argv` is the COLD
   // command (run 1, full context) and `warmArgv` is the WARM command (runs 2+, a short continuation
-  // prompt). `session` is a driver-minted id substituted for the `{{SESSION}}` token in either argv,
-  // so the child can set it once (`--session-id {{SESSION}}`) and resume it thereafter
-  // (`--resume {{SESSION}}`), keeping its context/prompt cache warm instead of cold-reading each run.
+  // prompt). `session` starts as a driver-minted id substituted for the `{{SESSION}}` token in either argv
+  // (pre-set path: `--session-id {{SESSION}}` then `--resume {{SESSION}}`). A run may instead report
+  // `"resume"` in its result (capture path for CLIs that generate their own id, e.g. codex thread_id);
+  // the runner then overwrites `session` so the next run resumes the captured id. Persisted to
+  // config.json so status shows the effective id and restarts recover it.
   warmArgv?: string[]; session?: string;
 }
 export interface AgentDirective {
   status: 'continue' | 'complete' | 'blocked';
   summary: string;
+  // Capture path (complements the pre-set {{SESSION}} path): when a run reports
+  // `resume`, the driver substitutes it for `{{SESSION}}` on the NEXT run,
+  // overriding the minted id. Lets CLIs that generate their own session id
+  // (codex thread_id, pi session file) participate without driver CLI knowledge.
+  resume?: string;
 }
 export interface Progress {
   runs: number; failures: number; running: boolean; startedAt?: number;
