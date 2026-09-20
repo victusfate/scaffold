@@ -149,12 +149,17 @@ process. **Recurrence** and **publication** are separate concerns:
   1. **Native self-continuation** (harnesses with a session-scoped wakeup / dynamic mode, e.g.
      Claude Code, pi.dev pre-set): the orchestrating agent *is* the loop — the same session
      re-scheduled — and it **dies with the orchestrator**. No separate process at all. Prefer this
-     wherever the harness has it.
+     wherever the harness has it. **On Claude Code this is the built-in loop; the external driver
+     below does not replace or override it.** Reach for the driver on Claude only when you need a
+     loop that survives the session fully closing (out-of-session persistence) — that *extends* the
+     built-in loop with an out-of-session worker, it does not overshadow it.
   2. **External driver** (harnesses with no native continuation, e.g. Codex capture-path): the
      portable `agent-loop.ts` supervisor (below) provides the recurrence, because otherwise those
      harnesses cannot run a loop. It runs strictly as a **worker** — its runs commit locally and
      **never push/merge/deploy**; a human or primary session remains the orchestrator and the sole
      publisher. It is a recurrence mechanism, not the independent pusher the invariant forbids.
+     Verified with Claude as the child: cold `claude -p --session-id {{SESSION}}` → warm
+     `claude -p --resume {{SESSION}}` recalls context, and the driver spawns/steers/stops it cleanly.
 
 An unattended overnight run is the same invariant with no human watching: whoever owns publication
 is a single writer, and no detached process publishes on its own. With native self-continuation,
