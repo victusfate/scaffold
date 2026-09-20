@@ -134,29 +134,27 @@ ship half-integrated work. So, in this model:
 - This is the same no-race principle the isolation rules apply to lifecycle, extended
   to publication: exactly one writer reaches the remote, and it is the parent.
 
-Reserve autonomous publication (a loop that pushes its own batches) for the case where
-there is **no** active parent orchestrator — a genuinely unattended run that is the sole
-owner. When a parent is present or may return, keep the loop local-only and let the
-parent publish. Consumers select the model in the loop's captured prompt/contract; state
-it explicitly there so a fresh child does not assume publication authority it lacks.
+This is **one lifecycle, not two**: the orchestrator **owns the loop**. The loop is the
+orchestrator's own self-continuation — the same session re-scheduled via wakeups / a dynamic
+mode — and it **dies with the orchestrator**. There is no detached supervisor or daemon that
+spawns independent runs or outlives the session, because a surviving daemon is exactly the
+second, independent pusher this rule exists to remove.
 
-Two shapes satisfy this, and both share the one publication rule (workers never publish):
+Concretely, the orchestrator (the interactive session, or any primary agent interface):
 
-1. **Detached-driver-as-worker** (above): a scheduled external driver spawns loop runs that
-   forge in worktrees and commit locally; a separate parent orchestrator merges + publishes.
-2. **Primary-agent-as-orchestrator**: the interactive session (or any primary agent interface)
-   *is* the orchestrator. It spawns forge **workers directly** (native subagents / explicit
-   worktrees — commit-local, no push), then merges, gates, and publishes itself (regular branch
-   pushes plus the merge-to-main + deploy cadence). For continuity it drives the loop in a
-   **self-continuation / dynamic mode** — the same session re-scheduled via wakeups — rather than
-   a detached supervisor that spawns *independent* runs. There is no background process that pushes
-   on its own, so the two-pushers race cannot arise; the tradeoff is that orchestration is tied to
-   the session's lifetime (a fully-closed session pauses publishing until a new one, whereas a
-   detached daemon would survive — but a daemon is exactly the independent pusher this rule removes).
+- spawns forge **workers directly** (native subagents / explicit worktrees) that forge/edit in
+  isolation, commit to their own local branch, and **never push**;
+- merges the completed worktrees into the one working branch, runs the gates, and is the
+  **single pusher** — every branch push, every merge-to-main, and every deploy;
+- keeps itself alive across steps by re-scheduling *itself*, never by handing the loop to a
+  background process that runs on its own.
 
-Prefer shape 2 when a human/primary agent is in the loop and wants direct control; prefer shape 1
-for long unattended autonomy. Either way, exactly one entity reaches the remote, and it is the
-orchestrator — never a forge worker.
+An unattended overnight run is the **same shape with no human watching**: still an orchestrator
+session that owns its loop and stops when the session ends — not a daemon that survives it.
+Trading the surviving daemon away means publishing pauses when the session fully closes (a fresh
+session resumes it); that pause is the intended cost of having exactly **one session-scoped
+writer** reach the remote. Workers never publish, in any case — exactly one entity reaches the
+remote, and it is the orchestrator.
 
 Use an exposed native recurring scheduler if it supports the requested behavior.
 For editing jobs it must prevent overlapping runs in the same checkout; otherwise
