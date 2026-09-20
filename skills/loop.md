@@ -115,6 +115,31 @@ orchestrator appears to overlap this checkout, leave it untouched, stop dispatch
 new work in the current session, and report the ownership conflict. Queue lease
 recovery changes queue metadata only; it never authorizes an OS signal.
 
+### Publication authority stays with the parent orchestrator
+
+Prefer the **loop-as-worker** model: a scheduled loop run, and the subagents it
+spawns, do bounded work and **commit locally only**. Pushing to a shared remote,
+merging into a protected branch, and deploying are **publication** actions reserved
+to the parent orchestrator (the interactive session that owns the checkout). A loop
+child that pushes/merges/deploys on its own races the parent — two writers on one
+branch diverge (a non-fast-forward push, a dirty merge), and a concurrent deploy can
+ship half-integrated work. So, in this model:
+
+- The loop run forges/edits in isolated worktrees, commits to its own local branch,
+  and **reports**. It does not `git push`, does not merge to the integration/main
+  branch, and does not deploy.
+- The parent orchestrator consumes that work: it merges the completed worktrees into
+  the one working branch locally, runs the gates, and is the **single pusher** — it
+  batches pushes and owns every merge-to-main and deploy.
+- This is the same no-race principle the isolation rules apply to lifecycle, extended
+  to publication: exactly one writer reaches the remote, and it is the parent.
+
+Reserve autonomous publication (a loop that pushes its own batches) for the case where
+there is **no** active parent orchestrator — a genuinely unattended run that is the sole
+owner. When a parent is present or may return, keep the loop local-only and let the
+parent publish. Consumers select the model in the loop's captured prompt/contract; state
+it explicitly there so a fresh child does not assume publication authority it lacks.
+
 Use an exposed native recurring scheduler if it supports the requested behavior.
 For editing jobs it must prevent overlapping runs in the same checkout; otherwise
 use the external driver or report the unsupported requirement.
