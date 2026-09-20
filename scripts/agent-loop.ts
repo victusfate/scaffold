@@ -160,7 +160,17 @@ async function launch(config: Config, dir: string): Promise<void> {
     if (spawnError) { rmSync(lease, { recursive: true }); throw spawnError; }
     const progress = readProgress(dir);
     if (progress.generation === config.generation && progress.ready && alive(progress)) return;
-    if (child.exitCode !== null) throw new Error('Supervisor exited before startup handshake; inspect supervisor.log');
+    if (child.exitCode !== null) {
+      // A fast loop can start, run its whole (short) job, and exit before we ever observe
+      // `ready && alive` — notably on Windows, where spawn/startup jitter can exceed the tiny
+      // ready→ended window, so the first readable progress.json already says `ended` (and
+      // `alive()` is false because ended). Re-read: a terminal state for THIS generation means
+      // the supervisor started and simply already finished — a successful launch, not a failure.
+      // Only an exit with no matching ended progress is a genuine before-handshake death.
+      const final = readProgress(dir);
+      if (final.generation === config.generation && final.ended) return;
+      throw new Error('Supervisor exited before startup handshake; inspect supervisor.log');
+    }
     await delay(HANDSHAKE_POLL_MS);
   }
   save(dir, 'stopped.json', { generation: config.generation, cancel: true });

@@ -134,27 +134,33 @@ ship half-integrated work. So, in this model:
 - This is the same no-race principle the isolation rules apply to lifecycle, extended
   to publication: exactly one writer reaches the remote, and it is the parent.
 
-This is **one lifecycle, not two**: the orchestrator **owns the loop**. The loop is the
-orchestrator's own self-continuation — the same session re-scheduled via wakeups / a dynamic
-mode — and it **dies with the orchestrator**. There is no detached supervisor or daemon that
-spawns independent runs or outlives the session, because a surviving daemon is exactly the
-second, independent pusher this rule exists to remove.
+The invariant is **one publisher, never a detached one**: exactly one entity — the orchestrator
+— pushes, merges to a protected branch, and deploys. What the orchestrator removes is a detached
+daemon that *publishes on its own* (an independent second pusher), **not** every background
+process. **Recurrence** and **publication** are separate concerns:
 
-Concretely, the orchestrator (the interactive session, or any primary agent interface):
+- **Publication** is orchestrator-only, always. The orchestrator (the interactive session, or any
+  primary agent interface) spawns forge **workers** (native subagents / explicit worktrees) that
+  forge/edit in isolation, commit to their own local branch, and **never push**; it then merges the
+  completed worktrees into the one working branch, runs the gates, and is the **single pusher** —
+  every branch push, every merge-to-main, every deploy.
+- **Recurrence** is provided by whichever mechanism the harness supports, and either way it is a
+  worker, never a publisher:
+  1. **Native self-continuation** (harnesses with a session-scoped wakeup / dynamic mode, e.g.
+     Claude Code, pi.dev pre-set): the orchestrating agent *is* the loop — the same session
+     re-scheduled — and it **dies with the orchestrator**. No separate process at all. Prefer this
+     wherever the harness has it.
+  2. **External driver** (harnesses with no native continuation, e.g. Codex capture-path): the
+     portable `agent-loop.ts` supervisor (below) provides the recurrence, because otherwise those
+     harnesses cannot run a loop. It runs strictly as a **worker** — its runs commit locally and
+     **never push/merge/deploy**; a human or primary session remains the orchestrator and the sole
+     publisher. It is a recurrence mechanism, not the independent pusher the invariant forbids.
 
-- spawns forge **workers directly** (native subagents / explicit worktrees) that forge/edit in
-  isolation, commit to their own local branch, and **never push**;
-- merges the completed worktrees into the one working branch, runs the gates, and is the
-  **single pusher** — every branch push, every merge-to-main, and every deploy;
-- keeps itself alive across steps by re-scheduling *itself*, never by handing the loop to a
-  background process that runs on its own.
-
-An unattended overnight run is the **same shape with no human watching**: still an orchestrator
-session that owns its loop and stops when the session ends — not a daemon that survives it.
-Trading the surviving daemon away means publishing pauses when the session fully closes (a fresh
-session resumes it); that pause is the intended cost of having exactly **one session-scoped
-writer** reach the remote. Workers never publish, in any case — exactly one entity reaches the
-remote, and it is the orchestrator.
+An unattended overnight run is the same invariant with no human watching: whoever owns publication
+is a single writer, and no detached process publishes on its own. With native self-continuation,
+publishing pauses when the session fully closes (a fresh session resumes it) — the intended cost of
+one session-scoped writer; with the external driver, the worker keeps forging locally and the
+orchestrator publishes its batches when it next runs.
 
 Use an exposed native recurring scheduler if it supports the requested behavior.
 For editing jobs it must prevent overlapping runs in the same checkout; otherwise
