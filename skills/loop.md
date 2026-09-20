@@ -140,6 +140,24 @@ owner. When a parent is present or may return, keep the loop local-only and let 
 parent publish. Consumers select the model in the loop's captured prompt/contract; state
 it explicitly there so a fresh child does not assume publication authority it lacks.
 
+Two shapes satisfy this, and both share the one publication rule (workers never publish):
+
+1. **Detached-driver-as-worker** (above): a scheduled external driver spawns loop runs that
+   forge in worktrees and commit locally; a separate parent orchestrator merges + publishes.
+2. **Primary-agent-as-orchestrator**: the interactive session (or any primary agent interface)
+   *is* the orchestrator. It spawns forge **workers directly** (native subagents / explicit
+   worktrees — commit-local, no push), then merges, gates, and publishes itself (regular branch
+   pushes plus the merge-to-main + deploy cadence). For continuity it drives the loop in a
+   **self-continuation / dynamic mode** — the same session re-scheduled via wakeups — rather than
+   a detached supervisor that spawns *independent* runs. There is no background process that pushes
+   on its own, so the two-pushers race cannot arise; the tradeoff is that orchestration is tied to
+   the session's lifetime (a fully-closed session pauses publishing until a new one, whereas a
+   detached daemon would survive — but a daemon is exactly the independent pusher this rule removes).
+
+Prefer shape 2 when a human/primary agent is in the loop and wants direct control; prefer shape 1
+for long unattended autonomy. Either way, exactly one entity reaches the remote, and it is the
+orchestrator — never a forge worker.
+
 Use an exposed native recurring scheduler if it supports the requested behavior.
 For editing jobs it must prevent overlapping runs in the same checkout; otherwise
 use the external driver or report the unsupported requirement.
