@@ -39,6 +39,10 @@ an actual work loop or install personal skills as part of developing this PR.
   with a terminal durable handle, or an operator, may explicitly release it.
 - Natural-language runs get an explicit durable handoff of the agreed scope,
   branch, authorization, and progress references, not assumed chat memory.
+- Codex recurrence uses a shipped TypeScript adapter. It requests a structured
+  status/summary response, captures the exact `thread.started.thread_id`, and
+  adds that ID to the driver result for the next warm run. It never selects a
+  global "latest" session or asks the model to write private driver state.
 - Defaults are finite lifetime 8h, per-run timeout 30min, three consecutive
   failures. All are configurable. A successful agent exit is not task completion.
 - Stop cancels future runs; explicit cancel also terminates current work. Stop
@@ -52,7 +56,7 @@ an actual work loop or install personal skills as part of developing this PR.
 
 ### Default steering extension
 
-Main orchestrators own recurrence; subagents are bounded workers, not schedulers.
+The recurring agent owns recurrence; subagents are bounded workers, not schedulers.
 Interactive agents forward task corrections to the active loop by default.
 Latest user steering overrides conflicting loop/queue/worker instructions at
 the next safe boundary; it is not an optional lower-priority suggestion.

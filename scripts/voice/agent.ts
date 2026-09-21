@@ -1,5 +1,6 @@
 // Voice-loop agent subprocess protocol. Called by voice-loop.ts; no audio or global writes.
 import { spawnSync } from 'node:child_process';
+import { codexThreadId, parseCodexEvent } from '../codex-jsonl.ts';
 
 interface AgentConfig {
   name: 'claude' | 'codex';
@@ -8,14 +9,6 @@ interface AgentConfig {
 }
 
 interface Reply { reply: string; sessionId: string | null }
-interface CodexEvent {
-  type?: string;
-  thread_id?: string;
-  message?: string;
-  error?: { message?: string };
-  item?: { type?: string; text?: string };
-}
-
 export function agentConfig(env = process.env): AgentConfig {
   const name = env.VOICE_AGENT ?? 'claude';
   if (name !== 'claude' && name !== 'codex')
@@ -31,15 +24,11 @@ function codexReply(stdout: string, sessionId: string | null): Reply {
   let reply = '';
   let completed = false;
   for (const line of stdout.split('\n').filter(line => line.trim())) {
-    const event = JSON.parse(line) as CodexEvent | null;
-    if (!event || typeof event.type !== 'string') throw new Error('Invalid Codex event');
-    if (event.type === 'thread.started' && typeof event.thread_id === 'string')
-      sessionId = event.thread_id;
+    const event = parseCodexEvent(line);
+    sessionId = codexThreadId(event) ?? sessionId;
     if (event.type === 'item.completed' && event.item?.type === 'agent_message'
       && typeof event.item.text === 'string') reply = event.item.text.trim();
     if (event.type === 'turn.completed') completed = true;
-    if (event.type === 'turn.failed' || event.type === 'error')
-      throw new Error(event.error?.message ?? event.message ?? 'Codex turn failed');
   }
   if (!completed || !reply || !sessionId) throw new Error('Incomplete Codex reply or missing session ID');
   return { reply, sessionId };

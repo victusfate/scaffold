@@ -59,7 +59,7 @@ Include these execution instructions in the agent prompt:
   spawning. Do not inspect other agent sessions for cleanup, duplicate surviving
   jobs, or reclaim live leases. Do not start a second
   orchestrator while a human/session is editing the same checkout.
-- Recurrence belongs to the main orchestrator by default. Subagents receive
+- Recurrence belongs to the recurring agent. Subagents receive
   bounded assignments and are monitored, retasked and joined by that agent;
   they do not arm independent loops. A worker asked to schedule recurrence
   returns that request to its parent rather than starting another driver.
@@ -67,7 +67,7 @@ Include these execution instructions in the agent prompt:
   or worker result returns), before dispatching more work, before publishing,
   and before exiting. Apply new direction before resuming the older agenda.
   Retask affected workers, update the durable handoff, then acknowledge each ID
-  with its disposition. Only the main orchestrator consumes steering; workers
+  with its disposition. Only the recurring agent consumes steering; workers
   follow its assignments. Include the exact `inbox` and `ack` commands below in
   the captured prompt, using the absolute helper and checkout paths.
 - User steering always supersedes conflicting captured loop instructions, queue
@@ -87,8 +87,10 @@ Include these execution instructions in the agent prompt:
   periodically while remaining responsive to steering.
 - If queue draining was requested, follow its skill and CLI for claims and
   completion, not direct queue-file edits or a replacement queue.
-- Integrate completed worktrees into the one active branch, validate, checkpoint,
-  and publish only within authorization. Refresh concrete next steps each run.
+- An external-driver run is instructed to leave completed worktree commits isolated
+  and report their branches and paths rather than merge or publish.
+  A native recurring primary may integrate or publish only within its existing
+  authorization. Refresh concrete next steps each run.
 - At the completion condition or a blocker requiring user direction, checkpoint
   and report `complete` or `blocked` through the structured result. When useful
   work remains and no terminal blocker exists, report `continue`. Do not call the
@@ -114,6 +116,42 @@ process-name matching, or PID inference to reconcile agent sessions. If another
 orchestrator appears to overlap this checkout, leave it untouched, stop dispatching
 new work in the current session, and report the ownership conflict. Queue lease
 recovery changes queue metadata only; it never authorizes an OS signal.
+
+### Publication and recurrence
+
+Each session has one **publisher**: the interactive primary that alone integrates
+into the working branch, pushes, merges to protected branches, and deploys. A
+**recurring agent** performs scheduled work. **Bounded workers**—subagents,
+worktrees, and external-driver runs—commit locally and report; they never publish
+or merge into the publisher's branch. This prevents a detached second writer from
+racing the primary while still allowing background work.
+
+This is an authorization contract, not credential isolation: the generic driver
+executes the reviewed argv with inherited process access. When publication must be
+technically impossible, run the external command with credentials and OS permissions
+that cannot push, merge remotely, or deploy.
+
+Recurrence uses one of two shapes:
+
+  1. **Native self-continuation** (harnesses with a session-scoped wakeup / dynamic mode, e.g.
+     Claude Code, pi.dev pre-set): the publisher is also the recurring agent—the same session
+     re-scheduled—and recurrence dies with that session. No separate process exists. Prefer this
+     wherever the harness has it. **On Claude Code this is the built-in loop; the external driver
+     below does not replace or override it.** Reach for the driver on Claude only when you need a
+     loop that survives the session fully closing; that extends the built-in loop with a bounded
+     external worker rather than overshadowing it.
+  2. **External driver** (harnesses with no native continuation, e.g. Codex capture-path): the
+     portable `agent-loop.ts` supervisor (below) provides the recurrence, because otherwise those
+     harnesses cannot run a loop. Its recurring agent is a bounded worker: it commits locally and
+     reports while the interactive primary remains the sole publisher.
+     Verified with Claude as the child: cold `claude -p --session-id {{SESSION}}` → warm
+     `claude -p --resume {{SESSION}}` recalls context, and the driver spawns/steers/stops it cleanly.
+
+An unattended overnight run is the same invariant with no human watching: whoever owns publication
+is a single writer, and no detached process publishes on its own. With native self-continuation,
+publishing pauses when the session fully closes (a fresh session resumes it) — the intended cost of
+one session-scoped writer; with the external driver, the bounded worker keeps forging locally and
+the publisher integrates its commits when it next runs.
 
 Use an exposed native recurring scheduler if it supports the requested behavior.
 For editing jobs it must prevent overlapping runs in the same checkout; otherwise
@@ -167,7 +205,8 @@ permission, trust, sandbox, or model configuration.
 
 Use `--require-result` for agent-driven work. The driver supplies the writable
 `SCAFFOLD_AGENT_LOOP_RESULT` path to each run. Before exiting successfully, the
-child writes one JSON object there:
+child command writes one JSON object there; a reviewed harness adapter may produce
+the same object from the agent's structured response:
 
 ```json
 {"status":"continue|complete|blocked","summary":"concrete progress or blocker","resume":"<optional id for next run's {{SESSION}}>"}
@@ -225,20 +264,24 @@ node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --req
   ::: \
   pi -p --session-id {{SESSION}} "<SHORT warm prompt>"
 
-# Codex — capture path (first run generates thread_id; child reports it as resume)
-# Cold: run with --json, extract thread.started thread_id, write it as "resume".
+# Codex — shipped capture adapter (first run generates thread_id)
+# The adapter owns --json, structured output and the private result file.
 # Warm: resume the captured id explicitly — never --last (it may pick unrelated work).
 node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --require-result -- \
-  codex exec "<FULL cold-start prompt>" \
+  node /absolute/scaffold/scripts/agent-loop-codex.ts codex -- --prompt "<FULL cold-start prompt>" \
   ::: \
-  codex exec resume {{SESSION}} "<SHORT warm prompt>"
+  node /absolute/scaffold/scripts/agent-loop-codex.ts codex -- resume {{SESSION}} --prompt "<SHORT warm prompt>"
 ```
 
-Codex cold-run wrapper sketch: `codex exec --json "<FULL>"` emits
-`{"type":"thread.started","thread_id":"<id>"}` on stdout; the wrapper captures that
-id and writes `{"status":"continue","summary":"...","resume":"<thread_id>"}` to
-`$SCAFFOLD_AGENT_LOOP_RESULT`. From run 2 on, the driver substitutes the captured
-id for `{{SESSION}}` in the warm command above.
+The shipped adapter asks Codex for a `status`/`summary` object, captures the
+`thread.started` ID from JSONL, validates both, and writes the private driver result
+with that ID as `resume`. From run 2 on, the driver substitutes the captured ID for
+`{{SESSION}}`. The adapter withholds the private result-file path from the Codex
+process; filesystem isolation still depends on the selected Codex sandbox and OS
+permissions. The adapter rejects caller-supplied output flags, `--ephemeral`, and `--last`; put reviewed
+Codex options between the first `--` and `--prompt`. On Windows use `codex.exe`,
+or place `node.exe` plus the installed Codex JavaScript entrypoint before the first
+`--`, rather than using a `.cmd` shim.
 
 Without a `:::` sentinel the behavior is unchanged (the same command runs cold each
 interval). Keep the warm prompt self-sufficient anyway: a run may be the first after
@@ -322,7 +365,7 @@ handoff/prompt (or record why the user superseded it), then acknowledge that
 disposition. This prevents recovery from silently returning to the old agenda.
 
 This is cooperative delivery, not a native chat interceptor. It cannot preempt an
-in-flight tool call. The chat agent must enqueue the update, and the main worker
+in-flight tool call. The chat agent must enqueue the update, and the recurring agent
 must have the polling instructions in its launch prompt. Do not silently alter
 arbitrary executable argv to add agent behavior. For a native scheduler, use its
 actual steering mechanism if available; otherwise report that steering delivery

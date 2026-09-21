@@ -53,6 +53,7 @@ export async function supervise(dir: string, generation: string): Promise<void> 
       next = Date.now() + config.interval;
     }
     progress.reason = terminalReason || (stopRequest(dir, generation) ? 'stopped' : progress.failures >= config.maxFailures ? 'failure limit' : 'lifetime expired');
+    progress.settled = true;
   } catch (error) {
     progress.reason = error instanceof Error ? error.message : String(error);
     throw error;
