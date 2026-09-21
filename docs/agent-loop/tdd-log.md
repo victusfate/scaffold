@@ -11,6 +11,17 @@
 - Focused result: 9 agent-loop CLI tests pass, including exact cold-to-warm resume,
   literal argv preservation, temporary-file cleanup, and fail-closed protocol cases.
 
+## PR 117 hardening — Slice 5: deterministic Windows cancellation
+
+- RED: Windows job `106145580985` failed when fixture cleanup found the supervisor
+  stale after the cooperating child cleared its own final interval.
+- GREEN: the long-running fixture now stays alive after acknowledging steering,
+  asserts that its supervisor and command remain active, and exits only through
+  the explicit driver-owned cancellation path.
+- Focused result: the full 13-test loop integration suite passes, followed by five
+  consecutive focused cooperating-child passes. Production stale-owner behavior
+  remains fail-closed and unchanged.
+
 ## Session-isolation correction — September 9
 
 - RED: a normally exiting loop command spawned one surviving descendant; the

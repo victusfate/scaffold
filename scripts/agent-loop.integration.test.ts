@@ -18,10 +18,10 @@ function cooperatingChild() {
   return [
     "const {spawnSync}=require('child_process'); const {writeFileSync}=require('fs');",
     "const [cli,cwd,receipt]=process.argv.slice(1);",
-    "const timer=setInterval(()=>{const inbox=JSON.parse(spawnSync(process.execPath,[cli,'inbox','--cwd',cwd],{encoding:'utf8'}).stdout);",
+    "setInterval(()=>{const inbox=JSON.parse(spawnSync(process.execPath,[cli,'inbox','--cwd',cwd],{encoding:'utf8'}).stdout);",
     "if(inbox.pending.length<2)return; const adopted=inbox.pending.at(-1).message; writeFileSync(receipt+'.adopted',adopted);",
     "const acknowledgments=inbox.pending.map(({id})=>{const ack=spawnSync(process.execPath,[cli,'ack','--cwd',cwd,'--id',id,'--outcome','applied'],{encoding:'utf8'}); if(ack.status!==0)throw Error(ack.stderr); return JSON.parse(ack.stdout)});",
-    "writeFileSync(receipt,JSON.stringify({adopted,acknowledgments})); clearInterval(timer)},50);",
+    "writeFileSync(receipt,JSON.stringify({adopted,acknowledgments}))},50);",
   ].join(' ');
 }
 async function assertFileStopsChanging(path: string) {
@@ -272,6 +272,9 @@ void test('a cooperating child polls and acknowledges file-backed steering', asy
     assert.deepEqual(result.acknowledgments.map(item => item.id), [first.id, second.id]);
     assert.equal(result.acknowledgments.at(-1)?.pending, 0);
     assert.equal(existsSync(join(f.cwd, 'BAD')), false);
+    const active = f.call(['status']);
+    assert.equal(active.supervisor, 'active');
+    assert.equal(active.running, true);
   } finally { await f.cleanup(); }
 });
 
