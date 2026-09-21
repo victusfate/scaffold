@@ -39,7 +39,7 @@ export interface AgentDirective {
 export interface Progress {
   runs: number; failures: number; running: boolean; startedAt?: number;
   finishedAt?: number; outcome?: string; generation?: string; pid?: number;
-  heartbeat?: number; ready?: boolean; ended?: boolean; reason?: string;
+  heartbeat?: number; ready?: boolean; ended?: boolean; settled?: boolean; reason?: string;
   directive?: AgentDirective;
 }
 export type SteeringOutcome = 'applied' | 'deferred' | 'blocked';
@@ -50,6 +50,11 @@ export interface SteeringRecord {
 interface Acknowledgement { generation: string; id: string; outcome: SteeringOutcome; note?: string }
 interface Inbox { records: SteeringRecord[] }
 export const EMPTY: Progress = { runs: 0, failures: 0, running: false };
+
+export function cleanTerminalStartup(progress: Progress, generation: string): boolean {
+  return progress.generation === generation && progress.ready === true
+    && progress.ended === true && progress.settled === true;
+}
 
 export function duration(value: string): number {
   const match = /^(\d+)(ms|s|m|min|h)$/.exec(value);
@@ -81,8 +86,10 @@ export function readProgress(dir: string): Progress {
 
 export function save(dir: string, name: string, value: unknown): void {
   const temp = join(dir, `${name}.${randomUUID()}.tmp`);
-  writeFileSync(temp, JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-  renameSync(temp, join(dir, name));
+  try {
+    writeFileSync(temp, JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
+    renameSync(temp, join(dir, name));
+  } finally { rmSync(temp, { force: true }); }
 }
 
 export function readInbox(dir: string): SteeringRecord[] {

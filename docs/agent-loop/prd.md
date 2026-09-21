@@ -31,7 +31,7 @@ TypeScript CLI, with durable command configuration and lifecycle controls.
 ## Implementation Decisions
 
 CLI verbs: start, status, stop, logs, plus an internal supervise entrypoint.
-Steering adds steer, inbox and ack. Only the main orchestrator polls/acknowledges;
+Steering adds steer, inbox and ack. Only the recurring agent polls/acknowledges;
 interactive agents route relevant steering by default. Workers remain bounded.
 Inputs: checkout, interval, lifetime, timeout, failure limit, and argv.
 Structured JSON on stdout; child output retained in private logs. Supervisor identity

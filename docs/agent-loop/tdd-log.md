@@ -8,8 +8,12 @@
   captures one exact thread ID, validates the agent directive, and atomically
   writes the driver result with `resume` while keeping private state outside the
   model sandbox.
-- Focused result: 9 agent-loop CLI tests pass, including exact cold-to-warm resume,
-  literal argv preservation, temporary-file cleanup, and fail-closed protocol cases.
+- Focused result after refactor: 8 fast CLI tests, 14 loop integration tests, and
+  4 voice-agent tests pass. Coverage includes exact cold-to-warm resume, literal
+  argv preservation, temporary-file cleanup, private-environment isolation, and
+  fail-closed protocol cases.
+- Authenticated Codex 0.154.0 probe: 2 runs, 0 failures, exact captured thread ID,
+  and a warm `complete` result whose summary matched the cold-turn nonce.
 
 ## PR 117 hardening — Slice 5: deterministic Windows cancellation
 

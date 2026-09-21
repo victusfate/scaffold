@@ -9,19 +9,21 @@ import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
 
 const cli = fileURLToPath(new URL('./agent-loop.ts', import.meta.url));
+const codexAdapter = fileURLToPath(new URL('./agent-loop-codex.ts', import.meta.url));
 interface Status {
   runs: number; failures: number; running: boolean; armed: boolean; ended: boolean;
   output: string; reason: string; log: string; supervisor: string;
+  session?: string;
   directive?: { status: 'continue' | 'complete' | 'blocked'; summary: string };
 }
 function cooperatingChild() {
   return [
     "const {spawnSync}=require('child_process'); const {writeFileSync}=require('fs');",
     "const [cli,cwd,receipt]=process.argv.slice(1);",
-    "setInterval(()=>{const inbox=JSON.parse(spawnSync(process.execPath,[cli,'inbox','--cwd',cwd],{encoding:'utf8'}).stdout);",
+    "const poll=setInterval(()=>{const inbox=JSON.parse(spawnSync(process.execPath,[cli,'inbox','--cwd',cwd],{encoding:'utf8'}).stdout);",
     "if(inbox.pending.length<2)return; const adopted=inbox.pending.at(-1).message; writeFileSync(receipt+'.adopted',adopted);",
     "const acknowledgments=inbox.pending.map(({id})=>{const ack=spawnSync(process.execPath,[cli,'ack','--cwd',cwd,'--id',id,'--outcome','applied'],{encoding:'utf8'}); if(ack.status!==0)throw Error(ack.stderr); return JSON.parse(ack.stdout)});",
-    "writeFileSync(receipt,JSON.stringify({adopted,acknowledgments}))},50);",
+    "writeFileSync(receipt,JSON.stringify({adopted,acknowledgments})); clearInterval(poll); setInterval(()=>{},1000)},50);",
   ].join(' ');
 }
 async function assertFileStopsChanging(path: string) {
@@ -46,8 +48,10 @@ function fixture() {
     child.once('error', reject);
     child.once('close', code => code === 0 ? resolve(JSON.parse(stdout) as Status) : reject(new Error(stderr)));
   });
-  const start = (script: string, options: string[] = [], args: string[] = []) => call(['start', '--interval', '50ms',
-    ...(options.includes('--lifetime') ? [] : ['--lifetime', '20s']), ...options, '--', process.execPath, '-e', script, ...args]);
+  const startArgv = (argv: string[], options: string[] = []) => call(['start', '--interval', '50ms',
+    ...(options.includes('--lifetime') ? [] : ['--lifetime', '20s']), ...options, '--', ...argv]);
+  const start = (script: string, options: string[] = [], args: string[] = []) =>
+    startArgv([process.execPath, '-e', script, ...args], options);
   const until = async (predicate: (value: Status) => boolean) => {
     const deadline = Date.now() + 12_000;
     while (Date.now() < deadline) {
@@ -77,7 +81,7 @@ function fixture() {
       return JSON.stringify(snapshots);
     } catch (error) { return `Supervisor evidence unavailable: ${String(error)}`; }
   };
-  return { cwd, call, callAsync, start, until, cleanup, diagnostics };
+  return { cwd, call, callAsync, start, startArgv, until, cleanup, diagnostics };
 }
 
 void test('external supervisor preserves argv, recurs, rejects duplicates and gracefully stops', async () => {
@@ -134,6 +138,47 @@ void test('required structured results distinguish progress, completion and bloc
     assert.equal(ended.reason, 'blocked');
     assert.equal(ended.failures, 1);
     assert.deepEqual(ended.directive, { status: 'blocked', summary: 'device unavailable' });
+  } finally { await f.cleanup(); }
+});
+
+void test('Codex adapter captures the cold thread and resumes that exact session', async () => {
+  const f = fixture();
+  const calls = join(f.cwd, 'codex-calls.jsonl');
+  const exact = 'codex-thread-117';
+  const prompt = 'literal $HOME; touch BAD `still data`';
+  const codexFixture = [
+    'const fs=require("node:fs");',
+    'const args=process.argv.slice(1),calls=args.shift(),mode=args.shift();',
+    'const outputAt=args.indexOf("-o"),schemaAt=args.indexOf("--output-schema"),resumeAt=args.indexOf("resume");',
+    'if(process.env.SCAFFOLD_AGENT_LOOP_RESULT||!args.includes("--json")||outputAt<0||schemaAt<0)process.exit(2);',
+    'const session=resumeAt<0?undefined:args[resumeAt+1]; fs.appendFileSync(calls,JSON.stringify({mode,session,args})+"\\n");',
+    `const exact=${JSON.stringify(exact)};`,
+    'const directive=mode==="cold"?{status:"continue",summary:"cold complete"}:session===exact?{status:"complete",summary:"warm complete"}:{status:"blocked",summary:"wrong session"};',
+    'fs.writeFileSync(args[outputAt+1],JSON.stringify(directive));',
+    'console.log(JSON.stringify({type:"thread.started",thread_id:exact}));',
+    'console.log(JSON.stringify({type:"turn.completed"}));',
+  ].join('');
+  const wrapped = (mode: string, session?: string) => [process.execPath, codexAdapter,
+    process.execPath, '-e', codexFixture, calls, mode, '--',
+    ...(session ? ['resume', session] : []), '--prompt', prompt];
+  try {
+    f.startArgv([...wrapped('cold'), ':::', ...wrapped('warm', '{{SESSION}}')],
+      ['--require-result', '--max-failures', '1']);
+    const status = await f.until(value => value.ended);
+    assert.equal(status.reason, 'completed');
+    assert.equal(status.failures, 0);
+    assert.equal(status.session, exact);
+    const recorded = readFileSync(calls, 'utf8').trim().split('\n').map(line => JSON.parse(line) as {
+      mode: string; session?: string; args: string[];
+    });
+    assert.deepEqual(recorded.map(call => [call.mode, call.session]), [
+      ['cold', undefined], ['warm', exact],
+    ]);
+    assert.ok(recorded.every(call => call.args.includes(prompt)));
+    assert.ok(recorded.every(call => !call.args.includes('--last')));
+    const stateRoot = join(f.cwd, 'state', 'scaffold-agent-loop');
+    const stateDir = join(stateRoot, readdirSync(stateRoot)[0]!);
+    assert.equal(readdirSync(stateDir).some(name => name.startsWith('codex-result-')), false);
   } finally { await f.cleanup(); }
 });
 

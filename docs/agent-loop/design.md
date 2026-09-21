@@ -56,7 +56,7 @@ an actual work loop or install personal skills as part of developing this PR.
 
 ### Default steering extension
 
-Main orchestrators own recurrence; subagents are bounded workers, not schedulers.
+The recurring agent owns recurrence; subagents are bounded workers, not schedulers.
 Interactive agents forward task corrections to the active loop by default.
 Latest user steering overrides conflicting loop/queue/worker instructions at
 the next safe boundary; it is not an optional lower-priority suggestion.

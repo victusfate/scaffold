@@ -1,16 +1,20 @@
 #!/usr/bin/env node
-// Adapt Codex JSONL and structured output to the agent-loop result protocol.
+// Convert Codex structured output to the loop protocol without exposing private state.
+// Usage: node scripts/agent-loop-codex.ts CODEX_COMMAND... -- [OPTIONS | resume ID] --prompt PROMPT
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { renameSync, rmSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
+import { codexThreadId, parseCodexEvent } from './codex-jsonl.ts';
 import { readDirective } from './agent-loop-process.ts';
+import { save } from './agent-loop-state.ts';
 
 const MANAGED_OPTIONS = new Set([
   '--json', '--output-schema', '-o', '--output-last-message', '--ephemeral', '--last',
 ]);
-const FAILED_EVENTS = new Set(['turn.failed', 'error']);
-const JSON_INDENT = 2;
+const MANAGED_OPTION_PREFIXES = [
+  '--json=', '--output-schema=', '--output-last-message=', '--ephemeral=', '--last=',
+];
 const NODE_ARGUMENT_OFFSET = 2;
 const DIRECTIVE_SCHEMA = {
   type: 'object',
@@ -21,32 +25,27 @@ const DIRECTIVE_SCHEMA = {
   required: ['status', 'summary'],
   additionalProperties: false,
 };
-interface CodexEvent {
-  type?: string;
-  thread_id?: string;
-  message?: string;
-  error?: { message?: string };
-}
-
 function invocation(args: string[], schema: string, output: string): string[] {
-  if (args.shift() !== '--' || !args[0]) throw new Error('Usage: agent-loop-codex.ts -- CODEX_EXECUTABLE ... exec [resume SESSION] PROMPT');
-  const execAt = args.indexOf('exec');
-  if (execAt < 1) throw new Error('Codex argv must contain the exec subcommand');
-  const conflict = args.find(argument => MANAGED_OPTIONS.has(argument));
+  const commandEnd = args.indexOf('--');
+  const promptAt = args.length - NODE_ARGUMENT_OFFSET;
+  if (commandEnd < 1 || promptAt <= commandEnd)
+    throw new Error('Usage: agent-loop-codex.ts CODEX_COMMAND... -- [OPTIONS | resume ID] --prompt PROMPT');
+  if (args[promptAt] !== '--prompt')
+    throw new Error('Usage: agent-loop-codex.ts CODEX_COMMAND... -- [OPTIONS | resume ID] --prompt PROMPT');
+  const command = args.slice(0, commandEnd);
+  const codexArgs = args.slice(commandEnd + 1, promptAt);
+  const conflict = codexArgs.find(argument => MANAGED_OPTIONS.has(argument)
+    || MANAGED_OPTION_PREFIXES.some(prefix => argument.startsWith(prefix))
+    || (argument.startsWith('-o') && !argument.startsWith('--')));
   if (conflict) throw new Error(`Codex option ${conflict} is managed by the loop adapter`);
-  return [...args.slice(0, execAt + 1), '--json', '--output-schema', schema,
-    '-o', output, ...args.slice(execAt + 1)];
+  return [...command, 'exec', '--json', '--output-schema', schema,
+    '-o', output, ...codexArgs, '--', args[promptAt + 1]!];
 }
 
 function parseEvent(line: string, threads: Set<string>): boolean {
-  const event = JSON.parse(line) as CodexEvent | null;
-  if (!event || typeof event.type !== 'string') throw new Error('Invalid Codex JSONL event');
-  if (event.type === 'thread.started') {
-    if (typeof event.thread_id !== 'string' || !event.thread_id.trim()) throw new Error('Codex thread.started event has no thread ID');
-    threads.add(event.thread_id);
-  }
-  if (FAILED_EVENTS.has(event.type))
-    throw new Error(event.error?.message ?? event.message ?? 'Codex turn failed');
+  const event = parseCodexEvent(line);
+  const thread = codexThreadId(event);
+  if (thread) threads.add(thread);
   return event.type === 'turn.completed';
 }
 
@@ -54,12 +53,13 @@ async function run(args: string[], resultPath: string): Promise<number> {
   const token = randomUUID();
   const schemaPath = join(dirname(resultPath), `codex-result-schema.${token}.json`);
   const outputPath = join(dirname(resultPath), `codex-result-output.${token}.json`);
-  const finalTemp = join(dirname(resultPath), `codex-result-final.${token}.json`);
   writeFileSync(schemaPath, JSON.stringify(DIRECTIVE_SCHEMA), { mode: 0o600, flag: 'wx' });
   try {
     const argv = invocation(args, schemaPath, outputPath);
+    const env = { ...process.env };
+    delete env.SCAFFOLD_AGENT_LOOP_RESULT;
     const child = spawn(argv[0]!, argv.slice(1), {
-      stdio: ['inherit', 'pipe', 'inherit'], windowsHide: true,
+      stdio: ['inherit', 'pipe', 'inherit'], windowsHide: true, env,
     });
     const threads = new Set<string>();
     let buffer = '';
@@ -88,14 +88,11 @@ async function run(args: string[], resultPath: string): Promise<number> {
     if (threads.size !== 1) throw new Error('Codex JSONL must contain exactly one thread ID');
     const directive = readDirective(outputPath);
     if (!directive) throw new Error('Codex produced a missing or invalid loop result');
-    writeFileSync(finalTemp, JSON.stringify({ ...directive, resume: [...threads][0] }, null, JSON_INDENT) + '\n',
-      { mode: 0o600, flag: 'wx' });
-    renameSync(finalTemp, resultPath);
+    save(dirname(resultPath), basename(resultPath), { ...directive, resume: [...threads][0] });
     return 0;
   } finally {
     rmSync(schemaPath, { force: true });
     rmSync(outputPath, { force: true });
-    rmSync(finalTemp, { force: true });
   }
 }
 
