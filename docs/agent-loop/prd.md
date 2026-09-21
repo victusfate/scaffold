@@ -25,6 +25,8 @@ TypeScript CLI, with durable command configuration and lifecycle controls.
    deferral/blockage. Inspect older generations without replaying them.
 10. Keep exactly one orchestrator per session while allowing independent sessions
     to coexist without managing or signalling one another's agent processes.
+11. Continue a Codex loop in the exact session created by its first run without
+    requiring a hand-written wrapper or granting the model access to driver state.
 
 ## Implementation Decisions
 
@@ -43,6 +45,10 @@ signal. Queue labels, timestamps, PIDs, terminals, and worktrees confer no proce
 authority across sessions. An expired queue lease blocks serial dispatch and remains
 active until its creating orchestrator proves its own worker terminal or an operator
 resolves the record.
+Codex runs pass through a shipped argv adapter that uses the CLI's JSONL and
+structured-output interfaces. The adapter preserves the agent's status and summary,
+adds the emitted thread ID as `resume`, and fails closed on subprocess or protocol
+errors. The generic loop driver remains harness-neutral.
 
 ## Testing Decisions
 
@@ -54,6 +60,10 @@ timeout/cancel still terminate the driver-owned descendant tree. Prove that an
 expired queue lease fails closed without reclaiming its active record.
 Run real harmless supervisor integration tests and scaffold sync/discovery
 checks, including CI on ubuntu-latest, macos-latest, and windows-latest.
+Use a fixture Codex executable to prove cold thread capture, exact warm resume,
+structured result preservation, and fail-closed protocol handling without a paid
+agent call. Keep the cooperating steering fixture alive until cancellation so the
+Windows matrix tests cancellation rather than a command-completion race.
 
 ## Out of Scope
 

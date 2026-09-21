@@ -54,3 +54,15 @@ generation isolation, stop/stale rejection, hostile text preservation, and a rea
 harmless cooperating child reading and acknowledging a message. Run existing
 portable lifecycle tests, skill generation/validation and independent diff review.
 Implement in upstream scaffold only; do not replace an active consumer's helper.
+
+## PR 117 hardening — September 21
+
+4. RED → GREEN: reproduce the unwired Codex cold-to-warm path through the public
+   driver with a fixture CLI; ship a TypeScript adapter that captures the emitted
+   thread ID and produces the required structured driver result.
+5. RED → GREEN: use the failing Windows matrix run as the regression signal;
+   keep the cooperating child alive through explicit cancellation and assert the
+   supervisor is active before cleanup without weakening stale-owner safeguards.
+6. Run focused tests, typecheck, lint, the full local gate, and an authenticated
+   two-turn Codex probe. Push once, require every GitHub check to succeed, merge
+   PR 117, update local main, and remove this session's merged feature branch.
