@@ -1,7 +1,7 @@
 // Fast public CLI validation tests, independent of scheduler services.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -13,6 +13,8 @@ import { execute, runArgv } from './agent-loop-process.ts';
 
 const cli = fileURLToPath(new URL('./agent-loop.ts', import.meta.url));
 const codexAdapter = fileURLToPath(new URL('./agent-loop-codex.ts', import.meta.url));
+const CODEX_TEST_TIMEOUT_MS = 8_000;
+const CODEX_POLL_MS = 50;
 
 const baseConfig = (over: Partial<Config>): Config => ({
   cwd: '/tmp', unit: 'u', generation: 'g', argv: ['claude', '-p', '--session-id', '{{SESSION}}', 'COLD'],
@@ -110,17 +112,18 @@ void test('Codex adapter captures the cold thread and resumes that exact session
     'console.log(JSON.stringify({type:"thread.started",thread_id:exact}));',
     'console.log(JSON.stringify({type:"turn.completed"}));',
   ].join('');
-  const wrapped = (mode: string, session?: string) => [process.execPath, codexAdapter, '--',
-    process.execPath, '-e', fixture, calls, mode, ...(session ? [session] : [])];
+  const literalPrompt = 'literal $HOME; touch BAD `still data`';
+  const wrapped = (mode: string, session = '') => [process.execPath, codexAdapter, '--',
+    process.execPath, '-e', fixture, calls, mode, session, 'exec', literalPrompt];
   try {
     const started = spawnSync(process.execPath, [cli, 'start', '--cwd', cwd, '--interval', '10ms',
       '--lifetime', '10s', '--timeout', '5s', '--max-failures', '1', '--require-result', '--',
       ...wrapped('cold'), ':::', ...wrapped('warm', '{{SESSION}}')], { env, encoding: 'utf8' });
     assert.equal(started.status, 0, started.stderr);
     let status: { ended?: boolean; failures?: number; reason?: string; session?: string } = {};
-    const deadline = Date.now() + 8_000;
+    const deadline = Date.now() + CODEX_TEST_TIMEOUT_MS;
     while (!status.ended && Date.now() < deadline) {
-      await delay(50);
+      await delay(CODEX_POLL_MS);
       const result = spawnSync(process.execPath, [cli, 'status', '--cwd', cwd], { env, encoding: 'utf8' });
       assert.equal(result.status, 0, result.stderr);
       status = JSON.parse(result.stdout) as typeof status;
@@ -132,8 +135,35 @@ void test('Codex adapter captures the cold thread and resumes that exact session
       mode: string; session?: string; args: string[];
     });
     assert.deepEqual(recorded.map(call => [call.mode, call.session]), [
-      ['cold', undefined], ['warm', 'codex-thread-117'],
+      ['cold', ''], ['warm', 'codex-thread-117'],
     ]);
+    assert.ok(recorded.every(call => call.args.includes(literalPrompt)));
+    assert.ok(recorded.every(call => call.args.includes('--output-schema') && call.args.includes('-o')));
     assert.ok(recorded.every(call => !call.args.includes('--last')));
+    const stateRoot = join(cwd, 'state', 'scaffold-agent-loop');
+    const stateDir = join(stateRoot, readdirSync(stateRoot)[0]!);
+    assert.equal(readdirSync(stateDir).some(name => name.startsWith('codex-result-')), false);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
+});
+void test('Codex adapter fails closed on conflicting options and malformed JSONL', () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'agent-loop-codex-errors-'));
+  const resultPath = join(cwd, 'result.json');
+  const env = { ...process.env, SCAFFOLD_AGENT_LOOP_RESULT: resultPath };
+  const run = (childArgs: string[]) => spawnSync(process.execPath,
+    [codexAdapter, '--', process.execPath, ...childArgs], { env, encoding: 'utf8' });
+  try {
+    const conflict = run(['-e', 'process.exit(0)', 'exec', '--last']);
+    assert.equal(conflict.status, 1);
+    assert.match(conflict.stderr, /--last.*managed/);
+
+    const malformed = [
+      'const fs=require("node:fs"),args=process.argv.slice(1),at=args.indexOf("-o");',
+      'fs.writeFileSync(args[at+1],JSON.stringify({status:"complete",summary:"done"}));',
+      'console.log("not JSONL")',
+    ].join('');
+    const invalid = run(['-e', malformed, 'exec']);
+    assert.equal(invalid.status, 1);
+    assert.match(invalid.stderr, /Unexpected token|JSON/);
+    assert.equal(existsSync(resultPath), false);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });

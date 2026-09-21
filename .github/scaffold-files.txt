@@ -37,6 +37,7 @@ scripts/queue-cli-args.ts
 scripts/sse-watch.ts
 scripts/queue.ts
 scripts/agent-loop.ts
+scripts/agent-loop-codex.ts
 scripts/agent-loop-state.ts
 scripts/agent-loop-process.ts
 scripts/agent-loop-runner.ts

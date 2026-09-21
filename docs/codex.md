@@ -60,6 +60,7 @@ supported complete Codex installation path.
 | Editing lanes | Explicit git worktrees when the client lacks an isolation option |
 | PR monitoring | Subscribe if a tool is exposed; otherwise `gh pr checks --watch` checks CI and `gh pr view` inspects reviews/state |
 | Queue | Drain continuously in the current turn; persistent restart requires an actual scheduler/monitor |
+| Loop | External recurrence uses `agent-loop.ts`; `agent-loop-codex.ts` captures the exact cold thread ID and resumes it explicitly |
 | Statusline | Codex CLI `/statusline` picker; `/status` for a snapshot; app clients use their status UI |
 | File delivery | Available attachment tool or clickable file link |
 | Voice | `VOICE_AGENT=codex`; see [voice setup](../scripts/voice/README.md) |
@@ -85,6 +86,8 @@ the existing sync/bootstrap, queue, and skill-resolution suites. `npm run
 test:integration`, `npm run typecheck`, and `npm run lint` cover the surrounding
 toolchain. The new voice protocol follows Codex's documented
 [noninteractive JSONL format](https://learn.chatgpt.com/docs/non-interactive-mode).
+The loop suite uses a fixture Codex executable to verify cold JSONL thread capture,
+structured status output, and exact-ID warm resume without `--last`.
 
 An authenticated model response, physical microphone/TTS playback, and a
 persistent external scheduler require environment-specific acceptance checks.

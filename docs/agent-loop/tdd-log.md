@@ -1,5 +1,16 @@
 # Agent loop verification
 
+## PR 117 hardening — Slice 4: reachable Codex continuity
+
+- RED: the public loop fixture ended with `reason: exit 1` because the documented
+  Codex capture adapter did not exist.
+- GREEN: the shipped TypeScript adapter owns JSONL and structured-output flags,
+  captures one exact thread ID, validates the agent directive, and atomically
+  writes the driver result with `resume` while keeping private state outside the
+  model sandbox.
+- Focused result: 9 agent-loop CLI tests pass, including exact cold-to-warm resume,
+  literal argv preservation, temporary-file cleanup, and fail-closed protocol cases.
+
 ## Session-isolation correction — September 9
 
 - RED: a normally exiting loop command spawned one surviving descendant; the

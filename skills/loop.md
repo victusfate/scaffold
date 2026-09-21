@@ -219,7 +219,8 @@ permission, trust, sandbox, or model configuration.
 
 Use `--require-result` for agent-driven work. The driver supplies the writable
 `SCAFFOLD_AGENT_LOOP_RESULT` path to each run. Before exiting successfully, the
-child writes one JSON object there:
+child command writes one JSON object there; a reviewed harness adapter may produce
+the same object from the agent's structured response:
 
 ```json
 {"status":"continue|complete|blocked","summary":"concrete progress or blocker","resume":"<optional id for next run's {{SESSION}}>"}
@@ -277,20 +278,22 @@ node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --req
   ::: \
   pi -p --session-id {{SESSION}} "<SHORT warm prompt>"
 
-# Codex — capture path (first run generates thread_id; child reports it as resume)
-# Cold: run with --json, extract thread.started thread_id, write it as "resume".
+# Codex — shipped capture adapter (first run generates thread_id)
+# The adapter owns --json, structured output and the private result file.
 # Warm: resume the captured id explicitly — never --last (it may pick unrelated work).
 node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --require-result -- \
-  codex exec "<FULL cold-start prompt>" \
+  node /absolute/scaffold/scripts/agent-loop-codex.ts -- codex exec "<FULL cold-start prompt>" \
   ::: \
-  codex exec resume {{SESSION}} "<SHORT warm prompt>"
+  node /absolute/scaffold/scripts/agent-loop-codex.ts -- codex exec resume {{SESSION}} "<SHORT warm prompt>"
 ```
 
-Codex cold-run wrapper sketch: `codex exec --json "<FULL>"` emits
-`{"type":"thread.started","thread_id":"<id>"}` on stdout; the wrapper captures that
-id and writes `{"status":"continue","summary":"...","resume":"<thread_id>"}` to
-`$SCAFFOLD_AGENT_LOOP_RESULT`. From run 2 on, the driver substitutes the captured
-id for `{{SESSION}}` in the warm command above.
+The shipped adapter asks Codex for a `status`/`summary` object, captures the
+`thread.started` ID from JSONL, validates both, and writes the private driver result
+with that ID as `resume`. From run 2 on, the driver substitutes the captured ID for
+`{{SESSION}}`. The model never receives write access to driver state. The adapter
+rejects caller-supplied output flags, `--ephemeral`, and `--last`; pass reviewed
+sandbox/model options normally. On Windows use `codex.exe`, or pass `node.exe` plus
+the installed Codex JavaScript entrypoint after `--`, rather than a `.cmd` shim.
 
 Without a `:::` sentinel the behavior is unchanged (the same command runs cold each
 interval). Keep the warm prompt self-sufficient anyway: a run may be the first after
