@@ -1,16 +1,18 @@
 // Fast public CLI validation tests, independent of scheduler services.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
 import { duration } from './agent-loop-state.ts';
 import type { Config } from './agent-loop-state.ts';
 import { execute, runArgv } from './agent-loop-process.ts';
 
 const cli = fileURLToPath(new URL('./agent-loop.ts', import.meta.url));
+const codexAdapter = fileURLToPath(new URL('./agent-loop-codex.ts', import.meta.url));
 
 const baseConfig = (over: Partial<Config>): Config => ({
   cwd: '/tmp', unit: 'u', generation: 'g', argv: ['claude', '-p', '--session-id', '{{SESSION}}', 'COLD'],
@@ -91,4 +93,47 @@ void test('public CLI rejects malformed input and shell launchers', () => {
     assert.equal(result.status, 1);
     assert.equal(result.stdout, '');
   }
+});
+void test('Codex adapter captures the cold thread and resumes that exact session', async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'agent-loop-codex-'));
+  const calls = join(cwd, 'calls.jsonl');
+  const env = { ...process.env, XDG_STATE_HOME: join(cwd, 'state') };
+  const fixture = [
+    'const fs=require("node:fs");',
+    'const args=process.argv.slice(1),calls=args.shift(),mode=args.shift(),session=args.shift();',
+    'const outputAt=args.indexOf("-o"),schemaAt=args.indexOf("--output-schema");',
+    'if(!args.includes("--json")||outputAt<0||schemaAt<0)process.exit(2);',
+    'fs.appendFileSync(calls,JSON.stringify({mode,session,args})+"\\n");',
+    'const exact="codex-thread-117";',
+    'const directive=mode==="cold"?{status:"continue",summary:"cold complete"}:session===exact?{status:"complete",summary:"warm complete"}:{status:"blocked",summary:"wrong session"};',
+    'fs.writeFileSync(args[outputAt+1],JSON.stringify(directive));',
+    'console.log(JSON.stringify({type:"thread.started",thread_id:exact}));',
+    'console.log(JSON.stringify({type:"turn.completed"}));',
+  ].join('');
+  const wrapped = (mode: string, session?: string) => [process.execPath, codexAdapter, '--',
+    process.execPath, '-e', fixture, calls, mode, ...(session ? [session] : [])];
+  try {
+    const started = spawnSync(process.execPath, [cli, 'start', '--cwd', cwd, '--interval', '10ms',
+      '--lifetime', '10s', '--timeout', '5s', '--max-failures', '1', '--require-result', '--',
+      ...wrapped('cold'), ':::', ...wrapped('warm', '{{SESSION}}')], { env, encoding: 'utf8' });
+    assert.equal(started.status, 0, started.stderr);
+    let status: { ended?: boolean; failures?: number; reason?: string; session?: string } = {};
+    const deadline = Date.now() + 8_000;
+    while (!status.ended && Date.now() < deadline) {
+      await delay(50);
+      const result = spawnSync(process.execPath, [cli, 'status', '--cwd', cwd], { env, encoding: 'utf8' });
+      assert.equal(result.status, 0, result.stderr);
+      status = JSON.parse(result.stdout) as typeof status;
+    }
+    assert.equal(status.reason, 'completed');
+    assert.equal(status.failures, 0);
+    assert.equal(status.session, 'codex-thread-117');
+    const recorded = readFileSync(calls, 'utf8').trim().split('\n').map(line => JSON.parse(line) as {
+      mode: string; session?: string; args: string[];
+    });
+    assert.deepEqual(recorded.map(call => [call.mode, call.session]), [
+      ['cold', undefined], ['warm', 'codex-thread-117'],
+    ]);
+    assert.ok(recorded.every(call => !call.args.includes('--last')));
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
