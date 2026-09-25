@@ -79,11 +79,11 @@ Expected: answers with probabilities (e.g. `urgent: P(yes) = 0.99`), ~300–400 
 ## The extension file
 
 `~/.pi/agent/extensions/jev-openrouter.ts` — keep byte-identical with
-[`docs/pi-jev-openrouter/setup.md`](../docs/pi-jev-openrouter/setup.md) (the doc
+[`docs/jev-openrouter-setup.md`](../docs/jev-openrouter-setup.md) (the doc
 is the copy-paste source; this skill references it):
 
 Read and follow the complete setup runbook in
-[`docs/pi-jev-openrouter/setup.md`](../docs/pi-jev-openrouter/setup.md), which
+[`docs/jev-openrouter-setup.md`](../docs/jev-openrouter-setup.md), which
 contains the full extension source, request shape, question-writing guidance,
 and troubleshooting table.
 

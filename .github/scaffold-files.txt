@@ -66,6 +66,7 @@ scripts/voice/requirements.txt
 scripts/voice/fetch-sample.sh
 scripts/voice/README.md
 scripts/voice/.gitignore
+docs/jev-openrouter-setup.md
 skills/jev-typesafe.md
 tools/hoist-skill/tool.yaml
 tools/hoist-skill/run
