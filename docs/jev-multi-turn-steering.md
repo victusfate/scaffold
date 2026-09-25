@@ -93,14 +93,48 @@ the same call, before the LLM has spent a token on it.
 
 The split only stays fast if the boundary is explicit:
 
-- **Route back to the LLM when** Jev's confidence < 0.70, the decision needs
-  multi-step reasoning, or several judgments are entangled (split them into separate
-  questions first — entanglement is a question-writing bug, not a routing one).
+- **Hydrate before you route.** Confidence < 0.70 usually means thin state, not
+  a hard question — the call then costs the round trip *and* the reasoning that
+  was needed anyway. Before calling, check the state contains the artifacts the
+  questions reference. On low confidence: enrich the state and re-ask **once**;
+  if it stays low, escalate to the LLM **with the judgment and its probabilities
+  attached** — the signal is not wasted on a dead end.
+- **Keep the boundary explicit** for decisions that need multi-step reasoning or
+  are genuinely entangled (split entanglements into separate questions first —
+  that is a question-writing bug, not a routing one).
 - **Report answers as the model's judgments with their probabilities** — never as the
   agent's own conclusions, and never as authorization to act. Confidence is
   distribution concentration, not permission. Actions still go through code or
   explicit rules.
 - **Do not include secrets in `state`** — it leaves the machine.
+
+## Batch the turn, not the thought
+
+1–32 questions run in parallel inside one request, so per-thought routing is the
+wrong mental model. Collect a turn's pending micro-decisions and send them as
+one `jev_evaluate` call at the decision point (end of turn, before dispatching
+work): one call, ~300 ms, one entry in the transcript. Batched judgment is
+effectively free; a reasoning chain per decision is not.
+
+## Anti-patterns (council-reviewed)
+
+- **No numeric routing quota in agent-facing text.** "Route 90% of decisions to
+  Jev" invites Goodharting — padding trivial questions and pushing grey areas
+  through to hit the ratio. If you want a number, derive it from a sampled
+  outcome audit and keep it in operator docs, never in skill text agents read.
+- **No hard gate.** Blocking actions until a Jev call is made lets the gated
+  entity write its own exception slips, and per-harness gate code imposes on
+  every synced consumer. Skill text plus harness-local telemetry is the
+  enforcement surface.
+- **Confidence is not correctness.** Calibrated concentration on a badly-framed
+  question is confident garbage. Sample confident calls against outcomes
+  periodically (wrongness log, spot-check against System 2) before scaling;
+  measure outcomes, not call counts.
+- **Name the denominator.** Any reported routing ratio states its unit (calls
+  per assistant-turn, per decision point) or it is a slogan.
+- **Telemetry is harness-local.** Counters and dashboards (e.g. a pi footer
+  ratio) are machine-local tooling; keep them out of files that sync to
+  consumer repos.
 
 ## What this is not for
 

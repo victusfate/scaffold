@@ -81,6 +81,28 @@ The lenses are built to collide — Contrarian vs Expansionist (downside vs
 upside), First-Principles vs Executor (rethink vs ship). That tension is the
 point; do not sand it down.
 
+## Jev-accelerated mode (optional)
+
+When a judgment endpoint is reachable — `jev_evaluate` in pi, or an
+`OPENROUTER_API_KEY` shell one-liner on any harness (see the `jev-typesafe`
+skill) — Phases 3 and 4 get faster *and* better calibrated. The rule: **Jev
+judges, never authors.** Advisor essays always stay generative and isolated;
+everything that is a judgment *about* the responses collapses into 1–2 batched
+calls. Fall back to the generative rounds below whenever no key or endpoint is
+reachable — the council works everywhere, Jev is strictly an accelerator.
+
+- **Phase 3 via one batched call (~300 ms, ~$0.0001):** anonymize the five
+  responses A–E (randomized, so reviewers judge argument, not persona), send
+  them as state, and ask the comparative judgments as typed questions: `choice`
+  (strongest response), `choice` (biggest blind spot), `noul` (did all five
+  collectively miss something), plus majority-consensus `noul` questions for
+  each convergent claim the chairman intends to lean on. Probabilities instead
+  of one more generative opinion.
+- **Phase 4 stress-test before presenting:** send the drafted synthesis back as
+  one batched call — *does the recommendation survive the advisors' strongest
+  objections? does any raised concern go unaddressed?* — plus a final go/no-go
+  `noul` on the plan. Fix the draft before presenting it.
+
 ## Output format
 
 ```
