@@ -89,17 +89,35 @@ and troubleshooting table.
 
 ## Using it in a session
 
-Offload evaluation state instead of writing reasoning for control-flow choices:
+Jev-first routing by decision class, with the exceptions named explicitly (no
+routing-percentage belongs in agent-facing text — it invites Goodharting; the
+ratio is an output of the workload, not a control knob):
 
-- **Test/build triage:** pass `state: { stderr, exit_code }`; one `choice`
-  question (environmental / syntax / regression) + one `noul` (safe to retry).
-- **Diff & acceptance gates:** pass `state: { diff, ticket_spec }`; `noul`
-  questions for side effects, missing tests, unhandled edge cases.
-- **File/module targeting:** batch-score candidate paths with `score` questions
-  instead of reading each file.
-- **Route back to System 2 when** confidence < 0.70, the question needs
-  multi-step reasoning, or several judgments are entangled (split them into
-  separate questions instead).
+- **Jev by default:** test/build triage (`state: { stderr, exit_code }`; one
+  `choice` (environmental / syntax / regression) + one `noul` (safe to retry)),
+  diff & acceptance gates (`noul` over side effects, missing tests, weakened
+  assertions), file/module targeting (batch-score candidate paths instead of
+  reading each file), rubric scores, continue/stop/retry gates, routing of
+  incoming messages.
+- **System 2, named as the exception:** multi-step debugging, architecture and
+  code synthesis, anything requiring running code or synthesizing text not in
+  the state, and entangled judgments (split them into separate questions first —
+  entanglement is a question-writing bug, not a routing one).
+
+**Hydrate state before asking.** Low confidence almost always means thin state,
+not a hard question — and a call on thin state costs the round trip *and* the
+reasoning anyway. Before calling, check the state contains the artifacts the
+questions reference (the actual stderr, the actual diff, the actual candidates).
+On confidence < 0.70: enrich the state and re-ask **once**; if it stays low,
+escalate to reasoning **with the judgment and its probabilities attached** —
+the signal is not wasted.
+
+**Batch the turn, not the thought.** 1–32 questions run in parallel in one
+request, so a whole turn's pending micro-decisions fit a single end-of-turn
+`jev_evaluate` call instead of one call per thought.
+
+Full decision architecture and anti-patterns:
+[`docs/jev-multi-turn-steering.md`](../docs/jev-multi-turn-steering.md).
 
 Request shape (all three question kinds in one call; every question judges the
 whole state):

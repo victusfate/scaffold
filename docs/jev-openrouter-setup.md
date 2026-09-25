@@ -265,6 +265,32 @@ pi remove npm:pi-typesafe                      # also remove the library (option
 | `Cannot find package '@earendil-works/pi-tui'` | Install it next to pi-typesafe: `( cd ~/.pi/agent/npm && npm install @earendil-works/pi-tui )` — pin it to your pi's bundled version if peer versions clash |
 | Want the TypeSafe-hosted tool instead | Skip this extension; `/typesafe login` + `/typesafe enable` and use `typesafe_evaluate` |
 
+## Using Jev from non-pi harnesses (Claude Code, Codex, scripts)
+
+The decisions endpoint is harness-neutral — pi is just a convenient client.
+Anywhere with a shell tool:
+
+1. Export the key once: `export OPENROUTER_API_KEY="sk-or-v1-..."` (same
+   OpenRouter account pi uses; if pi is installed, `~/.pi/agent/auth.json` also
+   holds it under `openrouter.key`).
+2. Call it from any shell-capable agent (Claude Code Bash, Codex shell, plain
+   scripts):
+
+```bash
+npm i pi-typesafe   # once
+node --input-type=module -e '
+import { createTypeSafe } from "pi-typesafe";
+const client = createTypeSafe({ backend: "openrouter", apiKey: process.env.OPENROUTER_API_KEY });
+const r = await client.evaluate({ state: { /* ... */ }, questions: { /* choice | noul | score */ } }, {});
+console.log(JSON.stringify({ answers: r.answers, usage: r.usage, ms: r.elapsedMs }));
+'
+```
+
+3. To expose it as a first-class tool in Claude Code, wrap the same client in a
+   small MCP server (`jev_evaluate`); Codex uses shell-out. The routing policy
+   (System 1 / System 2 split) is identical in every harness — see
+   [`jev-multi-turn-steering.md`](jev-multi-turn-steering.md).
+
 ## Related
 
 - Steering architecture — pairing Jev with the session LLM for fast multi-turn
