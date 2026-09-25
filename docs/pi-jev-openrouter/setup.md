@@ -40,6 +40,23 @@ echo 'export OPENROUTER_API_KEY="sk-or-v1-xxxxxxxx"' >> ~/.bashrc
 # 3. Drop the extension into the personal extensions dir (full file below)
 mkdir -p ~/.pi/agent/extensions
 $EDITOR ~/.pi/agent/extensions/jev-openrouter.ts   # paste the file from this doc
+
+# 4. One-time loadability fixes (see Troubleshooting for the failure modes):
+#    a. `pi install` lands the lib in ~/.pi/agent/npm/node_modules, which is NOT on
+#       the extensions dir's module-resolution path — expose it:
+ln -s npm/node_modules ~/.pi/agent/node_modules
+#    b. pi-typesafe is ESM-only but pi compiles extensions as CJS — mark the dir ESM:
+printf '{\n  "type": "module"\n}\n' > ~/.pi/agent/extensions/package.json
+#    c. the extension imports @earendil-works/pi-tui — install it next to pi-typesafe:
+( cd ~/.pi/agent/npm && npm install @earendil-works/pi-tui )
+```
+
+Verify the extension loads before starting the session (should print
+`LOADED OK, exports: [ 'default' ]`):
+
+```bash
+cd ~/.pi/agent/extensions && npx -y tsx -e \
+  "import('./jev-openrouter.ts').then(m => console.log('LOADED OK', Object.keys(m)))"
 ```
 
 Start a **new pi session** (tools register at startup) and verify:
@@ -243,6 +260,9 @@ pi remove npm:pi-typesafe                      # also remove the library (option
 | 401/403 from openrouter.ai | Key invalid or revoked — re-login |
 | 402 | OpenRouter credits exhausted — top up at openrouter.ai/credits |
 | Tool not listed in a session | Tools register at startup — start a new session; check the file is at `~/.pi/agent/extensions/jev-openrouter.ts` |
+| `Failed to load extension: Cannot find module 'pi-typesafe'` | `pi install` puts the lib in `~/.pi/agent/npm/node_modules`, which is not on the extensions dir's module-resolution path — `ln -s npm/node_modules ~/.pi/agent/node_modules` |
+| `No "exports" main defined in .../pi-typesafe/package.json` | pi-typesafe is ESM-only (only `"import"` conditions in its exports map) and pi compiles the extension as CJS — write `{"type": "module"}` to `~/.pi/agent/extensions/package.json` so tsx loads it as ESM |
+| `Cannot find package '@earendil-works/pi-tui'` | Install it next to pi-typesafe: `( cd ~/.pi/agent/npm && npm install @earendil-works/pi-tui )` — pin it to your pi's bundled version if peer versions clash |
 | Want the TypeSafe-hosted tool instead | Skip this extension; `/typesafe login` + `/typesafe enable` and use `typesafe_evaluate` |
 
 ## Related

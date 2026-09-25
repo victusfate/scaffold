@@ -36,6 +36,14 @@ echo 'export OPENROUTER_API_KEY="sk-or-v1-xxxxxxxx"' >> ~/.bashrc
 # 3. Drop the extension into the personal extensions dir (full file below)
 mkdir -p ~/.pi/agent/extensions
 $EDITOR ~/.pi/agent/extensions/jev-openrouter.ts   # paste the file from this skill
+
+# 4. One-time loadability fixes (root causes in the setup doc's Troubleshooting):
+ln -s npm/node_modules ~/.pi/agent/node_modules          # expose pi install's node_modules to the extensions dir
+printf '{\n  "type": "module"\n}\n' > ~/.pi/agent/extensions/package.json   # pi-typesafe is ESM-only
+( cd ~/.pi/agent/npm && npm install @earendil-works/pi-tui )                # imported by the extension
+
+cd ~/.pi/agent/extensions && npx -y tsx -e \
+  "import('./jev-openrouter.ts').then(m => console.log('LOADED OK', Object.keys(m)))"   # expect LOADED OK
 ```
 
 Start a **new pi session** (tools register at startup). There is no enable gate:
