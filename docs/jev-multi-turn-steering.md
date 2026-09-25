@@ -23,6 +23,12 @@ to produce a verdict a judgment model would return in ~300 ms with calibrated
 probabilities — and appends that reasoning to the context, making every later turn
 slower and noisier.
 
+Measured on the live endpoint (2026-09, 5-question batch over a PR-review state):
+267 ms end-to-end, $0.00009 per call. A single-question smoke test: 350 ms,
+$0.000015. Against seconds of CoT generation per decision, that is a 10–100×
+latency cut per choice — and the CoT cost compounds across turns while the Jev
+call does not touch the transcript.
+
 **Operationalize it as a reflex:** the moment a turn's next action is a *choice*
 rather than a *creation*, write the state down and ask Jev. Reasoning is what you
 do when no existing state can answer the question — Jev is what you do whenever
@@ -45,7 +51,10 @@ one can.
 ## The decision patterns
 
 Four question types cover nearly every decision an agent faces. The state is
-whatever the turn already produced — no extra work to build it.
+whatever the turn already produced — no extra work to build it. Full question-
+writing rules (ask what the state *says*, checkable score levels, no-match
+options) live in [`jev-openrouter-setup.md`](jev-openrouter-setup.md); the
+examples below show the decision shapes, not a second copy of the rules.
 
 **Continue / stop / retry gates** — after each work unit, instead of deliberating:
 
