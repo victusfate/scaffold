@@ -267,6 +267,8 @@ pi remove npm:pi-typesafe                      # also remove the library (option
 
 ## Related
 
+- Steering architecture — pairing Jev with the session LLM for fast multi-turn
+  decisions: [jev-multi-turn-steering.md](jev-multi-turn-steering.md)
 - pi-typesafe README (question-writing guidance, caps): `~/.pi/agent/npm/node_modules/pi-typesafe/README.md`
 - TypeSafe primitives docs: https://docs.typesafe.ai/primitives
 - OpenRouter decisions endpoint: `POST https://openrouter.ai/api/alpha/decisions`
