@@ -1,3 +1,7 @@
+.agent/workflows/jev-typesafe.md
+.agents/skills/jev-typesafe/SKILL.md
+.claude/skills/jev-typesafe/SKILL.md
+.cursor/rules/jev-typesafe.mdc
 AGENTS.md
 CLAUDE.md
 CODEOWNERS
@@ -62,6 +66,7 @@ scripts/voice/requirements.txt
 scripts/voice/fetch-sample.sh
 scripts/voice/README.md
 scripts/voice/.gitignore
+skills/jev-typesafe.md
 tools/hoist-skill/tool.yaml
 tools/hoist-skill/run
 tools/hoist-skill/hoist.ts
