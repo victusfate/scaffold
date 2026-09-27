@@ -1,6 +1,6 @@
 > **Multi-harness:** Plugin-first. Where the harness has a native Modern Web Guidance
-> plugin (Claude Code, agy, Codex), that plugin is the primary path; this skill routes to
-> it and is the fallback everywhere else (pi, Cursor, Gemini) via one npm CLI.
+> plugin (Claude Code, agy — formerly Gemini CLI — and Codex), that plugin is the primary path; this skill routes to
+> it and is the fallback everywhere else (pi, Cursor) via one npm CLI.
 
 ---
 name: modern-web
@@ -69,9 +69,9 @@ with upstream's release cadence.
    | Harness | Plugin | How it gets enabled |
    |---|---|---|
    | Claude Code | `modern-web-guidance@claude-plugins-official` | **Already declared** in scaffold's `.claude/settings.json` (`enabledPlugins`), so Claude Code offers it when the repo is trusted. If it's still missing, run `claude plugin install modern-web-guidance@claude-plugins-official --scope project` (or `/plugin install modern-web-guidance@claude-plugins-official`), then `/reload-plugins`. |
-   | agy (Antigravity) | GoogleChrome/modern-web-guidance | `agy plugin install https://github.com/GoogleChrome/modern-web-guidance` |
+   | agy (Antigravity; the successor to Gemini CLI) | GoogleChrome/modern-web-guidance | `agy plugin install https://github.com/GoogleChrome/modern-web-guidance` |
    | Codex | `modern-web-guidance@googlechrome` | `codex plugin marketplace add GoogleChrome/modern-web-guidance` then `codex plugin add modern-web-guidance@googlechrome` |
-   | pi, Cursor, Gemini | none documented upstream | skip to step 1 — this skill *is* the integration |
+   | pi, Cursor | none documented upstream | skip to step 1 — this skill *is* the integration |
 
    Outside Claude Code's project-scoped setting, a plugin install changes the
    user's global client config. Propose the exact command and run it only once
@@ -141,7 +141,7 @@ The CLI needs Node ≥ 20 and outbound network access to the npm registry.
 |---|---|
 | Claude Code | Scaffold's `.claude/settings.json` pre-allows `Bash(npx -y modern-web-guidance@latest:*)` and the `pnpx` equivalent. Keep any extra allowlisting that narrow — never bare `npx *`. |
 | Codex | Request network approval for the `npx` command **before** the first run so the sandbox doesn't time out. If `~/.npm` is read-only, set `NPM_CONFIG_CACHE=/tmp/npm-cache`. |
-| Cursor / Gemini / pi / agy | Run the same commands through the client's shell tool; approve that one command pattern rather than a blanket `npx`. |
+| Cursor / pi / agy | Run the same commands through the client's shell tool; approve that one command pattern rather than a blanket `npx`. |
 | pnpm projects | `pnpx modern-web-guidance@latest …` (no `-y`). |
 | Windows | Use `npx.cmd` if `npx` fails. |
 | Offline | Retry with `npx --offline …` to use the npm cache; if that fails, say the guidance was unavailable rather than guessing. |
