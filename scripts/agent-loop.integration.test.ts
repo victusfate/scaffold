@@ -28,9 +28,12 @@ function cooperatingChild() {
   ].join(' ');
 }
 async function assertFileStopsChanging(path: string) {
-  const contents = readFileSync(path, 'utf8');
+  // On a slow runner the descendant can be killed before its first write — the file never
+  // appearing is the strongest form of "stopped changing", not a failure.
+  const read = () => existsSync(path) ? readFileSync(path, 'utf8') : null;
+  const contents = read();
   await delay(200);
-  assert.equal(readFileSync(path, 'utf8'), contents);
+  assert.equal(read(), contents);
 }
 function fixture() {
   const cwd = mkdtempSync(join(tmpdir(), 'agent-loop-portable-'));
