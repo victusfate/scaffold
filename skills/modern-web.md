@@ -63,7 +63,8 @@ with upstream's release cadence.
 
 - **Already active?** If a `modern-web-guidance` skill (or
    `modern-web-guidance:modern-web-guidance`) is in your skill list, invoke it
-   and follow it instead of §1–§3 below. Stop here.
+   and follow it instead of §1–§3 below, subject to the current client's
+   permissions and the Harness notes below. Stop here.
 - **Not active, harness has a plugin** — install it:
 
    | Harness | Plugin | How it gets enabled |
@@ -73,6 +74,13 @@ with upstream's release cadence.
    | Codex | `modern-web-guidance@googlechrome` | `codex plugin marketplace add GoogleChrome/modern-web-guidance` then `codex plugin add modern-web-guidance@googlechrome` |
    | pi | no dedicated plugin — upstream's npm package loads as a pi package (its `skills/` dir is discovered by convention; verified against pi 0.87.0 / package 0.0.190) | `pi install -l npm:modern-web-guidance` (project-scoped, writes `.pi/settings.json`, loads after project trust; omit `-l` for user-wide). Also loads upstream's `chrome-extensions` skill. |
    | Cursor | none documented upstream | skip to §1 Search — this skill *is* the integration |
+
+   In Codex, check `codex plugin --help` first. If the CLI is absent or has no
+   plugin commands, continue with §1 Search using scaffold's `modern-web` skill
+   from `.agents/skills/modern-web/SKILL.md` (`$modern-web` or `/skills`). The native
+   install route was verified with Codex CLI 0.154.0 and plugin 0.0.190; use
+   `codex plugin list --marketplace googlechrome --json` to check installation
+   and enablement, then check the skill list in a fresh session for discovery.
 
    Outside Claude Code's committed setting, a plugin install changes the user's
    client config (global, or pi's `.pi/settings.json`). Propose the exact command and run it only once
@@ -143,7 +151,7 @@ The CLI needs Node ≥ 20 and outbound network access to the npm registry.
 | Harness | What to do |
 |---|---|
 | Claude Code | Scaffold's `.claude/settings.json` pre-allows `Bash(npx -y modern-web-guidance@latest:*)` and the `pnpx` equivalent. Keep any extra allowlisting that narrow — never bare `npx *`. |
-| Codex | Request network approval for the `npx` command **before** the first run so the sandbox doesn't time out. If `~/.npm` is read-only, set `NPM_CONFIG_CACHE=/tmp/npm-cache`. |
+| Codex | Use the current session's network and approval policy. Run directly when network access is allowed; request approval for the specific command only when access is restricted and the client supports escalation. Never request escalation under an approval policy of `never`, or change global permissions to run this skill. If access is blocked, try the offline fallback below. If `~/.npm` is read-only, set `NPM_CONFIG_CACHE` to a writable temporary directory. |
 | Cursor / pi / agy | Run the same commands through the client's shell tool; approve that one command pattern rather than a blanket `npx`. |
 | pnpm projects | `pnpx modern-web-guidance@latest …` (no `-y`). |
 | Windows | Use `npx.cmd` if `npx` fails. |
