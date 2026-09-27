@@ -162,3 +162,17 @@ export function alive(progress: Progress): boolean {
   if (!progress.pid || progress.ended || !progress.heartbeat || Date.now() - progress.heartbeat > HEARTBEAT_STALE_MS) return false;
   try { process.kill(progress.pid, 0); return true; } catch { return false; }
 }
+
+// The single source of truth for loop status, shared by the CLI, the supervise loop, and
+// test fixtures (which poll this directly instead of spawning a CLI process per poll).
+export function status(dir: string): object {
+  const config = readConfig(dir);
+  const progress = readProgress(dir);
+  const live = alive(progress);
+  const stopped = stopRequest(dir, config.generation);
+  const pending = pendingSteering(dir, config.generation).length;
+  return { ...config, ...progress, driver: 'node', armed: live && !stopped && Date.now() < config.expiresAt,
+    supervisor: live ? 'active' : progress.ended ? 'stopped' : 'stale',
+    running: live && progress.running, interrupted: !live && progress.running,
+    stopRequested: !!stopped, pendingSteering: pending, log: join(dir, 'output.log') };
+}

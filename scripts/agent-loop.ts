@@ -6,7 +6,7 @@ import { closeSync, existsSync, fstatSync, mkdirSync, openSync, readFileSync, re
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
-import { acknowledgeSteering, addSteering, alive, cleanTerminalStartup, duration, EMPTY, initialize, location, pendingSteering, readConfig, readInbox, readProgress, save, stopRequest, withControlLock } from './agent-loop-state.ts';
+import { acknowledgeSteering, addSteering, alive, cleanTerminalStartup, duration, EMPTY, initialize, location, pendingSteering, readConfig, readInbox, readProgress, save, status, stopRequest, withControlLock } from './agent-loop-state.ts';
 import type { Config, SteeringOutcome } from './agent-loop-state.ts';
 import { supervise } from './agent-loop-runner.ts';
 
@@ -80,18 +80,6 @@ function configuration(input: Input, target: ReturnType<typeof location>): Confi
   return { cwd: target.cwd, unit: target.unit, generation: randomUUID(), argv: input.argv,
     interval, timeout, expiresAt: Date.now() + lifetime, maxFailures, requireResult: input.requireResult,
     warmArgv, session: warmArgv ? randomUUID() : undefined };
-}
-
-function status(dir: string): object {
-  const config = readConfig(dir);
-  const progress = readProgress(dir);
-  const live = alive(progress);
-  const stopped = stopRequest(dir, config.generation);
-  const pending = pendingSteering(dir, config.generation).length;
-  return { ...config, ...progress, driver: 'node', armed: live && !stopped && Date.now() < config.expiresAt,
-    supervisor: live ? 'active' : progress.ended ? 'stopped' : 'stale',
-    running: live && progress.running, interrupted: !live && progress.running,
-    stopRequested: !!stopped, pendingSteering: pending, log: join(dir, 'output.log') };
 }
 
 function message(input: Input): string {
