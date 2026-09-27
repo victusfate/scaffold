@@ -71,7 +71,7 @@ with upstream's release cadence.
    | Claude Code | `modern-web-guidance@claude-plugins-official` | **Already declared** in scaffold's `.claude/settings.json` (`enabledPlugins`), so Claude Code offers it when the repo is trusted. If it's still missing, run `claude plugin install modern-web-guidance@claude-plugins-official --scope project` (or `/plugin install modern-web-guidance@claude-plugins-official`), then `/reload-plugins`. |
    | agy (Antigravity; the successor to Gemini CLI) | GoogleChrome/modern-web-guidance | `agy plugin install https://github.com/GoogleChrome/modern-web-guidance` |
    | Codex | `modern-web-guidance@googlechrome` | `codex plugin marketplace add GoogleChrome/modern-web-guidance` then `codex plugin add modern-web-guidance@googlechrome` |
-   | pi | no dedicated plugin — upstream's npm package loads as a pi package (its `skills/` dir is discovered by convention; **unverified**) | `pi install -l npm:modern-web-guidance` (project-scoped, writes `.pi/settings.json`, loads after project trust; omit `-l` for user-wide). Also loads upstream's `chrome-extensions` skill. |
+   | pi | no dedicated plugin — upstream's npm package loads as a pi package (its `skills/` dir is discovered by convention; verified against pi 0.87.0 / package 0.0.190) | `pi install -l npm:modern-web-guidance` (project-scoped, writes `.pi/settings.json`, loads after project trust; omit `-l` for user-wide). Also loads upstream's `chrome-extensions` skill. |
    | Cursor | none documented upstream | skip to §1 Search — this skill *is* the integration |
 
    Outside Claude Code's committed setting, a plugin install changes the user's
@@ -79,7 +79,9 @@ with upstream's release cadence.
    the user approves it; if they decline, or the install fails (no network,
    marketplace unreachable), continue with §1 Search in this session. A freshly
    installed plugin usually loads only on the next session or after a reload —
-   use §1–§3 for the current task either way.
+   use §1–§3 for the current task either way. In pi, project-local packages load
+   only once the project is trusted — scripted runs pass `-a` (e.g.
+   `pi -a -p …`) or the user approves at the interactive trust prompt.
 
 ### 1. Search
 
