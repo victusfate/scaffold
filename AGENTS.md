@@ -168,6 +168,26 @@ When given a standing directive to work autonomously toward a goal — an explic
 - **One reviewable unit at a time, fully gated.** Each slice goes RED → GREEN →
   REFACTOR and passes the full gate (tests + typecheck + quality gate) before its
   commit, so the stream stays inspectable and safe to stop at any commit.
+- **Supervise background work by progress, not liveness.** When a tick checks on
+  running jobs, "the processes exist" is not health. A job can be alive and stuck:
+  sitting in a retry/wait loop, blocked on a lock or a shared budget someone else is
+  holding. Each tick answer, with evidence:
+  - **Did it advance since the last tick?** Compare a progress counter such as items
+    finished, commits, or CPU time used, against the last reading and against the
+    expected rate. Nothing finished in a window that should have produced output
+    is a finding, not a wait.
+  - **What is each job doing right now?** Look at the leaf process or current step.
+    A `sleep` inside a retry loop is waiting, not working.
+  - **Is anything orphaned?** Look for helpers whose launcher died, such as display
+    servers, workers, or locks. They keep holding reservations, ports, or disk.
+    Remember that a reparented orphan may not show PID 1 as its parent (on WSL it's
+    a `Relay(N)` process).
+  - **Who holds the shared budget?** Account for memory/slot/lock reservations
+    against their limit. Stale holders starve new work without failing anything.
+
+  Encode these as a small probe script run every tick that exits non-zero on
+  anomalies, and investigate each anomaly before ending the tick. A human asking
+  "how's X holding up?" is exactly this probe; don't wait for them to ask it.
 - **Never idle while described work is unbuilt — run the built-vs-described audit.**
   Before concluding "the queue is exhausted / nothing to do," compare, per category
   of work the user asked for, what actually **exists and is reachable** (code that
@@ -408,6 +428,20 @@ project in two.
   lane → merge/rebase its worktree branch into the local one branch → resolve → delete the worktree →
   mark the ledger. Do it before spawning the next thing. (Pushing to GitHub is a SEPARATE, controlled,
   batched step by the orchestrator — see the push rule below.)
+- **Reap zombie worktrees after an interrupted session.** The normal merge step deletes
+  each lane's worktree. A session that ends abruptly skips that step: weekly usage runs
+  out, the harness crashes, or the machine power-cycles. The lane's worktree is then left
+  half-done. Sometimes it's still registered with unmerged commits; sometimes it has
+  dropped out of `git worktree list` (after `git worktree prune`, or in a harness-managed
+  isolation dir such as `.claude/worktrees/agent-*`) while its directory stays on disk with
+  every ignored and untracked build output. In one consumer repo, ten such zombies quietly
+  held 146 GB. On session start or resume, and on each loop tick, list the worktree roots
+  (the harness isolation dir plus your lane root) and flag each directory with its size and
+  age:
+  - Registered with unmerged commits: **finish or merge the lane** (don't lose the work).
+  - Registered and clean: remove it.
+  - Unregistered: check for unique, non-reproducible content before deleting, and get the
+    user's OK when it isn't clearly reproducible.
 - **The orchestrator commits ALL of its OWN work — ledgers, queue, docs, lore, web, hotfixes —
   to that SAME ONE branch**, never to a different branch than the lanes merge into.
 - **NEVER run two long-lived branches at once** (e.g. an "integration" branch *and* an "asset"
