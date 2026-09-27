@@ -1,6 +1,6 @@
 > **Multi-harness:** Plugin-first. Where the harness has a native Modern Web Guidance
-> plugin (Claude Code, agy — formerly Gemini CLI — and Codex), that plugin is the primary path; this skill routes to
-> it and is the fallback everywhere else (pi, Cursor) via one npm CLI.
+> plugin or package (Claude Code, agy — formerly Gemini CLI — Codex, pi), that is the primary path; this skill routes to
+> it and is the fallback everywhere else (Cursor) via one npm CLI.
 
 ---
 name: modern-web
@@ -71,10 +71,11 @@ with upstream's release cadence.
    | Claude Code | `modern-web-guidance@claude-plugins-official` | **Already declared** in scaffold's `.claude/settings.json` (`enabledPlugins`), so Claude Code offers it when the repo is trusted. If it's still missing, run `claude plugin install modern-web-guidance@claude-plugins-official --scope project` (or `/plugin install modern-web-guidance@claude-plugins-official`), then `/reload-plugins`. |
    | agy (Antigravity; the successor to Gemini CLI) | GoogleChrome/modern-web-guidance | `agy plugin install https://github.com/GoogleChrome/modern-web-guidance` |
    | Codex | `modern-web-guidance@googlechrome` | `codex plugin marketplace add GoogleChrome/modern-web-guidance` then `codex plugin add modern-web-guidance@googlechrome` |
-   | pi, Cursor | none documented upstream | skip to step 1 — this skill *is* the integration |
+   | pi | no dedicated plugin — upstream's npm package loads as a pi package (its `skills/` dir is discovered by convention; **unverified**) | `pi install -l npm:modern-web-guidance` (project-scoped, writes `.pi/settings.json`, loads after project trust; omit `-l` for user-wide). Also loads upstream's `chrome-extensions` skill. |
+   | Cursor | none documented upstream | skip to step 1 — this skill *is* the integration |
 
-   Outside Claude Code's project-scoped setting, a plugin install changes the
-   user's global client config. Propose the exact command and run it only once
+   Outside Claude Code's committed setting, a plugin install changes the user's
+   client config (global, or pi's `.pi/settings.json`). Propose the exact command and run it only once
    the user approves it; if they decline, or the install fails (no network,
    marketplace unreachable), continue with step 1 in this session. A freshly
    installed plugin usually loads only on the next session or after a reload —
