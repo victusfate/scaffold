@@ -90,7 +90,9 @@ export function readProgress(dir: string): Progress {
 // the supervisor and leaves it looking "stale" to the next stop.
 const RENAME_RETRY_CODES = new Set(['EPERM', 'EBUSY', 'EACCES']);
 const RENAME_ATTEMPTS = 40;
-const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+const RENAME_BACKOFF_MS = 5;
+const INT32_BYTES = 4;
+const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(INT32_BYTES)), 0, 0, ms);
 
 export function save(dir: string, name: string, value: unknown): void {
   const temp = join(dir, `${name}.${randomUUID()}.tmp`);
@@ -103,7 +105,7 @@ export function save(dir: string, name: string, value: unknown): void {
       } catch (error) {
         const code = (error as NodeJS.ErrnoException).code ?? '';
         if (!RENAME_RETRY_CODES.has(code) || attempt >= RENAME_ATTEMPTS) throw error;
-        sleepSync(5 * attempt);
+        sleepSync(RENAME_BACKOFF_MS * attempt);
       }
     }
   } finally { rmSync(temp, { force: true }); }
