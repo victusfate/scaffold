@@ -34,5 +34,11 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npx -y modern-web-guidance@latest:*)",
+      "Bash(pnpx modern-web-guidance@latest:*)"
+    ]
   }
 }

@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/loop`, `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`.
+Skills can be invoked individually: `/loop`, `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/modern-web`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`.
 
 In Codex, use `$skill-name` or `/skills` to select these workflows from `.agents/skills`. See [Codex support](codex.md) for setup and client-specific behavior.
 
@@ -58,6 +58,7 @@ tools/
     hoist-skill/SKILL.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md  # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
+    modern-web/SKILL.md       # Look up Chrome's Modern Web Guidance (search → retrieve → verify via the modern-web-guidance CLI) before writing or reviewing HTML/CSS/client-side JS
     audit/SKILL.md            # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md       # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail/SKILL.md         # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
@@ -96,6 +97,7 @@ tools/
     hoist-skill.mdc      # mirrors hoist-skill for Cursor
     protect-branch.mdc   # mirrors protect-branch for Cursor
     frontend-design.mdc  # mirrors frontend-design for Cursor
+    modern-web.mdc       # mirrors modern-web for Cursor
     audit.mdc            # mirrors audit for Cursor
     add-linter.mdc       # mirrors add-linter for Cursor
     ponytail.mdc         # mirrors ponytail for Cursor
@@ -126,6 +128,7 @@ tools/
     hoist-skill/SKILL.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md  # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
+    modern-web/SKILL.md       # Look up Chrome's Modern Web Guidance (search → retrieve → verify via the modern-web-guidance CLI) before writing or reviewing HTML/CSS/client-side JS
     audit/SKILL.md            # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md       # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail/SKILL.md         # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
@@ -159,6 +162,7 @@ tools/
     hoist-skill.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design.md  # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
+    modern-web.md       # Look up Chrome's Modern Web Guidance (search → retrieve → verify via the modern-web-guidance CLI) before writing or reviewing HTML/CSS/client-side JS
     audit.md            # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter.md       # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail.md         # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)

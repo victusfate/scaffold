@@ -256,6 +256,20 @@ Create it with a level-1 heading naming the language, then a sentence or two on 
 file extension, how code runs, and any formats to avoid. To opt out of a repo
 default, omit the file or write `# Default language: unset`.
 
+## Modern web platform code
+
+Before writing or reviewing browser-facing code — HTML, CSS, client-side JS, or
+framework components that render to the DOM — run `/modern-web`: search Chrome's
+[Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance)
+(`npx -y modern-web-guidance@latest search "<goal>"`), retrieve the matching
+guide, and verify the code against it. Training data skews toward legacy
+patterns; prefer the native platform feature the guide names over a library or
+hand-rolled polyfill. Skip it for backend, CI, and non-browser code.
+
+Guides assume Baseline Widely available features need no fallback. A repo may
+override that with a `**Browser Support:**` line in this section; if none is
+set, follow each guide's fallback advice.
+
 ## Minimum Viable Diff
 
 Prefer the smallest change that achieves the goal.
