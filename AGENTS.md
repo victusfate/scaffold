@@ -262,7 +262,8 @@ Before writing or reviewing browser-facing code — HTML, CSS, client-side JS, o
 framework components that render to the DOM — apply Chrome's
 [Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance).
 **Plugin first:** if the harness has the native `modern-web-guidance` plugin
-(Claude Code — enabled in `.claude/settings.json`; agy; Codex), use its skill.
+(Claude Code — enabled in `.claude/settings.json`; agy; Codex; pi via
+`pi install -l npm:modern-web-guidance`), use its skill.
 Otherwise run `/modern-web`, which offers the plugin install where one exists
 and falls back to the npm CLI (`npx -y modern-web-guidance@latest search
 "<goal>"` → `retrieve` → verify the code against the guide). Training data skews toward legacy
