@@ -428,6 +428,20 @@ project in two.
   lane → merge/rebase its worktree branch into the local one branch → resolve → delete the worktree →
   mark the ledger. Do it before spawning the next thing. (Pushing to GitHub is a SEPARATE, controlled,
   batched step by the orchestrator — see the push rule below.)
+- **Reap zombie worktrees after an interrupted session.** The normal merge step deletes
+  each lane's worktree. A session that ends abruptly skips that step: weekly usage runs
+  out, the harness crashes, or the machine power-cycles. The lane's worktree is then left
+  half-done. Sometimes it's still registered with unmerged commits; sometimes it has
+  dropped out of `git worktree list` (after `git worktree prune`, or in a harness-managed
+  isolation dir such as `.claude/worktrees/agent-*`) while its directory stays on disk with
+  every ignored and untracked build output. In one consumer repo, ten such zombies quietly
+  held 146 GB. On session start or resume, and on each loop tick, list the worktree roots
+  (the harness isolation dir plus your lane root) and flag each directory with its size and
+  age:
+  - Registered with unmerged commits: **finish or merge the lane** (don't lose the work).
+  - Registered and clean: remove it.
+  - Unregistered: check for unique, non-reproducible content before deleting, and get the
+    user's OK when it isn't clearly reproducible.
 - **The orchestrator commits ALL of its OWN work — ledgers, queue, docs, lore, web, hotfixes —
   to that SAME ONE branch**, never to a different branch than the lanes merge into.
 - **NEVER run two long-lived branches at once** (e.g. an "integration" branch *and* an "asset"
