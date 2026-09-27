@@ -235,5 +235,13 @@ echo ""
 [ ${#stale[@]}        -gt 0 ] && echo "Stale (renamed or deleted upstream — remove and update references):" && printf '  %s\n' "${stale[@]}"
 [ ${#updated[@]} -eq 0 ] && [ ${#kept[@]} -eq 0 ] && [ ${#skipped[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ] && [ ${#conflicts[@]} -eq 0 ] && [ ${#removed[@]} -eq 0 ] && [ ${#would_remove[@]} -eq 0 ] && [ ${#kept_removed[@]} -eq 0 ] && [ ${#stale[@]} -eq 0 ] && echo "Nothing to update."
 
+# Declared != installed: a plugin that arrives in .claude/settings.json `enabledPlugins` via this sync
+# is never installed by Claude Code on its own (it only offers on first trust), so install any
+# missing ones now. Non-fatal; skipped on a dry run or when the script isn't present yet.
+if [ "$DRY_RUN" != 1 ] && [ -x bin/ensure-plugins.sh ]; then
+  echo ""
+  bash bin/ensure-plugins.sh || true
+fi
+
 [ ${#review[@]} -gt 0 ] || [ ${#conflicts[@]} -gt 0 ] && exit 1
 exit 0
