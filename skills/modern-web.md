@@ -1,10 +1,10 @@
 > **Multi-harness:** Plugin-first. Where the harness has a native Modern Web Guidance
-> plugin or package (Claude Code, agy — formerly Gemini CLI — Codex, pi), that is the primary path; this skill routes to
+> plugin or package (Claude Code, agy, Codex, pi), that is the primary path; this skill routes to
 > it and is the fallback everywhere else (Cursor) via one npm CLI.
 
 ---
 name: modern-web
-description: Use Google Chrome's Modern Web Guidance before writing HTML/CSS/client-side JS — prefer the harness's native modern-web-guidance plugin (Claude Code, agy, Codex); otherwise search, retrieve, and verify against the guides via the npm CLI
+description: Use Google Chrome's Modern Web Guidance before writing HTML/CSS/client-side JS — prefer the harness's native modern-web-guidance plugin or package (Claude Code, agy, Codex, pi); otherwise search, retrieve, and verify against the guides via the npm CLI
 license: MIT
 ---
 
@@ -61,10 +61,10 @@ If the harness has a native plugin, use it — it ships upstream's own
 `modern-web-guidance` skill, which auto-triggers on web tasks and stays current
 with upstream's release cadence.
 
-1. **Already active?** If a `modern-web-guidance` skill (or
+- **Already active?** If a `modern-web-guidance` skill (or
    `modern-web-guidance:modern-web-guidance`) is in your skill list, invoke it
-   and follow it instead of steps 1–3 below. Stop here.
-2. **Not active, harness has a plugin** — install it:
+   and follow it instead of §1–§3 below. Stop here.
+- **Not active, harness has a plugin** — install it:
 
    | Harness | Plugin | How it gets enabled |
    |---|---|---|
@@ -72,14 +72,14 @@ with upstream's release cadence.
    | agy (Antigravity; the successor to Gemini CLI) | GoogleChrome/modern-web-guidance | `agy plugin install https://github.com/GoogleChrome/modern-web-guidance` |
    | Codex | `modern-web-guidance@googlechrome` | `codex plugin marketplace add GoogleChrome/modern-web-guidance` then `codex plugin add modern-web-guidance@googlechrome` |
    | pi | no dedicated plugin — upstream's npm package loads as a pi package (its `skills/` dir is discovered by convention; **unverified**) | `pi install -l npm:modern-web-guidance` (project-scoped, writes `.pi/settings.json`, loads after project trust; omit `-l` for user-wide). Also loads upstream's `chrome-extensions` skill. |
-   | Cursor | none documented upstream | skip to step 1 — this skill *is* the integration |
+   | Cursor | none documented upstream | skip to §1 Search — this skill *is* the integration |
 
    Outside Claude Code's committed setting, a plugin install changes the user's
    client config (global, or pi's `.pi/settings.json`). Propose the exact command and run it only once
    the user approves it; if they decline, or the install fails (no network,
-   marketplace unreachable), continue with step 1 in this session. A freshly
+   marketplace unreachable), continue with §1 Search in this session. A freshly
    installed plugin usually loads only on the next session or after a reload —
-   use steps 1–3 for the current task either way.
+   use §1–§3 for the current task either way.
 
 ### 1. Search
 
@@ -125,8 +125,8 @@ IDs or paraphrase a guide you did not retrieve.
 
 Guides assume **Baseline Widely available** features are safe without fallbacks.
 For anything newer, follow the guide's fallback advice **unless** the repo
-declares its own policy. Look for a `Browser Support:` line in `AGENTS.md` /
-`CLAUDE.md` (e.g. `**Browser Support:** Baseline 2024; no polyfills over 20
+declares its own policy. Look for a `**Browser Support:**` line anywhere in
+`AGENTS.md` (e.g. `**Browser Support:** Baseline 2024; no polyfills over 20
 lines`). For a "Baseline YYYY" target, a feature qualifies when its guide's
 "Baseline since" date is ≤ YYYY.
 
@@ -146,7 +146,6 @@ The CLI needs Node ≥ 20 and outbound network access to the npm registry.
 | pnpm projects | `pnpx modern-web-guidance@latest …` (no `-y`). |
 | Windows | Use `npx.cmd` if `npx` fails. |
 | Offline | Retry with `npx --offline …` to use the npm cache; if that fails, say the guidance was unavailable rather than guessing. |
-
 
 ## Rules
 

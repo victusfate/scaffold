@@ -58,7 +58,7 @@ tools/
     hoist-skill/SKILL.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md  # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
-    modern-web/SKILL.md       # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin where the harness has one (Claude Code, agy, Codex), else search → retrieve → verify via the npm CLI
+    modern-web/SKILL.md       # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit/SKILL.md            # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md       # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail/SKILL.md         # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
@@ -128,7 +128,7 @@ tools/
     hoist-skill/SKILL.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md  # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
-    modern-web/SKILL.md       # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin where the harness has one (Claude Code, agy, Codex), else search → retrieve → verify via the npm CLI
+    modern-web/SKILL.md       # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit/SKILL.md            # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md       # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail/SKILL.md         # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
@@ -162,7 +162,7 @@ tools/
     hoist-skill.md      # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch.md   # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design.md  # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
-    modern-web.md       # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin where the harness has one (Claude Code, agy, Codex), else search → retrieve → verify via the npm CLI
+    modern-web.md       # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit.md            # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter.md       # Add linter configs and GitHub Actions workflows for languages detected in the current repo
     ponytail.md         # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
