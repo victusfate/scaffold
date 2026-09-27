@@ -84,11 +84,30 @@ export function readProgress(dir: string): Progress {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) as Progress : { ...EMPTY };
 }
 
+// Windows refuses to rename over a file another process has open (EPERM/EBUSY/EACCES) — e.g. a
+// status() reader polling progress.json. Those are transient sharing violations, not failures:
+// retry briefly instead of throwing, because a throw from the supervisor's heartbeat timer kills
+// the supervisor and leaves it looking "stale" to the next stop.
+const RENAME_RETRY_CODES = new Set(['EPERM', 'EBUSY', 'EACCES']);
+const RENAME_ATTEMPTS = 40;
+const RENAME_BACKOFF_MS = 5;
+const INT32_BYTES = 4;
+const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(INT32_BYTES)), 0, 0, ms);
+
 export function save(dir: string, name: string, value: unknown): void {
   const temp = join(dir, `${name}.${randomUUID()}.tmp`);
   try {
     writeFileSync(temp, JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-    renameSync(temp, join(dir, name));
+    for (let attempt = 1; ; attempt++) {
+      try {
+        renameSync(temp, join(dir, name));
+        break;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code ?? '';
+        if (!RENAME_RETRY_CODES.has(code) || attempt >= RENAME_ATTEMPTS) throw error;
+        sleepSync(RENAME_BACKOFF_MS * attempt);
+      }
+    }
   } finally { rmSync(temp, { force: true }); }
 }
 
@@ -161,4 +180,18 @@ export function stopRequest(dir: string, generation: string): { cancel: boolean 
 export function alive(progress: Progress): boolean {
   if (!progress.pid || progress.ended || !progress.heartbeat || Date.now() - progress.heartbeat > HEARTBEAT_STALE_MS) return false;
   try { process.kill(progress.pid, 0); return true; } catch { return false; }
+}
+
+// The single source of truth for loop status, shared by the CLI, the supervise loop, and
+// test fixtures (which poll this directly instead of spawning a CLI process per poll).
+export function status(dir: string): object {
+  const config = readConfig(dir);
+  const progress = readProgress(dir);
+  const live = alive(progress);
+  const stopped = stopRequest(dir, config.generation);
+  const pending = pendingSteering(dir, config.generation).length;
+  return { ...config, ...progress, driver: 'node', armed: live && !stopped && Date.now() < config.expiresAt,
+    supervisor: live ? 'active' : progress.ended ? 'stopped' : 'stale',
+    running: live && progress.running, interrupted: !live && progress.running,
+    stopRequested: !!stopped, pendingSteering: pending, log: join(dir, 'output.log') };
 }

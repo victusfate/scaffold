@@ -24,6 +24,12 @@ Before coding, understand the context and commit to a BOLD aesthetic direction:
 
 **CRITICAL**: Choose a clear conceptual direction and execute it with precision. Bold maximalism and refined minimalism both work - the key is intentionality, not intensity.
 
+Before building each interaction (dialogs, menus, tooltips, transitions, scroll
+effects, form states, layout that adapts to its container), run `/modern-web` to
+retrieve the current native-platform pattern and its fallback guidance. The
+aesthetic is yours; the mechanism should be the modern platform feature, not a
+legacy library.
+
 Then implement working code (HTML/CSS/JS, React, Vue, etc.) that is:
 - Production-grade and functional
 - Visually striking and memorable

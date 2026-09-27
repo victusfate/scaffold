@@ -7,6 +7,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
+import { location, status } from './agent-loop-state.ts';
 
 const cli = fileURLToPath(new URL('./agent-loop.ts', import.meta.url));
 const codexAdapter = fileURLToPath(new URL('./agent-loop-codex.ts', import.meta.url));
@@ -27,12 +28,22 @@ function cooperatingChild() {
   ].join(' ');
 }
 async function assertFileStopsChanging(path: string) {
-  const contents = readFileSync(path, 'utf8');
+  // On a slow runner the descendant can be killed before its first write — the file never
+  // appearing is the strongest form of "stopped changing", not a failure.
+  const read = () => existsSync(path) ? readFileSync(path, 'utf8') : null;
+  const contents = read();
   await delay(200);
-  assert.equal(readFileSync(path, 'utf8'), contents);
+  assert.equal(read(), contents);
 }
 function fixture() {
   const cwd = mkdtempSync(join(tmpdir(), 'agent-loop-portable-'));
+  // Resolve the loop's state dir the way the spawned CLI does: XDG_STATE_HOME points at
+  // the fixture root. Set only for this computation, then restored.
+  const previousStateHome = process.env.XDG_STATE_HOME;
+  process.env.XDG_STATE_HOME = join(cwd, 'state');
+  const stateDir = location(cwd).dir;
+  if (previousStateHome === undefined) delete process.env.XDG_STATE_HOME;
+  else process.env.XDG_STATE_HOME = previousStateHome;
   const env = { ...process.env, XDG_STATE_HOME: join(cwd, 'state') };
   const call = (args: string[], success = true): Status => {
     const result = spawnSync(process.execPath, [cli, args[0], '--cwd', cwd, ...args.slice(1)], { env, encoding: 'utf8', timeout: 15_000 });
@@ -53,13 +64,14 @@ function fixture() {
   const start = (script: string, options: string[] = [], args: string[] = []) =>
     startArgv([process.execPath, '-e', script, ...args], options);
   const until = async (predicate: (value: Status) => boolean) => {
+    // Polls the shared state directly — a CLI spawn per poll dominated test time.
     const deadline = Date.now() + 12_000;
     while (Date.now() < deadline) {
-      const value = call(['status']);
+      const value = status(stateDir) as unknown as Status;
       if (predicate(value)) return value;
       await delay(50);
     }
-    throw new Error(`Timed out: ${JSON.stringify(call(['status']))}`);
+    throw new Error(`Timed out: ${JSON.stringify(status(stateDir))}`);
   };
   const cleanup = async () => {
     call(['stop', '--cancel']);
@@ -335,12 +347,28 @@ void test('unacknowledged steering survives command failure and recurring runs',
   } finally { await f.cleanup(); }
 });
 
+void test('expired loops reject steering', async () => {
+  const f = fixture();
+  try {
+    // Race-free by construction: a 1ms lifetime is always expired by the time the
+    // supervisor's first while-check runs, so rejection never depends on spawn timing.
+    f.start('process.exit(0)', ['--lifetime', '1ms']);
+    await f.until(value => value.ended);
+    f.call(['steer', '--message', 'too late'], false);
+  } finally { await f.cleanup(); }
+});
+
 void test('expired loops reject steering while their current command finishes', async () => {
   const f = fixture();
   try {
     f.start('setInterval(()=>{},100)', ['--lifetime', '500ms']);
-    await f.until(value => !value.armed && value.running);
+    // Slow runners (notably Windows CI, where supervisor startup can exceed 500ms) may
+    // expire the lifetime before the first command starts; steering must be rejected
+    // either way — mid-flight or after expiry. The race-free test above keeps the
+    // rejection invariant covered when this test degenerates to the ended branch.
+    const expired = await f.until(value => (value.running && !value.armed) || value.ended);
     f.call(['steer', '--message', 'too late'], false);
+    if (!expired.ended) assert.equal(f.call(['status']).running, true); // expiry never kills the in-flight command
   } finally { await f.cleanup(); }
 });
 
@@ -357,10 +385,14 @@ void test('missing executable counts failures without a shell fallback', async (
 void test('lifetime expires without starting another command', async () => {
   const f = fixture();
   try {
-    f.start('setTimeout(()=>{},300)', ['--lifetime', '500ms']);
+    // Sleep = lifetime: the command finishes at start + lifetime, strictly after expiry
+    // for any positive startup delay, so a second run can never start. A startup slower
+    // than the 2s lifetime degenerates to runs === 0 (expired before the first run) —
+    // far outside observed CI bounds; the reason assertion still holds either way.
+    f.start('setTimeout(()=>{},2000)', ['--lifetime', '2s']);
     const stopped = await f.until(value => value.ended);
     assert.equal(stopped.reason, 'lifetime expired');
-    assert.equal(stopped.runs, 1);
+    assert.ok(stopped.runs <= 1);
   } finally { await f.cleanup(); }
 });
 
@@ -369,6 +401,12 @@ void test('stale owned state cannot signal a reused PID or start a duplicate', a
   f.start('process.exit(1)', ['--max-failures', '1']);
   const stopped = await f.until(value => value.ended);
   const dir = dirname(stopped.log);
+  // The supervisor publishes ended=true just before releasing its lease; wait for the real lock
+  // to be gone before faking a stale one (the fast direct-status poll can observe that gap).
+  for (const deadline = Date.now() + 12_000; existsSync(join(dir, 'supervisor.lock'));) {
+    if (Date.now() > deadline) throw new Error('supervisor.lock was never released');
+    await delay(50);
+  }
   mkdirSync(join(dir, 'supervisor.lock'));
   writeFileSync(join(dir, 'progress.json'), JSON.stringify({ ...stopped, pid: process.pid, heartbeat: 1, ended: false, running: true }));
   try {
