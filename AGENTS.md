@@ -256,6 +256,15 @@ Create it with a level-1 heading naming the language, then a sentence or two on 
 file extension, how code runs, and any formats to avoid. To opt out of a repo
 default, omit the file or write `# Default language: unset`.
 
+## Modern web platform code
+
+Before writing or reviewing browser-facing code — HTML, CSS, client-side JS, or
+components that render to the DOM — run `/modern-web`. It uses the harness's
+native [Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance)
+plugin where one exists and the npm CLI otherwise. Skip it for backend, CI, and
+non-browser code. A repo may record a `**Browser Support:**` line anywhere in
+this file to override the guides' Baseline default.
+
 ## Minimum Viable Diff
 
 Prefer the smallest change that achieves the goal.
