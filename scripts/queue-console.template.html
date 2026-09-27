@@ -27,35 +27,34 @@ try {
      controller's board holds flights. Strips are paper-light in both themes
      (tinted by status); the board around them follows the OS scheme. */
   :root {
-    color-scheme: light dark;
-    --page: #dfe3e7; --bay: #c9cfd5; --bay-edge: #adb5bd; --panel: #f4f6f8;
+    color-scheme: light dark; view-transition-name: none; accent-color: var(--accent);
+    --page: #dfe3e7; --col-bg: #c9cfd5; --col-edge: #adb5bd; --panel: #f4f6f8;
     --ink: #16202a; --muted: #56616d; --line: #b3bbc3;
-    --accent: #1f5fae; --on-accent: #ffffff; --ok: #1e7a3a; --warn: #8a5a00; --bad: #b3261e;
-    --strip-queued: #d8e5f3; --strip-blocked: #f0dfae; --strip-active: #cfe8cc;
-    --strip-done: #dfe2e5; --strip-failed: #f3d0cd;
+    --accent: #1f5fae; --on-accent: #ffffff; --ok: #1e7a3a; --warn: #8a5a00; --bad: #b3261e; --on-bad: #ffffff;
+    --tint-queued: #d8e5f3; --tint-blocked: #f0dfae; --tint-active: #cfe8cc;
+    --tint-done: #dfe2e5; --tint-failed: #f3d0cd;
   }
   /* Dark tokens, twice: once for the OS preference (unless the light theme is
      pinned) and once for an explicit dark pin. Media queries rather than
      light-dark() so every browser gets the right board (guide fallback). */
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
-      --page: #13191f; --bay: #1d252d; --bay-edge: #2f3a44; --panel: #212a33;
+      --page: #13191f; --col-bg: #1d252d; --col-edge: #2f3a44; --panel: #212a33;
       --ink: #e3e8ec; --muted: #95a2ae; --line: #3a4652;
-      --accent: #86b7f2; --on-accent: #0c1a2a; --ok: #7fd18f; --warn: #f0c060; --bad: #ff8a80;
-      --strip-queued: #c3d4e6; --strip-blocked: #dcca92; --strip-active: #bbd8b7;
-      --strip-done: #b8bec4; --strip-failed: #e3bab6;
+      --accent: #86b7f2; --on-accent: #0c1a2a; --ok: #7fd18f; --warn: #f0c060; --bad: #ff8a80; --on-bad: #2a0b08;
+      --tint-queued: #c3d4e6; --tint-blocked: #dcca92; --tint-active: #bbd8b7;
+      --tint-done: #b8bec4; --tint-failed: #e3bab6;
     }
   }
   :root[data-theme="dark"] {
-    --page: #13191f; --bay: #1d252d; --bay-edge: #2f3a44; --panel: #212a33;
+    --page: #13191f; --col-bg: #1d252d; --col-edge: #2f3a44; --panel: #212a33;
     --ink: #e3e8ec; --muted: #95a2ae; --line: #3a4652;
-    --accent: #86b7f2; --on-accent: #0c1a2a; --ok: #7fd18f; --warn: #f0c060; --bad: #ff8a80;
-    --strip-queued: #c3d4e6; --strip-blocked: #dcca92; --strip-active: #bbd8b7;
-    --strip-done: #b8bec4; --strip-failed: #e3bab6;
+    --accent: #86b7f2; --on-accent: #0c1a2a; --ok: #7fd18f; --warn: #f0c060; --bad: #ff8a80; --on-bad: #2a0b08;
+    --tint-queued: #c3d4e6; --tint-blocked: #dcca92; --tint-active: #bbd8b7;
+    --tint-done: #b8bec4; --tint-failed: #e3bab6;
   }
   :root[data-theme="light"] { color-scheme: light; }
   :root[data-theme="dark"] { color-scheme: dark; }
-  :root { view-transition-name: none; accent-color: var(--accent); }
   * { box-sizing: border-box; }
   body {
     margin: 0 auto; max-width: 92rem; padding: 0 1rem 3rem;
@@ -69,7 +68,7 @@ try {
   }
   button:hover { border-color: var(--accent); }
   button.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 600; }
-  button.danger { background: var(--bad); color: #fff; border-color: var(--bad); font-weight: 600; }
+  button.danger { background: var(--bad); color: var(--on-bad); border-color: var(--bad); font-weight: 600; }
   input, select, textarea {
     font: inherit; color: inherit; background: var(--panel);
     border: 1px solid var(--line); border-radius: 6px; padding: 0.28rem 0.55rem;
@@ -138,7 +137,7 @@ try {
   #tasks { list-style: none; margin: 0; padding: 0; }
   #tasks.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.6rem; align-items: start; }
   #tasks li.col {
-    background: var(--bay); border: 1px solid var(--bay-edge); border-radius: 8px;
+    background: var(--col-bg); border: 1px solid var(--col-edge); border-radius: 8px;
     padding: 0 0.45rem 0.45rem; min-height: 8rem;
     /* Containment keeps a drag or re-render inside one bay from reflowing
        the whole board (modern-web: interactions-in-complex-layouts). */
@@ -147,33 +146,33 @@ try {
   #tasks li.col > h2 {
     display: flex; align-items: baseline; justify-content: space-between;
     font-size: 0.92rem; font-weight: 650; margin: 0 -0.45rem 0.5rem; padding: 0.55rem 0.7rem 0.45rem;
-    border-bottom: 3px solid var(--strip);
+    border-bottom: 3px solid var(--col-tint);
   }
   #tasks li.col > h2 .n { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
-  #tasks li.col[data-col="Queued"] { --strip: var(--strip-queued); }
-  #tasks li.col[data-col="Blocked"] { --strip: var(--strip-blocked); }
-  #tasks li.col[data-col="In Progress"] { --strip: var(--strip-active); }
-  #tasks li.col[data-col="Done"] { --strip: var(--strip-done); }
-  #tasks li.col[data-col="Failed"] { --strip: var(--strip-failed); }
+  #tasks li.col[data-col="Queued"] { --col-tint: var(--tint-queued); }
+  #tasks li.col[data-col="Blocked"] { --col-tint: var(--tint-blocked); }
+  #tasks li.col[data-col="In Progress"] { --col-tint: var(--tint-active); }
+  #tasks li.col[data-col="Done"] { --col-tint: var(--tint-done); }
+  #tasks li.col[data-col="Failed"] { --col-tint: var(--tint-failed); }
   .cards { list-style: none; margin: 0; padding: 0; min-height: 2.5rem; border-radius: 4px; }
-  body.dragging .cards { outline: 1px dashed var(--bay-edge); outline-offset: 2px; }
+  body.dragging .cards { outline: 1px dashed var(--col-edge); outline-offset: 2px; }
   body.dragging .cards:has(.dragover) { outline: 2px solid var(--accent); }
   /* A strip: paper-light in both themes, so it carries its own light scheme
      and ink; the tint says which bay it sits in. */
   .cards li.card {
     color-scheme: light; --ink: #16202a; --muted: #4c5763; --line: rgb(22 32 42 / 0.22);
-    --panel: rgb(255 255 255 / 0.6); --accent: #1f5fae; --ok: #1e6b35; --warn: #7a4f00; --bad: #a3231b;
-    color: var(--ink); background: var(--strip);
+    --panel: rgb(255 255 255 / 0.6); --field: #ffffff; --accent: #1f5fae; --ok: #1e6b35; --warn: #7a4f00; --bad: #a3231b;
+    color: var(--ink); background: var(--col-tint);
     border-radius: 3px; margin-bottom: 0.35rem;
     box-shadow: 0 1px 0 rgb(0 0 0 / 0.22), inset 0 0 0 1px rgb(22 32 42 / 0.12);
-    cursor: grab; view-transition-class: strip;
+    cursor: grab; view-transition-class: card;
   }
   .cards li.card:active { cursor: grabbing; }
   .cards li.card.dragover { outline: 2px dashed var(--accent); outline-offset: 1px; }
   .cards li.card.selected { outline: 3px solid var(--accent); outline-offset: 1px; }
   .cards li.card.stale { opacity: 0.6; }
   .cards li.slot {
-    border: 1px dashed var(--bay-edge); border-radius: 3px; color: var(--muted);
+    border: 1px dashed var(--col-edge); border-radius: 3px; color: var(--muted);
     padding: 0.7rem; margin-bottom: 0.35rem; font-size: 0.85rem; text-align: center;
   }
   .task-line {
@@ -187,7 +186,6 @@ try {
     display: flex; flex-direction: column; justify-content: center; gap: 0.1rem;
     padding: 0.4rem 0.5rem; border-right: 1px solid var(--line);
   }
-  /* The id reads like a callsign: the prefix small, the number large. */
   .tid { display: flex; flex-direction: column; line-height: 1.1; white-space: nowrap; }
   .tid small { font-size: 0.7rem; color: var(--muted); }
   .tid b { font: 700 1.15rem/1.1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
@@ -197,7 +195,7 @@ try {
   .badge.done    { color: var(--muted); }
   .badge.failed  { color: var(--bad); }
   @keyframes lamp { 50% { opacity: 0.4; } }
-  .strip-body { padding: 0.4rem 0.5rem 0.4rem 0.6rem; display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+  .card-body { padding: 0.4rem 0.5rem 0.4rem 0.6rem; display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
   .title { font-weight: 600; overflow-wrap: anywhere; line-height: 1.3; }
   .meta { display: flex; flex-wrap: wrap; gap: 0.25rem 0.3rem; align-items: center; }
   .chip {
@@ -217,13 +215,13 @@ try {
   .editor { grid-column: 1 / -1; border-top: 1px solid var(--line); padding: 0.3rem 0.5rem 0.5rem; margin-top: 0; }
   /* Fields shrink to the strip: the bay's containment clips overflow. */
   .editor.grid { grid-template-columns: auto minmax(0, 1fr); }
-  .editor input, .editor select { background: #fff; width: 100%; min-width: 0; }
+  .editor input, .editor select { background: var(--field); width: 100%; min-width: 0; }
   .editor .buttons { grid-column: 2; display: flex; gap: 0.5rem; margin-top: 0.3rem; }
   .empty { color: var(--muted); padding: 2.5rem 1rem; text-align: center; }
   /* Moving a strip between bays slides it rather than jumping (view
      transitions; browsers without them just re-render in place). */
   ::view-transition { pointer-events: none; }
-  ::view-transition-group(.strip) { animation-duration: 0.22s; animation-timing-function: ease-out; }
+  ::view-transition-group(.card) { animation-duration: 0.22s; animation-timing-function: ease-out; }
   @media (prefers-reduced-motion: reduce) {
     .badge.active { animation: none; }
     #error { transition: none; }
@@ -284,11 +282,12 @@ const laneById = id => L.find(l => l.id === id);
 // default; the toggle pins the opposite, and toggling back to what the OS
 // shows clears the pin so the page follows the OS again.
 const osDark = matchMedia("(prefers-color-scheme: dark)");
-const theme = () => document.documentElement.dataset.theme || (osDark.matches ? "dark" : "light");
+const systemTheme = () => (osDark.matches ? "dark" : "light");
+const theme = () => document.documentElement.dataset.theme || systemTheme();
 function setTheme(next) {
   const root = document.documentElement;
   const meta = $('meta[name="color-scheme"]');
-  const system = osDark.matches ? "dark" : "light";
+  const system = systemTheme();
   try {
     if (next === system) localStorage.removeItem("qc-theme");
     else localStorage.setItem("qc-theme", next);
@@ -348,7 +347,7 @@ $("#error-close").onclick = hideError;
 
 // Removing a task asks first, in a native modal <dialog>: Esc, the back
 // gesture and a backdrop click all cancel (modern-web: platform-controls-
-// dismiss-dialog). Replaces window.confirm(), which blocks the whole tab.
+// dismiss-dialog). Replaces the browser confirm prompt, which blocks the tab.
 function confirmRemove(t) {
   const d = $("#confirm-remove");
   $("#confirm-body").textContent = t.id + " (" + t.title + ") will be deleted from the queue.";
@@ -466,7 +465,7 @@ function editorHtml(t) {
 
 // "task-014" → small "task-" over a large "014"; any other id shape is
 // shown whole, so a renamed prefix never breaks the strip.
-function callsign(id) {
+function tidHtml(id) {
   const m = /^(.*?)(\d+)$/.exec(id);
   return '<span class="tid">'
     + (m && m[1] ? '<small>' + esc(m[1]) + '</small><b>' + m[2] + '</b>' : '<b>' + esc(id) + '</b>')
@@ -483,8 +482,8 @@ function taskHtml(t) {
     '<button data-act="' + name + '" aria-label="' + label + ' ' + t.id + '" title="' + label + '">' + glyph + '</button>';
   return '<div class="task-line">'
     + '<div class="callsign"><span class="badge ' + t.status + '" aria-hidden="true">' + BADGE[t.status] + '</span>'
-    + callsign(t.id) + '</div>'
-    + '<div class="strip-body"><span class="title">' + esc(t.title) + '</span>'
+    + tidHtml(t.id) + '</div>'
+    + '<div class="card-body"><span class="title">' + esc(t.title) + '</span>'
     + '<div class="meta">' + chips(t)
     + '<span class="actions">'
     + act("top", "⤒", "Move to top")
@@ -523,7 +522,7 @@ function renderTasks() {
       // still click/type normally. The unique view-transition-name lets a
       // strip slide to its new bay when a move re-renders the board.
       return '<li class="' + cls + '" data-id="' + t.id + '" draggable="true" title="Drag to move"'
-        + ' style="view-transition-name: strip-' + t.id + '">' + taskHtml(t) + '</li>';
+        + ' style="view-transition-name: card-' + t.id + '">' + taskHtml(t) + '</li>';
     }).join("");
     // Free lane slots are visible drop targets: dropping a Queued card on
     // the column claims it into the next free slot (server assigns lane-N).

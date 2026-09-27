@@ -178,15 +178,17 @@ updates immediately without waiting for the watcher. `watchFile` interval
 - **Add row**: one-line title input + "Add" (top or bottom toggle); an
   expandable detail area for mode/slug/deps/files/validate/accept.
 - **Task list** (the priority order, top = next): each row shows status badge,
-  id, title, tag chips (chain, deps, retries, owner), drag handle, and buttons
-  ↑-top / requeue (failed only) / edit / remove. Edit expands the row into a
+  id, title, tag chips (chain, deps, retries, owner), and buttons
+  ↑-top / requeue (failed only) / edit / remove; the whole card is the drag
+  grip. Edit expands the row into a
   field grid (title, mode, slug, deps, files, validate, accept, note) with
   Save/Cancel.
-- Empty queue → "(empty — add a task above)". No pagination; queues are small.
+- Empty queue → "No tasks yet. Add one above." No pagination; queues are small.
 - Styling: small hand-written CSS in the template, dark-friendly, no fonts or
   assets fetched.
-  Later restyled as a flight-strip board (tasks as status-tinted strips in
-  bays); the theme follows the OS setting and the toggle pins the opposite.
+  Later restyled after a flight-strip board (a metaphor only: cards look
+  like status-tinted strips, columns like bays); the theme follows the OS
+  setting and the toggle pins the opposite.
 
 ### D10 — Testing strategy
 

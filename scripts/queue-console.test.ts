@@ -279,7 +279,7 @@ maxParallel: 2
   has('error surface mount point', 'id="error"');
   has('errors are a manual popover toast', 'popover="manual"');
   has('remove confirms in a modal dialog', 'showModal()');
-  assert('no blocking window.confirm', !html.includes('confirm("'));
+  assert('no blocking window.confirm', !/(?<![\w.])confirm\(|window\.confirm/.test(html));
   has('icon buttons carry accessible names', 'aria-label="');
   has('kanban Queued column', '["Queued"');
   has('kanban Blocked column', '["Blocked"');
