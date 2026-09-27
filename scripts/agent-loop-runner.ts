@@ -17,7 +17,9 @@ export async function supervise(dir: string, generation: string): Promise<void> 
   process.on('SIGTERM', cancel);
   process.on('SIGINT', cancel);
   publish();
-  const heartbeat = setInterval(publish, HEARTBEAT_MS);
+  // A heartbeat write must never kill the supervisor: a missed beat is recoverable (the next one
+  // lands 250 ms later); an uncaught throw from the timer ends the process and strands the lease.
+  const heartbeat = setInterval(() => { try { publish(); } catch { /* next beat retries */ } }, HEARTBEAT_MS);
   let next = Date.now() + HEARTBEAT_MS;
   let terminalReason: string | undefined;
   // Effective session id for `{{SESSION}}` substitution. Starts as the minted pre-set id;

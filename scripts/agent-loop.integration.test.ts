@@ -28,9 +28,12 @@ function cooperatingChild() {
   ].join(' ');
 }
 async function assertFileStopsChanging(path: string) {
-  const contents = readFileSync(path, 'utf8');
+  // On a slow runner the descendant can be killed before its first write — the file never
+  // appearing is the strongest form of "stopped changing", not a failure.
+  const read = () => existsSync(path) ? readFileSync(path, 'utf8') : null;
+  const contents = read();
   await delay(200);
-  assert.equal(readFileSync(path, 'utf8'), contents);
+  assert.equal(read(), contents);
 }
 function fixture() {
   const cwd = mkdtempSync(join(tmpdir(), 'agent-loop-portable-'));
@@ -398,6 +401,12 @@ void test('stale owned state cannot signal a reused PID or start a duplicate', a
   f.start('process.exit(1)', ['--max-failures', '1']);
   const stopped = await f.until(value => value.ended);
   const dir = dirname(stopped.log);
+  // The supervisor publishes ended=true just before releasing its lease; wait for the real lock
+  // to be gone before faking a stale one (the fast direct-status poll can observe that gap).
+  for (const deadline = Date.now() + 12_000; existsSync(join(dir, 'supervisor.lock'));) {
+    if (Date.now() > deadline) throw new Error('supervisor.lock was never released');
+    await delay(50);
+  }
   mkdirSync(join(dir, 'supervisor.lock'));
   writeFileSync(join(dir, 'progress.json'), JSON.stringify({ ...stopped, pid: process.pid, heartbeat: 1, ended: false, running: true }));
   try {

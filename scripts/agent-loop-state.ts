@@ -84,11 +84,30 @@ export function readProgress(dir: string): Progress {
   return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) as Progress : { ...EMPTY };
 }
 
+// Windows refuses to rename over a file another process has open (EPERM/EBUSY/EACCES) — e.g. a
+// status() reader polling progress.json. Those are transient sharing violations, not failures:
+// retry briefly instead of throwing, because a throw from the supervisor's heartbeat timer kills
+// the supervisor and leaves it looking "stale" to the next stop.
+const RENAME_RETRY_CODES = new Set(['EPERM', 'EBUSY', 'EACCES']);
+const RENAME_ATTEMPTS = 40;
+const RENAME_BACKOFF_MS = 5;
+const INT32_BYTES = 4;
+const sleepSync = (ms: number) => Atomics.wait(new Int32Array(new SharedArrayBuffer(INT32_BYTES)), 0, 0, ms);
+
 export function save(dir: string, name: string, value: unknown): void {
   const temp = join(dir, `${name}.${randomUUID()}.tmp`);
   try {
     writeFileSync(temp, JSON.stringify(value, null, 2) + '\n', { mode: 0o600, flag: 'wx' });
-    renameSync(temp, join(dir, name));
+    for (let attempt = 1; ; attempt++) {
+      try {
+        renameSync(temp, join(dir, name));
+        break;
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code ?? '';
+        if (!RENAME_RETRY_CODES.has(code) || attempt >= RENAME_ATTEMPTS) throw error;
+        sleepSync(RENAME_BACKOFF_MS * attempt);
+      }
+    }
   } finally { rmSync(temp, { force: true }); }
 }
 
