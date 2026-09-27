@@ -237,8 +237,9 @@ echo ""
 
 # Declared != installed: a plugin that arrives in .claude/settings.json `enabledPlugins` via this sync
 # is never installed by Claude Code on its own (it only offers on first trust), so install any
-# missing ones now. Non-fatal; skipped on a dry run or when the script isn't present yet.
-if [ "$DRY_RUN" != 1 ] && [ -x bin/ensure-plugins.sh ]; then
+# missing ones now. Non-fatal; skipped on a dry run or when the script isn't present yet. Tested with
+# -f (not -x): sync writes file contents but not the executable bit, and it runs via `bash`.
+if [ "$DRY_RUN" != 1 ] && [ -f bin/ensure-plugins.sh ]; then
   echo ""
   bash bin/ensure-plugins.sh || true
 fi
