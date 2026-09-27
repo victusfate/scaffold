@@ -185,6 +185,8 @@ updates immediately without waiting for the watcher. `watchFile` interval
 - Empty queue → "(empty — add a task above)". No pagination; queues are small.
 - Styling: small hand-written CSS in the template, dark-friendly, no fonts or
   assets fetched.
+  Later restyled as a flight-strip board (tasks as status-tinted strips in
+  bays); the theme follows the OS setting and the toggle pins the opposite.
 
 ### D10 — Testing strategy
 

@@ -267,7 +267,8 @@ maxParallel: 2
   has('held chip', '>held<');
   has('elapsed chip', '⏱');
   has('elapsed live session', 'live session');
-  has('dark default with toggle', 'data-theme');
+  has('OS color scheme is the default', '<meta name="color-scheme" content="light dark">');
+  has('toggle pins an override theme', 'data-theme');
   has('theme toggle button', 'id="theme"');
   has('theme persists', 'qc-theme');
   has('empty-state click-to-move hint', 'click a card, then a column');
@@ -276,6 +277,10 @@ maxParallel: 2
   has('escape disarms', 'Escape');
   has('dispatch plan mount point', 'id="plan"');
   has('error surface mount point', 'id="error"');
+  has('errors are a manual popover toast', 'popover="manual"');
+  has('remove confirms in a modal dialog', 'showModal()');
+  assert('no blocking window.confirm', !html.includes('confirm("'));
+  has('icon buttons carry accessible names', 'aria-label="');
   has('kanban Queued column', '["Queued"');
   has('kanban Blocked column', '["Blocked"');
   has('kanban In Progress column', '["In Progress"');
