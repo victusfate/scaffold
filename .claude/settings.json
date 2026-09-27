@@ -35,6 +35,9 @@
       }
     ]
   },
+  "enabledPlugins": {
+    "modern-web-guidance@claude-plugins-official": true
+  },
   "permissions": {
     "allow": [
       "Bash(npx -y modern-web-guidance@latest:*)",

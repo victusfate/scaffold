@@ -1,9 +1,10 @@
-> **Multi-harness:** This skill works identically in Claude Code, Codex, Cursor, Gemini, pi,
-> and agy. It shells out to one npm CLI; all paths and commands are harness-agnostic.
+> **Multi-harness:** Plugin-first. Where the harness has a native Modern Web Guidance
+> plugin (Claude Code, agy, Codex), that plugin is the primary path; this skill routes to
+> it and is the fallback everywhere else (pi, Cursor, Gemini) via one npm CLI.
 
 ---
 name: modern-web
-description: Consult Google Chrome's Modern Web Guidance before writing HTML/CSS/client-side JS — search the curated use-case index, retrieve the best-practice guide, and verify the code against it (Baseline-aware fallbacks)
+description: Use Google Chrome's Modern Web Guidance before writing HTML/CSS/client-side JS — prefer the harness's native modern-web-guidance plugin (Claude Code, agy, Codex); otherwise search, retrieve, and verify against the guides via the npm CLI
 license: MIT
 ---
 
@@ -53,6 +54,31 @@ mechanism*. Use both for UI work — design direction first, then look up how to
 build each interaction natively.
 
 ## Workflow
+
+### 0. Plugin first
+
+If the harness has a native plugin, use it — it ships upstream's own
+`modern-web-guidance` skill, which auto-triggers on web tasks and stays current
+with upstream's release cadence.
+
+1. **Already active?** If a `modern-web-guidance` skill (or
+   `modern-web-guidance:modern-web-guidance`) is in your skill list, invoke it
+   and follow it instead of steps 1–3 below. Stop here.
+2. **Not active, harness has a plugin** — install it:
+
+   | Harness | Plugin | How it gets enabled |
+   |---|---|---|
+   | Claude Code | `modern-web-guidance@claude-plugins-official` | **Already declared** in scaffold's `.claude/settings.json` (`enabledPlugins`), so Claude Code offers it when the repo is trusted. If it's still missing, run `claude plugin install modern-web-guidance@claude-plugins-official --scope project` (or `/plugin install modern-web-guidance@claude-plugins-official`), then `/reload-plugins`. |
+   | agy (Antigravity) | GoogleChrome/modern-web-guidance | `agy plugin install https://github.com/GoogleChrome/modern-web-guidance` |
+   | Codex | `modern-web-guidance@googlechrome` | `codex plugin marketplace add GoogleChrome/modern-web-guidance` then `codex plugin add modern-web-guidance@googlechrome` |
+   | pi, Cursor, Gemini | none documented upstream | skip to step 1 — this skill *is* the integration |
+
+   Outside Claude Code's project-scoped setting, a plugin install changes the
+   user's global client config. Propose the exact command and run it only once
+   the user approves it; if they decline, or the install fails (no network,
+   marketplace unreachable), continue with step 1 in this session. A freshly
+   installed plugin usually loads only on the next session or after a reload —
+   use steps 1–3 for the current task either way.
 
 ### 1. Search
 
@@ -120,19 +146,6 @@ The CLI needs Node ≥ 20 and outbound network access to the npm registry.
 | Windows | Use `npx.cmd` if `npx` fails. |
 | Offline | Retry with `npx --offline …` to use the npm cache; if that fails, say the guidance was unavailable rather than guessing. |
 
-### Native plugin installs (optional)
-
-Upstream also ships native plugins. Scaffold's skill works without them; install
-one only if you want the upstream `SKILL.md` auto-triggering as well:
-
-| Client | Install |
-|---|---|
-| Any (wizard) | `npx modern-web-guidance@latest install` (update: `… update`) |
-| Claude Code / Copilot CLI | `/plugin marketplace add GoogleChrome/modern-web-guidance` then `/plugin install modern-web-guidance@googlechrome` |
-| Codex | `codex plugin marketplace add GoogleChrome/modern-web-guidance` then `codex plugin add modern-web-guidance@googlechrome` |
-| Antigravity (agy) | `agy plugin install https://github.com/GoogleChrome/modern-web-guidance` |
-| Gemini CLI | not in upstream's README; the package ships a `gemini-extension.json`, so `gemini extensions install https://github.com/GoogleChrome/modern-web-guidance` is the expected route — verify before relying on it |
-| Skills CLI | `npx skills add GoogleChrome/modern-web-guidance` |
 
 ## Rules
 

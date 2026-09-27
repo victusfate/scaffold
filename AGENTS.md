@@ -259,10 +259,13 @@ default, omit the file or write `# Default language: unset`.
 ## Modern web platform code
 
 Before writing or reviewing browser-facing code — HTML, CSS, client-side JS, or
-framework components that render to the DOM — run `/modern-web`: search Chrome's
-[Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance)
-(`npx -y modern-web-guidance@latest search "<goal>"`), retrieve the matching
-guide, and verify the code against it. Training data skews toward legacy
+framework components that render to the DOM — apply Chrome's
+[Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance).
+**Plugin first:** if the harness has the native `modern-web-guidance` plugin
+(Claude Code — enabled in `.claude/settings.json`; agy; Codex), use its skill.
+Otherwise run `/modern-web`, which offers the plugin install where one exists
+and falls back to the npm CLI (`npx -y modern-web-guidance@latest search
+"<goal>"` → `retrieve` → verify the code against the guide). Training data skews toward legacy
 patterns; prefer the native platform feature the guide names over a library or
 hand-rolled polyfill. Skip it for backend, CI, and non-browser code.
 

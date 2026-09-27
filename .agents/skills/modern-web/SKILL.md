@@ -1,7 +1,7 @@
 ---
 name: modern-web
 description: |
-  Consult Google Chrome's Modern Web Guidance before writing HTML/CSS/client-side JS — search the curated use-case index, retrieve the best-practice guide, and verify the code against it (Baseline-aware fallbacks)
+  Use Google Chrome's Modern Web Guidance before writing HTML/CSS/client-side JS — prefer the harness's native modern-web-guidance plugin (Claude Code, agy, Codex); otherwise search, retrieve, and verify against the guides via the npm CLI
 license: MIT
 metadata:
   version: "1.0"
