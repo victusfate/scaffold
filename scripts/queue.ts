@@ -24,6 +24,8 @@
 //   node scripts/queue.ts gate <gate-id> [--only f]  # deps: <gate-id> on every other task (block)
 //   node scripts/queue.ts ungate <gate-id>           # remove <gate-id> from deps + mark it done (unblock)
 //   node scripts/queue.ts archive                    # sweep done/failed into archive.md
+//   node scripts/queue.ts import [--dry-run]         # apply hand edits to queue.md (dedupes ids)
+//   node scripts/queue.ts render                     # rewrite queue.md from the store (drop edits)
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
 //   node scripts/queue.ts lane beat|list|clear|stop|go <id>  # lane heartbeats (the live board reads these)
 //
@@ -35,7 +37,10 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { execSync } from 'node:child_process';
-import { ROOT, sidecar, now, load, save, log, appendArchive, withLock, unlocked } from './queue-io.ts';
+import {
+  ROOT, sidecar, now, load, save, log, appendArchive, withLock, unlocked, importView, renderFromStore,
+} from './queue-io.ts';
+import { formatReport } from './queue-db.ts';
 import { cmdGate, cmdUngate, drainKick } from './queue-gates.ts';
 import {
   render as renderModel,
@@ -467,6 +472,14 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     case 'gate': return cmdGate(q, f.positionals[0] ?? '', f.flags.get('only') ?? '', f.bools.has('dry-run'));
     case 'ungate': return cmdUngate(q, f.positionals[0] ?? '', f.bools.has('keep-gate'), f.bools.has('dry-run'));
     case 'archive': return cmdArchive(q);
+    case 'import': {
+      const dry = f.bools.has('dry-run');
+      const lines = formatReport(importView(dry));
+      console.log([`queue import${dry ? ' (dry run — nothing written)' : ''}: `
+        + (lines.length ? '' : 'ids already unique'), ...lines].join('\n'));
+      return 0;
+    }
+    case 'render': renderFromStore(); console.log('queue: view re-rendered from the store'); return 0;
     case 'loop': return cmdLoop(q);
     case 'worktree': case 'wt': return cmdWorktree(q, f.positionals[0] ?? '', f.positionals[1] ?? '');
     case 'lane': return cmdLane(q, f.positionals[0] ?? '', f.positionals[1] ?? '', f);
@@ -474,7 +487,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
         + `signal claim begin done fail top move hold unhold requeue remove start stop pause interval config `
-        + `gate ungate archive loop worktree lane`);
+        + `gate ungate archive import render loop worktree lane`);
       return 1;
   }
 }

@@ -68,7 +68,7 @@ try {
   const lockMarker = join(dir, 'lock-held');
   const holding = spawnCli(file, ['--hold', lockMarker], SELF);
   waitFor(lockMarker);
-  if (!/^pid=\d+ acquiredAt=.+\n$/.test(readFileSync(`${file}.lock`, 'utf8'))) {
+  if (!/^pid=\d+ acquiredAt=.+\n$/.test(readFileSync(join(dir, 'queue.db.lock'), 'utf8'))) {
     throw new Error('lock metadata is missing');
   }
   writeFileSync(`${lockMarker}-release`, 'continue');

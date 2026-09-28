@@ -1,19 +1,35 @@
 // queue-io.ts — the work queue's filesystem home, shared by the CLI
-// (queue.ts) and the console server (queue-console.ts): resolve the queue
-// file, load/save through the model round-trip so the format never corrupts,
-// and append the audit-log / archive sidecars.
+// (queue.ts) and the console server (queue-console.ts): resolve the SQLite
+// store (the source of truth, queue-db.ts) and its rendered queue.md view,
+// load/save through them, and append the audit-log / archive sidecars.
 
 import {
   readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, openSync, closeSync, rmSync,
 } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseQueue, serializeQueue, formatDurationSecs, type Queue, type Task } from './queue-model.ts';
+import { serializeQueue, formatDurationSecs, type Queue, type Task } from './queue-model.ts';
+import {
+  withStore, readStore, writeStore, planImport, formatReport, type ImportReport,
+} from './queue-db.ts';
+import type { DatabaseSync } from 'node:sqlite';
 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const QUEUE_DIR = join(ROOT, '.agent', 'queue');
 
+/** The rendered, human-readable view of the queue. */
 export function queueFile(): string { return process.env.QUEUE_FILE ?? join(QUEUE_DIR, 'queue.md'); }
+
+/**
+ * The SQLite store. `QUEUE_DB` wins; an explicit `QUEUE_FILE` gets its own store
+ * beside it (same name, `.db` extension) so isolated queues stay isolated.
+ */
+export function dbFile(): string {
+  if (process.env.QUEUE_DB) return process.env.QUEUE_DB;
+  const view = process.env.QUEUE_FILE;
+  if (view) return view.slice(0, view.length - extname(view).length) + '.db';
+  return join(QUEUE_DIR, 'queue.db');
+}
 export function sidecar(name: string): string { return join(dirname(queueFile()), name); }
 export function now(): string { return new Date().toISOString(); }
 
@@ -28,7 +44,7 @@ const LOCK_POLL_MS = 20;
 const LOCK_WAIT_MS = 60_000;
 let held: { fd: number; path: string } | null = null;
 
-function lockPath(): string { return `${queueFile()}.lock`; }
+function lockPath(): string { return `${dbFile()}.lock`; }
 
 function napSync(ms: number): void {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -86,15 +102,61 @@ export function unlocked<T>(fn: () => T): T {
   try { return fn(); } finally { acquire(); }
 }
 
-export function load(): Queue {
-  const p = queueFile();
-  return existsSync(p) ? parseQueue(readFileSync(p, 'utf8')) : parseQueue('');
-}
-
-export function save(q: Queue): void {
+function renderView(q: Queue): void {
   const p = queueFile();
   mkdirSync(dirname(p), { recursive: true });
   writeFileSync(p, serializeQueue(q));
+}
+
+function readView(): string {
+  return existsSync(queueFile()) ? readFileSync(queueFile(), 'utf8') : '';
+}
+
+/** Apply the view to the store (deduping ids), re-render it, and log the report. */
+function applyView(db: DatabaseSync, source: string): ImportReport {
+  const { queue, report } = planImport(db, readView());
+  renderView(writeStore(db, queue));
+  for (const line of formatReport(report)) log(`${source}: ${line.trim()}`);
+  return report;
+}
+
+/**
+ * Open the store for one transaction. A store's first open migrates the existing
+ * view into it, so pre-SQLite queues (duplicates and all) carry over; the
+ * renumbering report goes to stderr and log.md.
+ */
+function openStore<T>(fn: (db: DatabaseSync) => T): T {
+  mkdirSync(dirname(dbFile()), { recursive: true });
+  return withStore(dbFile(), (db, fresh) => {
+    if (fresh && existsSync(queueFile())) {
+      const lines = formatReport(applyView(db, 'migrate'));
+      if (lines.length) process.stderr.write(`queue: migrated ${queueFile()} into ${dbFile()}; `
+        + `${lines.join('\n')}\n`);
+    }
+    return fn(db);
+  });
+}
+
+export function load(): Queue {
+  return openStore(db => readStore(db));
+}
+
+/** Persist `q` to the store, then re-render the view — one transaction. */
+export function save(q: Queue): void {
+  openStore(db => renderView(writeStore(db, q)));
+}
+
+/**
+ * `queue import`: replace the store's tasks with the (hand-edited) view's,
+ * renumbering duplicate or already-issued ids. A dry run only reports.
+ */
+export function importView(dryRun: boolean): ImportReport {
+  return openStore(db => (dryRun ? planImport(db, readView()).report : applyView(db, 'import')));
+}
+
+/** `queue render`: rewrite the view from the store, discarding hand edits to it. */
+export function renderFromStore(): void {
+  openStore(db => renderView(readStore(db)));
 }
 
 export function log(msg: string): void {
