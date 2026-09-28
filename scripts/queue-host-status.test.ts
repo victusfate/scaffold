@@ -24,8 +24,8 @@ const cpu = (idle: number, user: number): CpuInfo => ({
     sleep: async () => {},
     totalMemory: () => 64 * GIB,
     availableMemory: () => 23 * GIB,
-    filesystem: async () => ({ totalBytes: 512 * GIB, availableBytes: 211 * GIB }),
-    gpu: async () => ({ available: false, reason: 'not installed' }),
+    filesystem: () => Promise.resolve({ totalBytes: 512 * GIB, availableBytes: 211 * GIB }),
+    gpu: () => Promise.resolve({ available: false, reason: 'not installed' }),
     environment: {},
     sampledAt: () => '2026-09-28T18:00:00.000Z',
   });
