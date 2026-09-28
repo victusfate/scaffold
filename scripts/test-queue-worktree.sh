@@ -45,6 +45,15 @@ run worktree add task-002 >/dev/null
 check "second worktree exists"     '[ -d "$TMP/.agent/queue/wt/task-002" ]'
 check "two linked worktrees"       '[ "$(git worktree list | grep -c wt/)" -eq 2 ]'
 
+echo "== every worktree shares the main checkout's store (one id counter) =="
+WT2="$TMP/.agent/queue/wt/task-002"
+( cd "$WT2" && node scripts/queue.ts add "Added from a worktree" >/dev/null )
+check "store lives in the main checkout"   '[ -f "$TMP/.agent/queue/queue.db" ] && [ ! -e "$WT2/.agent/queue/queue.db" ]'
+check "worktree add visible from main"     'run show task-003 | grep -q "Added from a worktree"'
+run add "Added from main" >/dev/null
+check "main continues the shared counter"  'run show task-004 | grep -q "Added from main"'
+check "worktree view rendered from store"  'grep -q "task-003 — Added from a worktree" "$WT2/.agent/queue/queue.md"'
+
 echo "== worktree remove tears it down and clears the field =="
 run worktree remove task-001 >/dev/null
 check "worktree dir gone"          '[ ! -d "$TMP/.agent/queue/wt/task-001" ]'
