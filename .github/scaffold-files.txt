@@ -35,6 +35,9 @@ scripts/mermaid-watch.ts
 scripts/mermaid-watch.test.ts
 scripts/queue-model.ts
 scripts/queue-io.ts
+scripts/queue-db.ts
+scripts/queue-db.test.ts
+scripts/queue-worktrees.ts
 scripts/queue-gates.ts
 scripts/queue-edit.test.ts
 scripts/queue-lock.test.ts
