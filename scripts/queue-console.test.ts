@@ -258,10 +258,13 @@ maxParallel: 2
 
   has('page posts to the op endpoint', '/api/op');
   has('page reads lanes from the api', '/api/lanes');
+  has('page reads host resources from the api', '/api/host');
   has('page subscribes to SSE', '/events');
   has('task list mount point', 'id="tasks"');
   has('add form mount point', 'id="add"');
   has('status header mount point', 'id="status"');
+  has('host resource status mount point', 'id="host-status"');
+  has('host status is passive rather than a noisy live region', 'aria-live="off"');
   has('changed-on-disk banner mount point', 'id="stale"');
   has('free-lane drop placeholder', 'drop a task here');
   has('held chip', '>held<');
