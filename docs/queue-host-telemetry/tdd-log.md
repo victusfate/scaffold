@@ -20,3 +20,10 @@
 - Review findings: queue rendering awaited the host probe; Linux used free rather than available memory; only the first NVIDIA device affected the guard; subprocess timeout settlement was coupled to child exit; flex styling could hide list semantics in Safari; the task contract's active-worktree total was missing.
 - GREEN: queue and lane state render before telemetry; Linux reads `MemAvailable` with a conservative cross-platform fallback; GPU pressure aggregates every device and guards on minimum per-device headroom; `nvidia-smi` settles at a hard deadline; active worktrees are sized in a terminable worker thread; the metric list has explicit semantics.
 - Verification: 171 queue-console assertions, 10 host-status assertions (including a real worker-thread scan), typecheck, lint, and whitespace checks pass. Full-suite and integration reruns remain the final pre-PR gate.
+
+## Slice 3 — Read-only task-string filter
+
+- Status: done
+- RED: six template-contract assertions failed because the page had no labelled search control, result status, task-field matcher, input handler, or clear path.
+- GREEN: a native search input beside task creation filters ids, titles, and task-field values across all columns, preserves source order and shared queue state, and announces the shown/total count. Hidden active cards do not create false free-lane indicators.
+- Verification: 178 queue-console assertions, typecheck, and whitespace checks pass. Live Chromium proved id and non-title-field matches, zero results, full restoration after clear, and an unchanged `/api/queue` response; root inspected desktop and phone captures.

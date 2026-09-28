@@ -128,13 +128,22 @@ try {
   dialog h2 { margin: 0 0 0.4rem; font-size: 1.05rem; }
   dialog p { margin: 0 0 1rem; color: var(--muted); }
   dialog .buttons { display: flex; justify-content: flex-end; gap: 0.5rem; }
-  /* -- add panel -- */
-  #add { margin: 0 0 1.1rem; }
+  /* -- task controls -- */
+  #task-tools {
+    display: grid; grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+    gap: 0.8rem; align-items: start; margin: 0 0 1.1rem;
+  }
+  #add { margin: 0; }
   #add .row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
   #add input[name=title] { flex: 1 1 16rem; padding: 0.45rem 0.7rem; }
   #add .row label { color: var(--muted); display: inline-flex; gap: 0.3rem; align-items: center; }
   #add details { margin-top: 0.4rem; }
   #add summary { color: var(--muted); cursor: pointer; font-size: 0.88rem; width: max-content; }
+  #filter { display: grid; gap: 0.3rem; }
+  #filter label { color: var(--muted); font-size: 0.85rem; }
+  #filter .row { display: flex; gap: 0.4rem; }
+  #task-filter { min-width: 0; flex: 1; }
+  #filter-count { color: var(--muted); font-size: 0.8rem; min-height: 1.2em; }
   .grid {
     display: grid; grid-template-columns: auto 1fr; gap: 0.35rem 0.6rem;
     margin-top: 0.5rem; align-items: center; max-width: 40rem;
@@ -234,6 +243,8 @@ try {
     #error { transition: none; }
     ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
   }
+  @media (max-width: 48rem) { #task-tools { grid-template-columns: 1fr; } }
+  @media (pointer: coarse) { #filter input, #filter button { min-height: 3rem; } }
 </style>
 </head>
 <body>
@@ -251,24 +262,35 @@ try {
   </form>
 </dialog>
 
-<form id="add">
-  <div class="row">
-    <input name="title" placeholder="Describe a new task" aria-label="New task title" autocomplete="off">
-    <label><input type="checkbox" name="top"> Put first</label>
-    <button class="primary" type="submit">Add task</button>
-  </div>
-  <details>
-    <summary>More fields</summary>
-    <div class="grid">
-      <label>mode</label><select name="mode"><option>direct</option><option>chain</option></select>
-      <label>slug</label><input name="slug" placeholder="docs/&lt;slug&gt;/">
-      <label>deps</label><input name="deps" placeholder="task-001, task-002">
-      <label>files</label><input name="files" placeholder="src/a.ts, test/a.test.ts">
-      <label>validate</label><input name="validate" placeholder="npm test">
-      <label>accept</label><input name="accept" placeholder="checkable end state">
+<section id="task-tools" aria-label="Task controls">
+  <form id="add">
+    <div class="row">
+      <input name="title" placeholder="Describe a new task" aria-label="New task title" autocomplete="off">
+      <label><input type="checkbox" name="top"> Put first</label>
+      <button class="primary" type="submit">Add task</button>
     </div>
-  </details>
-</form>
+    <details>
+      <summary>More fields</summary>
+      <div class="grid">
+        <label>mode</label><select name="mode"><option>direct</option><option>chain</option></select>
+        <label>slug</label><input name="slug" placeholder="docs/&lt;slug&gt;/">
+        <label>deps</label><input name="deps" placeholder="task-001, task-002">
+        <label>files</label><input name="files" placeholder="src/a.ts, test/a.test.ts">
+        <label>validate</label><input name="validate" placeholder="npm test">
+        <label>accept</label><input name="accept" placeholder="checkable end state">
+      </div>
+    </details>
+  </form>
+  <form id="filter" role="search">
+    <label for="task-filter">Filter tasks</label>
+    <div class="row">
+      <input id="task-filter" name="query" type="search" placeholder="ID, title, or task field"
+        autocomplete="off" enterkeyhint="search">
+      <button id="filter-clear" type="button">Clear</button>
+    </div>
+    <output id="filter-count" for="task-filter" aria-live="polite" aria-atomic="true"></output>
+  </form>
+</section>
 
 <ul id="tasks"></ul>
 
@@ -283,6 +305,7 @@ let editingId = null;  // task id whose editor is open (or "add" while typing)
 let draggingId = null;
 let armedId = null;   // click-to-move selection (touch/mouse fallback when drags fail)
 let lastDrop = 0;     // timestamp of the last drop — clicks right after one belong to the drag
+let filterQuery = "";
 
 const laneById = id => L.find(l => l.id === id);
 
@@ -552,8 +575,29 @@ function taskHtml(t) {
     + '</div>';
 }
 
+function taskSearchText(t) {
+  return [
+    t.id, t.title, t.mode, t.slug, t.validate, t.accept, t.note, t.owner, t.branch, t.worktree,
+    ...t.dependsOn, ...t.files,
+  ].filter(value => value !== null && value !== undefined).join(" ").toLocaleLowerCase();
+}
+
+function taskMatchesFilter(t) {
+  const query = filterQuery.trim().toLocaleLowerCase();
+  return !query || taskSearchText(t).includes(query);
+}
+
+function updateFilterCount(shown) {
+  const total = S.tasks.length;
+  $("#filter-count").textContent = filterQuery.trim()
+    ? shown + " of " + total + " tasks shown"
+    : total + " task" + (total === 1 ? "" : "s");
+}
+
 function renderTasks() {
   const ul = $("#tasks");
+  const visibleTasks = S.tasks.filter(taskMatchesFilter);
+  updateFilterCount(visibleTasks.length);
   if (!S.tasks.length) {
     ul.classList.remove("cols");
     ul.innerHTML = '<li class="empty">No tasks yet. Add one above. To move a task later, click a card, then a column.</li>';
@@ -563,11 +607,11 @@ function renderTasks() {
   // global `move` op); Queued ⇄ In Progress drags claim/release lane slots;
   // Blocked/Done/Failed are drag-free views.
   const cols = [
-    ["Queued", S.tasks.filter(t => t.status === "pending" && t.eligible)],
-    ["Blocked", S.tasks.filter(t => t.status === "pending" && !t.eligible)],
-    ["In Progress", S.tasks.filter(t => t.status === "active")],
-    ["Done", S.tasks.filter(t => t.status === "done")],
-    ["Failed", S.tasks.filter(t => t.status === "failed")],
+    ["Queued", visibleTasks.filter(t => t.status === "pending" && t.eligible)],
+    ["Blocked", visibleTasks.filter(t => t.status === "pending" && !t.eligible)],
+    ["In Progress", visibleTasks.filter(t => t.status === "active")],
+    ["Done", visibleTasks.filter(t => t.status === "done")],
+    ["Failed", visibleTasks.filter(t => t.status === "failed")],
   ];
   ul.classList.add("cols");
   ul.innerHTML = cols.map(([name, items]) => {
@@ -583,7 +627,9 @@ function renderTasks() {
     // Free lane slots are visible drop targets: dropping a Queued card on
     // the column claims it into the next free slot (server assigns lane-N).
     if (name === "In Progress") {
-      const free = S.config.maxParallel - items.length;
+      // A text filter may hide active cards, but it must never invent capacity.
+      const activeCount = S.tasks.filter(t => t.status === "active").length;
+      const free = S.config.maxParallel - activeCount;
       if (free > 0) cards += '<li class="slot">drop a task here to start it ('
         + free + ' lane' + (free > 1 ? 's' : '') + ' free)</li>';
     }
@@ -757,6 +803,19 @@ function render() {
 }
 
 // ------------------------------------------------------------------ add form
+
+const taskFilter = $("#task-filter");
+taskFilter.addEventListener("input", () => {
+  filterQuery = taskFilter.value;
+  renderTasks();
+});
+$("#filter").addEventListener("submit", e => e.preventDefault());
+$("#filter-clear").onclick = () => {
+  taskFilter.value = "";
+  filterQuery = "";
+  renderTasks();
+  taskFilter.focus();
+};
 
 $("#add").addEventListener("submit", e => {
   e.preventDefault();

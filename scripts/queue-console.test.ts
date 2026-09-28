@@ -268,6 +268,7 @@ maxParallel: 2
   has('task filter matches task fields', 'taskSearchText');
   has('task filter reacts immediately', 'addEventListener("input"');
   has('task filter has a non-mutating clear path', 'id="filter-clear"');
+  has('filtered active cards do not invent free lanes', 'const activeCount = S.tasks.filter');
   has('status header mount point', 'id="status"');
   has('host resource status mount point', 'id="host-status"');
   has('host status is passive rather than a noisy live region', 'aria-live="off"');
