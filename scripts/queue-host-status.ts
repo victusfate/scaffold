@@ -201,7 +201,7 @@ function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
       resolve(value);
     }, error => {
       clearTimeout(timer);
-      reject(error);
+      reject(error instanceof Error ? error : new Error(String(error)));
     });
   });
 }
