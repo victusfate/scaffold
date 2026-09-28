@@ -1,4 +1,4 @@
-# Design: Queue Host Telemetry
+# Design: Queue Console Telemetry and Filter
 
 ## Canonical Vocabulary
 
@@ -10,6 +10,7 @@
 | Desired parallelism | The queue's existing `maxParallel` worker-lane setting. It is operator-controlled. |
 | Worker-lane limit | An optional externally supplied ceiling for worker agents. It is distinct from host capacity and desired parallelism. |
 | Unavailable metric | A metric the current platform or installed tools cannot report; it is displayed as unavailable, never synthesized as zero. |
+| Task filter | A local, case-insensitive substring view over task ids, titles, and task-field values. It never changes queue order or stored state. |
 
 ## Decisions
 
@@ -53,6 +54,14 @@
 
 **Rationale:** Resource samples update often and should be inspectable without repeatedly interrupting screen-reader users.
 
+### Local task filtering beside task creation
+
+**Decision:** Add a visibly labelled search control beside the new-task form. Each input change filters every status column immediately against task ids, titles, and field values; a polite result count reports the view. Clearing the input restores the full board.
+
+**Rationale:** Large queues make browser find and repeated task creation poor substitutes for locating related work. Keeping the operation in the browser makes it instant and guarantees that searching cannot mutate the SQLite-backed queue.
+
+**Alternatives considered:** A server query endpoint or new persisted filter state; rejected because the full queue is already present and filter preferences do not belong in shared queue state.
+
 ## Visualizations
 
 ```mermaid
@@ -78,6 +87,9 @@ flowchart LR
 - Disk or OS probe error: only that metric becomes unavailable; the endpoint still returns a typed snapshot.
 - Resource guard is clear but the worker-lane limit is full: the panel says the host is clear and the harness is full.
 - Four queue claims with only three worker slots: active claims and the configured worker limit are shown separately.
+- A filter matches mixed-case text in an id, title, dependency, file, acceptance criterion, note, or owner: only matching cards remain, in their original columns and order.
+- A filter matches nothing: every column reports zero and the live result count reports zero; no task is added or changed.
+- Clearing the filter, including the native clear affordance on a search input, restores every card.
 
 ## Q&A Summary
 
@@ -88,3 +100,7 @@ flowchart LR
 **Q:** Which resources matter for lane sizing?
 
 **A:** CPU pressure, available memory, queue-filesystem free space, optional GPU/VRAM pressure, active claims, desired parallelism, and an optional worker-lane limit.
+
+**Q:** Should finding related tasks require creating a new task or changing queue state?
+
+**A:** No. The task filter is an immediate, read-only view beside the existing creation control.

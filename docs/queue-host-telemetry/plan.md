@@ -1,4 +1,4 @@
-# Plan: Queue Host Telemetry
+# Plan: Queue Console Telemetry and Filter
 
 ## Slice 1 — Portable host pressure reaches the queue header
 
@@ -16,6 +16,13 @@
 - RED: non-default sentinel tests cover valid, invalid, unavailable, warning, and blocked cases.
 - GREEN: the same live path displays the effective limits without automatically mutating `maxParallel`.
 
+## Slice 3 — Read-only task-string filter
+
+- Place a visibly labelled native search control beside the new-task form with a clear action and polite result count.
+- Build one normalized search string from each task's id, title, and task-field values, then filter every existing status column without changing order or queue state.
+- RED: template contract assertions require the accessible controls, task-field matching, immediate input handling, and a non-mutating clear path.
+- GREEN: live desktop and phone checks prove title/id/field matches, zero results, and full restoration on clear while `/api/queue` remains byte-for-byte equivalent.
+
 ## Verification
 
 - `node scripts/queue-console.test.ts`
@@ -24,3 +31,4 @@
 - `npm test`
 - Local PR gate selected by the repository (`make ci` or documented equivalent).
 - Browser inspection of the live loopback page at desktop and narrow width; telemetry must remain readable and must not announce every refresh.
+- Browser interaction check of task filtering and clearing at desktop and narrow width.
