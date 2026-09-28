@@ -308,7 +308,14 @@ maxParallel: 2
   writeFileSync(file, '- [ ] task-001 — first\n- [x] task-002 — finished\n');
   process.env.QUEUE_FILE = file;
 
-  const server = startServer(0);
+  const hostStatus = {
+    sampledAt: '2026-09-28T18:00:00.000Z',
+    cpu: { available: true as const, cores: 12, utilizationPercent: 37.5 },
+    memory: { totalBytes: 64 * 1024 ** 3, availableBytes: 23 * 1024 ** 3 },
+    disk: { available: true as const, path: dir, totalBytes: 512 * 1024 ** 3, availableBytes: 211 * 1024 ** 3 },
+    gpu: { available: false as const, reason: 'not installed' },
+  };
+  const server = startServer(0, { hostProbe: () => Promise.resolve(hostStatus) });
   await new Promise<void>(res => server.on('listening', res));
   const addr = server.address() as { address: string; port: number };
   const base = `http://127.0.0.1:${addr.port}`;
@@ -320,6 +327,10 @@ maxParallel: 2
 
   const state = await (await fetch(`${base}/api/queue`)).json() as { tasks: { id: string }[] };
   assert('GET /api/queue reflects the file', state.tasks.map(t => t.id).join(',') === 'task-001,task-002');
+
+  const host = await (await fetch(`${base}/api/host`)).json() as typeof hostStatus;
+  assert('GET /api/host serves the injected host snapshot', host.cpu.available
+    && host.cpu.utilizationPercent === 37.5 && host.memory.availableBytes === 23 * 1024 ** 3);
 
   const post = (body: unknown): Promise<Response> => fetch(`${base}/api/op`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
