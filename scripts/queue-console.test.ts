@@ -265,6 +265,9 @@ maxParallel: 2
   has('status header mount point', 'id="status"');
   has('host resource status mount point', 'id="host-status"');
   has('host status is passive rather than a noisy live region', 'aria-live="off"');
+  has('host status names the resource guard', 'Resource guard');
+  has('host status distinguishes the worker limit', 'Worker limit');
+  has('host status reports VRAM headroom', 'VRAM');
   has('changed-on-disk banner mount point', 'id="stale"');
   has('free-lane drop placeholder', 'drop a task here');
   has('held chip', '>held<');
