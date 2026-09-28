@@ -24,7 +24,7 @@
 //   node scripts/queue.ts gate <gate-id> [--only f]  # deps: <gate-id> on every other task (block)
 //   node scripts/queue.ts ungate <gate-id>           # remove <gate-id> from deps + mark it done (unblock)
 //   node scripts/queue.ts archive                    # sweep done/failed into archive.md
-//   node scripts/queue.ts import [--dry-run]         # apply hand edits to queue.md (dedupes ids)
+//   node scripts/queue.ts import [--dry-run|--force] # apply hand edits to queue.md (dedupes ids)
 //   node scripts/queue.ts render                     # rewrite queue.md from the store (drop edits)
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
 //   node scripts/queue.ts lane beat|list|clear|stop|go <id>  # lane heartbeats (the live board reads these)
@@ -426,7 +426,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     case 'archive': return cmdArchive(q);
     case 'import': {
       const dry = f.bools.has('dry-run');
-      const lines = formatReport(importView(dry));
+      const lines = formatReport(importView(dry, f.bools.has('force')));
       console.log([`queue import${dry ? ' (dry run — nothing written)' : ''}: `
         + (lines.length ? '' : 'ids already unique'), ...lines].join('\n'));
       return 0;

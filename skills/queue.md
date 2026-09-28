@@ -81,12 +81,16 @@ integrationBranch:
 - **Reprioritize** with `queue top <id>` / `move`, **edit** with `set`, **pause**
   with `queue stop` — or hand-edit `queue.md` (move lines, change or delete them,
   set `status: stopped`) and run **`queue import`** to apply it. Import replaces
-  the store's task list with the file's; `--dry-run` previews.
+  the store's task list with the file's; `--dry-run` previews. An import that
+  would **delete stored tasks or change the status of a claimed/finished one** is
+  refused without `--force`. A stale copy (git put back an older `queue.md`)
+  looks exactly like a deliberate deletion, so the dry run lists what would go.
 - **Hand edits never get silently overwritten.** Each render records the view's
   hash; if the file changed since, every mutating command (CLI or console)
   refuses with a message and saves nothing until you `import` the edits or
-  `render` (rewrite the view from the store, discarding them). A git merge that
-  changes `queue.md` counts as a hand edit.
+  `render` (rewrite the view from the store, discarding them). A git checkout,
+  pull, merge, or stash that changes `queue.md` counts too; there `render` is
+  usually right, because the store already holds the truth.
 
 Task lines and their fields survive worker writes; **freeform prose does not**.
 Runtime sidecars `log.md` (audit trail) and `archive.md` sit alongside and are
@@ -103,9 +107,9 @@ archived and live ids never collide.
 **Duplicate ids in a view get renumbered, with a report.** `import`, and the
 automatic migration the first time a store opens over an existing `queue.md`,
 keep the first task with each id and give later duplicates (and already-issued
-ids) fresh ones. They print an `old → new` map and append it to `log.md`. A dep
-that named a duplicated id still points at its first holder and is flagged with
-`!`; check each flagged dep.
+ids) fresh ones. They print an `old → new` map and append it to `log.md`. Deps
+on an already-issued id follow its rename. A dep that named a duplicated id still
+points at its first holder and is flagged with `!`; check each flagged dep.
 
 ## Command surface (`scripts/queue.ts`)
 
@@ -128,7 +132,7 @@ gate <gate-id> [--only f] [--dry-run]  # add deps:<gate-id> to every other task 
 ungate <gate-id> [--keep-gate]         # remove <gate-id> from all deps + mark it done (unblock)
 worktree add|remove|list <id>          # isolated git worktree per task
 archive | loop                          # sweep done/failed | print the /loop invocation
-import [--dry-run]                     # apply hand edits to queue.md (renumbers duplicate ids)
+import [--dry-run|--force]             # apply hand edits to queue.md (renumbers duplicate ids)
 render                                 # rewrite queue.md from the store (discard hand edits)
 ```
 

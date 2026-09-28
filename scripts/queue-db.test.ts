@@ -122,7 +122,7 @@ try {
   writeFileSync(viewA, edited);
   const refused = runIn(viewA, 'add', 'blocked');
   assert.notEqual(refused.status, 0, 'a save over a hand-edited view fails closed');
-  assert.match(refused.stderr, /edited by hand.*queue\.ts import.*queue\.ts render/s);
+  assert.match(refused.stderr, /changed since the store last rendered.*import --dry-run.*queue\.ts render/s);
   assert.doesNotMatch(refused.stderr, /at .*queue-db\.ts/, 'an actionable message, not a stack trace');
   assert.equal(readFileSync(viewA, 'utf8'), edited, 'hand edit preserved');
   assert.equal(runIn(viewB, 'show', 'task-004').status, 1, 'refused save wrote nothing');
@@ -162,7 +162,7 @@ try {
   assert.match(readFileSync(join(staleDir, 'log.md'), 'utf8'), /task-003 — C \(removed\)/);
 
   // A recycled id is unambiguous (the store no longer has it): its dependents follow the rename.
-  writeFileSync(sv, '- [ ] task-002 — Merged prereq\n- [ ] task-009 — dependent\n  - deps: task-002\n');
+  writeFileSync(sv, '- [ ] task-003 — Merged prereq\n- [ ] task-009 — dependent\n  - deps: task-003\n');
   assert.equal(rs('import', '--force').status, 0);
   assert.match(rs('show', 'task-009').stdout, /deps: task-010/);
   assert.match(rs('show', 'task-010').stdout, /Merged prereq/);

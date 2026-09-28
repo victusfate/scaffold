@@ -69,13 +69,20 @@ type Row = Record<string, string | number | null>;
  */
 export class QueueIntegrityError extends Error {}
 
+/** Queue a side effect (file write, log line) to run only once the transaction commits. */
+export type Defer = (effect: () => void) => void;
+
 /**
  * Open (creating if needed) the store at `path` and run `fn` in one
  * write transaction; any throw rolls the whole transaction back. `fresh` is true
  * when this call initialized the store, so the caller can migrate into it.
+ * Effects passed to `defer` run after COMMIT, so a rolled-back transaction never
+ * leaves a view or log line describing state the store does not hold.
  */
-export function withStore<T>(path: string, fn: (db: DatabaseSync, fresh: boolean) => T): T {
+export function withStore<T>(path: string, fn: (db: DatabaseSync, fresh: boolean, defer: Defer) => T): T {
   const db = new Database(path);
+  const effects: Array<() => void> = [];
+  let out: T;
   try {
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
     db.exec('BEGIN IMMEDIATE');
@@ -83,16 +90,18 @@ export function withStore<T>(path: string, fn: (db: DatabaseSync, fresh: boolean
       db.exec(SCHEMA);
       const fresh = getMeta(db, 'initialized') === null;
       if (fresh) setMeta(db, 'initialized', new Date().toISOString());
-      const out = fn(db, fresh);
+      out = fn(db, fresh, effect => effects.push(effect));
       db.exec('COMMIT');
-      return out;
     } catch (error) {
-      db.exec('ROLLBACK');
+      // SQLite may already have rolled back (e.g. a failed COMMIT); keep the real error.
+      try { db.exec('ROLLBACK'); } catch { /* no transaction left to roll back */ }
       throw error;
     }
   } finally {
     db.close();
   }
+  for (const effect of effects) effect();
+  return out;
 }
 
 export function getMeta(db: DatabaseSync, key: string): string | null {
@@ -201,6 +210,15 @@ export interface ImportReport {
   renames: Rename[];
   /** Deps that named a duplicated id; they still point at its first occurrence. */
   ambiguousDeps: Array<{ task: string; dep: string }>;
+  /** Stored tasks the view no longer has — importing deletes them. */
+  removed: Array<{ id: string; title: string }>;
+  /** Stored tasks already claimed or finished whose status the view changes. */
+  statusChanges: Array<{ id: string; title: string; from: string; to: string }>;
+}
+
+/** Whether applying the report would drop or rewind work (needs `--force`). */
+export function isDestructive(r: ImportReport): boolean {
+  return r.removed.length > 0 || r.statusChanges.length > 0;
 }
 
 /**
@@ -209,7 +227,9 @@ export interface ImportReport {
  * dropped, gets a fresh id from the counter. Id-less (hand-added) tasks also get
  * fresh ids. Pure: `present` and `next` describe the store being imported into.
  */
-export function dedupeIds(q: Queue, present: Set<string>, next: number): { queue: Queue; report: ImportReport } {
+export function dedupeIds(
+  q: Queue, present: Set<string>, next: number,
+): { queue: Queue; report: Pick<ImportReport, 'renames' | 'ambiguousDeps'> } {
   let n = Math.max(next, q.config.nextId, ...q.tasks.map(t => idNum(t.id) + 1));
   const seen = new Set<string>();
   const duplicated = new Set<string>();
@@ -224,23 +244,45 @@ export function dedupeIds(q: Queue, present: Set<string>, next: number): { queue
     }
     return { ...t, id: to };
   });
-  const ambiguousDeps = tasks.flatMap(t => t.dependsOn.filter(d => duplicated.has(d)).map(dep => ({ task: t.id, dep })));
-  return { queue: { config: { ...q.config, nextId: n }, tasks }, report: { renames, ambiguousDeps } };
+  // An already-issued id is unambiguous within the view (the store no longer has
+  // it), so its dependents follow the rename; a duplicated id stays with its first holder.
+  const moved = new Map(renames.filter(r => r.reason === 'already issued').map(r => [r.from, r.to]));
+  const remapped = tasks.map(t => (t.dependsOn.some(d => moved.has(d))
+    ? { ...t, dependsOn: t.dependsOn.map(d => moved.get(d) ?? d) } : t));
+  const ambiguousDeps = remapped.flatMap(t => t.dependsOn.filter(d => duplicated.has(d)).map(dep => ({ task: t.id, dep })));
+  return { queue: { config: { ...q.config, nextId: n }, tasks: remapped }, report: { renames, ambiguousDeps } };
 }
 
-/** Dedupe a view's Markdown against the store without writing anything. */
+/** Dedupe a view's Markdown against the store and diff it, without writing anything. */
 export function planImport(db: DatabaseSync, md: string): { queue: Queue; report: ImportReport } {
-  const present = new Set((db.prepare('SELECT id FROM tasks').all() as Row[]).map(r => String(r.id)));
-  return dedupeIds(parseQueue(md), present, storedNextId(db));
+  const stored = readStore(db).tasks;
+  const { queue, report } = dedupeIds(parseQueue(md), new Set(stored.map(t => t.id)), storedNextId(db));
+  const incoming = new Map(queue.tasks.map(t => [t.id, t]));
+  const removed = stored.filter(t => !incoming.has(t.id)).map(t => ({ id: t.id, title: t.title }));
+  const statusChanges = stored.flatMap(t => {
+    const next = incoming.get(t.id);
+    return next && t.status !== 'pending' && next.status !== t.status
+      ? [{ id: t.id, title: t.title, from: t.status, to: next.status }] : [];
+  });
+  return { queue, report: { ...report, removed, statusChanges } };
 }
 
 /** Human-readable lines for an import report (empty when nothing changed). */
 export function formatReport(r: ImportReport): string[] {
-  if (!r.renames.length) return [];
-  return [
-    `renumbered ${r.renames.length} task id(s) to keep ids unique:`,
-    ...r.renames.map(x => `  ${x.from} → ${x.to} — ${x.title}${x.reason === 'duplicate' ? '' : ` (${x.reason})`}`),
-    ...r.ambiguousDeps.map(d => `  ! ${d.task} deps: ${d.dep} named a duplicated id — it now means the `
-      + `first ${d.dep}; verify`),
-  ];
+  const lines: string[] = [];
+  if (r.renames.length) {
+    lines.push(`renumbered ${r.renames.length} task id(s) to keep ids unique:`,
+      ...r.renames.map(x => `  ${x.from} → ${x.to} — ${x.title}${x.reason === 'duplicate' ? '' : ` (${x.reason})`}`),
+      ...r.ambiguousDeps.map(d => `  ! ${d.task} deps: ${d.dep} named a duplicated id — it now means the `
+        + `first ${d.dep}; verify`));
+  }
+  if (r.removed.length) {
+    lines.push(`deletes ${r.removed.length} task(s) the view no longer lists:`,
+      ...r.removed.map(x => `  ${x.id} — ${x.title} (removed)`));
+  }
+  if (r.statusChanges.length) {
+    lines.push(`changes the status of ${r.statusChanges.length} claimed/finished task(s):`,
+      ...r.statusChanges.map(x => `  ${x.id} — ${x.title}: ${x.from} → ${x.to}`));
+  }
+  return lines;
 }

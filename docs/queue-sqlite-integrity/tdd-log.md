@@ -10,3 +10,15 @@
 | Review fixes | (tests in same commit) | `a108c6a` | One view in the main checkout (lane merges no longer trip the guard); `import` refuses a missing view. |
 
 Gate at each green: `npm test`, `npx tsc --noEmit`, `npx eslint .` (0 errors).
+
+## Independent review round
+
+A fresh-context reviewer found six issues (red `ec` commit below, green after):
+1. `import` of a stale view silently deleted tasks and rewound claimed ones → report `removed`/`statusChanges`, refuse without `--force`.
+2. Renumbered already-issued ids left dependents pointing at nothing → deps follow the rename.
+3. `--separate-git-dir`/submodule layouts fell back to per-checkout stores → main worktree from `git worktree list --porcelain`.
+4. View written before COMMIT, and ROLLBACK could mask the real error → view (atomic temp+rename) and log lines are deferred until after COMMIT, and a failed ROLLBACK is ignored.
+5. `QUEUE_FILE=x.db` aliased view and store → `x.db.db`.
+6. `.gitignore` written for explicit paths / already-ignored stores → only for the default store when git doesn't already ignore it.
+
+Not changed: during an upgrade, an old process still locks `queue.md.lock` while new ones lock `queue.db.lock`. The view hash guard fails that case closed.
