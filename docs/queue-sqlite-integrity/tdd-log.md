@@ -13,7 +13,7 @@ Gate at each green: `npm test`, `npx tsc --noEmit`, `npx eslint .` (0 errors).
 
 ## Independent review round
 
-A fresh-context reviewer found six issues (red `ec` commit below, green after):
+A fresh-context reviewer found six issues (red and green commits after `a108c6a`):
 1. `import` of a stale view silently deleted tasks and rewound claimed ones → report `removed`/`statusChanges`, refuse without `--force`.
 2. Renumbered already-issued ids left dependents pointing at nothing → deps follow the rename.
 3. `--separate-git-dir`/submodule layouts fell back to per-checkout stores → main worktree from `git worktree list --porcelain`.
