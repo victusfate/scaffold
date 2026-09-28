@@ -262,6 +262,12 @@ maxParallel: 2
   has('page subscribes to SSE', '/events');
   has('task list mount point', 'id="tasks"');
   has('add form mount point', 'id="add"');
+  has('task filter has a visible label', '<label for="task-filter">Filter tasks</label>');
+  has('task filter uses native search semantics', 'type="search"');
+  has('task filter reports its result count politely', 'id="filter-count"');
+  has('task filter matches task fields', 'taskSearchText');
+  has('task filter reacts immediately', 'addEventListener("input"');
+  has('task filter has a non-mutating clear path', 'id="filter-clear"');
   has('status header mount point', 'id="status"');
   has('host resource status mount point', 'id="host-status"');
   has('host status is passive rather than a noisy live region', 'aria-live="off"');
