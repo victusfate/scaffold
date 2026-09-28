@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { load, save, log, appendArchive, queueFile, dbFile, withLock, now, ROOT } from './queue-io.ts';
 import { QueueIntegrityError } from './queue-db.ts';
 import { laneDir, readLanes, laneStale, requestStop, stopRequested, type LaneState } from './queue-lanes.ts';
-import { collectHostStatus, type HostStatus } from './queue-host-status.ts';
+import { collectHostStatus, createCachedHostProbe, type HostStatus } from './queue-host-status.ts';
 import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
   addTask, setField, removeTask, moveToTop, moveTask, requeueTask, unclaimTask, beginTask, setConfig,
@@ -379,7 +379,7 @@ async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Pr
  */
 export function startServer(port: number, options: QueueConsoleServerOptions = {}): http.Server {
   const sse = createSseChannel();
-  const hostProbe = options.hostProbe ?? (() => collectHostStatus(ROOT));
+  const hostProbe = createCachedHostProbe(options.hostProbe ?? (() => collectHostStatus(ROOT)));
   const server = http.createServer((req, res) => {
     if (!LOOPBACK_HOST.test(req.headers.host ?? '')) {
       sendJson(res, HTTP_FORBIDDEN, { error: 'forbidden: loopback host required' });

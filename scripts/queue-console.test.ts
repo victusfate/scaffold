@@ -317,6 +317,16 @@ maxParallel: 2
     memory: { totalBytes: 64 * 1024 ** 3, availableBytes: 23 * 1024 ** 3 },
     disk: { available: true as const, path: dir, totalBytes: 512 * 1024 ** 3, availableBytes: 211 * 1024 ** 3 },
     gpu: { available: false as const, reason: 'not installed' },
+    limits: {
+      memoryReserveBytes: 16 * 1024 ** 3,
+      diskFloorBytes: 205 * 1024 ** 3,
+      gpuVramReserveBytes: 4 * 1024 ** 3,
+      workerLimit: 3,
+    },
+    guard: {
+      overall: 'clear' as const, cpu: 'clear' as const, memory: 'clear' as const,
+      disk: 'clear' as const, gpu: 'unavailable' as const,
+    },
   };
   const server = startServer(0, { hostProbe: () => Promise.resolve(hostStatus) });
   await new Promise<void>(res => server.on('listening', res));
