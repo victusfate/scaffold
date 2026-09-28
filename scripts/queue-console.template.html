@@ -596,7 +596,7 @@ function taskMatchesFilter(t, query) {
 function updateFilterCount(shown, query) {
   const total = S.tasks.length;
   $("#filter-count").textContent = query
-    ? shown + " of " + total + " tasks shown"
+    ? shown + " of " + total + " tasks match"
     : total + " task" + (total === 1 ? "" : "s");
 }
 

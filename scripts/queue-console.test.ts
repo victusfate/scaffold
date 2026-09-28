@@ -265,6 +265,7 @@ maxParallel: 2
   has('task filter has a visible label', '<label for="task-filter">Filter tasks</label>');
   has('task filter uses native search semantics', 'type="search"');
   has('task filter reports its result count politely', 'id="filter-count"');
+  has('filter count describes matches when an edited card is pinned', 'tasks match');
   has('task filter matches task fields', 'taskSearchText');
   has('task filter reacts immediately', 'addEventListener("input"');
   has('task filter has a non-mutating clear path', 'id="filter-clear"');
