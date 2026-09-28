@@ -8,16 +8,18 @@ you can augment a long-running project without babysitting it. You stack up work
 a loop wakes on an interval (default 6 min) and drains it — one task at a time, or
 **fanned out across parallel git worktrees** — running each task either as a quick
 `direct` chore or through the **full feature-chain** (`design → prd → plan → tdd →
-code-refiner`) with **no user input**. The queue lives in one file you can open and
-edit at any moment: `.agent/queue/queue.md`.
+code-refiner`) with **no user input**. The queue's state lives in a SQLite store
+(`.agent/queue/queue.db`, git-ignored) and is rendered after every change to one
+file you can open at any moment: `.agent/queue/queue.md`.
 
 This is the complement to `/feature-chain`: the chain builds *one* feature
 interactively, start to finish; the queue lets you **keep feeding and draining
 many units of work** on an ongoing project, unattended.
 
 The reliable read/mutate layer is `scripts/queue.ts` (pure model in
-`scripts/queue-model.ts`). Humans edit the file freely; agents mutate it **only**
-through the CLI so the format never corrupts.
+`scripts/queue-model.ts`, store in `scripts/queue-db.ts`). Humans may hand-edit
+`queue.md` and apply it with `queue import`; agents mutate **only** through the
+CLI so ids and format never corrupt.
 
 ## Client capability fallback
 
@@ -33,9 +35,20 @@ The native persistent-driver rules below apply only when those tools are exposed
 Batch worktree lanes within the client’s concurrency limit, or drain serially if
 subagents are unavailable.
 
-## The queue file
+## The store and its view
 
-One Markdown file. **Line order is priority** (top runs first). A checkbox encodes
+**The store is the source of truth.** `queue.db` holds every task and the config
+in SQLite (Node's built-in `node:sqlite`). Its schema enforces what convention
+could not: `tasks.id` is the primary key, so no two tasks can share an id, and the
+`nextId` counter only moves up. There is **one store per repository**, in the main
+checkout's `.agent/queue/` (found through git's common dir), so every worktree
+lane hands out ids from the same counter. The store is git-ignored: two committed
+binary copies can't be merged, which would bring the id collisions back.
+
+**`queue.md` is the view**, re-rendered after every mutation and committed so the
+queue stays visible in review. Like the store, it and its sidecars (`log.md`,
+`archive.md`, `lanes/`) live in the main checkout, so a lane's worktree never
+rewrites its own copy that would later merge back. It is one Markdown file. **Line order is priority** (top runs first). A checkbox encodes
 status; indented `- key: value` lines carry each task's spec:
 
 ```markdown
@@ -65,9 +78,19 @@ integrationBranch:
 - **config:** `status` run/pause · `interval` wake cadence · `maxFailures` retry cap
   · `leaseMinutes` stale-lease threshold · `maxParallel` fan-out width ·
   `integrationBranch` where completed worktree branches merge (blank = current).
-- **Reprioritize** by moving a line up (or `queue top <id>`); **edit/remove** by
-  changing/deleting lines; **pause** with `status: stopped` (or `queue stop`). The
-  worker re-reads the file every tick, so hand edits take effect on the next wake.
+- **Reprioritize** with `queue top <id>` / `move`, **edit** with `set`, **pause**
+  with `queue stop` — or hand-edit `queue.md` (move lines, change or delete them,
+  set `status: stopped`) and run **`queue import`** to apply it. Import replaces
+  the store's task list with the file's; `--dry-run` previews. An import that
+  would **delete stored tasks or change the status of a claimed/finished one** is
+  refused without `--force`. A stale copy (git put back an older `queue.md`)
+  looks exactly like a deliberate deletion, so the dry run lists what would go.
+- **Hand edits never get silently overwritten.** Each render records the view's
+  hash; if the file changed since, every mutating command (CLI or console)
+  refuses with a message and saves nothing until you `import` the edits or
+  `render` (rewrite the view from the store, discarding them). A git checkout,
+  pull, merge, or stash that changes `queue.md` counts too; there `render` is
+  usually right, because the store already holds the truth.
 
 Task lines and their fields survive worker writes; **freeform prose does not**.
 Runtime sidecars `log.md` (audit trail) and `archive.md` sit alongside and are
@@ -76,9 +99,17 @@ git-ignored; `queue.md` itself is committed so the queue is durable and visible.
 out of `queue.md`, so the live queue shrinks to empty as work finishes (a `done` task
 still depended on by unfinished work is kept until that dependent completes, so the
 DAG never breaks). Terminal `failed` tasks stay visible; sweep them with `archive`.
-Task **ids are monotonic** — a persisted `nextId` counter means `task-007` is never
-reused once it has existed, even after the queue drains to empty, so archived and live
-ids never collide.
+Task **ids are unique and monotonic**, enforced by the store: a save carrying a
+duplicate id, or an id already issued and since removed, is refused. `task-007` is
+never reused once it has existed, even after the queue drains to empty, so
+archived and live ids never collide.
+
+**Duplicate ids in a view get renumbered, with a report.** `import`, and the
+automatic migration the first time a store opens over an existing `queue.md`,
+keep the first task with each id and give later duplicates (and already-issued
+ids) fresh ones. They print an `old → new` map and append it to `log.md`. Deps
+on an already-issued id follow its rename. A dep that named a duplicated id still
+points at its first holder and is flagged with `!`; check each flagged dep.
 
 ## Command surface (`scripts/queue.ts`)
 
@@ -101,11 +132,14 @@ gate <gate-id> [--only f] [--dry-run]  # add deps:<gate-id> to every other task 
 ungate <gate-id> [--keep-gate]         # remove <gate-id> from all deps + mark it done (unblock)
 worktree add|remove|list <id>          # isolated git worktree per task
 archive | loop                          # sweep done/failed | print the /loop invocation
+import [--dry-run|--force]             # apply hand edits to queue.md (renumbers duplicate ids)
+render                                 # rewrite queue.md from the store (discard hand edits)
 ```
 
 `add`/`set` flags: `--mode chain` · `--slug <s>` · `--deps a,b` · `--files a,b` ·
-`--validate "<cmd>"` · `--accept "<criteria>"` · `--top`. Override the file with
-`QUEUE_FILE=<path>`.
+`--validate "<cmd>"` · `--accept "<criteria>"` · `--top`. Override the view with
+`QUEUE_FILE=<path>`; it then gets its own store beside it (`<name>.db`), unless
+`QUEUE_DB=<path>` names the store explicitly.
 
 ## Gating work (dependency gates)
 
@@ -165,12 +199,15 @@ shell command) — execution stays with workers. Every page action posts a typed
 op that is validated before it touches the file, and the interface guards the
 dependency DAG: deps naming nonexistent tasks, self-deps, cycles, and removing
 a task that unfinished work still depends on are all rejected. Agents get the
-same guarantees through `queue.ts`; humans can still hand-edit the file freely.
+same guarantees through `queue.ts`; humans can still hand-edit the view and
+`import` it. An op over a hand-edited view answers **409** with that remedy.
 
 Concurrent CLI and console mutations share an exclusive queue sidecar lock. It
 waits for at most one minute and never steals an old lock: a slow live holder
 cannot be distinguished from a crashed one. If it times out, confirm the holder
-is dead before removing `<queue-file>.lock`, then retry the command. Inspect
+is dead before removing `<store>.lock` (`.agent/queue/queue.db.lock` by
+default; it sits beside the store so every worktree contends for the same lock),
+then retry the command. Inspect
 that file first: it records the holder PID and acquisition timestamp.
 Validation releases and retakes the lock before it commits; worktree add/remove
 keeps it for the lifecycle so a checkout reference cannot be lost. A slow
@@ -467,14 +504,16 @@ execution — applied to the queue so overnight drains survive the window.
 
 ## Critical rules
 
-1. **The file is the source of truth and the user's to steer.** Re-read it every
-   tick; honor hand edits (reorder, add/remove, `status: stopped`) immediately.
+1. **The store is the source of truth; the user steers it.** Every tick reads the
+   store. When a command reports a hand-edited `queue.md`, the user edited it on
+   purpose: stop dispatch and surface it. Don't `render` over it, since that
+   discards their edits. `import` only when the edit is plainly theirs to apply.
 2. **No user input during a drain.** Never ask a question; underspecified → `fail`
    with a `needs-spec:` note and move on. Spec at enqueue time, not mid-run.
 3. **Chain tasks run the whole chain autonomously** — generate the design from the
    spec (no grill), auto-accept phase gates, never wait for "continue."
-4. **Mutate only through `scripts/queue.ts`** so the format round-trips; humans may
-   hand-edit, the worker may not corrupt.
+4. **Mutate only through `scripts/queue.ts`** so ids and format stay intact. Humans
+   may hand-edit the view and `import` it; the worker never edits it by hand.
 5. **Never blind-merge a worktree.** Merge-back is agent-driven; on conflict,
    reconcile carefully or fail safe (D7). Failures never halt independent work.
 6. **Stopped means stopped** — a `tick` does nothing until `queue start`.

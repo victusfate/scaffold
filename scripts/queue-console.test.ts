@@ -344,6 +344,16 @@ maxParallel: 2
   assert('archive op persists the sidecar', existsSync(join(dir, 'archive.md'))
     && readFileSync(join(dir, 'archive.md'), 'utf8').includes('task-002'));
 
+  const handEdited = readFileSync(file, 'utf8') + '- [ ] task-001 — merged-in duplicate\n';
+  writeFileSync(file, handEdited);
+  const conflict = await post({ op: 'add', title: 'Over an edit' });
+  const conflictBody = await conflict.json() as { error?: string };
+  assert('op over a hand-edited view → 409', conflict.status === 409, String(conflict.status));
+  assert('409 names the import/render remedy', /import.*render/s.test(conflictBody.error ?? ''));
+  assert('hand-edited view left untouched', readFileSync(file, 'utf8') === handEdited);
+  assert('reads still serve the store', (await fetch(`${base}/api/queue`)).status === 200);
+  writeFileSync(file, handEdited.replace('- [ ] task-001 — merged-in duplicate\n', ''));
+
   const lanes = await (await fetch(`${base}/api/lanes`)).json() as { lanes: { id: string }[] };
   assert('GET /api/lanes reflects sidecars', Array.isArray(lanes.lanes));
 

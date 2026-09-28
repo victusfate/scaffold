@@ -3,7 +3,8 @@
 // All I/O (files, git, clock, validation) lives in queue.ts; everything here is
 // deterministic and unit-tested. Time is always passed in as an ISO string.
 //
-// File shape (one Markdown file a human can read and edit at any time):
+// File shape (one Markdown file a human can read and edit at any time; it is the
+// rendered view of the SQLite store in queue-db.ts, applied back via `queue import`):
 //
 //   # Work Queue
 //   <!-- queue:config
@@ -263,17 +264,19 @@ export function parseQueue(md: string): Queue {
 
 // ---------------------------------------------------------------- serialize
 
+/** The numeric part of a `task-NNN` id (0 for any other shape). */
+export function idNum(id: string): number {
+  return Number(id.match(/^task-(\d+)$/)?.[1] ?? 0);
+}
+
 /** The highest `task-NNN` number currently present (0 if none). */
 function maxIdNum(tasks: Task[]): number {
   let max = 0;
-  for (const t of tasks) {
-    const n = Number(t.id.match(/^task-(\d+)$/)?.[1] ?? 0);
-    if (n > max) max = n;
-  }
+  for (const t of tasks) max = Math.max(max, idNum(t.id));
   return max;
 }
 
-function fmtId(n: number): string {
+export function fmtId(n: number): string {
   return `task-${String(n).padStart(ID_PAD, '0')}`;
 }
 
@@ -291,7 +294,7 @@ function nextIdNum(q: Queue): number {
  * counter so those ids never recycle either. Returns the id-complete task list and
  * the counter value to persist.
  */
-function assignIds(q: Queue): { tasks: Task[]; nextId: number } {
+export function assignIds(q: Queue): { tasks: Task[]; nextId: number } {
   let n = nextIdNum(q);
   const tasks = q.tasks.map(t => (t.id ? t : { ...t, id: fmtId(n++) }));
   return { tasks, nextId: Math.max(n, maxIdNum(tasks) + 1) };
@@ -332,9 +335,10 @@ function fieldLines(t: Task): string[] {
 const HEADER = [
   'Order = priority (top first). Checkboxes: `[ ]` pending · `[>]` active · '
     + '`[x]` done · `[!]` failed.',
-  'Edit this file freely to reprioritize, add, or remove work; the worker reads '
-    + 'it every tick. Task lines and their indented fields survive; freeform prose '
-    + 'is not preserved across worker writes.',
+  'This file is rendered from the queue store (queue.db). Edit it freely to '
+    + 'reprioritize, add, or remove work, then run `node scripts/queue.ts import` to '
+    + 'apply it; until then the queue refuses to overwrite your edits. Task lines and '
+    + 'their indented fields survive; freeform prose is not preserved.',
 ];
 
 /** Render the model back to the canonical Markdown file. */

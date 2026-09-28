@@ -15,7 +15,7 @@ cd "$TMP"
 git init -q
 git config user.email t@t.t; git config user.name t
 mkdir scripts
-cp "$HERE/queue.ts" "$HERE/queue-cli-args.ts" "$HERE/queue-model.ts" "$HERE/queue-io.ts" "$HERE/queue-gates.ts" "$HERE/queue-lanes.ts" scripts/
+cp "$HERE/queue.ts" "$HERE/queue-cli-args.ts" "$HERE/queue-model.ts" "$HERE/queue-io.ts" "$HERE/queue-db.ts" "$HERE/queue-worktrees.ts" "$HERE/queue-gates.ts" "$HERE/queue-lanes.ts" scripts/
 echo "seed" > file.txt
 git add -A; git commit -qm init
 # shellcheck disable=SC2034  # used inside the single-quoted predicates eval'd by check()
@@ -44,6 +44,26 @@ echo "== a second task gets its own worktree (parallel) =="
 run worktree add task-002 >/dev/null
 check "second worktree exists"     '[ -d "$TMP/.agent/queue/wt/task-002" ]'
 check "two linked worktrees"       '[ "$(git worktree list | grep -c wt/)" -eq 2 ]'
+
+echo "== every worktree shares the main checkout's store (one id counter) =="
+WT2="$TMP/.agent/queue/wt/task-002"
+( cd "$WT2" && node scripts/queue.ts add "Added from a worktree" >/dev/null )
+check "store lives in the main checkout"   '[ -f "$TMP/.agent/queue/queue.db" ] && [ ! -e "$WT2/.agent/queue/queue.db" ]'
+check "store is git-ignored"               'git check-ignore -q .agent/queue/queue.db'
+check "worktree add visible from main"     'run show task-003 | grep -q "Added from a worktree"'
+run add "Added from main" >/dev/null
+check "main continues the shared counter"  'run show task-004 | grep -q "Added from main"'
+check "one view: the main checkout's"      'grep -q "task-003 — Added from a worktree" "$TMP/.agent/queue/queue.md"'
+check "lane checkout's view untouched"     '[ ! -e "$WT2/.agent/queue/queue.md" ]'
+
+echo "== --separate-git-dir: lanes still share the main checkout's store =="
+SEP="$TMP/sep"
+git init -q --separate-git-dir="$TMP/sep-gitdir" "$SEP"
+mkdir "$SEP/scripts" && cp "$TMP"/scripts/*.ts "$SEP/scripts/"
+( cd "$SEP" && git config user.email t@t.t && git config user.name t && git add -A && git commit -qm init \
+  && node scripts/queue.ts add "main task" >/dev/null && git worktree add -q "$TMP/sep-lane" -b lane )
+check "separate-git-dir lane continues the counter" \
+  '( cd "$TMP/sep-lane" && node scripts/queue.ts add "lane task" ) | grep -q "added task-002"'
 
 echo "== worktree remove tears it down and clears the field =="
 run worktree remove task-001 >/dev/null

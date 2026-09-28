@@ -24,6 +24,8 @@
 //   node scripts/queue.ts gate <gate-id> [--only f]  # deps: <gate-id> on every other task (block)
 //   node scripts/queue.ts ungate <gate-id>           # remove <gate-id> from deps + mark it done (unblock)
 //   node scripts/queue.ts archive                    # sweep done/failed into archive.md
+//   node scripts/queue.ts import [--dry-run|--force] # apply hand edits to queue.md (dedupes ids)
+//   node scripts/queue.ts render                     # rewrite queue.md from the store (drop edits)
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
 //   node scripts/queue.ts lane beat|list|clear|stop|go <id>  # lane heartbeats (the live board reads these)
 //
@@ -35,7 +37,10 @@ import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { execSync } from 'node:child_process';
-import { ROOT, sidecar, now, load, save, log, appendArchive, withLock, unlocked } from './queue-io.ts';
+import {
+  ROOT, sidecar, now, load, save, log, appendArchive, withLock, unlocked, importView, renderFromStore,
+} from './queue-io.ts';
+import { formatReport, QueueIntegrityError } from './queue-db.ts';
 import { cmdGate, cmdUngate, drainKick } from './queue-gates.ts';
 import {
   render as renderModel,
@@ -48,6 +53,7 @@ import {
 } from './queue-model.ts';
 import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
 import { cmdLane } from './queue-lanes.ts';
+import { cmdWorktree } from './queue-worktrees.ts';
 
 // ---------------------------------------------------------------- flags
 
@@ -181,11 +187,9 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
   // kept until that work finishes, so dependency resolution never breaks.
   let dq = markDone(q, id, now());
   const sweep = archivableDone(dq);
-  if (sweep.length) {
-    appendArchive(sweep);
-    for (const s of sweep) dq = removeTask(dq, s.id);
-  }
+  for (const s of sweep) dq = removeTask(dq, s.id);
   save(dq);
+  if (sweep.length) appendArchive(sweep);
   const archivedSelf = sweep.some(s => s.id === id);
   log(`done ${id}${sweep.length ? ` → archived ${sweep.map(s => s.id).join(', ')}` : ''}`);
   console.log(`✓ ${id} done${t.validate && !skip ? ' (validation passed)' : ''}`
@@ -218,8 +222,8 @@ function cmdConfig(q: Queue, key: string, val: string): number {
 function cmdArchive(q: Queue): number {
   const { queue, swept } = sweepFinished(q);
   if (!swept.length) { console.log('archive: nothing to sweep'); return 0; }
-  appendArchive(swept);
   save(queue);
+  appendArchive(swept);
   log(`archived ${swept.length} task(s)`);
   console.log(`archived ${swept.length} task(s) → ${sidecar('archive.md')}`);
   return 0;
@@ -238,59 +242,6 @@ function cmdSignal(q: Queue): number {
   if (!sig) return EXIT.IDLE;
   console.log(sig);
   return EXIT.DISPATCHED;
-}
-
-// ---------------------------------------------------------------- worktrees
-
-function git(args: string, cwd = ROOT): string {
-  return execSync(`git ${args}`, { cwd, encoding: 'utf8', stdio: 'pipe' }).trim();
-}
-function currentBranch(): string {
-  try { return git('rev-parse --abbrev-ref HEAD'); } catch { return 'main'; }
-}
-function wtRel(id: string): string { return join('.agent', 'queue', 'wt', id); }
-
-/**
- * Create an isolated git worktree for a task on branch `queue/<id>`, cut from the
- * integration base (config.integrationBranch, or the current branch). Records the
- * branch + worktree path on the task. Merge-back is deliberately agent-driven
- * (see skills/queue.md, aligned with design.md D7) — the CLI never auto-merges.
- */
-function cmdWorktreeAdd(q: Queue, id: string): number {
-  const t = q.tasks.find(x => x.id === id);
-  if (!t) { console.error(`worktree add: unknown task id ${id}`); return 1; }
-  const base = q.config.integrationBranch || currentBranch();
-  const branch = `queue/${id}`;
-  const rel = wtRel(id);
-  const abs = join(ROOT, rel);
-  try {
-    try { git(`worktree add ${abs} -b ${branch} ${base}`); }
-    catch { git(`worktree add ${abs} ${branch}`); } // branch already exists
-  } catch (e) { console.error(`worktree add failed: ${(e as Error).message}`); return 1; }
-  save(setField(q, id, { branch, worktree: rel }));
-  log(`worktree add ${id} → ${rel} (${branch} off ${base})`);
-  console.log(`worktree ready: ${rel}  on ${branch}  (base ${base})\n`
-    + `cd ${rel} to work in isolation; on success merge ${branch} → ${base}, then `
-    + `\`node scripts/queue.ts worktree remove ${id}\``);
-  return 0;
-}
-
-function cmdWorktreeRemove(q: Queue, id: string): number {
-  const t = q.tasks.find(x => x.id === id);
-  const rel = t?.worktree ?? wtRel(id);
-  try { git(`worktree remove --force ${join(ROOT, rel)}`); } catch { /* already gone */ }
-  if (t) save(setField(q, id, { worktree: null }));
-  log(`worktree remove ${id}`);
-  console.log(`removed worktree for ${id}`);
-  return 0;
-}
-
-function cmdWorktree(q: Queue, sub: string, id: string): number {
-  if (sub === 'add') return cmdWorktreeAdd(q, id);
-  if (sub === 'remove' || sub === 'rm') return cmdWorktreeRemove(q, id);
-  if (sub === 'list') { console.log(git('worktree list')); return 0; }
-  console.error('usage: queue worktree add|remove|list <id>');
-  return 1;
 }
 
 function cmdLoop(q: Queue): number {
@@ -337,7 +288,13 @@ function cmdLoop(q: Queue): number {
 function main(argv: string[]): number {
   const stdinItems = argv[0] === 'add-many' && parse(argv.slice(1)).positionals.length === 0
     ? readStdin() : undefined;
-  return withLock(() => dispatch(argv, stdinItems));
+  try {
+    return withLock(() => dispatch(argv, stdinItems));
+  } catch (error) {
+    if (!(error instanceof QueueIntegrityError)) throw error;
+    console.error(error.message);
+    return 1;
+  }
 }
 
 function dispatch(argv: string[], stdinItems?: string[]): number {
@@ -467,6 +424,14 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     case 'gate': return cmdGate(q, f.positionals[0] ?? '', f.flags.get('only') ?? '', f.bools.has('dry-run'));
     case 'ungate': return cmdUngate(q, f.positionals[0] ?? '', f.bools.has('keep-gate'), f.bools.has('dry-run'));
     case 'archive': return cmdArchive(q);
+    case 'import': {
+      const dry = f.bools.has('dry-run');
+      const lines = formatReport(importView(dry, f.bools.has('force')));
+      console.log([`queue import${dry ? ' (dry run — nothing written)' : ''}: `
+        + (lines.length ? '' : 'ids already unique'), ...lines].join('\n'));
+      return 0;
+    }
+    case 'render': renderFromStore(); console.log('queue: view re-rendered from the store'); return 0;
     case 'loop': return cmdLoop(q);
     case 'worktree': case 'wt': return cmdWorktree(q, f.positionals[0] ?? '', f.positionals[1] ?? '');
     case 'lane': return cmdLane(q, f.positionals[0] ?? '', f.positionals[1] ?? '', f);
@@ -474,7 +439,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
         + `signal claim begin done fail top move hold unhold requeue remove start stop pause interval config `
-        + `gate ungate archive loop worktree lane`);
+        + `gate ungate archive import render loop worktree lane`);
       return 1;
   }
 }

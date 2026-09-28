@@ -18,6 +18,7 @@ package-lock.json
 .agent/queue/wt/
 .agent/queue/lanes/
 .agent/queue/loop-state.json
+.agent/queue/queue.db*
 
 # Local editor prefs & personal scratch diagrams (not part of scaffold)
 .vscode/
