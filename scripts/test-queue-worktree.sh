@@ -49,6 +49,7 @@ echo "== every worktree shares the main checkout's store (one id counter) =="
 WT2="$TMP/.agent/queue/wt/task-002"
 ( cd "$WT2" && node scripts/queue.ts add "Added from a worktree" >/dev/null )
 check "store lives in the main checkout"   '[ -f "$TMP/.agent/queue/queue.db" ] && [ ! -e "$WT2/.agent/queue/queue.db" ]'
+check "store is git-ignored"               'git check-ignore -q .agent/queue/queue.db'
 check "worktree add visible from main"     'run show task-003 | grep -q "Added from a worktree"'
 run add "Added from main" >/dev/null
 check "main continues the shared counter"  'run show task-004 | grep -q "Added from main"'

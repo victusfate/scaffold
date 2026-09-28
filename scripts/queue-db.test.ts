@@ -21,6 +21,7 @@ try {
   q = addTask(addTask(q, 'first', { note: 'kept' }), 'second', { dependsOn: ['task-001'] });
   save(q);
   assert.ok(existsSync(dbFile()), 'store created');
+  assert.match(readFileSync(join(dir, '.gitignore'), 'utf8'), /^queue\.db\*$/m, 'binary store is never committed');
   const loaded = load();
   assert.deepEqual(loaded.tasks, q.tasks);
   assert.deepEqual(parseQueue(readFileSync(file, 'utf8')).tasks, q.tasks, 'view mirrors the store');

@@ -19,7 +19,7 @@ import http from 'node:http';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { load, save, log, appendArchive, queueFile, withLock, now } from './queue-io.ts';
+import { load, save, log, appendArchive, queueFile, dbFile, withLock, now } from './queue-io.ts';
 import { QueueIntegrityError } from './queue-db.ts';
 import { laneDir, readLanes, laneStale, requestStop, stopRequested, type LaneState } from './queue-lanes.ts';
 import { createSseChannel, watchFileChanges } from './sse-watch.ts';
@@ -401,7 +401,8 @@ export function startServer(port: number): http.Server {
   });
 
   mkdirSync(laneDir(), { recursive: true });
-  const unwatch = watchFileChanges(queueFile(), WATCH_INTERVAL_MS, () => sse.broadcast('changed'));
+  // Watch the store, not the view: a save from any worktree commits to it.
+  const unwatch = watchFileChanges(dbFile(), WATCH_INTERVAL_MS, () => sse.broadcast('changed'));
   const unwatchLanes = watchFileChanges(laneDir(), WATCH_INTERVAL_MS, () => sse.broadcast('changed'));
   const netClose = server.close.bind(server);
   server.close = (cb?: (err?: Error) => void): http.Server => {

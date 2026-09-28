@@ -6,7 +6,8 @@
 import {
   readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, openSync, closeSync, rmSync,
 } from 'node:fs';
-import { join, dirname, extname, resolve } from 'node:path';
+import { join, dirname, extname, resolve, basename } from 'node:path';
+import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { serializeQueue, formatDurationSecs, type Queue, type Task } from './queue-model.ts';
@@ -22,15 +23,35 @@ const QUEUE_DIR = join(ROOT, '.agent', 'queue');
 /** The rendered, human-readable view of the queue. */
 export function queueFile(): string { return process.env.QUEUE_FILE ?? join(QUEUE_DIR, 'queue.md'); }
 
+let sharedDir: string | null = null;
+
+/**
+ * The main checkout's queue dir, found through git's common dir, so every linked
+ * worktree (each task lane) resolves the same store and one id counter. Outside
+ * a git checkout it is this checkout's queue dir.
+ */
+function sharedQueueDir(): string {
+  if (sharedDir) return sharedDir;
+  sharedDir = QUEUE_DIR;
+  try {
+    const common = resolve(ROOT, execFileSync('git', ['rev-parse', '--git-common-dir'], {
+      cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim());
+    if (basename(common) === '.git') sharedDir = join(dirname(common), '.agent', 'queue');
+  } catch { /* not a git checkout */ }
+  return sharedDir;
+}
+
 /**
  * The SQLite store. `QUEUE_DB` wins; an explicit `QUEUE_FILE` gets its own store
- * beside it (same name, `.db` extension) so isolated queues stay isolated.
+ * beside it (same name, `.db` extension) so isolated queues stay isolated;
+ * otherwise the one store shared by every worktree of this repository.
  */
 export function dbFile(): string {
   if (process.env.QUEUE_DB) return process.env.QUEUE_DB;
   const view = process.env.QUEUE_FILE;
   if (view) return view.slice(0, view.length - extname(view).length) + '.db';
-  return join(QUEUE_DIR, 'queue.db');
+  return join(sharedQueueDir(), 'queue.db');
 }
 export function sidecar(name: string): string { return join(dirname(queueFile()), name); }
 export function now(): string { return new Date().toISOString(); }
@@ -143,6 +164,19 @@ function applyView(db: DatabaseSync, source: string): ImportReport {
 }
 
 /**
+ * Keep the binary store out of git: committed copies from two branches cannot
+ * merge, which would reintroduce the diverging-counter problem it exists to fix.
+ */
+function ignoreStore(): void {
+  const ignore = join(dirname(dbFile()), '.gitignore');
+  const pattern = `${basename(dbFile())}*`;
+  const have = existsSync(ignore) ? readFileSync(ignore, 'utf8') : '';
+  if (have.split('\n').includes(pattern)) return;
+  appendFileSync(ignore, `${have && !have.endsWith('\n') ? '\n' : ''}`
+    + `# work-queue store: the source of truth; queue.md is its committed view\n${pattern}\n`);
+}
+
+/**
  * Open the store for one transaction. A store's first open migrates the existing
  * view into it, so pre-SQLite queues (duplicates and all) carry over; the
  * renumbering report goes to stderr and log.md.
@@ -150,6 +184,7 @@ function applyView(db: DatabaseSync, source: string): ImportReport {
 function openStore<T>(fn: (db: DatabaseSync) => T): T {
   mkdirSync(dirname(dbFile()), { recursive: true });
   return withStore(dbFile(), (db, fresh) => {
+    if (fresh) ignoreStore();
     if (fresh && existsSync(queueFile())) {
       const lines = formatReport(applyView(db, 'migrate'));
       if (lines.length) process.stderr.write(`queue: migrated ${queueFile()} into ${dbFile()}; `
