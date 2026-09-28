@@ -258,10 +258,31 @@ maxParallel: 2
 
   has('page posts to the op endpoint', '/api/op');
   has('page reads lanes from the api', '/api/lanes');
+  has('page reads host resources from the api', '/api/host');
   has('page subscribes to SSE', '/events');
   has('task list mount point', 'id="tasks"');
   has('add form mount point', 'id="add"');
+  has('task filter has a visible label', '<label for="task-filter">Filter tasks</label>');
+  has('task filter uses native search semantics', 'type="search"');
+  has('task filter reports its result count politely', 'id="filter-count"');
+  has('filter count describes matches when an edited card is pinned', 'tasks match');
+  has('task filter matches task fields', 'taskSearchText');
+  has('task filter reacts immediately', 'addEventListener("input"');
+  has('task filter has a non-mutating clear path', 'id="filter-clear"');
+  has('filtering preserves an open editor even when the task does not match', 'task.id === editingId');
+  has('filter changes use the draft-preserving render path', 'taskFilter.addEventListener("input", () => {\n  render();');
+  has('filtered active cards do not invent free lanes', 'const activeCount = S.tasks.filter');
   has('status header mount point', 'id="status"');
+  has('host resource status mount point', 'id="host-status"');
+  has('host status is passive rather than a noisy live region', 'aria-live="off"');
+  has('host status names the resource guard', 'Resource guard');
+  has('host status distinguishes the worker limit', 'Worker limit');
+  has('host status reports VRAM headroom', 'VRAM');
+  has('host status reports active worktree storage', 'Worktrees');
+  has('host status exposes its sample timestamp', '<time datetime="');
+  has('host telemetry refreshes independently of queue events', 'setInterval(() => void refreshHost()');
+  has('host refresh updates only its panel', 'renderHostStatus();');
+  has('flex-styled host metrics preserve list semantics', '<ul role="list">');
   has('changed-on-disk banner mount point', 'id="stale"');
   has('free-lane drop placeholder', 'drop a task here');
   has('held chip', '>held<');
@@ -308,7 +329,31 @@ maxParallel: 2
   writeFileSync(file, '- [ ] task-001 — first\n- [x] task-002 — finished\n');
   process.env.QUEUE_FILE = file;
 
-  const server = startServer(0);
+  const hostStatus = {
+    sampledAt: '2026-09-28T18:00:00.000Z',
+    cpu: { available: true as const, cores: 12, utilizationPercent: 37.5 },
+    memory: { totalBytes: 64 * 1024 ** 3, availableBytes: 23 * 1024 ** 3 },
+    disk: { available: true as const, path: dir, totalBytes: 512 * 1024 ** 3, availableBytes: 211 * 1024 ** 3 },
+    gpu: { available: false as const, reason: 'not installed' },
+    worktrees: { available: true as const, activeCount: 0, totalBytes: 0 },
+    limits: {
+      memoryReserveBytes: 16 * 1024 ** 3,
+      diskFloorBytes: 205 * 1024 ** 3,
+      gpuVramReserveBytes: 4 * 1024 ** 3,
+      workerLimit: 3,
+    },
+    guard: {
+      overall: 'clear' as const, cpu: 'clear' as const, memory: 'clear' as const,
+      disk: 'clear' as const, gpu: 'unavailable' as const,
+    },
+  };
+  let probedRoot = '';
+  let probedWorktrees: string[] = [];
+  const server = startServer(0, { hostProbe: (root, worktrees) => {
+    probedRoot = root;
+    probedWorktrees = worktrees;
+    return Promise.resolve(hostStatus);
+  } });
   await new Promise<void>(res => server.on('listening', res));
   const addr = server.address() as { address: string; port: number };
   const base = `http://127.0.0.1:${addr.port}`;
@@ -320,6 +365,13 @@ maxParallel: 2
 
   const state = await (await fetch(`${base}/api/queue`)).json() as { tasks: { id: string }[] };
   assert('GET /api/queue reflects the file', state.tasks.map(t => t.id).join(',') === 'task-001,task-002');
+
+  const host = await (await fetch(`${base}/api/host`)).json() as typeof hostStatus;
+  assert('GET /api/host serves the injected host snapshot', host.cpu.available
+    && host.cpu.utilizationPercent === 37.5 && host.memory.availableBytes === 23 * 1024 ** 3);
+  assert('host probe measures the selected queue filesystem', probedRoot === dir, probedRoot);
+  assert('host probe receives only active queue worktrees', probedWorktrees.length === 0,
+    probedWorktrees.join(','));
 
   const post = (body: unknown): Promise<Response> => fetch(`${base}/api/op`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
