@@ -20,8 +20,12 @@ import type { DatabaseSync } from 'node:sqlite';
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const QUEUE_DIR = join(ROOT, '.agent', 'queue');
 
-/** The rendered, human-readable view of the queue. */
-export function queueFile(): string { return process.env.QUEUE_FILE ?? join(QUEUE_DIR, 'queue.md'); }
+/**
+ * The rendered, human-readable view of the queue. Like the store it lives in the
+ * main checkout, so lane worktrees never rewrite (and later merge back) a copy.
+ * Sidecars (log, archive, lane heartbeats) sit beside it.
+ */
+export function queueFile(): string { return process.env.QUEUE_FILE ?? join(sharedQueueDir(), 'queue.md'); }
 
 let sharedDir: string | null = null;
 
@@ -208,6 +212,10 @@ export function save(q: Queue): void {
  * renumbering duplicate or already-issued ids. A dry run only reports.
  */
 export function importView(dryRun: boolean): ImportReport {
+  if (!existsSync(queueFile())) {
+    throw new QueueIntegrityError(`queue: no view to import at ${queueFile()} — nothing changed `
+      + '(run `node scripts/queue.ts render` to recreate it from the store)');
+  }
   return openStore(db => (dryRun ? planImport(db, readView()).report : applyView(db, 'import')));
 }
 

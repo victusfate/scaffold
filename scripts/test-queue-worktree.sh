@@ -53,7 +53,8 @@ check "store is git-ignored"               'git check-ignore -q .agent/queue/que
 check "worktree add visible from main"     'run show task-003 | grep -q "Added from a worktree"'
 run add "Added from main" >/dev/null
 check "main continues the shared counter"  'run show task-004 | grep -q "Added from main"'
-check "worktree view rendered from store"  'grep -q "task-003 — Added from a worktree" "$WT2/.agent/queue/queue.md"'
+check "one view: the main checkout's"      'grep -q "task-003 — Added from a worktree" "$TMP/.agent/queue/queue.md"'
+check "lane checkout's view untouched"     '[ ! -e "$WT2/.agent/queue/queue.md" ]'
 
 echo "== worktree remove tears it down and clears the field =="
 run worktree remove task-001 >/dev/null

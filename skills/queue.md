@@ -46,7 +46,9 @@ lane hands out ids from the same counter. The store is git-ignored: two committe
 binary copies can't be merged, which would bring the id collisions back.
 
 **`queue.md` is the view**, re-rendered after every mutation and committed so the
-queue stays visible in review. It is one Markdown file. **Line order is priority** (top runs first). A checkbox encodes
+queue stays visible in review. Like the store, it and its sidecars (`log.md`,
+`archive.md`, `lanes/`) live in the main checkout, so a lane's worktree never
+rewrites its own copy that would later merge back. It is one Markdown file. **Line order is priority** (top runs first). A checkbox encodes
 status; indented `- key: value` lines carry each task's spec:
 
 ```markdown

@@ -87,6 +87,11 @@ try {
   assert.equal(imported.status, 0, imported.stderr);
   assert.match(run('show', 'task-1111').stdout, /zeta/);
   assert.match(run('show', 'task-1112').stdout, /recycled/);
+  rmSync(view);
+  const missing = run('import');
+  assert.notEqual(missing.status, 0, 'importing a missing view must not wipe the store');
+  assert.match(missing.stderr, /no view to import/);
+  assert.match(run('show', 'task-1111').stdout, /zeta/, 'store intact');
   console.log('queue-db: migration and import renumber duplicate ids with a report PASS');
 } finally {
   rmSync(migrateDir, { recursive: true, force: true });
