@@ -56,6 +56,15 @@ check "main continues the shared counter"  'run show task-004 | grep -q "Added f
 check "one view: the main checkout's"      'grep -q "task-003 — Added from a worktree" "$TMP/.agent/queue/queue.md"'
 check "lane checkout's view untouched"     '[ ! -e "$WT2/.agent/queue/queue.md" ]'
 
+echo "== --separate-git-dir: lanes still share the main checkout's store =="
+SEP="$TMP/sep"
+git init -q --separate-git-dir="$TMP/sep-gitdir" "$SEP"
+mkdir "$SEP/scripts" && cp "$TMP"/scripts/*.ts "$SEP/scripts/"
+( cd "$SEP" && git config user.email t@t.t && git config user.name t && git add -A && git commit -qm init \
+  && node scripts/queue.ts add "main task" >/dev/null && git worktree add -q "$TMP/sep-lane" -b lane )
+check "separate-git-dir lane continues the counter" \
+  '( cd "$TMP/sep-lane" && node scripts/queue.ts add "lane task" ) | grep -q "added task-002"'
+
 echo "== worktree remove tears it down and clears the field =="
 run worktree remove task-001 >/dev/null
 check "worktree dir gone"          '[ ! -d "$TMP/.agent/queue/wt/task-001" ]'

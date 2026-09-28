@@ -21,7 +21,7 @@ try {
   q = addTask(addTask(q, 'first', { note: 'kept' }), 'second', { dependsOn: ['task-001'] });
   save(q);
   assert.ok(existsSync(dbFile()), 'store created');
-  assert.match(readFileSync(join(dir, '.gitignore'), 'utf8'), /^queue\.db\*$/m, 'binary store is never committed');
+  assert.ok(!existsSync(join(dir, '.gitignore')), 'an explicit QUEUE_FILE store writes no .gitignore');
   const loaded = load();
   assert.deepEqual(loaded.tasks, q.tasks);
   assert.deepEqual(parseQueue(readFileSync(file, 'utf8')).tasks, q.tasks, 'view mirrors the store');
@@ -133,4 +133,44 @@ try {
   console.log('queue-db: hand-edited views fail closed; views share one store PASS');
 } finally {
   rmSync(guardDir, { recursive: true, force: true });
+}
+
+// Review fixes — import must not silently drop or regress work from a stale view,
+// renumbered already-issued ids carry their dependents along, and a `.db` view
+// never aliases its own store.
+const staleDir = mkdtempSync(join(tmpdir(), 'queue-db-stale-'));
+const sv = join(staleDir, 'queue.md');
+const rs = (...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
+  env: { ...process.env, QUEUE_FILE: sv }, encoding: 'utf8',
+});
+try {
+  rs('add', 'A'); rs('add', 'B');
+  const stale = readFileSync(sv, 'utf8');
+  rs('add', 'C');
+  assert.equal(rs('claim', 'task-001', '--worker', 'w1').status, 0);
+  writeFileSync(sv, stale); // e.g. `git checkout` restored an older committed view
+  assert.notEqual(rs('add', 'D').status, 0);
+  const dry = rs('import', '--dry-run');
+  assert.match(dry.stdout, /task-003 — C \(removed\)/);
+  assert.match(dry.stdout, /task-001 — A: active → pending/);
+  const refused = rs('import');
+  assert.notEqual(refused.status, 0, 'import refuses to drop or regress work without --force');
+  assert.match(refused.stderr, /--force/);
+  assert.match(rs('show', 'task-003').stdout, /C/, 'refused import changed nothing');
+  assert.equal(rs('import', '--force').status, 0);
+  assert.equal(rs('show', 'task-003').status, 1);
+  assert.match(readFileSync(join(staleDir, 'log.md'), 'utf8'), /task-003 — C \(removed\)/);
+
+  // A recycled id is unambiguous (the store no longer has it): its dependents follow the rename.
+  writeFileSync(sv, '- [ ] task-002 — Merged prereq\n- [ ] task-009 — dependent\n  - deps: task-002\n');
+  assert.equal(rs('import', '--force').status, 0);
+  assert.match(rs('show', 'task-009').stdout, /deps: task-010/);
+  assert.match(rs('show', 'task-010').stdout, /Merged prereq/);
+
+  process.env.QUEUE_FILE = join(staleDir, 'odd.db');
+  assert.equal(dbFile(), join(staleDir, 'odd.db.db'), 'a .db view gets a distinct store');
+  delete process.env.QUEUE_FILE;
+  console.log('queue-db: import reports and guards removals/regressions; recycled deps follow PASS');
+} finally {
+  rmSync(staleDir, { recursive: true, force: true });
 }
