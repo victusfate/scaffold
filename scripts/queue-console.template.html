@@ -97,6 +97,9 @@ try {
   #host-status strong { color: var(--ink); }
   #host-status ul { display: inline-flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; list-style: none; margin: 0 0 0 0.6rem; padding: 0; }
   #host-status li { font-variant-numeric: tabular-nums; }
+  #host-status .guard-clear { color: var(--ok); }
+  #host-status .guard-warn { color: var(--warn); }
+  #host-status .guard-blocked { color: var(--bad); font-weight: 650; }
   #stale {
     display: none; margin: 0 0 0.9rem; padding: 0.55rem 0.85rem; border-radius: 6px;
     border: 1px solid var(--warn); background: var(--panel);
@@ -376,12 +379,26 @@ function hostStatusHtml(active) {
       + '<strong>Host:</strong> resources unavailable</aside>';
   }
   const cpu = H.cpu.available ? H.cpu.utilizationPercent + "% of " + H.cpu.cores + " cores" : "unavailable";
-  const disk = H.disk.available ? gib(H.disk.availableBytes) + " free" : "unavailable";
+  const disk = H.disk.available
+    ? gib(H.disk.availableBytes) + " free (floor " + gib(H.limits.diskFloorBytes) + ")" : "unavailable";
+  const gpu = H.gpu.available
+    ? esc(H.gpu.name) + " " + H.gpu.utilizationPercent + "% · VRAM "
+      + esc(gib(H.gpu.memoryTotalBytes - H.gpu.memoryUsedBytes)) + " free · "
+      + H.gpu.computeProcesses + " compute process" + (H.gpu.computeProcesses === 1 ? "" : "es")
+    : "unavailable";
+  const worker = H.limits.workerLimit === null
+    ? "not configured"
+    : active + "/" + H.limits.workerLimit
+      + (active >= H.limits.workerLimit ? " (full)" : " (" + (H.limits.workerLimit - active) + " free)");
   return '<aside id="host-status" aria-live="off" aria-label="Host resources"><strong>Host:</strong><ul>'
+    + '<li class="guard-' + H.guard.overall + '">Resource guard ' + esc(H.guard.overall) + '</li>'
     + '<li>CPU ' + esc(cpu) + '</li>'
-    + '<li>RAM ' + esc(gib(H.memory.availableBytes)) + ' available</li>'
+    + '<li>RAM ' + esc(gib(H.memory.availableBytes)) + ' available (reserve '
+      + esc(gib(H.limits.memoryReserveBytes)) + ')</li>'
     + '<li>Disk ' + esc(disk) + '</li>'
-    + '<li>Worker lanes ' + active + '/' + S.config.maxParallel + '</li>'
+    + '<li>GPU ' + gpu + '</li>'
+    + '<li>Desired worker lanes ' + active + '/' + S.config.maxParallel + '</li>'
+    + '<li>Worker limit ' + esc(worker) + '</li>'
     + '</ul></aside>';
 }
 
