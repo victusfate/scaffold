@@ -6,11 +6,13 @@
 import {
   readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, openSync, closeSync, rmSync,
 } from 'node:fs';
-import { join, dirname, extname } from 'node:path';
+import { join, dirname, extname, resolve } from 'node:path';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { serializeQueue, formatDurationSecs, type Queue, type Task } from './queue-model.ts';
 import {
-  withStore, readStore, writeStore, planImport, formatReport, type ImportReport,
+  withStore, readStore, writeStore, planImport, formatReport, renderedHash, recordRender,
+  QueueIntegrityError, type ImportReport,
 } from './queue-db.ts';
 import type { DatabaseSync } from 'node:sqlite';
 
@@ -102,10 +104,30 @@ export function unlocked<T>(fn: () => T): T {
   try { return fn(); } finally { acquire(); }
 }
 
-function renderView(q: Queue): void {
-  const p = queueFile();
+const sha256 = (text: string): string => createHash('sha256').update(text).digest('hex');
+
+/**
+ * Refuse to overwrite a view someone edited since the store last rendered it:
+ * those edits (a hand reorder, a git merge) exist nowhere else. A path the store
+ * never rendered (e.g. a fresh checkout's git copy) is fair to replace.
+ */
+function assertViewUnedited(db: DatabaseSync, path: string): void {
+  const recorded = renderedHash(db, path);
+  if (recorded === null || !existsSync(path) || sha256(readFileSync(path, 'utf8')) === recorded) return;
+  throw new QueueIntegrityError(`queue: ${path} was edited by hand since it was last rendered, `
+    + 'so it was not overwritten and nothing was saved. Apply the edits with '
+    + '`node scripts/queue.ts import` (duplicate ids are renumbered; `--dry-run` previews), '
+    + 'or discard them with `node scripts/queue.ts render`.');
+}
+
+/** Rewrite the view from `q` (the store's contents) and record what was written. */
+function renderView(db: DatabaseSync, q: Queue, { discardEdits = false } = {}): void {
+  const p = resolve(queueFile());
+  if (!discardEdits) assertViewUnedited(db, p);
+  const md = serializeQueue(q);
   mkdirSync(dirname(p), { recursive: true });
-  writeFileSync(p, serializeQueue(q));
+  writeFileSync(p, md);
+  recordRender(db, p, sha256(md));
 }
 
 function readView(): string {
@@ -115,7 +137,7 @@ function readView(): string {
 /** Apply the view to the store (deduping ids), re-render it, and log the report. */
 function applyView(db: DatabaseSync, source: string): ImportReport {
   const { queue, report } = planImport(db, readView());
-  renderView(writeStore(db, queue));
+  renderView(db, writeStore(db, queue), { discardEdits: true });
   for (const line of formatReport(report)) log(`${source}: ${line.trim()}`);
   return report;
 }
@@ -143,7 +165,7 @@ export function load(): Queue {
 
 /** Persist `q` to the store, then re-render the view — one transaction. */
 export function save(q: Queue): void {
-  openStore(db => renderView(writeStore(db, q)));
+  openStore(db => renderView(db, writeStore(db, q)));
 }
 
 /**
@@ -156,7 +178,7 @@ export function importView(dryRun: boolean): ImportReport {
 
 /** `queue render`: rewrite the view from the store, discarding hand edits to it. */
 export function renderFromStore(): void {
-  openStore(db => renderView(readStore(db)));
+  openStore(db => renderView(db, readStore(db), { discardEdits: true }));
 }
 
 export function log(msg: string): void {

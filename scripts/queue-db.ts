@@ -64,6 +64,12 @@ CREATE TABLE IF NOT EXISTS views (
 type Row = Record<string, string | number | null>;
 
 /**
+ * A refused write that would break queue integrity (duplicate or recycled id,
+ * or overwriting a hand-edited view). Callers report its message and fail.
+ */
+export class QueueIntegrityError extends Error {}
+
+/**
  * Open (creating if needed) the store at `path` and run `fn` in one
  * write transaction; any throw rolls the whole transaction back. `fresh` is true
  * when this call initialized the store, so the caller can migrate into it.
@@ -97,6 +103,17 @@ export function getMeta(db: DatabaseSync, key: string): string | null {
 export function setMeta(db: DatabaseSync, key: string, value: string): void {
   db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) '
     + 'ON CONFLICT (key) DO UPDATE SET value = excluded.value').run(key, value);
+}
+
+/** The sha256 the store last rendered to the view at `path` (null if never). */
+export function renderedHash(db: DatabaseSync, path: string): string | null {
+  const row = db.prepare('SELECT sha256 FROM views WHERE path = ?').get(path) as Row | undefined;
+  return row ? String(row.sha256) : null;
+}
+
+export function recordRender(db: DatabaseSync, path: string, sha256: string): void {
+  db.prepare('INSERT INTO views (path, sha256) VALUES (?, ?) '
+    + 'ON CONFLICT (path) DO UPDATE SET sha256 = excluded.sha256').run(path, sha256);
 }
 
 /** The persisted id counter (1 for a new store). */
@@ -139,12 +156,12 @@ function assertIdIntegrity(db: DatabaseSync, tasks: Task[]): void {
   for (const { id } of tasks) {
     if (!id) continue;
     if (seen.has(id)) {
-      throw new Error(`queue: duplicate task id ${id} — refusing to save (run \`queue import\` to renumber)`);
+      throw new QueueIntegrityError(`queue: duplicate task id ${id} — refusing to save (run \`queue import\` to renumber)`);
     }
     seen.add(id);
     const n = idNum(id);
     if (!present.has(id) && n > 0 && n < next) {
-      throw new Error(`queue: ${id} was already issued — refusing to recycle it (counter is at ${next})`);
+      throw new QueueIntegrityError(`queue: ${id} was already issued — refusing to recycle it (counter is at ${next})`);
     }
   }
 }

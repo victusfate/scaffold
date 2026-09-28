@@ -40,7 +40,7 @@ import { execSync } from 'node:child_process';
 import {
   ROOT, sidecar, now, load, save, log, appendArchive, withLock, unlocked, importView, renderFromStore,
 } from './queue-io.ts';
-import { formatReport } from './queue-db.ts';
+import { formatReport, QueueIntegrityError } from './queue-db.ts';
 import { cmdGate, cmdUngate, drainKick } from './queue-gates.ts';
 import {
   render as renderModel,
@@ -187,11 +187,9 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
   // kept until that work finishes, so dependency resolution never breaks.
   let dq = markDone(q, id, now());
   const sweep = archivableDone(dq);
-  if (sweep.length) {
-    appendArchive(sweep);
-    for (const s of sweep) dq = removeTask(dq, s.id);
-  }
+  for (const s of sweep) dq = removeTask(dq, s.id);
   save(dq);
+  if (sweep.length) appendArchive(sweep);
   const archivedSelf = sweep.some(s => s.id === id);
   log(`done ${id}${sweep.length ? ` → archived ${sweep.map(s => s.id).join(', ')}` : ''}`);
   console.log(`✓ ${id} done${t.validate && !skip ? ' (validation passed)' : ''}`
@@ -224,8 +222,8 @@ function cmdConfig(q: Queue, key: string, val: string): number {
 function cmdArchive(q: Queue): number {
   const { queue, swept } = sweepFinished(q);
   if (!swept.length) { console.log('archive: nothing to sweep'); return 0; }
-  appendArchive(swept);
   save(queue);
+  appendArchive(swept);
   log(`archived ${swept.length} task(s)`);
   console.log(`archived ${swept.length} task(s) → ${sidecar('archive.md')}`);
   return 0;
@@ -290,7 +288,13 @@ function cmdLoop(q: Queue): number {
 function main(argv: string[]): number {
   const stdinItems = argv[0] === 'add-many' && parse(argv.slice(1)).positionals.length === 0
     ? readStdin() : undefined;
-  return withLock(() => dispatch(argv, stdinItems));
+  try {
+    return withLock(() => dispatch(argv, stdinItems));
+  } catch (error) {
+    if (!(error instanceof QueueIntegrityError)) throw error;
+    console.error(error.message);
+    return 1;
+  }
 }
 
 function dispatch(argv: string[], stdinItems?: string[]): number {

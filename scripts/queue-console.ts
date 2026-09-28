@@ -20,6 +20,7 @@ import { readFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { load, save, log, appendArchive, queueFile, withLock, now } from './queue-io.ts';
+import { QueueIntegrityError } from './queue-db.ts';
 import { laneDir, readLanes, laneStale, requestStop, stopRequested, type LaneState } from './queue-lanes.ts';
 import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
@@ -286,6 +287,7 @@ const TEMPLATE = join(HERE, 'queue-console.template.html');
 const DEFAULT_PORT = 8722;
 const HTTP_OK = 200;
 const HTTP_BAD_REQUEST = 400;
+const HTTP_CONFLICT = 409;
 const HTTP_FORBIDDEN = 403;
 const HTTP_NOT_FOUND = 404;
 const HTTP_SERVER_ERROR = 500;
@@ -342,17 +344,24 @@ async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Pr
     sendJson(res, HTTP_BAD_REQUEST, { error: `invalid JSON body: ${(e as Error).message}` });
     return;
   }
-  const result = withLock(() => {
-    const applied = applyOp(load(), op);
-    if (applied.ok) {
-      if (applied.archived.length) appendArchive(applied.archived);
-      // stop-lane is validated by applyOp but takes effect here: the flag
-      // file is the cooperative signal the owning driver honors (never a kill).
-      if (op.op === 'stop-lane') requestStop(op.id);
-      save(applied.queue);
-    }
-    return applied;
-  });
+  let result: ReturnType<typeof applyOp>;
+  try {
+    result = withLock(() => {
+      const applied = applyOp(load(), op);
+      if (applied.ok) {
+        save(applied.queue);
+        if (applied.archived.length) appendArchive(applied.archived);
+        // stop-lane is validated by applyOp but takes effect here: the flag
+        // file is the cooperative signal the owning driver honors (never a kill).
+        if (op.op === 'stop-lane') requestStop(op.id);
+      }
+      return applied;
+    });
+  } catch (e) {
+    if (!(e instanceof QueueIntegrityError)) throw e;
+    sendJson(res, HTTP_CONFLICT, { error: e.message });
+    return;
+  }
   if (!result.ok) { sendJson(res, HTTP_BAD_REQUEST, { error: result.error }); return; }
   log(`console ${op.op}${'id' in op ? ' ' + op.id : ''}`);
   sendJson(res, HTTP_OK, consoleState(load()));
