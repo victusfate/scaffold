@@ -2,11 +2,11 @@
 // The SQLite store is the queue's source of truth: ids are a primary key, the
 // counter never recycles, and queue.md is a rendered view of the store.
 import { strict as assert } from 'node:assert';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync, appendFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, appendFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { load, save, dbFile } from './queue-io.ts';
 import { addTask, removeTask, parseQueue, newTask } from './queue-model.ts';
 
@@ -89,4 +89,42 @@ try {
   console.log('queue-db: migration and import renumber duplicate ids with a report PASS');
 } finally {
   rmSync(migrateDir, { recursive: true, force: true });
+}
+
+// Slice 3 — the view is never silently overwritten after a hand edit, and several
+// views (one per worktree) can share one store.
+const guardDir = mkdtempSync(join(tmpdir(), 'queue-db-guard-'));
+const store = join(guardDir, 'shared.db');
+const viewA = join(guardDir, 'a', 'queue.md');
+const viewB = join(guardDir, 'b', 'queue.md');
+const runIn = (viewFile: string, ...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
+  env: { ...process.env, QUEUE_FILE: viewFile, QUEUE_DB: store }, encoding: 'utf8',
+});
+try {
+  assert.equal(runIn(viewA, 'add', 'from A').status, 0);
+  // A view path the store has never rendered (a fresh checkout's git copy) is replaced.
+  mkdirSync(dirname(viewB), { recursive: true });
+  writeFileSync(viewB, '- [ ] task-001 — stale git copy\n');
+  assert.equal(runIn(viewB, 'add', 'from B').status, 0);
+  assert.deepEqual(parseQueue(readFileSync(viewB, 'utf8')).tasks.map(t => `${t.id} ${t.title}`),
+    ['task-001 from A', 'task-002 from B'], 'one store, one id counter across views');
+  // A's view is now stale but unedited, so A may re-render it.
+  assert.equal(runIn(viewA, 'add', 'from A again').status, 0);
+  assert.equal(parseQueue(readFileSync(viewA, 'utf8')).tasks.length, 3);
+
+  const edited = readFileSync(viewA, 'utf8') + '- [ ] task-001 — merged-in duplicate\n';
+  writeFileSync(viewA, edited);
+  const refused = runIn(viewA, 'add', 'blocked');
+  assert.notEqual(refused.status, 0, 'a save over a hand-edited view fails closed');
+  assert.match(refused.stderr, /edited by hand.*queue\.ts import.*queue\.ts render/s);
+  assert.doesNotMatch(refused.stderr, /at .*queue-db\.ts/, 'an actionable message, not a stack trace');
+  assert.equal(readFileSync(viewA, 'utf8'), edited, 'hand edit preserved');
+  assert.equal(runIn(viewB, 'show', 'task-004').status, 1, 'refused save wrote nothing');
+
+  assert.equal(runIn(viewA, 'render').status, 0);
+  assert.doesNotMatch(readFileSync(viewA, 'utf8'), /merged-in duplicate/, 'render discards the edit');
+  assert.equal(runIn(viewA, 'add', 'unblocked').status, 0);
+  console.log('queue-db: hand-edited views fail closed; views share one store PASS');
+} finally {
+  rmSync(guardDir, { recursive: true, force: true });
 }
