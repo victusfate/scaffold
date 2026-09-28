@@ -12,4 +12,4 @@
 - Status: done
 - RED: NVIDIA parsing, configured reserve/worker limits, resource guards, cache coalescing, and lane-constraint presentation had no implementation.
 - GREEN: a one-second optional `nvidia-smi` probe, typed unavailable fallback, configurable guards, two-second coalescing cache, and separate desired-lane/worker-limit labels now share the live host path.
-- Verification: 167 queue-console assertions, 8 host-status assertions, typecheck, lint, and whitespace checks pass.
+- Verification: 168 queue-console assertions, 8 host-status assertions, typecheck, lint, and whitespace checks pass.
