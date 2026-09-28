@@ -56,6 +56,8 @@ scripts/queue.test.ts
 scripts/queue-console.ts
 scripts/queue-console.template.html
 scripts/queue-console.test.ts
+scripts/queue-host-status.ts
+scripts/queue-host-status.test.ts
 scripts/queue-isolation.test.ts
 scripts/queue-lanes.ts
 scripts/queue-lanes.test.ts
