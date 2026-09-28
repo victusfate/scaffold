@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, truncateSync, writeFileSync } from 'node:fs';
 import type { CpuInfo } from 'node:os';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -83,6 +83,9 @@ const cpu = (idle: number, user: number): CpuInfo => ({
 {
   const dir = mkdtempSync(join(tmpdir(), 'queue-worktree-size-'));
   writeFileSync(join(dir, 'payload.bin'), 'measured payload');
+  const sparseBytes = 64 * 1024 ** 2;
+  writeFileSync(join(dir, 'sparse.bin'), '');
+  truncateSync(join(dir, 'sparse.bin'), sparseBytes);
   const frames = [[cpu(100, 100)], [cpu(150, 150)]];
   const status = await collectHostStatus('/queue', {
     cpuSample: () => frames.shift()!,
@@ -99,6 +102,27 @@ const cpu = (idle: number, user: number): CpuInfo => ({
   rmSync(dir, { recursive: true, force: true });
   assert('real cross-platform worker measures active worktree bytes off-thread', status.worktrees.available
     && status.worktrees.activeCount === 1 && status.worktrees.totalBytes >= 'measured payload'.length);
+  assert('POSIX worktree sizing respects zero allocated blocks for sparse files', process.platform === 'win32'
+    || (status.worktrees.available && status.worktrees.totalBytes < sparseBytes));
+}
+
+{
+  const frames = [[cpu(100, 100)], [cpu(150, 150)]];
+  const started = Date.now();
+  const status = await collectHostStatus('/stalled', {
+    cpuSample: () => frames.shift()!,
+    sleep: () => Promise.resolve(),
+    totalMemory: () => 8 * GIB,
+    freeMemory: () => 4 * GIB,
+    linuxMeminfo: () => Promise.resolve('MemAvailable: 4194304 kB\n'),
+    platform: 'linux',
+    filesystem: () => new Promise(() => {}),
+    nvidiaCsv: () => Promise.reject(new Error('not installed')),
+    worktreeUsage: () => Promise.resolve({ available: true, activeCount: 0, totalBytes: 0 }),
+    environment: {},
+  });
+  assert('a stalled filesystem probe resolves as unavailable instead of wedging the cache',
+    !status.disk.available && Date.now() - started < 3000);
 }
 
 {

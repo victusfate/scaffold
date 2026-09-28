@@ -268,6 +268,8 @@ maxParallel: 2
   has('task filter matches task fields', 'taskSearchText');
   has('task filter reacts immediately', 'addEventListener("input"');
   has('task filter has a non-mutating clear path', 'id="filter-clear"');
+  has('filtering preserves an open editor even when the task does not match', 'task.id === editingId');
+  has('filter changes use the draft-preserving render path', 'taskFilter.addEventListener("input", () => {\n  render();');
   has('filtered active cards do not invent free lanes', 'const activeCount = S.tasks.filter');
   has('status header mount point', 'id="status"');
   has('host resource status mount point', 'id="host-status"');
@@ -276,6 +278,9 @@ maxParallel: 2
   has('host status distinguishes the worker limit', 'Worker limit');
   has('host status reports VRAM headroom', 'VRAM');
   has('host status reports active worktree storage', 'Worktrees');
+  has('host status exposes its sample timestamp', '<time datetime="');
+  has('host telemetry refreshes independently of queue events', 'setInterval(() => void refreshHost()');
+  has('host refresh updates only its panel', 'renderHostStatus();');
   has('flex-styled host metrics preserve list semantics', '<ul role="list">');
   has('changed-on-disk banner mount point', 'id="stale"');
   has('free-lane drop placeholder', 'drop a task here');

@@ -298,6 +298,7 @@ try {
 "use strict";
 const $ = (sel, el) => (el || document).querySelector(sel);
 const ERROR_HIDE_MS = 6000;
+const HOST_REFRESH_MS = 5000;
 let S = null;          // last ConsoleState
 let L = [];           // last lane views from /api/lanes
 let H = null;          // last host snapshot from /api/host
@@ -305,7 +306,6 @@ let editingId = null;  // task id whose editor is open (or "add" while typing)
 let draggingId = null;
 let armedId = null;   // click-to-move selection (touch/mouse fallback when drags fail)
 let lastDrop = 0;     // timestamp of the last drop — clicks right after one belong to the drag
-let filterQuery = "";
 
 const laneById = id => L.find(l => l.id === id);
 
@@ -341,7 +341,7 @@ async function refreshHost() {
   } catch (error) {
     H = { error: error instanceof Error ? error.message : String(error) };
   }
-  if (S) renderStatus();
+  renderHostStatus();
 }
 
 async function refresh() {
@@ -435,7 +435,14 @@ function hostStatusHtml(active) {
     + '<li>GPU ' + gpu + '</li>'
     + '<li>Desired worker lanes ' + active + '/' + S.config.maxParallel + '</li>'
     + '<li>Worker limit ' + esc(worker) + '</li>'
+    + '<li>Sampled <time datetime="' + esc(H.sampledAt) + '">' + esc(H.sampledAt) + '</time></li>'
     + '</ul></aside>';
+}
+
+function renderHostStatus() {
+  if (!S) return;
+  const current = $("#host-status");
+  if (current) current.outerHTML = hostStatusHtml(S.tasks.filter(t => t.status === "active").length);
 }
 
 function renderStatus() {
@@ -582,22 +589,26 @@ function taskSearchText(t) {
   ].filter(value => value !== null && value !== undefined).join(" ").toLocaleLowerCase();
 }
 
-function taskMatchesFilter(t) {
-  const query = filterQuery.trim().toLocaleLowerCase();
+function taskMatchesFilter(t, query) {
   return !query || taskSearchText(t).includes(query);
 }
 
-function updateFilterCount(shown) {
+function updateFilterCount(shown, query) {
   const total = S.tasks.length;
-  $("#filter-count").textContent = filterQuery.trim()
+  $("#filter-count").textContent = query
     ? shown + " of " + total + " tasks shown"
     : total + " task" + (total === 1 ? "" : "s");
 }
 
 function renderTasks() {
   const ul = $("#tasks");
-  const visibleTasks = S.tasks.filter(taskMatchesFilter);
-  updateFilterCount(visibleTasks.length);
+  const query = taskFilter.value.trim().toLocaleLowerCase();
+  const matchedTasks = S.tasks.filter(task => taskMatchesFilter(task, query));
+  const matchedIds = new Set(matchedTasks.map(task => task.id));
+  const visibleTasks = editingId
+    ? S.tasks.filter(task => task.id === editingId || matchedIds.has(task.id))
+    : matchedTasks;
+  updateFilterCount(matchedTasks.length, query);
   if (!S.tasks.length) {
     ul.classList.remove("cols");
     ul.innerHTML = '<li class="empty">No tasks yet. Add one above. To move a task later, click a card, then a column.</li>';
@@ -806,14 +817,12 @@ function render() {
 
 const taskFilter = $("#task-filter");
 taskFilter.addEventListener("input", () => {
-  filterQuery = taskFilter.value;
-  renderTasks();
+  render();
 });
 $("#filter").addEventListener("submit", e => e.preventDefault());
 $("#filter-clear").onclick = () => {
   taskFilter.value = "";
-  filterQuery = "";
-  renderTasks();
+  render();
   taskFilter.focus();
 };
 
@@ -851,6 +860,7 @@ new EventSource("/events").onmessage = () => {
   else refresh();
 };
 refresh();
+setInterval(() => void refreshHost(), HOST_REFRESH_MS);
 </script>
 </body>
 </html>

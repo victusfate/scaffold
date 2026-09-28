@@ -10,6 +10,7 @@ import { isMainThread, parentPort, Worker, workerData } from 'node:worker_thread
 const CPU_SAMPLE_MS = 100;
 const GPU_TIMEOUT_MS = 1000;
 const WORKTREE_TIMEOUT_MS = 1500;
+const HOST_METRIC_TIMEOUT_MS = 2000;
 const HOST_CACHE_MS = 2000;
 const PERCENT = 100;
 const PERCENT_TENTHS = 10;
@@ -182,12 +183,27 @@ function allocatedBytes(root: string): number {
   while (pending.length) {
     const path = pending.pop()!;
     const stats = lstatSync(path);
-    total += stats.blocks > 0 ? stats.blocks * POSIX_BLOCK_BYTES : stats.size;
+    const hasAllocatedBlocks = process.platform !== 'win32' && Number.isFinite(stats.blocks);
+    total += hasAllocatedBlocks ? stats.blocks * POSIX_BLOCK_BYTES : stats.size;
     if (stats.isDirectory() && !stats.isSymbolicLink()) {
       pending.push(...readdirSync(path).map(name => join(path, name)));
     }
   }
   return total;
+}
+
+function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(
+      new Error(`${label} timed out after ${HOST_METRIC_TIMEOUT_MS}ms`)), HOST_METRIC_TIMEOUT_MS);
+    promise.then(value => {
+      clearTimeout(timer);
+      resolve(value);
+    }, error => {
+      clearTimeout(timer);
+      reject(error);
+    });
+  });
 }
 
 function measureWorktrees(paths: string[]): WorktreeMetric {
@@ -236,7 +252,8 @@ function defaultFilesystem(path: string): Promise<{ totalBytes: number; availabl
 async function defaultAvailableMemory(dependencies: HostProbeDependencies): Promise<number> {
   if (dependencies.platform === 'linux') {
     try {
-      const match = /^MemAvailable:\s+(\d+)\s+kB$/m.exec(await dependencies.linuxMeminfo());
+      const meminfo = await withTimeout(dependencies.linuxMeminfo(), 'Linux memory probe');
+      const match = /^MemAvailable:\s+(\d+)\s+kB$/m.exec(meminfo);
       if (match) return Number(match[1]) * KIB;
     } catch { /* fall through to the portable conservative value */ }
   }
@@ -294,15 +311,15 @@ export async function collectHostStatus(
 ): Promise<HostStatus> {
   const dependencies = { ...DEFAULT_DEPENDENCIES, ...overrides };
   const before = dependencies.cpuSample();
-  const diskPromise = dependencies.filesystem(root)
+  const diskPromise = withTimeout(dependencies.filesystem(root), 'filesystem probe')
     .then<DiskMetric>(disk => ({ available: true, path: root, ...disk }))
     .catch((error: unknown): DiskMetric => ({
       available: false, path: root, reason: (error as Error).message,
     }));
-  const gpuPromise = dependencies.nvidiaCsv()
+  const gpuPromise = withTimeout(dependencies.nvidiaCsv(), 'GPU probe')
     .then(parseGpu)
     .catch((error: unknown): GpuMetric => ({ available: false, reason: (error as Error).message }));
-  const worktreePromise = dependencies.worktreeUsage(worktreePaths)
+  const worktreePromise = withTimeout(dependencies.worktreeUsage(worktreePaths), 'worktree probe')
     .catch((error: unknown): WorktreeMetric => ({
       available: false, activeCount: worktreePaths.length, reason: (error as Error).message,
     }));
