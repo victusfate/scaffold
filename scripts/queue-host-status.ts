@@ -1,13 +1,22 @@
 // queue-host-status.ts — bounded, read-only host measurements for the queue console.
 
 import { execFile } from 'node:child_process';
-import { statfs } from 'node:fs/promises';
+import { lstatSync, readdirSync } from 'node:fs';
+import { readFile, statfs } from 'node:fs/promises';
 import { cpus, freemem, totalmem, type CpuInfo } from 'node:os';
+import { join } from 'node:path';
+import { isMainThread, parentPort, Worker, workerData } from 'node:worker_threads';
 
 const CPU_SAMPLE_MS = 100;
 const GPU_TIMEOUT_MS = 1000;
+const WORKTREE_TIMEOUT_MS = 1500;
+const HOST_CACHE_MS = 2000;
+const PERCENT = 100;
+const PERCENT_TENTHS = 10;
 const MIB = 1024 ** 2;
 const GIB = 1024 ** 3;
+const KIB = 1024;
+const POSIX_BLOCK_BYTES = 512;
 const DEFAULT_MEMORY_RESERVE_GIB = 4;
 const DEFAULT_DISK_FLOOR_GIB = 20;
 const DEFAULT_VRAM_RESERVE_GIB = 4;
@@ -15,9 +24,9 @@ const CPU_WARN_PERCENT = 75;
 const CPU_BLOCK_PERCENT = 90;
 const HEADROOM_WARN_RATIO = 1.25;
 
-export type Guard = 'clear' | 'warn' | 'blocked' | 'unavailable';
+type Guard = 'clear' | 'warn' | 'blocked' | 'unavailable';
 
-export type CpuMetric = {
+type CpuMetric = {
   available: true;
   cores: number;
   utilizationPercent: number;
@@ -26,7 +35,7 @@ export type CpuMetric = {
   reason: string;
 };
 
-export type DiskMetric = {
+type DiskMetric = {
   available: true;
   path: string;
   totalBytes: number;
@@ -37,17 +46,34 @@ export type DiskMetric = {
   reason: string;
 };
 
-export type GpuMetric = {
+type GpuMetric = {
   available: true;
   name: string;
+  deviceCount: number;
   utilizationPercent: number;
   memoryUsedBytes: number;
   memoryTotalBytes: number;
+  minimumFreeBytes: number;
   computeProcesses: number;
 } | {
   available: false;
   reason: string;
 };
+
+type WorktreeMetric = {
+  available: true;
+  activeCount: number;
+  totalBytes: number;
+} | {
+  available: false;
+  activeCount: number;
+  reason: string;
+};
+
+interface WorktreeWorkerData {
+  operation: 'measure-worktrees';
+  paths: string[];
+}
 
 export interface HostStatus {
   sampledAt: string;
@@ -55,6 +81,7 @@ export interface HostStatus {
   memory: { totalBytes: number; availableBytes: number };
   disk: DiskMetric;
   gpu: GpuMetric;
+  worktrees: WorktreeMetric;
   limits: {
     memoryReserveBytes: number;
     diskFloorBytes: number;
@@ -68,9 +95,12 @@ export interface HostProbeDependencies {
   cpuSample: () => CpuInfo[];
   sleep: (milliseconds: number) => Promise<void>;
   totalMemory: () => number;
-  availableMemory: () => number;
+  freeMemory: () => number;
+  linuxMeminfo: () => Promise<string>;
+  platform: NodeJS.Platform;
   filesystem: (path: string) => Promise<{ totalBytes: number; availableBytes: number }>;
   nvidiaCsv: () => Promise<{ device: string; processes: string }>;
+  worktreeUsage: (paths: string[]) => Promise<WorktreeMetric>;
   environment: Record<string, string | undefined>;
   sampledAt: () => string;
 }
@@ -88,14 +118,30 @@ function cpuUtilization(before: CpuInfo[], after: CpuInfo[]): CpuMetric {
   const idle = after.reduce((sum, cpu, index) =>
     sum + cpu.times.idle - before[index].times.idle, 0);
   if (elapsed <= 0) return { available: false, reason: 'CPU sample interval had no elapsed time' };
-  const utilizationPercent = Math.round((1 - idle / elapsed) * 1000) / 10;
+  const utilizationPercent = Math.round((1 - idle / elapsed) * PERCENT * PERCENT_TENTHS)
+    / PERCENT_TENTHS;
   return { available: true, cores: after.length, utilizationPercent };
 }
 
 function runNvidia(args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile('nvidia-smi', args, { encoding: 'utf8', timeout: GPU_TIMEOUT_MS, windowsHide: true },
-      (error, stdout) => error ? reject(new Error('nvidia-smi failed', { cause: error })) : resolve(stdout));
+    let finished = false;
+    const finish = (error: Error | null, stdout = ''): void => {
+      if (finished) return;
+      finished = true;
+      clearTimeout(timer);
+      if (error) reject(error);
+      else resolve(stdout);
+    };
+    const child = execFile('nvidia-smi', args, { encoding: 'utf8', windowsHide: true },
+      (error, stdout) => finish(error ? new Error('nvidia-smi failed', { cause: error }) : null, stdout));
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+      child.unref();
+      finish(new Error(`nvidia-smi timed out after ${GPU_TIMEOUT_MS}ms`));
+    }, GPU_TIMEOUT_MS);
   });
 }
 
@@ -108,20 +154,76 @@ async function defaultNvidiaCsv(): Promise<{ device: string; processes: string }
 }
 
 function parseGpu({ device, processes }: { device: string; processes: string }): GpuMetric {
-  const [name, utilization, memoryUsed, memoryTotal] = device.split(/\r?\n/, 1)[0]
-    .split(',').map(value => value.trim());
-  const values = [utilization, memoryUsed, memoryTotal].map(Number);
-  if (!name || values.some(value => !Number.isFinite(value))) {
+  const devices = device.split(/\r?\n/).filter(line => line.trim()).map(line => {
+    const [name, utilization, memoryUsed, memoryTotal] = line.split(',').map(value => value.trim());
+    return { name, utilization: Number(utilization), used: Number(memoryUsed), total: Number(memoryTotal) };
+  });
+  if (!devices.length || devices.some(gpu => !gpu.name
+    || [gpu.utilization, gpu.used, gpu.total].some(value => !Number.isFinite(value)))) {
     return { available: false, reason: 'nvidia-smi returned an unexpected response' };
   }
+  const memoryUsedBytes = devices.reduce((sum, gpu) => sum + gpu.used * MIB, 0);
+  const memoryTotalBytes = devices.reduce((sum, gpu) => sum + gpu.total * MIB, 0);
   return {
     available: true,
-    name,
-    utilizationPercent: values[0],
-    memoryUsedBytes: values[1] * MIB,
-    memoryTotalBytes: values[2] * MIB,
+    name: devices.length === 1 ? devices[0].name : `${devices.length} GPUs`,
+    deviceCount: devices.length,
+    utilizationPercent: Math.max(...devices.map(gpu => gpu.utilization)),
+    memoryUsedBytes,
+    memoryTotalBytes,
+    minimumFreeBytes: Math.min(...devices.map(gpu => (gpu.total - gpu.used) * MIB)),
     computeProcesses: processes.split(/\r?\n/).filter(line => line.trim()).length,
   };
+}
+
+function allocatedBytes(root: string): number {
+  let total = 0;
+  const pending = [root];
+  while (pending.length) {
+    const path = pending.pop()!;
+    const stats = lstatSync(path);
+    total += stats.blocks > 0 ? stats.blocks * POSIX_BLOCK_BYTES : stats.size;
+    if (stats.isDirectory() && !stats.isSymbolicLink()) {
+      pending.push(...readdirSync(path).map(name => join(path, name)));
+    }
+  }
+  return total;
+}
+
+function measureWorktrees(paths: string[]): WorktreeMetric {
+  return {
+    available: true,
+    activeCount: paths.length,
+    totalBytes: paths.reduce((sum, path) => sum + allocatedBytes(path), 0),
+  };
+}
+
+async function defaultWorktreeUsage(paths: string[]): Promise<WorktreeMetric> {
+  if (!paths.length) return { available: true, activeCount: 0, totalBytes: 0 };
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL(import.meta.url), {
+      workerData: { operation: 'measure-worktrees', paths },
+    });
+    const timer = setTimeout(() => {
+      worker.terminate().catch(() => {});
+      reject(new Error(`worktree scan timed out after ${WORKTREE_TIMEOUT_MS}ms`));
+    }, WORKTREE_TIMEOUT_MS);
+    worker.once('message', (metric: WorktreeMetric) => {
+      clearTimeout(timer);
+      resolve(metric);
+    });
+    worker.once('error', error => {
+      clearTimeout(timer);
+      reject(new Error('worktree scan failed', { cause: error }));
+    });
+  });
+}
+
+function isWorktreeWorkerData(value: unknown): value is WorktreeWorkerData {
+  if (!value || typeof value !== 'object') return false;
+  const record = value as Record<string, unknown>;
+  return record.operation === 'measure-worktrees'
+    && Array.isArray(record.paths) && record.paths.every(path => typeof path === 'string');
 }
 
 function defaultFilesystem(path: string): Promise<{ totalBytes: number; availableBytes: number }> {
@@ -129,6 +231,16 @@ function defaultFilesystem(path: string): Promise<{ totalBytes: number; availabl
     totalBytes: Number(stats.blocks * stats.bsize),
     availableBytes: Number(stats.bavail * stats.bsize),
   }));
+}
+
+async function defaultAvailableMemory(dependencies: HostProbeDependencies): Promise<number> {
+  if (dependencies.platform === 'linux') {
+    try {
+      const match = /^MemAvailable:\s+(\d+)\s+kB$/m.exec(await dependencies.linuxMeminfo());
+      if (match) return Number(match[1]) * KIB;
+    } catch { /* fall through to the portable conservative value */ }
+  }
+  return dependencies.freeMemory();
 }
 
 function positiveNumber(value: string | undefined, fallback: number): number {
@@ -147,6 +259,13 @@ function lowHeadroomGuard(available: number, floor: number): Guard {
   return 'clear';
 }
 
+function cpuGuard(cpu: CpuMetric): Guard {
+  if (!cpu.available) return 'unavailable';
+  if (cpu.utilizationPercent >= CPU_BLOCK_PERCENT) return 'blocked';
+  if (cpu.utilizationPercent >= CPU_WARN_PERCENT) return 'warn';
+  return 'clear';
+}
+
 function overallGuard(guards: Guard[]): Guard {
   if (guards.includes('blocked')) return 'blocked';
   if (guards.includes('warn')) return 'warn';
@@ -157,9 +276,12 @@ const DEFAULT_DEPENDENCIES: HostProbeDependencies = {
   cpuSample: cpus,
   sleep: milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds)),
   totalMemory: totalmem,
-  availableMemory: freemem,
+  freeMemory: freemem,
+  linuxMeminfo: () => readFile('/proc/meminfo', 'utf8'),
+  platform: process.platform,
   filesystem: defaultFilesystem,
   nvidiaCsv: defaultNvidiaCsv,
+  worktreeUsage: defaultWorktreeUsage,
   environment: process.env,
   sampledAt: () => new Date().toISOString(),
 };
@@ -168,6 +290,7 @@ const DEFAULT_DEPENDENCIES: HostProbeDependencies = {
 export async function collectHostStatus(
   root: string,
   overrides: Partial<HostProbeDependencies> = {},
+  worktreePaths: string[] = [],
 ): Promise<HostStatus> {
   const dependencies = { ...DEFAULT_DEPENDENCIES, ...overrides };
   const before = dependencies.cpuSample();
@@ -179,12 +302,19 @@ export async function collectHostStatus(
   const gpuPromise = dependencies.nvidiaCsv()
     .then(parseGpu)
     .catch((error: unknown): GpuMetric => ({ available: false, reason: (error as Error).message }));
+  const worktreePromise = dependencies.worktreeUsage(worktreePaths)
+    .catch((error: unknown): WorktreeMetric => ({
+      available: false, activeCount: worktreePaths.length, reason: (error as Error).message,
+    }));
+  const memoryPromise = defaultAvailableMemory(dependencies);
   await dependencies.sleep(CPU_SAMPLE_MS);
-  const [disk, gpu] = await Promise.all([diskPromise, gpuPromise]);
+  const [disk, gpu, worktrees, availableBytes] = await Promise.all([
+    diskPromise, gpuPromise, worktreePromise, memoryPromise,
+  ]);
   const cpu = cpuUtilization(before, dependencies.cpuSample());
   const memory = {
     totalBytes: dependencies.totalMemory(),
-    availableBytes: dependencies.availableMemory(),
+    availableBytes,
   };
   const limits = {
     memoryReserveBytes: positiveNumber(dependencies.environment.QUEUE_MEMORY_RESERVE_GIB,
@@ -196,14 +326,11 @@ export async function collectHostStatus(
     workerLimit: workerLimit(dependencies.environment.QUEUE_WORKER_LIMIT),
   };
   const guard = {
-    cpu: cpu.available
-      ? cpu.utilizationPercent >= CPU_BLOCK_PERCENT ? 'blocked' as const
-        : cpu.utilizationPercent >= CPU_WARN_PERCENT ? 'warn' as const : 'clear' as const
-      : 'unavailable' as const,
+    cpu: cpuGuard(cpu),
     memory: lowHeadroomGuard(memory.availableBytes, limits.memoryReserveBytes),
     disk: disk.available ? lowHeadroomGuard(disk.availableBytes, limits.diskFloorBytes) : 'unavailable' as const,
     gpu: gpu.available
-      ? lowHeadroomGuard(gpu.memoryTotalBytes - gpu.memoryUsedBytes, limits.gpuVramReserveBytes)
+      ? lowHeadroomGuard(gpu.minimumFreeBytes, limits.gpuVramReserveBytes)
       : 'unavailable' as const,
   };
   return {
@@ -212,6 +339,7 @@ export async function collectHostStatus(
     memory,
     disk,
     gpu,
+    worktrees,
     limits,
     guard: { ...guard, overall: overallGuard(Object.values(guard)) },
   };
@@ -220,7 +348,7 @@ export async function collectHostStatus(
 /** Coalesce concurrent refreshes and reuse a recent snapshot. Failures are never cached. */
 export function createCachedHostProbe(
   probe: () => Promise<HostStatus>,
-  cacheMilliseconds = 2000,
+  cacheMilliseconds = HOST_CACHE_MS,
   clock: () => number = Date.now,
 ): () => Promise<HostStatus> {
   let cached: HostStatus | null = null;
@@ -236,4 +364,8 @@ export function createCachedHostProbe(
     }).finally(() => { inFlight = null; });
     return inFlight;
   };
+}
+
+if (!isMainThread && isWorktreeWorkerData(workerData)) {
+  parentPort?.postMessage(measureWorktrees(workerData.paths));
 }

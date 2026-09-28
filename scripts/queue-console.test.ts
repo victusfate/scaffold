@@ -268,6 +268,8 @@ maxParallel: 2
   has('host status names the resource guard', 'Resource guard');
   has('host status distinguishes the worker limit', 'Worker limit');
   has('host status reports VRAM headroom', 'VRAM');
+  has('host status reports active worktree storage', 'Worktrees');
+  has('flex-styled host metrics preserve list semantics', '<ul role="list">');
   has('changed-on-disk banner mount point', 'id="stale"');
   has('free-lane drop placeholder', 'drop a task here');
   has('held chip', '>held<');
@@ -320,6 +322,7 @@ maxParallel: 2
     memory: { totalBytes: 64 * 1024 ** 3, availableBytes: 23 * 1024 ** 3 },
     disk: { available: true as const, path: dir, totalBytes: 512 * 1024 ** 3, availableBytes: 211 * 1024 ** 3 },
     gpu: { available: false as const, reason: 'not installed' },
+    worktrees: { available: true as const, activeCount: 0, totalBytes: 0 },
     limits: {
       memoryReserveBytes: 16 * 1024 ** 3,
       diskFloorBytes: 205 * 1024 ** 3,
@@ -332,8 +335,10 @@ maxParallel: 2
     },
   };
   let probedRoot = '';
-  const server = startServer(0, { hostProbe: root => {
+  let probedWorktrees: string[] = [];
+  const server = startServer(0, { hostProbe: (root, worktrees) => {
     probedRoot = root;
+    probedWorktrees = worktrees;
     return Promise.resolve(hostStatus);
   } });
   await new Promise<void>(res => server.on('listening', res));
@@ -352,6 +357,8 @@ maxParallel: 2
   assert('GET /api/host serves the injected host snapshot', host.cpu.available
     && host.cpu.utilizationPercent === 37.5 && host.memory.availableBytes === 23 * 1024 ** 3);
   assert('host probe measures the selected queue filesystem', probedRoot === dir, probedRoot);
+  assert('host probe receives only active queue worktrees', probedWorktrees.length === 0,
+    probedWorktrees.join(','));
 
   const post = (body: unknown): Promise<Response> => fetch(`${base}/api/op`, {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),

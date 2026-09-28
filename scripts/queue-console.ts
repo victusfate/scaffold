@@ -17,9 +17,9 @@
 
 import http from 'node:http';
 import { readFileSync, mkdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { basename, join, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { load, save, log, appendArchive, queueFile, dbFile, withLock, now } from './queue-io.ts';
+import { load, save, log, appendArchive, queueFile, dbFile, withLock, now, ROOT } from './queue-io.ts';
 import { QueueIntegrityError } from './queue-db.ts';
 import { laneDir, readLanes, laneStale, requestStop, stopRequested, type LaneState } from './queue-lanes.ts';
 import { collectHostStatus, createCachedHostProbe, type HostStatus } from './queue-host-status.ts';
@@ -60,7 +60,17 @@ export interface ConsoleTask extends Task { eligible: boolean; deadlocked: boole
 export interface ConsoleState { config: QueueConfig; tasks: ConsoleTask[]; drain: string | null }
 
 export interface LaneView extends LaneState { stale: boolean; stop: boolean }
-export interface QueueConsoleServerOptions { hostProbe?: (queueRoot: string) => Promise<HostStatus> }
+export interface QueueConsoleServerOptions {
+  hostProbe?: (queueRoot: string, activeWorktrees: string[]) => Promise<HostStatus>;
+}
+
+function activeWorktreePaths(q: Queue): string[] {
+  const queueRoot = dirname(queueFile());
+  const checkoutRoot = basename(queueRoot) === 'queue' && basename(dirname(queueRoot)) === '.agent'
+    ? resolve(queueRoot, '..', '..') : ROOT;
+  return q.tasks.filter(task => task.status === 'active' && task.worktree)
+    .map(task => resolve(checkoutRoot, task.worktree!));
+}
 
 /** Live lane records for the board: heartbeats plus derived staleness. */
 export function laneViews(q: Queue): LaneView[] {
@@ -379,8 +389,9 @@ async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Pr
  */
 export function startServer(port: number, options: QueueConsoleServerOptions = {}): http.Server {
   const sse = createSseChannel();
-  const probe = options.hostProbe ?? collectHostStatus;
-  const hostProbe = createCachedHostProbe(() => probe(dirname(queueFile())));
+  const probe = options.hostProbe
+    ?? ((root: string, worktrees: string[]) => collectHostStatus(root, {}, worktrees));
+  const hostProbe = createCachedHostProbe(() => probe(dirname(queueFile()), activeWorktreePaths(load())));
   const server = http.createServer((req, res) => {
     if (!LOOPBACK_HOST.test(req.headers.host ?? '')) {
       sendJson(res, HTTP_FORBIDDEN, { error: 'forbidden: loopback host required' });

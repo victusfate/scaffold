@@ -5,6 +5,7 @@
 | Term | Definition |
 |---|---|
 | Host snapshot | One bounded, read-only sample of CPU, memory, disk, and optional NVIDIA GPU state. |
+| Active-worktree usage | Allocated bytes beneath worktree paths belonging to currently active queue tasks. |
 | Resource guard | A `clear`, `warn`, or `blocked` comparison between current headroom and configured reserve/floor values. |
 | Desired parallelism | The queue's existing `maxParallel` worker-lane setting. It is operator-controlled. |
 | Worker-lane limit | An optional externally supplied ceiling for worker agents. It is distinct from host capacity and desired parallelism. |
@@ -22,15 +23,21 @@
 
 ### Cross-platform standard-library collector
 
-**Decision:** Add a TypeScript collector using Node's `os` CPU/memory APIs and `fs.statfs` for the queue filesystem. CPU utilization is derived from two bounded `os.cpus()` samples so Windows does not depend on Unix load averages. NVIDIA data is optional and collected with a timed `nvidia-smi` invocation when present.
+**Decision:** Add a TypeScript collector using Node's `os` CPU/memory APIs and `fs.statfs` for the queue filesystem. On Linux, use `MemAvailable`; other platforms conservatively fall back to Node's free-memory value. CPU utilization is derived from two bounded `os.cpus()` samples so Windows does not depend on Unix load averages. NVIDIA data is optional and collected with a timed `nvidia-smi` invocation when present.
 
 **Rationale:** These interfaces work on supported Node platforms without adding a package or assuming `free`, `df`, `du`, PowerShell, or procfs. An absent NVIDIA tool is normal on macOS and non-NVIDIA hosts.
 
-**Alternatives considered:** Platform-specific shell commands; rejected because their output and availability differ. Recursive worktree-size scanning; rejected because an auto-refresh endpoint must not walk potentially huge trees.
+**Alternatives considered:** Platform-specific shell commands; rejected because their output and availability differ.
+
+### Bounded active-worktree accounting
+
+**Decision:** Size only active queue worktrees in an isolated Node worker thread. Terminate the worker at a short deadline and report the metric as unavailable on timeout or filesystem failure.
+
+**Rationale:** Worktrees were a material disk consumer in the motivating repository, but recursively walking a large checkout in the console thread would delay queue rendering and mutations. An off-thread, cancellable scan makes the cost visible without putting queue control behind it.
 
 ### Bounded cached request path
 
-**Decision:** `/api/host` serves a short-lived cached snapshot. Collection has explicit time bounds and converts unsupported metrics into typed unavailable values. Queue reads and writes do not await telemetry.
+**Decision:** `/api/host` serves a short-lived cached snapshot. Collection has explicit time bounds and converts unsupported metrics into typed unavailable values. The browser renders queue and lane state before requesting telemetry, so queue reads and writes do not await it.
 
 **Rationale:** Browser refreshes must not multiply subprocesses or delay the queue management surface.
 
@@ -55,6 +62,7 @@ flowchart LR
   Cache -->|yes| Snapshot[Typed host snapshot]
   Cache -->|no| Collector[Bounded collector]
   Collector --> Node[Node OS + statfs]
+  Collector --> Worker[Bounded worktree-size worker]
   Collector --> Nvidia[Optional nvidia-smi]
   Snapshot --> Panel[Host pressure beside Lanes]
   Panel -. advisory only .-> Operator[Operator changes maxParallel]
@@ -65,6 +73,8 @@ flowchart LR
 - Windows host with no Unix load average: sampled CPU utilization remains available.
 - macOS or non-NVIDIA host: GPU reads `unavailable`; CPU, memory, and disk still render.
 - Hung `nvidia-smi`: the timeout expires, the GPU metric becomes unavailable, and queue endpoints continue serving.
+- Multiple NVIDIA devices: utilization is the maximum and the VRAM guard uses the least headroom on any device.
+- A huge or unreadable active worktree: its bounded worker terminates and the worktree metric reads unavailable.
 - Disk or OS probe error: only that metric becomes unavailable; the endpoint still returns a typed snapshot.
 - Resource guard is clear but the worker-lane limit is full: the panel says the host is clear and the harness is full.
 - Four queue claims with only three worker slots: active claims and the configured worker limit are shown separately.

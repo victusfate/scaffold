@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import type { CpuInfo } from 'node:os';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { collectHostStatus, createCachedHostProbe } from './queue-host-status.ts';
 
 let passed = 0;
@@ -23,20 +26,25 @@ const cpu = (idle: number, user: number): CpuInfo => ({
     cpuSample: () => frames.shift()!,
     sleep: async () => {},
     totalMemory: () => 64 * GIB,
-    availableMemory: () => 23 * GIB,
+    freeMemory: () => 23 * GIB,
+    linuxMeminfo: () => Promise.resolve('MemAvailable: 53477376 kB\n'),
+    platform: 'linux',
     filesystem: () => Promise.resolve({ totalBytes: 512 * GIB, availableBytes: 211 * GIB }),
     nvidiaCsv: () => Promise.reject(new Error('not installed')),
+    worktreeUsage: paths => Promise.resolve({ available: true, activeCount: paths.length, totalBytes: 7 * GIB }),
     environment: {},
     sampledAt: () => '2026-09-28T18:00:00.000Z',
-  });
+  }, ['/queue/wt/one', '/queue/wt/two']);
 
   assert('portable CPU sampling uses deltas', status.cpu.available
     && status.cpu.utilizationPercent === 75, JSON.stringify(status.cpu));
-  assert('memory reports non-default available and total bytes', status.memory.availableBytes === 23 * GIB
+  assert('Linux memory uses MemAvailable instead of only free pages', status.memory.availableBytes === 51 * GIB
     && status.memory.totalBytes === 64 * GIB);
   assert('filesystem reports the probed path and bytes', status.disk.available
     && status.disk.path === '/queue' && status.disk.availableBytes === 211 * GIB);
   assert('snapshot timestamp comes from the probe boundary', status.sampledAt === '2026-09-28T18:00:00.000Z');
+  assert('active worktree usage is included in the snapshot', status.worktrees.available
+    && status.worktrees.activeCount === 2 && status.worktrees.totalBytes === 7 * GIB);
 }
 
 {
@@ -45,12 +53,15 @@ const cpu = (idle: number, user: number): CpuInfo => ({
     cpuSample: () => frames.shift()!,
     sleep: () => Promise.resolve(),
     totalMemory: () => 64 * GIB,
-    availableMemory: () => 15 * GIB,
+    freeMemory: () => 15 * GIB,
+    linuxMeminfo: () => Promise.reject(new Error('not used')),
+    platform: 'win32',
     filesystem: () => Promise.resolve({ totalBytes: 1000 * GIB, availableBytes: 211 * GIB }),
     nvidiaCsv: () => Promise.resolve({
-      device: 'NVIDIA Test GPU, 4, 2712, 32768\n',
+      device: 'NVIDIA Test GPU A, 4, 2712, 32768\nNVIDIA Test GPU B, 97, 7168, 8192\n',
       processes: '101\n202\n',
     }),
+    worktreeUsage: () => Promise.resolve({ available: true, activeCount: 0, totalBytes: 0 }),
     environment: {
       QUEUE_MEMORY_RESERVE_GIB: '16',
       QUEUE_DISK_FLOOR_GIB: '205',
@@ -59,14 +70,35 @@ const cpu = (idle: number, user: number): CpuInfo => ({
     },
   });
 
-  assert('NVIDIA CSV becomes typed GPU pressure', status.gpu.available
-    && status.gpu.name === 'NVIDIA Test GPU' && status.gpu.utilizationPercent === 4
-    && status.gpu.memoryUsedBytes === 2712 * 1024 ** 2 && status.gpu.computeProcesses === 2);
+  assert('all NVIDIA devices contribute to typed GPU pressure', status.gpu.available
+    && status.gpu.name === '2 GPUs' && status.gpu.deviceCount === 2 && status.gpu.utilizationPercent === 97
+    && status.gpu.minimumFreeBytes === GIB && status.gpu.computeProcesses === 2);
   assert('configured reserves and worker limit remain distinct', status.limits.memoryReserveBytes === 16 * GIB
     && status.limits.diskFloorBytes === 205 * GIB && status.limits.gpuVramReserveBytes === 4 * GIB
     && status.limits.workerLimit === 3);
-  assert('resource guard blocks below the memory reserve', status.guard.overall === 'blocked'
-    && status.guard.memory === 'blocked');
+  assert('resource guard blocks below memory reserve and per-device VRAM reserve',
+    status.guard.overall === 'blocked' && status.guard.memory === 'blocked' && status.guard.gpu === 'blocked');
+}
+
+{
+  const dir = mkdtempSync(join(tmpdir(), 'queue-worktree-size-'));
+  writeFileSync(join(dir, 'payload.bin'), 'measured payload');
+  const frames = [[cpu(100, 100)], [cpu(150, 150)]];
+  const status = await collectHostStatus('/queue', {
+    cpuSample: () => frames.shift()!,
+    sleep: () => Promise.resolve(),
+    totalMemory: () => 8 * GIB,
+    freeMemory: () => 4 * GIB,
+    linuxMeminfo: () => Promise.reject(new Error('fixture fallback')),
+    platform: 'darwin',
+    filesystem: () => Promise.resolve({ totalBytes: 20 * GIB, availableBytes: 10 * GIB }),
+    nvidiaCsv: () => Promise.reject(new Error('not installed')),
+    environment: {},
+    sampledAt: () => 'worktree-scan',
+  }, [dir]);
+  rmSync(dir, { recursive: true, force: true });
+  assert('real cross-platform worker measures active worktree bytes off-thread', status.worktrees.available
+    && status.worktrees.activeCount === 1 && status.worktrees.totalBytes >= 'measured payload'.length);
 }
 
 {
@@ -78,6 +110,7 @@ const cpu = (idle: number, user: number): CpuInfo => ({
     memory: { totalBytes: 1, availableBytes: 1 },
     disk: { available: false as const, path: '/', reason: 'test' },
     gpu: { available: false as const, reason: 'test' },
+    worktrees: { available: true as const, activeCount: 0, totalBytes: 0 },
     limits: { memoryReserveBytes: 1, diskFloorBytes: 1, gpuVramReserveBytes: 1, workerLimit: null },
     guard: { overall: 'clear' as const, cpu: 'unavailable' as const, memory: 'clear' as const,
       disk: 'unavailable' as const, gpu: 'unavailable' as const },

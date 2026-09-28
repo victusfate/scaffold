@@ -2,15 +2,15 @@
 
 ## Slice 1 — Portable host pressure reaches the queue header
 
-- Add a public async host snapshot collector for sampled CPU utilization, available/total memory, and queue-filesystem available/total space.
+- Add a public async host snapshot collector for sampled CPU utilization, available/total memory, queue-filesystem available/total space, and bounded active-worktree usage.
 - Add a cached `GET /api/host` route that can receive an injected probe in tests without coupling queue operations to probe success.
 - Fetch and render the snapshot beside the existing Lanes control with semantic text and non-color guard state.
 - RED: deterministic CPU/guard tests, injected loopback route test, and template contract assertions fail before implementation.
-- GREEN: the real browser path renders CPU, memory, disk, active claims, and desired parallelism.
+- GREEN: the real browser path renders CPU, memory, disk, active-worktree usage, active claims, and desired parallelism without waiting on telemetry to draw the queue.
 
 ## Slice 2 — Optional GPU and explicit lane constraints
 
-- Add timed, fixed-argument `nvidia-smi` collection and parsing; unsupported or timed-out probes become an unavailable GPU metric.
+- Add timed, fixed-argument `nvidia-smi` collection and parsing across every device; unsupported or timed-out probes become an unavailable GPU metric.
 - Parse configurable memory, disk, and VRAM reserves plus the optional worker-lane limit.
 - Extend the header to distinguish host resource guard from worker-slot availability and show GPU/VRAM/process data when available.
 - RED: non-default sentinel tests cover valid, invalid, unavailable, warning, and blocked cases.

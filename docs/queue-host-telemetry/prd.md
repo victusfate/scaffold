@@ -17,14 +17,15 @@ Add a bounded cross-platform host snapshot endpoint and a compact status panel a
 5. As an operator under a harness concurrency cap, I want active claims and the optional worker-lane limit shown separately from host capacity, so an idle host is not mistaken for a free agent slot.
 6. As a queue user, I want telemetry probes cached and time-bounded, so auto-refresh never stalls queue reads or writes.
 7. As a screen-reader user, I want status expressed with semantic text rather than color-only or noisy live announcements.
+8. As an operator on a disk-heavy repository, I want the aggregate size and count of active worktrees, so lane cost is visible before I add another checkout.
 
 ## Implementation Decisions
 
 - Add a focused TypeScript host-status module with a stable async snapshot interface. It owns CPU sampling, memory and filesystem readings, optional NVIDIA probing, safety-limit parsing, caching, and guard classification.
 - Use two short `os.cpus()` samples for utilization on every supported Node platform. Keep Unix load average as supplementary data, not the portable CPU signal.
-- Use Node filesystem statistics for the filesystem containing the queue. Do not recursively size worktrees on the request path.
-- Invoke only `nvidia-smi`, with an explicit timeout and fixed query arguments. Never collect command lines, usernames, environment data, or process arguments.
-- Add a loopback-only `GET /api/host` endpoint. Queue state and mutation endpoints remain independent of the telemetry collector.
+- Use Node filesystem statistics for the filesystem containing the queue. Size only active worktrees in a separately terminated worker thread; timeout or filesystem errors produce an unavailable metric.
+- Invoke only `nvidia-smi`, with an independently settling timeout and fixed query arguments. Aggregate every returned device and guard on the least per-device VRAM headroom. Never collect command lines, usernames, environment data, or process arguments.
+- Add a loopback-only `GET /api/host` endpoint. Queue state and mutation endpoints remain independent of the telemetry collector, and the browser renders them without awaiting host telemetry.
 - Extend the existing header with a passive semantic list of metrics and a text guard state. Fetch host, queue, and lane state together on refresh.
 - Support `QUEUE_MEMORY_RESERVE_GIB`, `QUEUE_DISK_FLOOR_GIB`, `QUEUE_VRAM_RESERVE_GIB`, and `QUEUE_WORKER_LIMIT`. Invalid values fall back to documented defaults or unavailable rather than producing `NaN`.
 - Keep `maxParallel` operator-controlled. The UI may say host resources are clear or constrained, but must not recommend a numeric lane count it cannot substantiate.
@@ -42,7 +43,7 @@ Add a bounded cross-platform host snapshot endpoint and a compact status panel a
 - Automatically changing `maxParallel`.
 - Discovering a harness's concurrency limit without explicit configuration.
 - Per-process command lines, identities, or memory use.
-- Recursive worktree or scratch-directory sizing during browser refresh.
+- Inactive worktree, repository-object-store, or scratch-directory sizing.
 - AMD, Intel, or Apple GPU utilization APIs in this first slice; they degrade to unavailable.
 - Remote exposure, authentication, or telemetry export. The console remains loopback-only.
 

@@ -310,14 +310,23 @@ const busy = () => editingId !== null || draggingId !== null;
 const esc = s => String(s ?? "").replace(/[&<>"']/g,
   c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+async function refreshHost() {
+  try {
+    const response = await fetch("/api/host");
+    H = await response.json();
+    if (!response.ok) H.error = H.error || "Host resources unavailable";
+  } catch (error) {
+    H = { error: error instanceof Error ? error.message : String(error) };
+  }
+  if (S) renderStatus();
+}
+
 async function refresh() {
-  const [queue, lanes, host] = await Promise.all([
-    fetch("/api/queue"), fetch("/api/lanes"), fetch("/api/host"),
-  ]);
+  const [queue, lanes] = await Promise.all([fetch("/api/queue"), fetch("/api/lanes")]);
   S = await queue.json();
   L = (await lanes.json()).lanes;
-  H = await host.json();
   render();
+  void refreshHost();
 }
 
 async function post(op) {
@@ -327,14 +336,14 @@ async function post(op) {
   const body = await res.json();
   if (!res.ok) { showError(body.error || "The queue rejected that change."); return false; }
   S = body;
-  const [lanes, host] = await Promise.all([fetch("/api/lanes"), fetch("/api/host")]);
+  const lanes = await fetch("/api/lanes");
   L = (await lanes.json()).lanes;
-  H = await host.json();
   // Close the editor only when this op consumed or destroyed it — a save
   // (set/add) or removing the edited row. Other ops keep it open, and
   // render() carries the typed-but-unsaved values across the re-render.
   if (op.op === "set" || op.op === "add" || (op.op === "remove" && op.id === editingId)) editingId = null;
   render();
+  void refreshHost();
   return true;
 }
 
@@ -383,19 +392,23 @@ function hostStatusHtml(active) {
     ? gib(H.disk.availableBytes) + " free (floor " + gib(H.limits.diskFloorBytes) + ")" : "unavailable";
   const gpu = H.gpu.available
     ? esc(H.gpu.name) + " " + H.gpu.utilizationPercent + "% · VRAM "
-      + esc(gib(H.gpu.memoryTotalBytes - H.gpu.memoryUsedBytes)) + " free · "
+      + esc(gib(H.gpu.minimumFreeBytes)) + (H.gpu.deviceCount > 1 ? " minimum free" : " free") + " · "
       + H.gpu.computeProcesses + " compute process" + (H.gpu.computeProcesses === 1 ? "" : "es")
     : "unavailable";
+  const worktrees = H.worktrees.available
+    ? H.worktrees.activeCount + " active · " + gib(H.worktrees.totalBytes)
+    : H.worktrees.activeCount + " active · unavailable";
   const worker = H.limits.workerLimit === null
     ? "not configured"
     : active + "/" + H.limits.workerLimit
       + (active >= H.limits.workerLimit ? " (full)" : " (" + (H.limits.workerLimit - active) + " free)");
-  return '<aside id="host-status" aria-live="off" aria-label="Host resources"><strong>Host:</strong><ul>'
+  return '<aside id="host-status" aria-live="off" aria-label="Host resources"><strong>Host:</strong><ul role="list">'
     + '<li class="guard-' + H.guard.overall + '">Resource guard ' + esc(H.guard.overall) + '</li>'
     + '<li>CPU ' + esc(cpu) + '</li>'
     + '<li>RAM ' + esc(gib(H.memory.availableBytes)) + ' available (reserve '
       + esc(gib(H.limits.memoryReserveBytes)) + ')</li>'
     + '<li>Disk ' + esc(disk) + '</li>'
+    + '<li>Worktrees ' + esc(worktrees) + '</li>'
     + '<li>GPU ' + gpu + '</li>'
     + '<li>Desired worker lanes ' + active + '/' + S.config.maxParallel + '</li>'
     + '<li>Worker limit ' + esc(worker) + '</li>'
