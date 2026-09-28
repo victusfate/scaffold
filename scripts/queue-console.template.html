@@ -93,6 +93,10 @@ try {
   #status input { width: 4.2rem; padding: 0.15rem 0.45rem; }
   #drain { color: var(--warn); font-weight: 650; font-size: 0.88rem; flex-basis: 100%; }
   #plan { color: var(--muted); font-size: 0.88rem; flex-basis: 100%; }
+  #host-status { flex-basis: 100%; color: var(--muted); font-size: 0.84rem; }
+  #host-status strong { color: var(--ink); }
+  #host-status ul { display: inline-flex; flex-wrap: wrap; gap: 0.25rem 0.9rem; list-style: none; margin: 0 0 0 0.6rem; padding: 0; }
+  #host-status li { font-variant-numeric: tabular-nums; }
   #stale {
     display: none; margin: 0 0 0.9rem; padding: 0.55rem 0.85rem; border-radius: 6px;
     border: 1px solid var(--warn); background: var(--panel);
@@ -271,6 +275,7 @@ const $ = (sel, el) => (el || document).querySelector(sel);
 const ERROR_HIDE_MS = 6000;
 let S = null;          // last ConsoleState
 let L = [];           // last lane views from /api/lanes
+let H = null;          // last host snapshot from /api/host
 let editingId = null;  // task id whose editor is open (or "add" while typing)
 let draggingId = null;
 let armedId = null;   // click-to-move selection (touch/mouse fallback when drags fail)
@@ -303,10 +308,12 @@ const esc = s => String(s ?? "").replace(/[&<>"']/g,
   c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 async function refresh() {
-  const res = await fetch("/api/queue");
-  S = await res.json();
-  const lanes = await fetch("/api/lanes");
+  const [queue, lanes, host] = await Promise.all([
+    fetch("/api/queue"), fetch("/api/lanes"), fetch("/api/host"),
+  ]);
+  S = await queue.json();
   L = (await lanes.json()).lanes;
+  H = await host.json();
   render();
 }
 
@@ -317,7 +324,9 @@ async function post(op) {
   const body = await res.json();
   if (!res.ok) { showError(body.error || "The queue rejected that change."); return false; }
   S = body;
-  L = (await (await fetch("/api/lanes")).json()).lanes;
+  const [lanes, host] = await Promise.all([fetch("/api/lanes"), fetch("/api/host")]);
+  L = (await lanes.json()).lanes;
+  H = await host.json();
   // Close the editor only when this op consumed or destroyed it — a save
   // (set/add) or removing the edited row. Other ops keep it open, and
   // render() carries the typed-but-unsaved values across the re-render.
@@ -360,6 +369,22 @@ function confirmRemove(t) {
 
 // ------------------------------------------------------------------ header
 
+const gib = bytes => (bytes / 1024 ** 3).toFixed(1) + " GiB";
+function hostStatusHtml(active) {
+  if (!H || H.error) {
+    return '<aside id="host-status" aria-live="off" aria-label="Host resources">'
+      + '<strong>Host:</strong> resources unavailable</aside>';
+  }
+  const cpu = H.cpu.available ? H.cpu.utilizationPercent + "% of " + H.cpu.cores + " cores" : "unavailable";
+  const disk = H.disk.available ? gib(H.disk.availableBytes) + " free" : "unavailable";
+  return '<aside id="host-status" aria-live="off" aria-label="Host resources"><strong>Host:</strong><ul>'
+    + '<li>CPU ' + esc(cpu) + '</li>'
+    + '<li>RAM ' + esc(gib(H.memory.availableBytes)) + ' available</li>'
+    + '<li>Disk ' + esc(disk) + '</li>'
+    + '<li>Worker lanes ' + active + '/' + S.config.maxParallel + '</li>'
+    + '</ul></aside>';
+}
+
 function renderStatus() {
   const c = S.config;
   const paused = c.status === "stopped" && c.resumeAt;
@@ -387,6 +412,7 @@ function renderStatus() {
     '<button id="theme" aria-label="Switch to ' + (dark ? "light" : "dark") + ' theme">'
       + (dark ? "☀" : "☾") + '</button>' +
     '</div>' +
+    hostStatusHtml(active.length) +
     (S.drain ? '<span id="drain">' + esc(S.drain) + '</span>' : '') +
     plan;
   $("#toggle").onclick = () =>
