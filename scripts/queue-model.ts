@@ -3,7 +3,8 @@
 // All I/O (files, git, clock, validation) lives in queue.ts; everything here is
 // deterministic and unit-tested. Time is always passed in as an ISO string.
 //
-// File shape (one Markdown file a human can read and edit at any time):
+// File shape (one Markdown file a human can read and edit at any time; it is the
+// rendered view of the SQLite store in queue-db.ts, applied back via `queue import`):
 //
 //   # Work Queue
 //   <!-- queue:config
@@ -334,9 +335,10 @@ function fieldLines(t: Task): string[] {
 const HEADER = [
   'Order = priority (top first). Checkboxes: `[ ]` pending · `[>]` active · '
     + '`[x]` done · `[!]` failed.',
-  'Edit this file freely to reprioritize, add, or remove work; the worker reads '
-    + 'it every tick. Task lines and their indented fields survive; freeform prose '
-    + 'is not preserved across worker writes.',
+  'This file is rendered from the queue store (queue.db). Edit it freely to '
+    + 'reprioritize, add, or remove work, then run `node scripts/queue.ts import` to '
+    + 'apply it; until then the queue refuses to overwrite your edits. Task lines and '
+    + 'their indented fields survive; freeform prose is not preserved.',
 ];
 
 /** Render the model back to the canonical Markdown file. */
