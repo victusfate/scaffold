@@ -122,6 +122,7 @@ next | ready                           # serial pick | fan-out candidate set (un
 tick                                    # serial loop entry: ownership check → begin → print task
 signal                                  # print DRAIN-WANTED iff drainable (Monitor poll; exit 0/3)
 claim <id> [--worker w]                # atomic claim for a parallel worker
+release <id> --worker w                # return a confirmed-ended owned claim to pending
 done <id> [--skip-validate]            # validate, complete, then auto-archive out of the queue
 fail <id> [reason...]                  # record a failure (retries, then terminal)
 top <id> | move <id> <pos> | remove <id>   # reprioritize (1-based pos, as `list` numbers) | prune
@@ -354,13 +355,21 @@ signal. In particular, `owner` is a queue label and `startedAt` is a lease clock
 neither is a PID, session identity, heartbeat, or permission to manage a process.
 
 `tick` and `ready` never reclaim an expired lease: they exit 6 and leave the task active.
-Only the orchestrator that created the worker may release that queue record, after
-its own durable worker handle proves terminal, using `queue fail <id> "owned worker
-ended"` or a deliberate operator edit. It must not run `kill`, `pkill`, `killall`,
-taskkill, or infer ownership from process names/PIDs. If a possibly live worker or
-orchestrator cannot be distinguished from a crashed one, fail closed: leave the
-process, record, and worktree untouched; stop new dispatch; report the ambiguity.
-Only the loop driver may cancel the exact child tree it created for its own generation.
+The root orchestrator is the lifecycle controller for native subagents in its own
+agent tree. For one of those claims it must inspect the native agent registry, not OS
+processes: if the child is running, interrupt that exact child handle and confirm it
+is no longer running; if it is completed, proceed directly. Then run `queue release
+<id> --worker <exact-owner>` to return unfinished work to pending
+without recording a false failure. The release is audited and refuses a missing or
+mismatched owner; it does not delete or merge a worktree, which still needs the normal
+unique-content audit.
+
+After a harness restart or power outage has erased child handles, an explicit operator
+recovery instruction authorizes the root orchestrator to release the stale queue claim
+with the exact stored owner. This authority applies to the queue record only: never run
+`kill`, `pkill`, `killall`, or `taskkill`, and never infer process ownership from a
+name or PID. Claims belonging to another live/possibly-live session remain fail-closed:
+leave its process, record, and worktree untouched and report the ambiguity.
 
 ## Fan-out (parallel — `maxParallel: N`)
 

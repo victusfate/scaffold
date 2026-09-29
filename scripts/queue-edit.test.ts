@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Exercise persisted CLI edits: title/note edits must update queue.md.
+// Exercise persisted CLI edits and task lifecycle commands against queue.md.
 import { strict as assert } from 'node:assert';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -52,7 +52,19 @@ try {
   assert.equal(ungated.tasks[1].status, 'pending');
   assert.equal(run('ungate', 'task-002').status, 0);
   assert.equal(parseQueue(readFileSync(file, 'utf8')).tasks[1].status, 'done');
-  console.log('queue-edit: persisted edits, invalid edits, and gate lifecycle PASS');
+  assert.equal(run('claim', 'task-001', '--worker', '/root/worker-a').status, 0);
+  const claimed = readFileSync(file, 'utf8');
+  for (const args of [[], ['--worker', '/root/worker-b']]) {
+    assert.notEqual(run('release', 'task-001', ...args).status, 0);
+    assert.equal(readFileSync(file, 'utf8'), claimed);
+  }
+  assert.equal(run('release', 'task-001', '--worker', '/root/worker-a').status, 0);
+  const released = parseQueue(readFileSync(file, 'utf8')).tasks[0];
+  assert.equal(released.status, 'pending');
+  assert.equal(released.owner, null);
+  assert.equal(released.failures, 0);
+  assert.notEqual(run('release', 'task-001', '--worker', '/root/worker-a').status, 0);
+  console.log('queue-edit: persisted edits, gate lifecycle, and owned release PASS');
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }
