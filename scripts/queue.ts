@@ -12,6 +12,7 @@
 //   node scripts/queue.ts tick                       # serial loop entry (ownership-check→begin→print)
 //   node scripts/queue.ts signal                     # print DRAIN-WANTED iff drainable (Monitor poll)
 //   node scripts/queue.ts claim <id> [--worker w]    # atomic claim for a parallel worker
+//   node scripts/queue.ts release <id> --worker w    # release a confirmed ended owned lane
 //   node scripts/queue.ts done <id> [--skip-validate]# run validate, then complete
 //   node scripts/queue.ts fail <id> [reason...]      # record a failure (retries then terminal)
 //   node scripts/queue.ts top <id> | remove <id>
@@ -46,7 +47,7 @@ import {
   render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask,
-  holdTask,
+  holdTask, unclaimTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type Task,
@@ -355,6 +356,14 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       save(beginTask(q, id, now(), worker)); log(`claim ${id} by ${worker}`);
       console.log(`claimed ${id} for ${worker}\n${taskBlock({ ...t, owner: worker })}`); return 0;
     }
+    case 'release': {
+      const task = q.tasks.find(t => t.id === id);
+      if (!task || task.status !== 'active' || !f.flags.get('worker') || task.owner !== f.flags.get('worker')) {
+        console.error('release: active task and matching --worker required'); return 1;
+      }
+      save(unclaimTask(q, id, now())); log(`release ${id} by ${task.owner}`);
+      console.log(`released ${id}; remaining work is pending`); return 0;
+    }
     case 'begin':
       if (!needId()) { console.error('begin: unknown task id'); return 1; }
       save(beginTask(q, id, now(), q.tasks.find(t => t.id === id)!.owner));
@@ -438,7 +447,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
-        + `signal claim begin done fail top move hold unhold requeue remove start stop pause interval config `
+        + `signal claim release begin done fail top move hold unhold requeue remove start stop pause interval config `
         + `gate ungate archive import render loop worktree lane`);
       return 1;
   }
