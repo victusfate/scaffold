@@ -28,7 +28,7 @@
 //   node scripts/queue.ts import [--dry-run|--force] # apply hand edits to queue.md (dedupes ids)
 //   node scripts/queue.ts render                     # rewrite queue.md from the store (drop edits)
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
-//   node scripts/queue.ts lane beat|list|clear|stop|go <id>  # lane heartbeats (the live board reads these)
+//   node scripts/queue.ts lane beat|finish|list|clear|stop|go <id>  # worker handoffs + heartbeats
 //
 // add/set flags: --mode chain --slug <s> --deps a,b --files a,b --validate "<cmd>"
 //   --accept "<criteria>" --top --worker <name>

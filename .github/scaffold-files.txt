@@ -61,6 +61,7 @@ scripts/queue-host-status.test.ts
 scripts/queue-isolation.test.ts
 scripts/queue-lanes.ts
 scripts/queue-lanes.test.ts
+scripts/queue-lifecycle.test.ts
 scripts/queue-elapsed.test.ts
 scripts/resolver-phases.ts
 scripts/resolver-utils.ts

@@ -488,7 +488,7 @@ function renderStatus() {
 
 const BADGE = { pending: "·", active: "▶", done: "✓", failed: "✗" };
 
-// Quick-scan agent time, two tiers like the model: seconds under a minute,
+// Quick-scan claim wall time, including idle time: seconds under a minute,
 // whole minutes above. Active cards fold in the live session (client clock —
 // same machine as the loopback server, so no skew worth worrying about).
 function fmtDur(s) {
@@ -502,7 +502,7 @@ function elapsedChip(t) {
     total += live * 60;
   }
   if (!total) return "";
-  return '<span class="chip" title="' + (live ? "total agent time incl. live session" : "total agent time")
+  return '<span class="chip" title="' + (live ? "cumulative claim wall time including current claim and idle time" : "cumulative claim wall time including idle time")
     + '">⏱ ' + fmtDur(total) + '</span>';
 }
 

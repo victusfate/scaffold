@@ -235,12 +235,13 @@ as such — validation never runs from the board); Failed fails it terminally
 with an operator note. Drags out of Done/Failed normalize through
 reopen/requeue first.
 
-Every card shows its banked agent time (`⏱3s` → `⏱45m`, seconds under a
+Every card shows cumulative claim wall time, including idle time (`⏱3s` → `⏱45m`, seconds under a
 minute, whole minutes above); active cards fold in the live session. Time is
 a first-class model field (`- elapsed: 2h15m30s`, exact to the second,
 hand-editable, `set`-able) banked at every session end — done, fail, release,
 operator-done, operator-fail — so retries accumulate across a task's life and
 archive lines carry each task's total after it sweeps out.
+This is not measured compute time or proof that a worker is still running.
 
 ## Creating a queue from in-memory items
 
@@ -381,11 +382,28 @@ own git worktree. Two patterns, same primitives:
 2. For each returned task: `queue worktree add <id>` (isolated checkout on
    `queue/<id>` off the integration branch), then dispatch a **subagent** to
    execute it in that worktree under the same contract.
-3. On success: the subagent merges `queue/<id>` → `integrationBranch`
-   **agent-driven** (never a blind auto-merge — a clean textual merge can still be
-   semantically wrong). On conflict or post-merge validation failure, it either
-   reconciles carefully or `fail`s with a note (design.md D7). Then `queue done
-   <id>` and `queue worktree remove <id>`.
+3. The worker commits locally and reports its exact tip, checks, evidence and
+   remaining original scope. Before returning, it runs `queue lane finish <id>
+   --worker <exact-owner> --tail <result-summary>` in the owning queue checkout.
+   This records `awaiting-review`; it does not accept the task or release its claim.
+4. The root verifies the owned native handle is terminal, or its tracked CLI child
+   exited with a valid result. Native `completed` means execution ended, not scope
+   acceptance. Claude, Codex and pi use this same contract; hooks may notify the
+   root but never independently merge, publish or reclaim.
+5. The root reviews and integrates passing commits into the one working branch,
+   runs gates, and finalizes: `done` only for full accepted scope; `fail` for a
+   genuine failed attempt; `release <id> --worker <exact-owner>` for partial work.
+   Queue transitions clear ended heartbeat and stop metadata after commit.
+6. The root audits unique worktree content, verifies removal after preservation,
+   and records disposition before replacement dispatch. No forced deletion of
+   unpreserved content. At every dispatch/wake, reconcile completed owned handles
+   first; an unprocessed terminal result is pending work, not an idle worker.
+
+Record task ID, exact queue owner, creating session, harness, native handle or
+CLI run, worktree, branch and original acceptance at dispatch. Recover missing
+handles only under the explicit operator procedure above. Never infer termination
+from claim age, heartbeat age or a process name. A worker that crashes before
+`lane finish` is reconciled from the owned handle, not by waiting for a lease.
 
 **Pattern B — multiple independent workers (scale-out).** Many loop sessions/crons
 each `queue claim <id> --worker <name>` (atomically acquire the queue record), work
