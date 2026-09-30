@@ -35,15 +35,16 @@ function cmdWorktreeAdd(q: Queue, id: string): number {
   save(setField(q, id, { branch, worktree: rel }));
   log(`worktree add ${id} → ${rel} (${branch} off ${base})`);
   console.log(`worktree ready: ${rel}  on ${branch}  (base ${base})\n`
-    + `cd ${rel} to work in isolation; on success merge ${branch} → ${base}, then `
-    + `\`node scripts/queue.ts worktree remove ${id}\``);
+    + `cd ${rel} to work in isolation; commit locally and report the tip. `
+    + `The root reviews, integrates into ${base}, finalizes the claim and removes the worktree.`);
   return 0;
 }
 
 function cmdWorktreeRemove(q: Queue, id: string): number {
   const t = q.tasks.find(x => x.id === id);
   const rel = t?.worktree ?? wtRel(id);
-  try { git(`worktree remove --force ${join(ROOT, rel)}`); } catch { /* already gone */ }
+  try { git(`worktree remove ${join(ROOT, rel)}`); }
+  catch (e) { console.error(`worktree remove failed: ${(e as Error).message}`); return 1; }
   if (t) save(setField(q, id, { worktree: null }));
   log(`worktree remove ${id}`);
   console.log(`removed worktree for ${id}`);

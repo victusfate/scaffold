@@ -186,7 +186,7 @@ function applyView(db: DatabaseSync, defer: Defer, source: string, force: boolea
       'Re-run with `--force` if that is intended, or `node scripts/queue.ts render` to discard the file.',
     ].join('\n'));
   }
-  renderView(db, defer, writeStore(db, queue), { discardEdits: true });
+  renderView(db, defer, persistQueue(db, defer, queue), { discardEdits: true });
   const lines = formatReport(report);
   defer(() => { for (const line of lines) log(`${source}: ${line.trim()}`); });
   return report;
@@ -234,7 +234,29 @@ export function load(): Queue {
 
 /** Persist `q` to the store, then re-render the view — one transaction. */
 export function save(q: Queue): void {
-  openStore((db, defer) => renderView(db, defer, writeStore(db, q)));
+  withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
+}
+
+/** Clear ended lane display metadata and its cooperative stop request. */
+export function clearLane(id: string): void {
+  const directory = join(dirname(queueFile()), 'lanes');
+  rmSync(join(directory, `${id}.json`), { force: true });
+  rmSync(join(directory, `${id}.stop`), { force: true });
+}
+
+/** End display metadata only after a persisted lifecycle change commits. */
+function persistQueue(db: DatabaseSync, defer: Defer, q: Queue): Queue {
+  const before = readStore(db);
+  const persisted = writeStore(db, q);
+  const after = new Map(persisted.tasks.map(task => [task.id, task]));
+  for (const previous of before.tasks) {
+    const next = after.get(previous.id);
+    if (!next || (next.status !== 'active' && (
+      previous.status !== next.status || previous.owner !== next.owner
+      || previous.startedAt !== next.startedAt || previous.failures !== next.failures
+    ))) defer(() => clearLane(previous.id));
+  }
+  return persisted;
 }
 
 /**

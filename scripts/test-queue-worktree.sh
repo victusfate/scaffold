@@ -66,6 +66,11 @@ check "separate-git-dir lane continues the counter" \
   '( cd "$TMP/sep-lane" && node scripts/queue.ts add "lane task" ) | grep -q "added task-002"'
 
 echo "== worktree remove tears it down and clears the field =="
+echo 'unique unfinished work' > "$TMP/.agent/queue/wt/task-001/unfinished.txt"
+check "dirty removal fails" '! run worktree remove task-001 >/dev/null 2>&1'
+check "dirty content retained" '[ -f "$TMP/.agent/queue/wt/task-001/unfinished.txt" ]'
+check "failed removal retains path" 'run show task-001 | grep -q "worktree:"'
+rm -f "$TMP/.agent/queue/wt/task-001/unfinished.txt"
 run worktree remove task-001 >/dev/null
 check "worktree dir gone"          '[ ! -d "$TMP/.agent/queue/wt/task-001" ]'
 check "field cleared"              '! run show task-001 | grep -q "worktree:"'

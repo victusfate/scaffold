@@ -10,7 +10,8 @@
 
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
-import { queueFile, now, log } from './queue-io.ts';
+import { queueFile, now, log, clearLane } from './queue-io.ts';
+export { clearLane };
 import type { Queue } from './queue-model.ts';
 import type { Parsed } from './queue-cli-args.ts';
 
@@ -86,11 +87,6 @@ export function laneStale(lane: LaneState, nowIso: string, leaseMinutes: number)
   return Date.parse(nowIso) - Date.parse(lane.updatedAt) >= leaseMinutes * 60_000;
 }
 
-export function clearLane(id: string): void {
-  rmSync(lanePath(id), { force: true });
-  clearStopRequest(id);
-}
-
 /** Cooperative stop: the owning driver honors the flag at its next safe point. */
 export function requestStop(id: string): void {
   mkdirSync(laneDir(), { recursive: true });
@@ -123,6 +119,18 @@ export function cmdLane(q: Queue, sub: string, id: string, f: Parsed): number {
     return 0;
   }
   if (!id || !q.tasks.some(t => t.id === id)) { console.error(`lane ${sub}: unknown task id`); return 1; }
+  if (sub === 'finish') {
+    const task = q.tasks.find(t => t.id === id)!;
+    const worker = f.flags.get('worker');
+    if (task.status !== 'active' || !worker || task.owner !== worker) {
+      console.error('lane finish: active task and matching --worker required');
+      return 1;
+    }
+    beatLane(id, { worker, state: 'awaiting-review', step: 'worker finished', tail: f.flags.get('tail') });
+    log(`lane finish ${id} by ${worker}; root review required`);
+    console.log(`worker finished ${id}; claim retained for root review`);
+    return 0;
+  }
   if (sub === 'beat') {
     const lane = beatLane(id, {
       worker: f.flags.get('worker') ?? `worker-${process.pid}`,
@@ -137,6 +145,6 @@ export function cmdLane(q: Queue, sub: string, id: string, f: Parsed): number {
   if (sub === 'clear') { clearLane(id); console.log(`lane cleared ${id}`); return 0; }
   if (sub === 'stop') { requestStop(id); log(`lane stop requested ${id}`); console.log(`stop requested ${id} (owner honors it)`); return 0; }
   if (sub === 'go') { clearStopRequest(id); console.log(`stop cleared ${id}`); return 0; }
-  console.error('usage: queue lane beat|list|clear|stop|go <id> [--worker w --step s --tail t]');
+  console.error('usage: queue lane beat|finish|list|clear|stop|go <id> [--worker w --step s --tail t]');
   return 1;
 }

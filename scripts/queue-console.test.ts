@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import http from 'node:http';
 import { parseQueue } from './queue-model.ts';
 import { consoleState, applyOp, startServer, type Op } from './queue-console.ts';
+import { beatLane, requestStop, readLanes, stopRequested } from './queue-lanes.ts';
 
 let passed = 0, failed = 0;
 function assert(label: string, cond: boolean, detail = ''): void {
@@ -408,6 +409,12 @@ maxParallel: 2
 
   const lanes = await (await fetch(`${base}/api/lanes`)).json() as { lanes: { id: string }[] };
   assert('GET /api/lanes reflects sidecars', Array.isArray(lanes.lanes));
+  await post({ op: 'claim-lane', id: 'task-001', worker: 'http-worker' });
+  beatLane('task-001', { worker: 'http-worker' });
+  requestStop('task-001');
+  const released = await post({ op: 'release', id: 'task-001' });
+  assert('HTTP release clears ended heartbeat and stop metadata', released.status === 200
+    && !readLanes().some(l => l.id === 'task-001') && !stopRequested('task-001'));
 
   const events = await fetch(`${base}/events`);
   assert('SSE endpoint speaks event-stream',
