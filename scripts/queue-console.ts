@@ -392,7 +392,7 @@ export function startServer(port: number, options: QueueConsoleServerOptions = {
   const probe = options.hostProbe
     ?? ((root: string, worktrees: string[]) => collectHostStatus(root, {}, worktrees));
   const hostProbe = createCachedHostProbe(() => probe(dirname(queueFile()), activeWorktreePaths(load())));
-  const server = http.createServer((req, res) => {
+  const handleRequest = (req: http.IncomingMessage, res: http.ServerResponse): void => {
     if (!LOOPBACK_HOST.test(req.headers.host ?? '')) {
       sendJson(res, HTTP_FORBIDDEN, { error: 'forbidden: loopback host required' });
     } else if (req.method === 'GET' && req.url === '/') {
@@ -416,6 +416,13 @@ export function startServer(port: number, options: QueueConsoleServerOptions = {
     } else {
       res.writeHead(HTTP_NOT_FOUND);
       res.end();
+    }
+  };
+  const server = http.createServer((req, res) => {
+    try { handleRequest(req, res); }
+    catch (error) {
+      if (!res.headersSent) sendJson(res, HTTP_SERVER_ERROR, { error: (error as Error).message });
+      else res.end();
     }
   });
 

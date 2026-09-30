@@ -29,6 +29,7 @@ function loadSqlite(): typeof import('node:sqlite') {
 const { DatabaseSync: Database } = loadSqlite();
 
 const BUSY_TIMEOUT_MS = 5000;
+const SQLITE_BUSY = 5;
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
@@ -85,7 +86,13 @@ export function withStore<T>(path: string, fn: (db: DatabaseSync, fresh: boolean
   let out: T;
   try {
     db.exec(`PRAGMA busy_timeout = ${BUSY_TIMEOUT_MS}`);
-    db.exec('BEGIN IMMEDIATE');
+    try { db.exec('BEGIN IMMEDIATE'); }
+    catch (error) {
+      // A long CLI transaction can exhaust busy_timeout. Retry acquisition once
+      // (at most another busy_timeout), before invoking fn or queuing effects.
+      if ((error as { errcode?: number }).errcode !== SQLITE_BUSY) throw error;
+      db.exec('BEGIN IMMEDIATE');
+    }
     try {
       db.exec(SCHEMA);
       const fresh = getMeta(db, 'initialized') === null;
