@@ -3,6 +3,43 @@
 Supporting reference for [the queue skill](queue.md); its delivery cycle applies
 to every driver below.
 
+## Integration cleanup (all delivery modes)
+
+The root cleans up each completed lane at integration, before replacement dispatch:
+
+1. Verify that the session-owned native agent or tracked child actually ended.
+   Review and integrate its needed source; preserve unique logs, measurements,
+   provenance and other evidence in a durable archive with an index linking the
+   task, commit/PR and artifact locations. Reproducible outputs and duplicate
+   reports are disposable only after confirming they contain no unique evidence.
+2. Inspect tracked, untracked and ignored worktree content before removal. Remove
+   the preserved worktree through `queue worktree remove <id>` while its recorded
+   path is available (or the owning harness/git worktree command for native lanes).
+   Retire the merged local lane branch only after verifying no unique commits or
+   evidence would be lost. Do not force-delete an unreviewed worktree or branch.
+3. Finalize acceptance separately: use `done` only for accepted scope, `fail` for
+   a real failure, or owned `release` for partial work. These persisted transitions
+   clear ended heartbeat/stop sidecars automatically. For an ended lane whose task
+   remains recorded, `queue lane clear <id>` clears display sidecars only; it does
+   not accept the task or release its claim. The command requires a known task ID;
+   it is not an orphan-file sweep. Never clear a live worker's display to fake progress.
+4. After the authorized main merge and fresh-branch checkout, verify the task
+   branch has no unique commits before retiring it. With squash/rebase merges,
+   inspect commit differences and resulting content rather than assuming ancestry
+   proves preservation; preserve anything unique before any deliberate deletion.
+   Record the disposition and durable evidence links in the task handoff/index.
+
+Keep generated local stores, heartbeat/status files and disposable outputs ignored.
+The tracked handoff and working context should retain active-task scope, unresolved
+blockers, dependencies and links to prior evidence; archive completed narrative
+instead of repeatedly loading it. Keep completed dependency records that unfinished
+work still requires; do not erase acceptance or provenance to reduce context.
+
+Staleness alone never authorizes killing a process, marking a task done, or deleting
+another session's artifacts. Apply [session isolation during recovery](queue.md#session-isolation-during-recovery)
+to ambiguous ownership. This is root-owned lifecycle guidance using existing
+commands, not an automatic cleanup daemon.
+
 ## Legacy fan-out (explicit `deliveryMode: batch`)
 
 Only after explicitly selecting batch mode, set `queue config maxParallel 3` to
@@ -23,13 +60,15 @@ own git worktree. Two patterns, same primitives:
    acceptance. Claude, Codex and pi use this same contract; hooks may notify the
    root but never independently merge, publish or reclaim.
 5. The root reviews and integrates passing commits into the one working branch,
-   runs gates, and finalizes: `done` only for full accepted scope; `fail` for a
-   genuine failed attempt; `release <id> --worker <exact-owner>` for partial work.
-   Queue transitions clear ended heartbeat and stop metadata after commit.
-6. The root audits unique worktree content, verifies removal after preservation,
-   and records disposition before replacement dispatch. No forced deletion of
-   unpreserved content. At every dispatch/wake, reconcile completed owned handles
-   first; an unprocessed terminal result is pending work, not an idle worker.
+   runs gates, then preserves evidence and removes the worktree while its recorded
+   path is available, following [integration cleanup](#integration-cleanup-all-delivery-modes).
+   Only then finalize: `done` for full accepted scope; `fail` for a genuine failed
+   attempt; `release <id> --worker <exact-owner>` for partial work. These transitions
+   clear ended heartbeat and stop metadata after commit.
+6. Record preserved evidence and branch/worktree disposition before replacement
+   dispatch. No forced deletion of unpreserved content. At every dispatch/wake,
+   reconcile completed owned handles first; an unprocessed terminal result is
+   pending work, not an idle worker.
 
 Record task ID, exact queue owner, creating session, harness, native handle or
 CLI run, worktree, branch and original acceptance at dispatch. Recover missing

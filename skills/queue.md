@@ -423,6 +423,14 @@ with the exact stored owner. This authority applies to the queue record only: ne
 name or PID. Claims belonging to another live/possibly-live session remain fail-closed:
 leave its process, record, and worktree untouched and report the ambiguity.
 
+## Cleanup at integration
+
+Follow [integration cleanup](queue-drivers.md#integration-cleanup-all-delivery-modes)
+for every completed lane and merged task: preserve needed source and unique
+evidence, retire verified worktrees/branches, clear ended display metadata through
+existing lifecycle commands, and archive completed context with durable links.
+Display cleanup never substitutes for task acceptance or process ownership.
+
 ## Driver and legacy fan-out reference
 
 Read [queue driver setup](queue-drivers.md) before arming a recurring driver,
