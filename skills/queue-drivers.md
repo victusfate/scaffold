@@ -33,7 +33,7 @@ own git worktree. Two patterns, same primitives:
 
 Record task ID, exact queue owner, creating session, harness, native handle or
 CLI run, worktree, branch and original acceptance at dispatch. Recover missing
-handles only under the explicit operator procedure above. Never infer termination
+handles only under [session isolation during recovery](queue.md#session-isolation-during-recovery). Never infer termination
 from claim age, heartbeat age or a process name. A worker that crashes before
 `lane finish` is reconciled from the owned handle, not by waiting for a lease.
 

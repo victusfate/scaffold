@@ -433,6 +433,7 @@ export function moveTask(q: Queue, id: string, toIndex: number): Queue {
 }
 
 export function removeTask(q: Queue, id: string): Queue {
+  if (q.tasks.some(t => t.id === id && t.status === 'active')) q = selectDelivery(q, id);
   return withTasks(q, q.tasks.filter(t => t.id !== id));
 }
 
@@ -524,6 +525,8 @@ export function holdTask(q: Queue, id: string, held: boolean): Queue {
  * immediate, and audited — versus `recordFailure`'s retry counting.
  */
 export function forceFail(q: Queue, id: string, reason: string, nowIso: string): Queue {
+  if (q.tasks.some(t => t.id === id && t.status === 'active')) q = selectDelivery(q, id);
+  if (q.config.deliveryTask === id) q = setConfig(q, { deliveryAccepted: false });
   return mapTask(q, id, t => (t.status === 'done' || t.status === 'failed'
     ? t
     : {
