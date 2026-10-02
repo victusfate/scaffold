@@ -35,6 +35,7 @@ function claim(validate?: string): string {
   return id;
 }
 try {
+  ok('config', 'deliveryMode', 'batch'); // This suite exercises independent legacy lanes.
   const neighbor = claim();
   const released = claim();
   assert.notEqual(run('release', released, '--worker', 'other').status, 0);

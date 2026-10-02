@@ -387,6 +387,18 @@ Skip the chain for:
 
 ## PR Workflow
 
+**Default: one independent task per PR/merge cycle.** Finish full acceptance,
+review and validate locally, create/update its PR, verify real required hosted
+checks on the final head, then merge **only with explicit session or standing
+project authorization**. Creating a PR does not authorize merging. Without that
+permission, preserve the ready PR and gate the next task. A failed gate remains
+part of the current task; never grow the branch with another feature to defer it.
+Confirm the actual merge and cut a fresh branch from updated main before the next
+independent task. Subagents may parallelize subtasks of the current task; only the
+root integrates, pushes and merges. Explicit project policy may opt into legacy
+batch delivery (`queue config deliveryMode batch`). See `skills/queue.md` for
+runtime boundaries, migration and the `advance` acknowledgment.
+
 1. Pull latest main: `git checkout main && git pull origin main`
 2. Create a clean branch: `git checkout -b <prefix>/<short-descriptive-name>`
 3. Do the work, verify with build/tests
@@ -416,7 +428,7 @@ Start a fresh branch off main when no active feature branch is being resumed.
 
 ## ONE Working Branch — fan-out integration (NON-NEGOTIABLE)
 
-**A session has EXACTLY ONE working branch** — the feature branch made at session start.
+**A session has EXACTLY ONE working branch** — the current task’s feature branch, rotated only after its authorized merge.
 Code, assets, docs, lore, ledgers — *everything* lands on that one branch. This is the
 single most important operational rule when fanning out; violating it silently splits the
 project in two.

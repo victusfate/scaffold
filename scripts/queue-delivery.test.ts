@@ -18,6 +18,8 @@ assert.equal(active.config.deliveryTask, 'task-001');
 assert.equal(applyOp(active, { op: 'claim-lane', id: 'task-002' }).ok, false);
 const failed = recordFailure(active, 'task-001', 'red', 3, now).queue;
 assert.equal(nextActionable(failed)?.id, 'task-001');
+assert.equal(markDone(parseQueue('- [>] task-001 — Legacy\n'), 'task-001', now).config.deliveryTask, 'task-001');
+assert.equal(recordFailure(parseQueue('- [>] task-001 — Legacy\n'), 'task-001', 'red', 3, now).queue.config.deliveryTask, 'task-001');
 const done = removeTask(markDone(active, 'task-001', now), 'task-001');
 assert.equal(nextActionable(parseQueue(serializeQueue(done))), null);
 assert.deepEqual(readyTasks(done), []);
@@ -45,5 +47,9 @@ try {
   assert.notEqual(run('advance', 'task-001').status, 0);
   ok('advance', 'task-001', '--pr', 'https://github.com/a/b/pull/1', '--branch', 'feat/next');
   assert.match(ok('tick'), /working task-002/);
+  for (let i = 0; i < 3; i++) ok('fail', 'task-002', 'red');
+  ok('archive');
+  assert.notEqual(run('advance', 'task-002', '--pr', 'https://github.com/a/b/pull/2', '--branch', 'feat/next').status, 0);
+  assert.equal(run('tick').status, 7);
 } finally { rmSync(dir, { recursive: true, force: true }); }
 console.log('queue delivery tests passed');

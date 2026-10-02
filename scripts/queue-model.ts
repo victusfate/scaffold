@@ -34,7 +34,7 @@
 //
 // quality-ok: file-length — one cohesive work-queue model read top-to-bottom
 // (types → parse → serialize → mutations → selection over a single Task/Queue
-// type). Kept whole by choice at ~500 lines rather than fragmenting one model
+// type). Kept whole by choice rather than fragmenting one model
 // across files with circular type imports just to satisfy a line-count proxy.
 
 // ---------------------------------------------------------------- model
@@ -73,6 +73,10 @@ export interface QueueConfig {
   leaseMinutes: number;
   maxParallel: number;
   integrationBranch: string;
+  deliveryMode: 'per-task' | 'batch';
+  /** Selected task stays latched through archive until root acknowledges delivery. */
+  deliveryTask: string;
+  deliveryAccepted: boolean;
   /** ISO time to auto-resume a usage-limit pause; empty = not paused-until. */
   resumeAt: string;
   /** Fallback cadence the loop re-checks at when idle (nothing eligible to run). */
@@ -100,6 +104,9 @@ export const DEFAULT_CONFIG: QueueConfig = {
   leaseMinutes: 30,
   maxParallel: 1,
   integrationBranch: '',
+  deliveryMode: 'per-task',
+  deliveryTask: '',
+  deliveryAccepted: false,
   resumeAt: '',
   idlePoll: '20m',
   pausePoll: '30m',
@@ -193,6 +200,9 @@ function applyConfig(config: QueueConfig, key: string, val: string): void {
     case 'leaseMinutes': config.leaseMinutes = Number(val) || DEFAULT_CONFIG.leaseMinutes; break;
     case 'maxParallel': config.maxParallel = Math.max(1, Number(val) || 1); break;
     case 'integrationBranch': config.integrationBranch = val; break;
+    case 'deliveryMode': config.deliveryMode = val === 'batch' ? 'batch' : 'per-task'; break;
+    case 'deliveryTask': config.deliveryTask = val; break;
+    case 'deliveryAccepted': config.deliveryAccepted = val === 'true'; break;
     case 'resumeAt': config.resumeAt = val; break;
     case 'idlePoll': config.idlePoll = val || DEFAULT_CONFIG.idlePoll; break;
     case 'pausePoll': config.pausePoll = val || DEFAULT_CONFIG.pausePoll; break;
@@ -354,6 +364,9 @@ export function serializeQueue(q: Queue): string {
     `leaseMinutes: ${c.leaseMinutes}`,
     `maxParallel: ${c.maxParallel}`,
     `integrationBranch: ${c.integrationBranch}`,
+    `deliveryMode: ${c.deliveryMode}`,
+    `deliveryTask: ${c.deliveryTask}`,
+    `deliveryAccepted: ${c.deliveryAccepted}`,
     `resumeAt: ${c.resumeAt}`,
     `idlePoll: ${c.idlePoll}`,
     `pausePoll: ${c.pausePoll}`,
@@ -408,7 +421,7 @@ export function moveToTop(q: Queue, id: string): Queue {
 
 /** Editable config keys, split by type — the one home both CLI and console derive from. */
 export const NUMERIC_CONFIG_KEYS = ['maxFailures', 'leaseMinutes', 'maxParallel'] as const;
-export const TEXT_CONFIG_KEYS = ['interval', 'integrationBranch', 'idlePoll', 'pausePoll'] as const;
+export const TEXT_CONFIG_KEYS = ['interval', 'integrationBranch', 'idlePoll', 'pausePoll', 'deliveryMode'] as const;
 
 /** Reorder a task to an explicit 0-based position, clamped to the list bounds. */
 export function moveTask(q: Queue, id: string, toIndex: number): Queue {
@@ -429,10 +442,14 @@ export function setConfig(q: Queue, patch: Partial<QueueConfig>): Queue {
 
 /** Mark a task active and claim it for a worker, stamping the lease clock. */
 export function beginTask(q: Queue, id: string, nowIso: string, owner: string | null = null): Queue {
+  q = selectDelivery(q, id);
+  if (q.config.deliveryTask === id) q = setConfig(q, { deliveryAccepted: false });
   return mapTask(q, id, t => ({ ...t, status: 'active', owner, startedAt: nowIso }));
 }
 
 export function markDone(q: Queue, id: string, nowIso: string): Queue {
+  if (q.tasks.some(t => t.id === id && t.status === 'active')) q = selectDelivery(q, id);
+  if (q.config.deliveryTask === id) q = setConfig(q, { deliveryAccepted: true });
   return mapTask(q, id, t => ({
     ...t, status: 'done', owner: null, worktree: null, startedAt: null,
     elapsedSecs: bankSession(t, nowIso),
@@ -450,6 +467,8 @@ export function recordFailure(
 ): { queue: Queue; terminal: boolean; failures: number } {
   const task = q.tasks.find(t => t.id === id);
   if (!task) return { queue: q, terminal: false, failures: 0 };
+  q = selectDelivery(q, id);
+  if (q.config.deliveryTask === id) q = setConfig(q, { deliveryAccepted: false });
   const failures = task.failures + 1;
   const terminal = failures >= maxFailures;
   const updated: Task = {
@@ -486,7 +505,7 @@ export function requeueTask(q: Queue, id: string): Queue {
 export function unclaimTask(q: Queue, id: string, nowIso: string): Queue {
   const hit = q.tasks.find(t => t.id === id);
   if (!hit || hit.status !== 'active') return q;
-  return mapTask(q, id, t => ({
+  return mapTask(selectDelivery(q, id), id, t => ({
     ...t, status: 'pending', owner: null, startedAt: null, elapsedSecs: bankSession(t, nowIso),
   }));
 }
@@ -520,6 +539,7 @@ export function forceFail(q: Queue, id: string, reason: string, nowIso: string):
 export function reopenTask(q: Queue, id: string): Queue {
   const hit = q.tasks.find(t => t.id === id);
   if (!hit || hit.status !== 'done') return q;
+  if (q.config.deliveryTask === id) q = setConfig(q, { deliveryAccepted: false });
   return mapTask(q, id, t => ({ ...t, status: 'pending' }));
 }
 
@@ -562,7 +582,7 @@ export function render(q: Queue): string {
   const counts = (s: TaskStatus): number => q.tasks.filter(t => t.status === s).length;
   const head = `Work Queue — ${c.status} · every ${c.interval} · parallel ${c.maxParallel} · `
     + `${counts('pending')} pending, ${counts('active')} active, ${counts('done')} done, `
-    + `${counts('failed')} failed`;
+    + `${counts('failed')} failed · delivery ${c.deliveryMode}${c.deliveryTask ? ` (${c.deliveryTask})` : ''}`;
   if (!q.tasks.length) return `${head}\n  (empty)`;
   const rows = assignIds(q).tasks.map((t, i) => {
     const tags = [
@@ -647,9 +667,22 @@ export function ungateTasks(q: Queue, gateId: string): { queue: Queue; ungated: 
   return { queue: withTasks(q, tasks), ungated };
 }
 
+/** Persist the current cycle independently of task status and archive lifetime. */
+export function selectDelivery(q: Queue, id: string): Queue {
+  return q.config.deliveryMode === 'batch' || q.config.deliveryTask ? q
+    : setConfig(q, { deliveryTask: id, deliveryAccepted: false });
+}
+
+/** Admission gate shared by selectors and explicit claim surfaces. */
+export function deliveryAllows(q: Queue, id: string): boolean {
+  if (q.config.deliveryMode === 'batch') return true;
+  const selected = q.config.deliveryTask || q.tasks.find(t => t.status === 'active')?.id;
+  return !selected || selected === id;
+}
+
 /** A pending task is eligible only when it isn't held and every dependency is done. */
 export function isEligible(task: Task, q: Queue): boolean {
-  return task.status === 'pending' && !task.held
+  return task.status === 'pending' && !task.held && deliveryAllows(q, task.id)
     && task.dependsOn.every(d => q.tasks.find(x => x.id === d)?.status === 'done');
 }
 
@@ -703,7 +736,7 @@ export function sweepFinished(q: Queue): { queue: Queue; swept: Task[] } {
  */
 export function nextActionable(q: Queue): Task | null {
   if (q.config.status === 'stopped') return null;
-  return q.tasks.find(t => t.status === 'active')
+  return q.tasks.find(t => t.status === 'active' && deliveryAllows(q, t.id))
     ?? q.tasks.find(t => isEligible(t, q))
     ?? null;
 }
@@ -716,7 +749,8 @@ export function nextActionable(q: Queue): Task | null {
 export function readyTasks(q: Queue): Task[] {
   if (q.config.status === 'stopped') return [];
   const active = q.tasks.filter(t => t.status === 'active').length;
-  const slots = Math.max(0, q.config.maxParallel - active);
+  const capacity = q.config.deliveryMode === 'batch' ? q.config.maxParallel : 1;
+  const slots = Math.max(0, capacity - active);
   return q.tasks.filter(t => isEligible(t, q)).slice(0, slots);
 }
 

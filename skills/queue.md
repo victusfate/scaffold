@@ -5,8 +5,8 @@
 
 A **visible, editable Markdown work queue** that agents drain **autonomously** so
 you can augment a long-running project without babysitting it. You stack up work;
-a loop wakes on an interval (default 6 min) and drains it — one task at a time, or
-**fanned out across parallel git worktrees** — running each task either as a quick
+a loop wakes on an interval (default 6 min) and drains it — **one independent
+task per PR/merge cycle** (parallel agents may implement its subtasks) — running each task either as a quick
 `direct` chore or through the **full feature-chain** (`design → prd → plan → tdd →
 code-refiner`) with **no user input**. The queue's state lives in a SQLite store
 (`.agent/queue/queue.db`, git-ignored) and is rendered after every change to one
@@ -61,6 +61,8 @@ maxFailures: 3
 leaseMinutes: 30
 maxParallel: 1
 integrationBranch:
+deliveryMode: per-task
+deliveryTask:
 -->
 
 - [ ] task-001 — Build the hello endpoint
@@ -78,6 +80,8 @@ integrationBranch:
 - **config:** `status` run/pause · `interval` wake cadence · `maxFailures` retry cap
   · `leaseMinutes` stale-lease threshold · `maxParallel` fan-out width ·
   `integrationBranch` where completed worktree branches merge (blank = current).
+  `deliveryMode` defaults to `per-task`; `batch` explicitly opts into legacy fan-out.
+  `deliveryTask` records the current delivery cycle; use `advance`, not config, to clear it.
 - **Reprioritize** with `queue top <id>` / `move`, **edit** with `set`, **pause**
   with `queue stop` — or hand-edit `queue.md` (move lines, change or delete them,
   set `status: stopped`) and run **`queue import`** to apply it. Import replaces
@@ -123,7 +127,8 @@ tick                                    # serial loop entry: ownership check →
 signal                                  # print DRAIN-WANTED iff drainable (Monitor poll; exit 0/3)
 claim <id> [--worker w]                # atomic claim for a parallel worker
 release <id> --worker w                # return a confirmed-ended owned claim to pending
-done <id> [--skip-validate]            # validate, complete, then auto-archive out of the queue
+done <id> [--skip-validate]            # implementation accepted; delivery gate remains
+advance <id> --pr <url> --branch <name> # root attests merged PR and fresh branch
 fail <id> [reason...]                  # record a failure (retries, then terminal)
 top <id> | move <id> <pos> | remove <id>   # reprioritize (1-based pos, as `list` numbers) | prune
 requeue <id>                           # revive a failed task (pending again, failures cleared)
@@ -283,11 +288,10 @@ holds its lease, accretes scope, and blocks everything downstream of it.
   is a new task**.
 - **Size guide:** if a task can't plausibly reach its `accept` in one focused agent
   session, split it *before* starting. When in doubt, split.
-- **Partial progress = split, not a lingering open task.** If a worker finishes only
-  part of an oversized task, narrow it to the slice actually delivered (`queue set
-  <id> accept "<slice>"`), `done` it, and `add` the remainder as new smaller tasks
-  with their own accept lines — don't leave the big one 40%-open forever. This is the
-  sizing counterpart to `needs-spec:`: re-file rather than grind.
+- **Preserve acceptance.** Plan independently useful delivery slices before work.
+  Partial implementation does not satisfy the original task. Keep it current,
+  report the remaining scope, and revise scope only with existing owner authority;
+  never narrow acceptance merely to mark the task done.
 
 Sizing happens at **enqueue** time, alongside specification — same reason: the
 worker can't renegotiate scope mid-drain.
@@ -319,13 +323,58 @@ one task), so by the time a task is claimed it is self-contained. During executi
 
 - If a task is **underspecified** and the worker hits genuine ambiguity it cannot
   resolve from the spec + codebase, it **fails the task with a `needs-spec: <what's
-  missing>` note** (`queue fail <id> "needs-spec: ..."`) and moves on — it does
+  missing>` note** (`queue fail <id> "needs-spec: ..."`) and reports the blocker (per-task mode retains the delivery gate) — it does
   **not** guess, and it does **not** block waiting for input.
 - You see the `needs-spec` note in `queue list`; you refine the task and it
   re-enters the queue. This is how "no user input during a drain" stays true
   without silently doing the wrong thing.
 
-## The tick cycle (serial — `maxParallel: 1`)
+## Delivery cycle (default: `deliveryMode: per-task`)
+
+The root orchestrator owns the complete cycle:
+
+1. Claim one independently useful task. Parallel agents work on **subtasks of this
+   task** in isolated worktrees; they report and commit locally. Only the root
+   integrates, pushes, opens/updates the task PR, and merges.
+2. Satisfy full acceptance, review the diff, and run real local validation on the
+   integrated branch. `done` records implementation acceptance, **not a merge**.
+3. Run `/create-pr`; inspect actual required hosted check conclusions on the final
+   head as well as local results. Failed, missing, pending, or suspicious skipped
+   checks are not green. Fix the current task; do not start another feature.
+   Never use admin bypasses, skipped gates, or manufactured success statuses.
+4. Merge only with explicit session authorization or standing project policy.
+   Creating a PR or draining a queue does **not** grant merge permission. Without
+   authority, keep the ready PR, report the missing authorization, and gate the
+   next task. Authorization is resolved with the owner outside the unattended
+   worker; do not treat silence as consent.
+5. Confirm the PR actually merged, update the target base (normally main), and
+   create a fresh working branch before starting another task. Update a pinned
+   `integrationBranch` to that branch. Then acknowledge the completed cycle:
+   `queue advance <id> --pr <merged-pr-url> --branch <fresh-working-branch>`.
+
+The CLI **enforces a persisted task-selection boundary**, including explicit
+claims and console claims. Failures retry the selected task; done/archive,
+stop/start, and process restart do not release it. Exit **7** means delivery is
+pending, not that the queue drained. Keep supervising CI or report a genuine
+blocker; never report the run complete merely because implementation finished.
+`advance` is an audited root acknowledgment: it checks the selected task and
+requires evidence references, but **does not query GitHub, verify the branch,
+validate CI, or infer permission**. The root must verify those facts before calling
+it. The queue is operator-editable, not a security boundary against explicit edits.
+
+**Migration and compatibility.** Missing `deliveryMode` defaults to `per-task`
+for new and existing stores. Existing active claims remain intact; do not cancel
+workers or lose unmerged work. If multiple tasks are already active, stop new
+starts and reconcile them under their original owner, explicitly using
+`queue config deliveryMode batch` to finish that pre-existing batch if needed.
+Switch back to `per-task` at a clean delivery boundary. `maxParallel` still
+controls legacy batch fan-out; per-task queue selection is capped at one, while
+native agents may parallelize subtasks within it. Projects deliberately choosing
+a long-lived branch can explicitly retain `batch`; document that choice in their
+project policy. Batch mode retains old done/failure progression, but grants no
+merge authority and waives no validation requirements.
+
+## The tick cycle
 
 The loop body; one task per wake:
 
@@ -340,12 +389,14 @@ The loop body; one task per wake:
 3. **Complete:** `queue done <id>` (runs `validate`; refuses → counts as a failure)
    or `queue fail <id> "<reason>"`. A successful `done` **auto-archives** the task
    out of the live queue, so the queue empties as work finishes.
-4. **Commit** the work so each drained task is a reviewable checkpoint.
+4. **Deliver** through the PR/merge/fresh-branch cycle above, then `advance`.
+   In explicit batch mode, commit the accepted work before continuing.
 
 A resumed `active` task is preferred next wake; otherwise the topmost **eligible**
-pending task (all `deps` done) starts. Failures don't halt the queue — a failed
-task retries (dropped to the back) up to `maxFailures`, then goes terminal, and
-independent work keeps flowing.
+pending task (all `deps` done) starts. In per-task mode failures remain the
+current delivery task: retries stay selected; terminal failure blocks advancement
+until repaired/requeued or the owner explicitly changes the delivery plan. In
+batch mode retries drop to the back and independent work can continue.
 
 ### Session isolation during recovery
 
@@ -372,162 +423,11 @@ with the exact stored owner. This authority applies to the queue record only: ne
 name or PID. Claims belonging to another live/possibly-live session remain fail-closed:
 leave its process, record, and worktree untouched and report the ambiguity.
 
-## Fan-out (parallel — `maxParallel: N`)
+## Driver and legacy fan-out reference
 
-Set `queue config maxParallel 3` to run independent tasks concurrently, each in its
-own git worktree. Two patterns, same primitives:
-
-**Pattern A — in-session fan-out (default).** On each wake the dispatcher:
-1. `node scripts/queue.ts ready` → the eligible set under the cap.
-2. For each returned task: `queue worktree add <id>` (isolated checkout on
-   `queue/<id>` off the integration branch), then dispatch a **subagent** to
-   execute it in that worktree under the same contract.
-3. The worker commits locally and reports its exact tip, checks, evidence and
-   remaining original scope. Before returning, it runs `queue lane finish <id>
-   --worker <exact-owner> --tail <result-summary>` in the owning queue checkout.
-   This records `awaiting-review`; it does not accept the task or release its claim.
-4. The root verifies the owned native handle is terminal, or its tracked CLI child
-   exited with a valid result. Native `completed` means execution ended, not scope
-   acceptance. Claude, Codex and pi use this same contract; hooks may notify the
-   root but never independently merge, publish or reclaim.
-5. The root reviews and integrates passing commits into the one working branch,
-   runs gates, and finalizes: `done` only for full accepted scope; `fail` for a
-   genuine failed attempt; `release <id> --worker <exact-owner>` for partial work.
-   Queue transitions clear ended heartbeat and stop metadata after commit.
-6. The root audits unique worktree content, verifies removal after preservation,
-   and records disposition before replacement dispatch. No forced deletion of
-   unpreserved content. At every dispatch/wake, reconcile completed owned handles
-   first; an unprocessed terminal result is pending work, not an idle worker.
-
-Record task ID, exact queue owner, creating session, harness, native handle or
-CLI run, worktree, branch and original acceptance at dispatch. Recover missing
-handles only under the explicit operator procedure above. Never infer termination
-from claim age, heartbeat age or a process name. A worker that crashes before
-`lane finish` is reconciled from the owned handle, not by waiting for a lease.
-
-**Pattern B — multiple independent workers (scale-out).** Many loop sessions/crons
-each `queue claim <id> --worker <name>` (atomically acquire the queue record), work
-their own worktree, and merge back. A queue-record claim grants no process authority.
-An expired lease blocks automatic dispatch until its creating orchestrator or an
-operator explicitly resolves it. Use this to drain faster or across machines.
-
-Merge-back is intentionally **not** a CLI auto-merge — the queue gives you
-isolation (`worktree add`/`remove`) and leaves integration to a judgment-applying
-agent, per this repo's "liveness/veracity" and D7 principles.
-
-## Running it: work-driven, not clock-driven
-
-Keep the queue **continuously busy** — a fixed timer is a fallback, not the pacer.
-The worker that finishes a task is the one that starts the next, so there's nothing
-to guess about when a task ends.
-
-**Drain continuously in-turn.** Don't sleep between tasks — loop until the queue is
-empty:
-
-```
-tick → execute → done → tick → execute → done → …   (no delay between tasks)
-```
-
-This is AGENTS.md's continuous-execution rule: the commit per task is the
-checkpoint, so a crash resumes; the interval only matters when there's nothing to
-do.
-
-**Branch the next cadence on `tick`'s exit code** (so you never pick an interval):
-
-| `tick` / `ready` exit | Meaning | Next action |
-|---|---|---|
-| `0` | a task was dispatched | do it, then loop **immediately** |
-| `3` | idle — queue drained, nothing eligible | **terminate the loop** (`ScheduleWakeup stop:true`) **when a signal-polling Monitor is armed** — it re-wakes the loop only when a later `add` makes work drainable, so nothing stalls and **no loop fires on an empty queue**. Only if you could not arm a Monitor, **re-arm the heartbeat** at config **`idlePoll`** (default 20m) as the fallback (it must poll, so it may wake on an empty queue) |
-| `4` | paused for a usage window | slow-poll at config **`pausePoll`** (default 30m); auto-resumes when the window reopens |
-| `5` | stopped (manual) | halt until `queue start` |
-
-The three fallback cadences are all editable config: `interval` (fixed one-tick
-loops), `idlePoll` (continuous-drainer idle fallback), `pausePoll` (paused). Set
-them with `queue config idlePoll 20m` etc. `node scripts/queue.ts loop` prints the
-invocation for the current state — arm the Monitor, drain continuously, then
-terminate on idle (the `idlePoll` heartbeat is only the unmonitored fallback) — so
-you never hardcode a delay.
-
-**The stall invariant — the driver is what matters, not the loop.** A drained
-queue must never *silently* stall, but that does **not** require the polling loop to
-run forever, and it must **not** fire on an empty queue. The invariant is: **while
-`status: running`, a driver is attached that re-drains when work arrives.** A
-persistent **signal-polling `Monitor`** (above) *is* that driver — so once it is armed,
-an idle/drained tick (exit `3`) **terminates the loop** (`ScheduleWakeup stop:true`):
-the Monitor stays attached and re-wakes the loop the instant `signal` reports drainable
-work, and stays silent otherwise — so an empty queue never wakes the loop. Terminating
-on drain is the intended clean stop (design.md `run-all` — "terminate when no eligible
-task remains"), safe **because** the Monitor covers restart. The only case that re-arms
-the `idlePoll` heartbeat is when **no Monitor could be armed** — then the heartbeat is
-the fallback driver (and, lacking an event source, must poll, so it may wake on an
-empty queue). So: **Monitor armed ⇒ idle terminates the loop, no empty-queue fires;
-unmonitored ⇒ idle re-arms the polling heartbeat.** Either way a later task is picked
-up automatically; `stop:true` on an operator stop/pause (exit `5`/`4`) is unchanged.
-
-**The Monitor is the primary driver (arm it first, and make it poll the drain
-signal).** At the *start* of the loop, before the first tick, arm a persistent
-**`Monitor`** whose command **polls `node scripts/queue.ts signal`** — e.g. `while
-true; do node scripts/queue.ts signal; sleep <idlePoll>; done`. `signal` prints the
-`queue: DRAIN-WANTED <n> pending` marker (and exits `0`) **only** when the queue is
-running, has eligible work, and has no active driver; otherwise it prints nothing and
-exits `3`. So the Monitor emits an event **only when a drain is genuinely wanted** —
-it stays silent on an empty or idle queue, which is what lets the loop terminate on
-idle **without** any spurious wake on an empty queue, yet re-wake the instant a later
-`add` makes work drainable.
-
-Poll the **`signal`** predicate, not the file's mtime: a raw mtime watch would fire
-on *every* write — including a task completing and auto-archiving itself — and wake
-the loop against an already-empty queue. `signal` is the content-level gate that
-distinguishes "work is waiting with no driver" from "the file just changed." The same
-marker is also printed inline by `add`/`add-many`/`top`/`start` (via `drainKick`) so a
-human or cron sees the restart cue immediately.
-
-**Enqueue kicks the drain.** After `add`/`add-many`/`top`/`start` on a running,
-drainable queue with no active task, the CLI emits `queue: DRAIN-WANTED <n> pending`
-and hints to start now — so newly-added work begins in seconds, not on the next
-poll. When you add tasks and no drain is running, start one immediately.
-
-**Durable driver across session close (optional).** A `/loop` lives only as long as
-its session. To keep the queue draining unattended past that, register a
-**`CronCreate`** firing the drain every `config.interval`:
-
-```
-CronCreate: schedule every <config.interval> →
-  run `node scripts/queue.ts tick`, do the task it prints, then done/fail it
-```
-
-`tick`'s exit `3` makes each firing a **safe no-op when the queue is empty**, so the
-cron can run indefinitely without side effects; it drains only when there's eligible
-work. Use this when the queue must outlive any single session (overnight, across
-machines).
-
-**Auto-drain on request.** When the user asks to run/drain/keep working the queue
-(or `/queue` with no clear one-shot intent), start the loop yourself — no need to
-make them wire `/loop`. Change cadence with `queue interval <dur>`; stop with
-`queue stop`; resume with `queue start`.
-
-## Usage limits — pause and ride out the window
-
-A long autonomous drain will eventually hit the rolling 5-hour usage limit. Agents
-**cannot reliably predict** this, so handle it in two ways, reactive first:
-
-- **Reactive (primary).** You find out you're limited when a wake **can't get work
-  through**. When that happens, `node scripts/queue.ts pause` (no time needed) and
-  **re-arm the loop at the slow `pausePoll` cadence** (default 30m) instead of the
-  fast interval — `node scripts/queue.ts loop` prints the slow invocation while
-  paused. Each slow wake just tries `tick`; the first that succeeds means the window
-  reopened → `queue start`, back to the normal interval. No prediction needed: it
-  polls until work flows again.
-- **Proactive (best-effort).** If usage is visibly near 100% (e.g. the statusline's
-  5-hour usage%), pause *before* starting a new task so you don't strand a half-done
-  one. If the reset time is known, `queue pause --until <iso>` for a precise resume;
-  otherwise rely on the slow poll.
-
-`tick` **auto-resumes** on its own once `resumeAt` passes, and a `pause` with no
-`resumeAt` stays paused (slow-polling) until a wake succeeds or you `queue start`.
-A plain `queue stop` is a manual pause and never auto-resumes. This is the same
-"spend the budget, then sleep until it refills" pattern as AGENTS.md's continuous
-execution — applied to the queue so overnight drains survive the window.
+Read [queue driver setup](queue-drivers.md) before arming a recurring driver,
+handling usage-window pauses, or using explicit legacy batch fan-out. It includes
+exit-code handling: delivery pending (7) must never be mistaken for drained (3).
 
 ## Critical rules
 
@@ -536,13 +436,13 @@ execution — applied to the queue so overnight drains survive the window.
    purpose: stop dispatch and surface it. Don't `render` over it, since that
    discards their edits. `import` only when the edit is plainly theirs to apply.
 2. **No user input during a drain.** Never ask a question; underspecified → `fail`
-   with a `needs-spec:` note and move on. Spec at enqueue time, not mid-run.
+   with a `needs-spec:` note; keep the delivery gate until resolved. Spec at enqueue time, not mid-run.
 3. **Chain tasks run the whole chain autonomously** — generate the design from the
    spec (no grill), auto-accept phase gates, never wait for "continue."
 4. **Mutate only through `scripts/queue.ts`** so ids and format stay intact. Humans
    may hand-edit the view and `import` it; the worker never edits it by hand.
 5. **Never blind-merge a worktree.** Merge-back is agent-driven; on conflict,
-   reconcile carefully or fail safe (D7). Failures never halt independent work.
+   reconcile carefully or fail safe (D7). In per-task mode a failure gates the next task.
 6. **Stopped means stopped** — a `tick` does nothing until `queue start`.
 7. **A running queue never silently stalls — but a drained one terminates the
    loop, and no loop fires on an empty queue.** The invariant is *a driver stays
@@ -554,14 +454,13 @@ execution — applied to the queue so overnight drains survive the window.
    idle tick re-arm the `idlePoll` heartbeat instead. A registered `CronCreate` drain
    is an equivalent standing driver. An operator stop/pause always ends the loop.
    When the portable agent-loop is the driver, its child reports `continue` while
-   any active or eligible queue work remains and reports `complete` only after the
+   any active, eligible, or delivery-pending queue work remains and reports `complete` only after the
    queue is actually drained. It never calls the driver's `stop` command itself;
    the supervisor owns recurrence lifecycle and terminal outcomes.
 8. **Tasks are atomic.** One reviewable slice, finishable in one sitting, with a
    checkable `accept`. Never enqueue an "ensure all X"/"cover every Y" umbrella —
    enumerate it into finite children and make the parent a tracking stub
-   (`deps: <child ids>`). When in doubt, split. Partial progress gets re-filed as
-   smaller tasks, not left 40%-open.
+   (`deps: <child ids>`). When in doubt, split. Preserve original acceptance; partial work cannot be relabeled complete.
 9. **Completed tasks auto-archive.** A successful `done` moves the task into
    `archive.md` and out of the live queue, so the queue empties as work finishes — but
    a `done` task still depended on by unfinished work is kept until that dependent
