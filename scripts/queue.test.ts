@@ -22,6 +22,7 @@ const NOW = '2026-08-12T20:00:00.000Z';
 const SAMPLE = `# Work Queue
 
 <!-- queue:config
+deliveryMode: batch
 status: running
 interval: 6m
 maxFailures: 3
@@ -164,7 +165,7 @@ integrationBranch: queue/integration
 {
   // 3 independent pending, maxParallel 2, 0 active → 2 ready
   let q = parseQueue('- [ ] task-001 — a\n- [ ] task-002 — b\n- [ ] task-003 — c\n');
-  q = setConfig(q, { maxParallel: 2 });
+  q = setConfig(q, { maxParallel: 2, deliveryMode: 'batch' });
   assert('ready under cap', readyTasks(q).map(t => t.id).join(',') === 'task-001,task-002');
   // one active consumes a slot → only 1 more ready
   q = beginTask(q, 'task-001', NOW, 'worker-a');

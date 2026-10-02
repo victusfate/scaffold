@@ -14,6 +14,7 @@
 //   node scripts/queue.ts claim <id> [--worker w]    # atomic claim for a parallel worker
 //   node scripts/queue.ts release <id> --worker w    # release a confirmed ended owned lane
 //   node scripts/queue.ts done <id> [--skip-validate]# run validate, then complete
+//   node scripts/queue.ts advance <id> --pr <url> --branch <fresh> # root delivery acknowledgment
 //   node scripts/queue.ts fail <id> [reason...]      # record a failure (retries then terminal)
 //   node scripts/queue.ts top <id> | remove <id>
 //   node scripts/queue.ts move <id> <pos>            # reorder to a 1-based position (as in `list`)
@@ -50,6 +51,7 @@ import {
   holdTask, unclaimTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
+  deliveryAllows, selectDelivery,
   type Queue, type Task,
 } from './queue-model.ts';
 import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
@@ -65,7 +67,7 @@ const MS_PER_MIN = 60000;
 // 3 = idle → back off to a long fallback; 4 = paused for a usage window → slow-poll;
 // 5 = stopped → halt; 6 = ownership conflict → stop and report. A bare `return 1`
 // stays the usage/error code.
-const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5, CONFLICT: 6 } as const;
+const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5, CONFLICT: 6, DELIVERY: 7 } as const;
 
 // ---------------------------------------------------------------- validation
 
@@ -125,6 +127,10 @@ function dispatchGate(q: Queue): { queue: Queue; blocked: number | null } {
       .map(t => t.id).join(', ')}. Do not reclaim or dispatch; resolve ownership explicitly.`);
     return { queue: q, blocked: EXIT.CONFLICT };
   }
+  if (q.config.deliveryMode !== 'batch' && q.config.deliveryTask && !nextActionable(q)) {
+    console.log(`queue: DELIVERY PENDING — ${q.config.deliveryTask}; finish its PR/merge cycle and fresh branch, then advance`);
+    return { queue: q, blocked: EXIT.DELIVERY };
+  }
   return { queue: q, blocked: null };
 }
 
@@ -142,9 +148,12 @@ function cmdTick(q: Queue): number {
     return EXIT.IDLE;
   }
   if (t.status === 'pending') { q = beginTask(q, t.id, now(), t.owner); log(`begin ${t.id}`); }
+  q = selectDelivery(q, t.id);
   save(q);
   const current = q.tasks.find(x => x.id === t.id)!;
   console.log(`queue: working ${t.id}\n${taskBlock(current)}\n`
+    + (q.config.deliveryMode === 'batch' ? 'Delivery: legacy batch.\n'
+      : 'Delivery: per-task; root must complete the PR/merge cycle before advance.\n')
     + `When finished: node scripts/queue.ts done ${t.id}  (or fail ${t.id} "<reason>")`);
   return EXIT.DISPATCHED;
 }
@@ -186,7 +195,7 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
   // earlier done task this completion just freed (one whose last unfinished
   // dependent was this one). A done task still depended on by unfinished work is
   // kept until that work finishes, so dependency resolution never breaks.
-  let dq = markDone(q, id, now());
+  let dq = markDone(selectDelivery(q, id), id, now());
   const sweep = archivableDone(dq);
   for (const s of sweep) dq = removeTask(dq, s.id);
   save(dq);
@@ -199,6 +208,9 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
 }
 
 function cmdConfig(q: Queue, key: string, val: string): number {
+  if (key === 'deliveryMode' && val !== 'per-task' && val !== 'batch') {
+    console.error('config: deliveryMode must be per-task or batch'); return 1;
+  }
   if ((TEXT_CONFIG_KEYS as readonly string[]).includes(key)) save(setConfig(q, { [key]: val }));
   else if ((NUMERIC_CONFIG_KEYS as readonly string[]).includes(key)) {
     // Reject non-numeric input instead of persisting NaN (which serializes as
@@ -253,7 +265,7 @@ function cmdLoop(q: Queue): number {
       + 'switch back to the normal interval');
     return 0;
   }
-  const drain = q.config.maxParallel > 1
+  const drain = q.config.deliveryMode === 'batch' && q.config.maxParallel > 1
     ? 'run `node scripts/queue.ts ready` and dispatch each returned task in its own worktree, then done/fail each'
     : 'run `node scripts/queue.ts tick` and do the task it prints, then `done <id>` or `fail <id>`';
   // Arm a Monitor that POLLS `queue signal` (not the file mtime): it emits an event
@@ -270,6 +282,7 @@ function cmdLoop(q: Queue): number {
     + `ONE orchestrator owns this session; other sessions and user-launched agent CLIs are `
     + `independent and must never be stopped, reclaimed, interrupted, or signalled. Queue lease `
     + `expiry is metadata only and grants no process authority. `
+    + `Delivery mode: ${q.config.deliveryMode}. Read skills/queue.md: per-task requires root PR, real local and hosted validation, authorized merge and fresh branch before advance; exit 7 is pending delivery, not drained. `
     + `THEN repeatedly ${drain} — keep going while tick/ready exits 0 (each completed task `
     + `auto-archives out of the queue). On exit 3 (idle/drained) TERMINATE the loop with `
     + `ScheduleWakeup stop:true; the signal-Monitor re-wakes the loop only when a later add `
@@ -351,6 +364,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       if (!needId()) { console.error('claim: unknown task id'); return 1; }
       const t = q.tasks.find(x => x.id === id)!;
       if (t.status !== 'pending') { console.log(`claim: ${id} is ${t.status}, not claimable`); return 1; }
+      if (!deliveryAllows(q, id)) { console.error('claim: current delivery cycle must finish first'); return 1; }
       if (t.held) { console.log(`claim: ${id} is held — unhold it first`); return 1; }
       const worker = f.flags.get('worker') ?? `worker-${process.pid}`;
       save(beginTask(q, id, now(), worker)); log(`claim ${id} by ${worker}`);
@@ -366,8 +380,25 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     }
     case 'begin':
       if (!needId()) { console.error('begin: unknown task id'); return 1; }
+      if (!deliveryAllows(q, id)) { console.error('begin: current delivery cycle must finish first'); return 1; }
       save(beginTask(q, id, now(), q.tasks.find(t => t.id === id)!.owner));
       console.log(`${id} → active`); return 0;
+    case 'advance': {
+      const pr = f.flags.get('pr') ?? '';
+      const branch = f.flags.get('branch') ?? '';
+      const task = q.tasks.find(t => t.id === id);
+      if (!id || q.config.deliveryTask !== id || !q.config.deliveryAccepted || (task && task.status !== 'done')
+          || q.tasks.some(t => t.status === 'active')
+          || !/^https:\/\/[^\s]+\/pull\/\d+$/.test(pr) || !branch.trim()) {
+        console.error('advance: requires selected completed task, no active claims, --pr <merged-pr-url> and --branch <fresh-working-branch>');
+        return 1;
+      }
+      const advanced = setConfig(q, { deliveryTask: '', deliveryAccepted: false });
+      save(advanced);
+      log(`advance ${id}: root attests authorized validated merge ${pr}; fresh branch ${branch}`);
+      console.log(`delivery acknowledged for ${id}; external merge/validation evidence is root-owned${drainKick(advanced)}`);
+      return 0;
+    }
     case 'done': return cmdDone(q, id, f.bools.has('skip-validate'));
     case 'fail': {
       if (!needId()) { console.error('fail: unknown task id'); return 1; }
@@ -447,7 +478,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
 
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
-        + `signal claim release begin done fail top move hold unhold requeue remove start stop pause interval config `
+        + `signal claim release begin done advance fail top move hold unhold requeue remove start stop pause interval config `
         + `gate ungate archive import render loop worktree lane`);
       return 1;
   }

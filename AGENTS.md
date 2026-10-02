@@ -387,6 +387,18 @@ Skip the chain for:
 
 ## PR Workflow
 
+**Default: one independent task per PR/merge cycle.** Finish full acceptance,
+review and validate locally, create/update its PR, verify real required hosted
+checks on the final head, then merge **only with explicit session or standing
+project authorization**. Creating a PR does not authorize merging. Without that
+permission, preserve the ready PR and gate the next task. A failed gate remains
+part of the current task; never grow the branch with another feature to defer it.
+Confirm the actual merge and cut a fresh branch from updated main before the next
+independent task. Subagents may parallelize subtasks of the current task; only the
+root integrates, pushes and merges. Explicit project policy may opt into legacy
+batch delivery (`queue config deliveryMode batch`). See `skills/queue.md` for
+runtime boundaries, migration and the `advance` acknowledgment.
+
 1. Pull latest main: `git checkout main && git pull origin main`
 2. Create a clean branch: `git checkout -b <prefix>/<short-descriptive-name>`
 3. Do the work, verify with build/tests
@@ -416,7 +428,7 @@ Start a fresh branch off main when no active feature branch is being resumed.
 
 ## ONE Working Branch — fan-out integration (NON-NEGOTIABLE)
 
-**A session has EXACTLY ONE working branch** — the feature branch made at session start.
+**A session has EXACTLY ONE working branch** — the current task’s feature branch, rotated only after its authorized merge.
 Code, assets, docs, lore, ledgers — *everything* lands on that one branch. This is the
 single most important operational rule when fanning out; violating it silently splits the
 project in two.
@@ -428,6 +440,12 @@ project in two.
   lane → merge/rebase its worktree branch into the local one branch → resolve → delete the worktree →
   mark the ledger. Do it before spawning the next thing. (Pushing to GitHub is a SEPARATE, controlled,
   batched step by the orchestrator — see the push rule below.)
+- **Retire completed artifacts at integration.** Preserve required source and unique
+  evidence with a durable index before removing verified-ended lane worktrees and
+  merged branches; clear ended display state through existing queue lifecycle commands.
+  After the authorized main merge, verify no unique commits before retiring the task
+  branch. Keep generated state ignored and completed narrative archived; retain active
+  scope, dependencies and evidence links. See [integration cleanup](skills/queue-drivers.md#integration-cleanup-all-delivery-modes).
 - **Reap zombie worktrees after an interrupted session.** The normal merge step deletes
   each lane's worktree. A session that ends abruptly skips that step: weekly usage runs
   out, the harness crashes, or the machine power-cycles. The lane's worktree is then left
@@ -436,10 +454,11 @@ project in two.
   isolation dir such as `.claude/worktrees/agent-*`) while its directory stays on disk with
   every ignored and untracked build output. In one consumer repo, ten such zombies quietly
   held 146 GB. On session start or resume, and on each loop tick, list the worktree roots
-  (the harness isolation dir plus your lane root) and flag each directory with its size and
-  age:
+  owned by this session and flag each directory with its size and age. Staleness
+  never grants authority over another session; verify ownership and actual worker end
+  before cleanup:
   - Registered with unmerged commits: **finish or merge the lane** (don't lose the work).
-  - Registered and clean: remove it.
+  - Registered and clean: remove only after verifying owned worker end and preserving unique evidence.
   - Unregistered: check for unique, non-reproducible content before deleting, and get the
     user's OK when it isn't clearly reproducible.
 - **The orchestrator commits ALL of its OWN work — ledgers, queue, docs, lore, web, hotfixes —

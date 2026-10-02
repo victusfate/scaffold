@@ -17,6 +17,9 @@ check() { if [ "$2" = "$3" ]; then echo "  pass  $1 ($3)"; pass=$((pass+1));
 grep_check() { if echo "$2" | grep -q "$3"; then echo "  pass  $1"; pass=$((pass+1));
           else echo "  FAIL  $1"; fail=$((fail+1)); fi; }
 
+# Legacy batch drain signals; per-task boundaries have dedicated CLI coverage.
+Q config deliveryMode batch >/dev/null
+
 echo "== tick exit codes =="
 check "empty running → idle"     "$(code tick)" 3
 t1=$(add_id "first task")
@@ -75,6 +78,7 @@ QS() { QUEUE_FILE="$S" node "$HERE/queue.ts" "$@"; }
 codeS() { QS "$@" >/dev/null 2>&1; echo $?; }
 missS() { if echo "$2" | grep -q "$3"; then echo "  FAIL  $1"; fail=$((fail+1));
           else echo "  pass  $1"; pass=$((pass+1)); fi; }
+QS config deliveryMode batch >/dev/null
 check "empty queue → signal idle (3)"     "$(codeS signal)" 3
 missS "empty queue emits no marker"       "$(QS signal 2>/dev/null)" "DRAIN-WANTED"
 QS add "s1" >/dev/null
