@@ -77,9 +77,8 @@ rate-limit signal), do not burn the remainder:
 2. **Drop a memory pointer** — a short project-memory note pointing at
    `.pause/handoff.md` (or the run's dedicated resume doc), so a compacted or
    cold session finds it with no conversation history.
-3. **Schedule a wakeup for after the window resets if the client exposes a scheduler**, then stop. Without one, checkpoint and give the `$resume` / `/resume` instruction instead; do not promise automatic resumption. Spend the budget,
-   sleep, auto-resume — never retry-storm the limit. On wake, hand off to
-   `/resume`.
+3. **Schedule a wakeup for after the window resets if the client exposes a scheduler**, then stop. Without one, checkpoint and give the `$resume` / `/resume` instruction instead; do not promise automatic resumption. Never retry-storm the
+   limit. On wake, hand off to `/resume`.
 
 ## Critical rules
 
@@ -92,6 +91,7 @@ rate-limit signal), do not burn the remainder:
    in a repo carrying build or forge intermediates.
 4. **One handoff, overwritten.** `.pause/handoff.md` is always current; history
    keeps the rest. It is the same file `/pause` writes and `/resume` reads.
-5. **Near the limit: refresh, point, sleep.** Checkpoint, drop the memory
-   pointer, `ScheduleWakeup` past the reset — do not spend the last of the budget
-   racing the wall.
+5. **Near the limit: refresh, point, then wake or hand off.** Checkpoint, drop
+   the memory pointer, and schedule a wakeup past the reset if the client exposes
+   a scheduler; otherwise give the `/resume` instruction — do not spend the last
+   of the budget racing the wall.
