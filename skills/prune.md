@@ -50,7 +50,7 @@ Write `./docs/<slug>/design.md`:
 ## Findings
 | ID | Source | File | Finding | Severity |
 |---|---|---|---|---|
-| F-01 | [review] | … | … | high |
+| F-01 | [validate] | … | … | high |
 
 ## Decisions
 (how each finding class will be addressed — group related findings, not one-by-one)
