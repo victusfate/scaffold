@@ -25,8 +25,9 @@ Tests written in bulk verify imagined behavior and become insensitive to real ch
 ### Workflow per slice
 
 **Before writing any code:**
-- Confirm interface changes with the user
-- Confirm which behaviors to test (prioritize critical paths)
+- Decide the interface changes and which behaviors to test (prioritize critical
+  paths). Granularity was confirmed once at plan time; surface an interface
+  change to the user only if it departs from `plan.md`.
 - List behaviors to test — not implementation steps
 
 **Tracer bullet:** Write ONE test for ONE behavior → RED → minimal code → GREEN. Proves the path works end-to-end.
