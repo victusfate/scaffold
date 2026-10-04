@@ -61,8 +61,9 @@ No secrets, keys, or tokens — this gets pushed.
 
 ### 3 — Push immediately
 
-- `git push` (or `git push origin HEAD:<branch>` from a worktree lane). Push the
-  moment a unit converges — a checkpoint that stays local does not survive the
+- `git push` from the one working branch, after the local preflight. Worktree
+  lanes never push — the orchestrator merges them and is the only pusher
+  (AGENTS.md, *NO PUSH RACE*). A checkpoint that stays local does not survive the
   machine going away.
 - No upstream? Set one (`git push -u origin <branch>`); without a push, pickup
   cannot work.
@@ -85,8 +86,8 @@ rate-limit signal), do not burn the remainder:
 1. **Frequent beats final.** Fire `/save` on every lane merge and at each
    meaningful step — not once at the end. A checkpoint one step stale survives a
    rate-limit; a checkpoint written only at shutdown does not.
-2. **Pushed or stranded.** Pickup sees only pushed commits — push each unit the
-   moment it converges.
+2. **Pushed or stranded.** Pickup sees only pushed commits — the orchestrator
+   pushes converged work; lanes commit locally only.
 3. **Explicit paths, no junk.** Stage converged work by path; never `git add -A`
    in a repo carrying build or forge intermediates.
 4. **One handoff, overwritten.** `.pause/handoff.md` is always current; history
