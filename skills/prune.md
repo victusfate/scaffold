@@ -50,7 +50,7 @@ Write `./docs/<slug>/design.md`:
 ## Findings
 | ID | Source | File | Finding | Severity |
 |---|---|---|---|---|
-| F-01 | [review] | … | … | high |
+| F-01 | [validate] | … | … | high |
 
 ## Decisions
 (how each finding class will be addressed — group related findings, not one-by-one)
@@ -87,7 +87,7 @@ Proceed immediately to Phase 4.
 
 Run `/tdd` from `prd.md`. Each vertical slice should correspond to one cohesive group of fixes (e.g., "extract duplicated helpers", "fix correctness bugs in module X").
 
-After all slices pass, run `/simplify` in auto-fix mode. Then proceed to Phase 5.
+`/tdd` runs `/code-refiner` (validate + simplify) when all slices pass. Then proceed to Phase 5.
 
 ---
 

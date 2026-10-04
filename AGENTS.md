@@ -93,7 +93,8 @@ On your first response in a new session:
 
 - **Artifacts exist:** resume artifacts relevant to the user's request. Acknowledge
   unrelated artifacts without blocking new work; ask only if intent is unclear.
-- **No artifacts:** start `/feature-chain` — no permission needed. If the user's
+- **No artifacts:** when the request is feature work (see *What This Doesn't Apply To*),
+  start `/feature-chain` — no permission needed. If the user's
   intent is vague or unstated, the grill (Phase 1) resolves it through Q&A.
   Do not ask a pre-question first.
 
