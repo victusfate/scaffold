@@ -74,8 +74,15 @@ parallel tracks — correctness + test-integrity (`validate`) and structural
 quality (`simplify`) — merges the findings, applies them in a single coherent
 pass, and re-verifies (correctness clear, all rubric dimensions 10/10). Passing
 tests alone are not enough: they cover only what the author imagined and can be
-weakened during GREEN, which the correctness track catches. Then proceed to
-Phase 4.
+weakened during GREEN, which the correctness track catches.
+
+**Then run `/qa`** when the feature has a user-facing entry point (UI route, API
+endpoint, CLI command, job). It starts the app, drives the changed entry points,
+fixes in-tier issues with a regression test each, and writes
+`docs/<feature-slug>/qa-report.md`. This is the reachability check from AGENTS.md
+*Veracity*: tests prove units, `/qa` proves the user can get to them. Skip it only
+when the change has no runtime entry point, and record the reason for Phase 4.
+Then proceed to Phase 4.
 
 ---
 
@@ -93,6 +100,10 @@ Present a summary and stop for the user to review before anything is merged.
 ### Tests
 - <N> tests passing across <M> slices
 - Behaviors covered: <list>
+
+### QA
+- <`/qa` summary line, e.g. "QA found 3 issues, fixed 3 (verified 3), deferred 0, blocked 0">
+- or "skipped — <reason the change has no runtime entry point>"
 
 ### Decisions that deviated from the plan
 - <any divergence, or "none">
