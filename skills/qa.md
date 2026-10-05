@@ -44,7 +44,7 @@ has an example app or a CLI that exercises it.
    - **job** — workers, queues, scheduled tasks
    Default is diff-aware: changed behavior plus one adjacent happy path per surface.
 3. **Start the app** the way the repo documents it (README, `package.json`
-   scripts, `Makefile`, `/run` skill if present). Run it in the background, wait
+   scripts, `Makefile`, or a project skill that launches the app). Run it in the background, wait
    for readiness by polling (HTTP 200, a log line), never a fixed sleep. Record
    the start command in the report.
 4. **Tooling.** Use what the repo already has: its Playwright/Cypress/e2e runner,
