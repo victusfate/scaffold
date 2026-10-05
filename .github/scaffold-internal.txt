@@ -71,3 +71,5 @@ tools/hoist-skill/codex.test.ts
 tools/hoist-skill/pi.test.ts
 scripts/voice/agent.test.ts
 scripts/voice/fixtures/cli.ts
+
+scripts/queue-delivery.test.ts

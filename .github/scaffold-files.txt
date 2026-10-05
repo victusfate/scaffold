@@ -39,6 +39,7 @@ scripts/queue-db.ts
 scripts/queue-db.test.ts
 scripts/queue-worktrees.ts
 scripts/queue-gates.ts
+scripts/queue-delivery.ts
 scripts/queue-edit.test.ts
 scripts/queue-lock.test.ts
 scripts/queue-cli-args.ts
@@ -161,6 +162,7 @@ skills/pause.md
 skills/resume.md
 skills/save.md
 skills/queue.md
+skills/queue-drivers.md
 skills/loop.md
 .claude/skills/loop/SKILL.md
 .cursor/rules/loop.mdc

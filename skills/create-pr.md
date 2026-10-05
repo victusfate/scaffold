@@ -266,6 +266,15 @@ Report that no webhook subscription is active.
 Return the PR URL, check results, and whether a subscription is active or only
 a CLI check was performed. Never claim a CLI check is a persistent subscription.
 
+### Per-task handoff
+
+PR creation is not merge authorization. In the default queue flow, the root keeps
+this task current until local and required hosted validation pass on the final
+head, an authorized merge actually completes, and a fresh working branch exists.
+If authority is absent, preserve the ready PR and report that blocker; do not
+start another independent task. Follow `queue advance` in [queue.md](queue.md)
+only after verifying those facts. Subagents never push or merge the root's branch.
+
 ### Verifying a real green (before any merge)
 
 If you go on to merge this PR, confirm the green is **real** first — a required

@@ -27,7 +27,7 @@ import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
   addTask, setField, removeTask, moveToTop, moveTask, requeueTask, unclaimTask, beginTask, setConfig,
   holdTask, forceFail, reopenTask, markDone, archivableDone,
-  isEligible, deadlocked, drainSignal, EDITABLE_TASK_FIELDS, fieldPatch, sweepFinished,
+  deliveryAllows, isEligible, deadlocked, drainSignal, EDITABLE_TASK_FIELDS, fieldPatch, sweepFinished,
   NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type QueueConfig, type Task,
 } from './queue-model.ts';
@@ -172,6 +172,7 @@ function applyAdd(q: Queue, op: { title: string; top?: boolean; fields?: TaskPat
 }
 
 function applyConfigOp(q: Queue, key: ConfigKey, value: string): OpResult {
+  if (key === 'deliveryMode' && value !== 'per-task' && value !== 'batch') return reject('config: deliveryMode must be per-task or batch');
   if (!CONFIG_KEYS.includes(key)) return reject(`config: unknown key ${String(key)}`);
   if ((NUMERIC_CONFIG_KEYS as readonly string[]).includes(key)) {
     const n = Number(value);
@@ -229,6 +230,7 @@ export function applyOp(q: Queue, op: Op, nowIso: string = now()): OpResult {
       const t = q.tasks.find(x => x.id === op.id)!;
       if (t.status !== 'pending') return reject(`claim-lane: ${op.id} is ${t.status}, not claimable`);
       const taken = new Set(q.tasks.filter(x => x.status === 'active').map(x => x.owner));
+      if (!deliveryAllows(q, op.id)) return reject('claim-lane: current delivery cycle must finish first');
       if (t.held) return reject(`claim-lane: ${op.id} is held — unhold it first`);
       if (taken.size >= q.config.maxParallel) {
         return reject(`claim-lane: no free lane (maxParallel ${q.config.maxParallel})`);

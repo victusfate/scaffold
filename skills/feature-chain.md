@@ -89,7 +89,7 @@ Then proceed to Phase 4.
 
 ## Phase 4: Review
 
-Present a summary and stop for the user to review before anything is merged.
+Present a summary. For a queued task, return to the queue delivery cycle: create/update its PR, validate locally and on the host, and merge only when explicit session or standing project authorization exists. Without merge authority, preserve the ready PR and gate the next independent task. For an interactive feature without that authority, stop for user review before merging.
 
 ```
 ## Feature complete: <feature-slug>
@@ -110,9 +110,9 @@ Present a summary and stop for the user to review before anything is merged.
 - <any divergence, or "none">
 ```
 
-Then prompt: **"All tests pass. Please review the generated source before merging."**
+When merge authority is absent, prompt: **"All tests pass. Please review the generated source before merging."**
 
-Wait here. Do not proceed until the user confirms or requests changes.
+Wait here unless existing session or standing project policy already authorizes the validated merge. Never infer merge authority from permission to create a PR.
 
 ---
 

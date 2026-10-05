@@ -20,6 +20,7 @@ function assert(label: string, cond: boolean, detail = ''): void {
 const SAMPLE = `# Work Queue
 
 <!-- queue:config
+deliveryMode: batch
 status: running
 interval: 6m
 maxParallel: 2
