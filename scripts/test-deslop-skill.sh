@@ -20,6 +20,13 @@ has "$S" 'honest'                               "covers AGENTS.md self-label rul
 has "$S" 'code blocks|identifiers'              "leaves code and identifiers alone"
 has "$S" 'Self-check'                           "self-check pass after editing"
 has "$S" 'What changed'                         "edit output lists what changed"
+has "$S" 'user-facing'                          "full rewrite targets user-facing content"
+has "$S" 'engineering (reference|docs)'         "engineering docs get a restricted pass"
+has "$S" 'never (delete|remove|drop).*(step|command|constraint|caveat)' "never drops technical content"
+has "$S" 'MUST|NEVER'                           "keeps normative rules intact"
+has "$S" 'terms? of art'                        "technical terms of art are not slop"
+has "$S" 'plain (language|words)'               "plain-language guidance for user-facing text"
+has "$S" 'nothing (was )?lost|still present'    "self-check confirms no technical content lost"
 has skills/create-pr.md '/deslop'               "create-pr runs /deslop on title and body"
 
 finish
