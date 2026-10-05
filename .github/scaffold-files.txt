@@ -259,6 +259,11 @@ skills/statusline.md
 .cursor/rules/statusline.mdc
 .agents/skills/statusline/SKILL.md
 .agent/workflows/statusline.md
+skills/investigate.md
+.claude/skills/investigate/SKILL.md
+.cursor/rules/investigate.mdc
+.agents/skills/investigate/SKILL.md
+.agent/workflows/investigate.md
 skills/deslop.md
 .claude/skills/deslop/SKILL.md
 .cursor/rules/deslop.mdc

@@ -37,6 +37,7 @@ the first match.
 | queue | `/(?:^\/queue\b)|(?:work\|task)\s+queue\|drain\s+(?:the\s+)?queue/i` | `skills/queue.md` | Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume |
 | voice-chat | `/(?:^\/voice-chat\b)|(?:voice\s+chat\|voice\s+loop\|talk\s+to\s+(?:the\s+)?agent\|hands[-\s]?free\s+voice)/i` | `skills/voice-chat.md` | Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL. |
 | deslop | `/(?:^\/deslop\b)|(?:check|scan)\s+(?:this\s+)?for\s+(?:ai\s+)?slop|make\s+(?:this|it)\s+sound\s+(?:more\s+)?human/i` | `skills/deslop.md` | Check prose (PR bodies, commits, docs, design artifacts) for AI-slop patterns and edit it into direct writing that keeps the author's voice, or list findings only |
+| investigate | `/(?:^\/investigate\b)|(?:root[-\s]?cause|debug|investigate)\s+(?:this|the|a)\s+(?:bug|failure|error|crash|test)/i` | `skills/investigate.md` | Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim |
 
 ## Column contract
 

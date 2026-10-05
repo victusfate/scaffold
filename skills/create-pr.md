@@ -47,7 +47,7 @@ RUN_INTEGRATION=1 node <path/to/test-integration>
 
 Each round:
 
-1. **Diagnose** — read the failing assertions carefully. Read the source file(s) they exercise. Identify the root cause (wrong value written, missing branch, incorrect path, etc.).
+1. **Diagnose** — follow `/investigate` Phases 1–3: read the failing assertions carefully, read the source file(s) they exercise, and identify the root cause (wrong value written, missing branch, incorrect path, etc.) before changing anything.
 
 2. **Scope check** — if the fix requires more than ~30 lines of change across all files, or touches something architecturally significant, stop and report the diagnosis to the user instead of attempting a fix. Do not guess at large changes.
 
