@@ -57,4 +57,16 @@ export function frontmatterDescription(file: string): string | null {
   return null;
 }
 
+// YAML reads `key: a: b` as a nested mapping, so an unquoted (plain) scalar must not
+// contain ": ". Returns the first offending key, or null when the frontmatter is safe.
+export function frontmatterColonInPlainScalar(file: string): string | null {
+  const m = readFileSync(file, 'utf8').match(/^---\n([\s\S]*?)\n---/);
+  if (!m) return null;
+  for (const line of m[1].split('\n')) {
+    const kv = line.match(/^([\w-]+):\s+(.*)$/);
+    if (kv && !/^["'|>]/.test(kv[2]) && kv[2].includes(': ')) return kv[1];
+  }
+  return null;
+}
+
 export const normalizeWhitespace = (s: string | null | undefined): string => (s ?? '').replace(/\s+/g, ' ').trim();
