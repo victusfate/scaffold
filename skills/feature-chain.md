@@ -76,8 +76,9 @@ pass, and re-verifies (correctness clear, all rubric dimensions 10/10). Passing
 tests alone are not enough: they cover only what the author imagined and can be
 weakened during GREEN, which the correctness track catches.
 
-**Then run `/qa`** when the feature has a user-facing entry point (UI route, API
-endpoint, CLI command, job). It starts the app, drives the changed entry points,
+**Commit the refiner's fixes** (`refactor(<feature-slug>): code-refiner fixes`,
+explicit paths) so the tree is clean, then **run `/qa`** when the feature has a
+user-facing entry point (UI route, API endpoint, CLI command, job). It starts the app, drives the changed entry points,
 fixes in-tier issues with a regression test each, and writes
 `docs/<feature-slug>/qa-report.md`. This is the reachability check from AGENTS.md
 *Veracity*: tests prove units, `/qa` proves the user can get to them. Skip it only

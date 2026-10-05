@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # skill-test.sh — shared assertions for prompt-skill acceptance tests.
 # Source it from a scripts/test-<name>-skill.sh, call the helpers, then `finish`.
+# Registration (wrappers, manifest, RESOLVER, frontmatter) is checked by
+# scripts/check-resolvable.ts; these tests cover skill content and flow wiring.
 PASS=0; FAIL=0
 ok()  { echo "  ✓ $1"; PASS=$((PASS + 1)); }
 fail(){ echo "  ✗ $1"; FAIL=$((FAIL + 1)); }
@@ -8,43 +10,7 @@ fail(){ echo "  ✗ $1"; FAIL=$((FAIL + 1)); }
 # has <file> <extended-regex> <label> — case-insensitive grep assertion.
 has() { grep -qiE "$2" "$1" && ok "$3" || fail "$3"; }
 
-# frontmatter_ok <file> — the leading --- block is valid YAML with a description.
-frontmatter_ok() {
-  node -e '
-    const s = require("fs").readFileSync(process.argv[1], "utf8");
-    const m = s.match(/^---\n([\s\S]*?)\n---/);
-    if (!m) process.exit(1);
-    for (const line of m[1].split("\n")) {
-      // A plain (unquoted) scalar value may not contain ": " — YAML reads it as a nested key.
-      const v = line.match(/^[\w-]+:\s+(.*)$/);
-      if (v && !/^["|>\x27]/.test(v[1]) && v[1].includes(": ")) process.exit(1);
-    }
-    if (!/^description:/m.test(m[1])) process.exit(1);
-  ' "$1" 2>/dev/null
-}
-
-# assert_registered <name> — canonical body, four harness wrappers that include it,
-# sync-manifest entries, and a RESOLVER row.
-assert_registered() {
-  local n=$1 path
-  for path in "skills/$n.md" ".claude/skills/$n/SKILL.md" ".cursor/rules/$n.mdc" \
-              ".agents/skills/$n/SKILL.md" ".agent/workflows/$n.md"; do
-    [ -f "$path" ] && ok "$path exists" || fail "$path missing"
-    grep -qxF "$path" .github/scaffold-files.txt \
-      && ok "manifest lists $path" || fail "manifest missing $path"
-  done
-  grep -qF "@../../../skills/$n.md" ".claude/skills/$n/SKILL.md" 2>/dev/null \
-    && ok "Claude wrapper @-includes skill body" || fail "Claude wrapper missing @-include"
-  grep -qF "@../../skills/$n.md" ".cursor/rules/$n.mdc" 2>/dev/null \
-    && ok "Cursor rule @-includes skill body" || fail "Cursor rule missing @-include"
-  grep -qF "skills/$n.md" ".agents/skills/$n/SKILL.md" 2>/dev/null \
-    && ok "agents wrapper links skill body" || fail "agents wrapper missing link"
-  for path in ".claude/skills/$n/SKILL.md" ".cursor/rules/$n.mdc" \
-              ".agents/skills/$n/SKILL.md" ".agent/workflows/$n.md"; do
-    frontmatter_ok "$path" && ok "$path frontmatter parses" || fail "$path frontmatter invalid"
-  done
-  grep -qF "| $n |" .claude/skills/RESOLVER.md \
-    && ok "RESOLVER.md has $n entry" || fail "RESOLVER.md missing $n entry"
-}
+# has_cs <file> <extended-regex> <label> — case-sensitive variant.
+has_cs() { grep -qE "$2" "$1" && ok "$3" || fail "$3"; }
 
 finish() { echo ""; echo "$PASS passed, $FAIL failed."; [ "$FAIL" -eq 0 ]; }

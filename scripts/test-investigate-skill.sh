@@ -5,8 +5,7 @@ cd "$(dirname "$0")/.." || exit 1
 . scripts/lib/skill-test.sh
 S=skills/investigate.md
 
-assert_registered investigate
-[ -f "$S" ] || { finish; exit 1; }
+[ -f "$S" ] || { fail "$S missing"; finish; exit 1; }
 
 has "$S" 'obra/superpowers.*MIT'                 "credits upstream (MIT)"
 has "$S" 'no fix without (a )?root cause'        "no-fix-before-root-cause law"

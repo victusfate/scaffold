@@ -5,8 +5,7 @@ cd "$(dirname "$0")/.." || exit 1
 . scripts/lib/skill-test.sh
 S=skills/deslop.md
 
-assert_registered deslop
-[ -f "$S" ] || { finish; exit 1; }
+[ -f "$S" ] || { fail "$S missing"; finish; exit 1; }
 
 has "$S" 'petergyang/no-ai-slop.*MIT'          "credits upstream (MIT)"
 has "$S" '\*\*Edit'                         "edit mode described"
@@ -23,7 +22,7 @@ has "$S" 'What changed'                         "edit output lists what changed"
 has "$S" 'user-facing'                          "full rewrite targets user-facing content"
 has "$S" 'engineering (reference|docs)'         "engineering docs get a restricted pass"
 has "$S" 'never (delete|remove|drop).*(step|command|constraint|caveat)' "never drops technical content"
-has "$S" 'MUST|NEVER'                           "keeps normative rules intact"
+has_cs "$S" 'MUST, NEVER, SHOULD'                "keeps normative rules intact"
 has "$S" 'terms? of art'                        "technical terms of art are not slop"
 has "$S" 'plain (language|words)'               "plain-language guidance for user-facing text"
 has "$S" 'nothing (was )?lost|still present'    "self-check confirms no technical content lost"

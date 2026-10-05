@@ -5,13 +5,12 @@ cd "$(dirname "$0")/.." || exit 1
 . scripts/lib/skill-test.sh
 S=skills/qa.md
 
-assert_registered qa
-[ -f "$S" ] || { finish; exit 1; }
+[ -f "$S" ] || { fail "$S missing"; finish; exit 1; }
 
 has "$S" 'garrytan/gstack.*MIT'                 "credits upstream (MIT)"
-has "$S" 'browser'                              "surface: browser"
-has "$S" 'API'                                  "surface: HTTP API"
-has "$S" 'CLI'                                  "surface: CLI"
+has_cs "$S" '\*\*browser\*\*'                   "surface: browser"
+has_cs "$S" '\*\*API\*\*'                       "surface: HTTP API"
+has_cs "$S" '\*\*CLI\*\*'                       "surface: CLI"
 has "$S" 'git status --porcelain'               "requires a clean working tree"
 has "$S" 'diff-aware|git diff'                  "scopes probes to the diff by default"
 has "$S" 'quick.*standard.*exhaustive'          "fix tiers"

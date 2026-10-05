@@ -105,7 +105,7 @@ Verified:    <commands re-run, results>
 
 ## Called from other skills
 
-- `/create-pr` Step 2 uses Phases 1–4 for its "Diagnose" step when an integration
+- `/create-pr` Step 2 uses Phases 1–3 for its "Diagnose" step when an integration
   test fails.
 - `/tdd` uses it when a test fails for a reason the current slice did not predict
   (a RED that fails for the wrong reason, or a previously green test that breaks).

@@ -91,17 +91,16 @@ In `--report-only` mode, stop here and write the report.
 
 For each in-tier issue, highest severity first:
 
-1. **Diagnose** with `/investigate` (Phases 1–3). No edit before a root cause.
-2. **Regression test first.** Reproduce the issue in the repo's own test style
-   (extend an existing test or fixture when one covers the boundary). Run it and
-   see it fail for the identified reason. Do not add a production seam that only
-   the test needs. A CSS-only defect may use a before/after screenshot instead.
-3. **Minimal fix** in the responsible files only. No unrelated refactors.
-4. **Re-verify:** re-run the regression test, the original probe, and the adjacent
-   happy path. Read the output and screenshots.
-5. **Commit** the verified fix with its test, staging explicit paths:
+1. **Diagnose and fix** with `/investigate` Phases 1–4: root cause first, a
+   failing regression test before the fix, one minimal fix. QA additions: extend
+   an existing test or fixture when one covers the boundary, never add a
+   production seam that only the test needs, and a CSS-only defect may use a
+   before/after screenshot instead of a test.
+2. **Re-verify the QA probe:** re-run the original probe and the adjacent happy
+   path, then read the output and screenshots.
+3. **Commit** the verified fix with its test, staging explicit paths:
    `fix(qa): QA-NNN — <short description>`.
-6. **Classify:** verified / best-effort (fix applied, could not fully re-verify, say
+4. **Classify:** verified / best-effort (fix applied, could not fully re-verify, say
    why) / reverted (the fix broke something: revert only this commit, keep the
    test and evidence, mark deferred).
 
