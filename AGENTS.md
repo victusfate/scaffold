@@ -2,7 +2,7 @@
 
 ## Harness capabilities
 
-These instructions support Claude Code, Codex, Cursor, Gemini, pi, and agy.
+These instructions support Claude Code, Codex, Cursor, Antigravity (agy), and pi.
 Use the tools actually exposed by the current client. A named tool below is not
 a guarantee that it is installed. User instructions take precedence over skill
 defaults; infer routine choices from the repository and existing authorization.
@@ -334,7 +334,9 @@ Run `/feature-chain` to execute all phases automatically. Or invoke individually
 4. **TDD** — `/tdd`. Execute `plan.md` one slice at a time: RED → GREEN →
    REFACTOR. When all slices pass, run `/code-refiner` (auto-fix mode —
    parallel correctness + structural review, merged findings applied in one
-   pass, then re-verified to 10/10) before advancing to the review summary.
+   pass, then re-verified to 10/10), then `/qa` when the feature has a
+   user-facing entry point (drives the running app, fixes what breaks, writes
+   `qa-report.md`), before advancing to the review summary.
    Maintain `tdd-log.md` with per-slice status.
 
 **Stop** the chain at any point by saying "stop", "pause", or "just answer".

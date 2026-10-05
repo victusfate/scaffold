@@ -1,0 +1,11 @@
+---
+name: deslop
+description: |
+  Make user-facing writing (READMEs, release notes, PR summaries, UI copy, announcements) sound like a person wrote it, in plain language, and strip filler from engineering docs without dropping any step, constraint, or caveat. Edit mode by default, or list findings only with --detect. Use when asked to "deslop", "make this sound human", "make this readable", or "check this for AI slop".
+license: MIT
+metadata:
+  author: victusfate
+  version: "1.0"
+---
+
+Read and follow the complete skill instructions in [`skills/deslop.md`](../../../skills/deslop.md).

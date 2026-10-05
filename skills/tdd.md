@@ -40,6 +40,10 @@ REFACTOR: Confirm quality scores — only after GREEN, never while RED
 ```
 Rules: one test at a time, only enough code to pass, don't anticipate future tests.
 
+**Unexpected failure:** if a RED test fails for a different reason than the one it
+was written for, or a previously green test breaks, stop the loop and run
+`/investigate` to find the root cause before writing more code.
+
 **The rubric is the generative voice, not a post-hoc judge.** Before writing GREEN code, load the quality rubric:
 
 @../lib/code-quality-rubric.md

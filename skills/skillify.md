@@ -7,7 +7,7 @@
 > and all supported harness forms so downstream installs remain complete.
 
 Turn a completed piece of work into a durable skill: a file other agents
-(Claude, Codex, Gemini, Cursor) can invoke, registered in the routing table and
+(Claude, Codex, Antigravity, Cursor) can invoke, registered in the routing table and
 propagated upstream to `scaffold` so every downstream repo inherits it.
 
 ## Hard rules
@@ -104,7 +104,7 @@ Write five files per skill (the validator requires every form):
    ```
 
 Codex uses the shared `.agents/skills` wrapper above and reads `AGENTS.md`
-directly. Gemini also reads the repository instructions; no Codex-only copy of
+directly. Antigravity also reads the repository instructions; no Codex-only copy of
 the skill body is needed.
 
 Keep `description:` trigger-rich (it's how non-Claude harnesses decide to activate

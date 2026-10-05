@@ -40,11 +40,15 @@ export function jaccard(a: Set<string>, b: Set<string>): number {
   return union === 0 ? 0 : inter / union;
 }
 
+// The leading `---` … `---` block of a markdown file, or null when it has none.
+export function frontmatterBlock(file: string): string | null {
+  return readFileSync(file, 'utf8').match(/^---\n([\s\S]*?)\n---/)?.[1] ?? null;
+}
+
 export function frontmatterDescription(file: string): string | null {
-  const src = readFileSync(file, 'utf8');
-  const m = src.match(/^---\n([\s\S]*?)\n---/);
-  if (!m) return null;
-  const fm = m[1].split('\n');
+  const block = frontmatterBlock(file);
+  if (block === null) return null;
+  const fm = block.split('\n');
   for (let i = 0; i < fm.length; i++) {
     const line = fm[i];
     if (!line.startsWith('description:')) continue;
@@ -53,6 +57,16 @@ export function frontmatterDescription(file: string): string | null {
     const parts: string[] = [];
     for (let j = i + 1; j < fm.length && /^\s+\S/.test(fm[j]); j++) parts.push(fm[j].trim());
     return parts.join(' ');
+  }
+  return null;
+}
+
+// YAML reads `key: a: b` as a nested mapping, so an unquoted (plain) scalar must not
+// contain ": ". Returns the first offending key, or null when the frontmatter is safe.
+export function frontmatterColonInPlainScalar(file: string): string | null {
+  for (const line of (frontmatterBlock(file) ?? '').split('\n')) {
+    const kv = line.match(/^([\w-]+):\s+(.*)$/);
+    if (kv && !/^["'|>]/.test(kv[2]) && kv[2].includes(': ')) return kv[1];
   }
   return null;
 }

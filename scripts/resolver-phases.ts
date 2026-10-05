@@ -2,7 +2,7 @@
 // Each phase takes (rows, ctx) where ctx carries fail/warn and path constants.
 import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { compileCell, anchorSlug, tokens, jaccard, frontmatterDescription, normalizeWhitespace, type Reporter } from './resolver-utils.ts';
+import { compileCell, anchorSlug, tokens, jaccard, frontmatterBlock, frontmatterDescription, frontmatterColonInPlainScalar, normalizeWhitespace, type Reporter } from './resolver-utils.ts';
 import type { ResolverRow } from '../tools/lib/resolver-parse.ts';
 import { compileKeepMatcher } from '../tools/lib/safe-write.ts';
 
@@ -59,7 +59,7 @@ export function phaseBundled(_rows: ResolverRow[], { fail, SKILLS_DIR, skillDirs
       fail('Bundled', `'${slug}' registered as bundled but ${rel(skillMd)} not found on disk`);
       continue;
     }
-    const frontmatter = readFileSync(skillMd, 'utf8').match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '';
+    const frontmatter = frontmatterBlock(skillMd) ?? '';
     const name = frontmatter.match(/^name:\s*(.+?)\s*$/m)?.[1]?.replace(/['"]/g, '');
     if (!name) fail('Bundled', `${rel(skillMd)} missing frontmatter 'name:'`);
     else if (name !== slug)
@@ -182,11 +182,16 @@ export function phaseFrontmatterParity(rows: ResolverRow[], { fail, SKILLS_DIR, 
     if (!existsSync(claudeWrapper)) continue;
     const claudeDesc = normalizeWhitespace(frontmatterDescription(claudeWrapper));
     if (!claudeDesc) { fail('Parity', `'${r.name}' Claude wrapper has no frontmatter description`); continue; }
-    for (const f of [
+    const forms = [
       join(CURSOR_RULES, `${r.name}.mdc`),
       join(ANTIGRAVITY_SKILLS, r.name, 'SKILL.md'),
       join(ANTIGRAVITY_WORKFLOWS, `${r.name}.md`),
-    ]) {
+    ];
+    for (const f of [claudeWrapper, ...forms]) {
+      const key = existsSync(f) ? frontmatterColonInPlainScalar(f) : null;
+      if (key) fail('Frontmatter', `'${r.name}' ${rel(f)}: unquoted '${key}' contains ": " — invalid YAML; rephrase or quote it`);
+    }
+    for (const f of forms) {
       if (!existsSync(f)) continue;
       if (normalizeWhitespace(frontmatterDescription(f)) !== claudeDesc)
         fail('Parity', `'${r.name}' description drift in ${rel(f)} — sync it with the Claude form`);
