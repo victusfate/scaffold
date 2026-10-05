@@ -53,6 +53,7 @@ scripts/agent-loop.test.ts
 scripts/agent-loop.integration.test.ts
 scripts/codex-jsonl.ts
 scripts/queue.test.ts
+scripts/queue-park.test.ts
 scripts/queue-console.ts
 scripts/queue-console.template.html
 scripts/queue-console.test.ts
