@@ -27,6 +27,8 @@ has "$S" 'MUST|NEVER'                           "keeps normative rules intact"
 has "$S" 'terms? of art'                        "technical terms of art are not slop"
 has "$S" 'plain (language|words)'               "plain-language guidance for user-facing text"
 has "$S" 'nothing (was )?lost|still present'    "self-check confirms no technical content lost"
+has "$S" 'house style'                          "keeps the document's existing formatting conventions"
+has "$S" 'deliberate.*(phrase|line|tagline)'    "voice beats pattern rules for deliberate phrasing"
 has skills/create-pr.md '/deslop'               "create-pr runs /deslop on title and body"
 
 finish
