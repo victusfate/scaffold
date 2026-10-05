@@ -47,7 +47,7 @@ RUN_INTEGRATION=1 node <path/to/test-integration>
 
 Each round:
 
-1. **Diagnose** — read the failing assertions carefully. Read the source file(s) they exercise. Identify the root cause (wrong value written, missing branch, incorrect path, etc.).
+1. **Diagnose** — follow `/investigate` Phases 1–3: read the failing assertions carefully, read the source file(s) they exercise, and identify the root cause (wrong value written, missing branch, incorrect path, etc.) before changing anything.
 
 2. **Scope check** — if the fix requires more than ~30 lines of change across all files, or touches something architecturally significant, stop and report the diagnosis to the user instead of attempting a fix. Do not guess at large changes.
 
@@ -208,6 +208,12 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 ```
 
 Keep bullets factual: what changed and why, not how you built it.
+
+**Prose check:** run `/deslop` in edit mode on the drafted title and the body's
+prose (Summary bullets, Test plan items). Keep the template headings, the gate and
+Quality Scores tables, and the session URL exactly as drafted. Use the edited
+title and body in Step 7. The sections appended below (Auto-corrections,
+Callable-unit checklist) are checklists and stay as written.
 
 If auto-corrections were applied in Step 2, append this section:
 

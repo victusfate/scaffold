@@ -114,12 +114,27 @@ export const DEFAULT_CONFIG: QueueConfig = {
 };
 
 const MS_PER_MIN = 60000;
+const ISO_DATE_LEN = 'YYYY-MM-DD'.length;
 const ID_PAD = 3;
 
 const MARK: Record<TaskStatus, string> = { pending: ' ', active: '>', done: 'x', failed: '!' };
 const STATUS_OF: Record<string, TaskStatus> = {
-  ' ': 'pending', '': 'pending', '>': 'active', x: 'done', X: 'done', '!': 'failed',
+  ' ': 'pending', '': 'pending', '>': 'active', x: 'done', X: 'done', '!': 'failed', '~': 'pending',
 };
+
+/**
+ * A PARKED task: pending, but real work already exists on its recorded branch (a paused lane, a
+ * partial merge). Rendered `[~]` so "has work, nobody on it" reads apart from "never started";
+ * the branch (and the note's resume line) is where the next lane picks it up. Not a separate
+ * stored status — it is derived from pending + branch, so the store schema is unchanged.
+ */
+export function isParked(t: Task): boolean {
+  return t.status === 'pending' && !!t.branch;
+}
+
+function markOf(t: Task): string {
+  return isParked(t) ? '~' : MARK[t.status];
+}
 
 /** A fresh task with all optional fields empty. */
 export function newTask(id: string, title: string): Task {
@@ -133,7 +148,7 @@ export function newTask(id: string, title: string): Task {
 
 // ---------------------------------------------------------------- parse
 
-const TASK_RE = /^- \[([ >xX!]?)\]\s+(.*)$/;
+const TASK_RE = /^- \[([ >xX!~]?)\]\s+(.*)$/;
 const FIELD_RE = /^\s+[-*]\s+(\w+):\s*(.*)$/;
 const ID_TITLE_RE = /^(task-\d+)\s+[—:-]+\s+(.*)$/;
 
@@ -343,8 +358,8 @@ function fieldLines(t: Task): string[] {
 }
 
 const HEADER = [
-  'Order = priority (top first). Checkboxes: `[ ]` pending · `[>]` active · '
-    + '`[x]` done · `[!]` failed.',
+  'Order = priority (top first). Checkboxes: `[ ]` pending · `[~]` parked (work exists on '
+    + 'its branch, no lane on it) · `[>]` active · `[x]` done · `[!]` failed.',
   'This file is rendered from the queue store (queue.db). Edit it freely to '
     + 'reprioritize, add, or remove work, then run `node scripts/queue.ts import` to '
     + 'apply it; until then the queue refuses to overwrite your edits. Task lines and '
@@ -375,7 +390,7 @@ export function serializeQueue(q: Queue): string {
     ...HEADER, '',
   ];
   for (const t of tasks) {
-    lines.push(`- [${MARK[t.status]}] ${t.id} — ${t.title}`, ...fieldLines(t));
+    lines.push(`- [${markOf(t)}] ${t.id} — ${t.title}`, ...fieldLines(t));
   }
   lines.push('');
   return lines.join('\n');
@@ -509,6 +524,24 @@ export function unclaimTask(q: Queue, id: string, nowIso: string): Queue {
   return mapTask(selectDelivery(q, id), id, t => ({
     ...t, status: 'pending', owner: null, startedAt: null, elapsedSecs: bankSession(t, nowIso),
   }));
+}
+
+/**
+ * Park a task whose lane stopped with work in hand: it returns to pending (owner and lease cleared,
+ * elapsed time banked) but keeps the BRANCH the work lives on, plus a dated resume line in the note,
+ * so it renders `[~]` and the next lane resumes there instead of starting over.
+ */
+export function parkTask(q: Queue, id: string, branch: string, resume: string, nowIso: string): Queue {
+  if (!branch) return q;
+  return mapTask(q, id, t => {
+    const banked = t.status === 'active' ? bankSession(t, nowIso) : t.elapsedSecs;
+    const line = `parked ${nowIso.slice(0, ISO_DATE_LEN)}: ${resume || 'resume on ' + branch}`;
+    return {
+      ...t, status: t.status === 'active' || t.status === 'pending' ? 'pending' : t.status,
+      owner: null, startedAt: null, elapsedSecs: banked, branch,
+      note: t.note ? `${t.note} | ${line}` : line,
+    };
+  });
 }
 
 /**

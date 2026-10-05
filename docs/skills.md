@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/loop`, `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/modern-web`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`.
+Skills can be invoked individually: `/loop`, `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/modern-web`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`, `/deslop`, `/investigate`, `/qa`.
 
 In Codex, use `$skill-name` or `/skills` to select these workflows from `.agents/skills`. See [Codex support](codex.md) for setup and client-specific behavior.
 
@@ -68,6 +68,9 @@ tools/
     jev-typesafe/SKILL.md     # Add Jev (System 1) judgments to pi via OpenRouter: install pi-typesafe, drop the jev-openrouter.ts extension, and route micro-decisions to typesafe/jev-1.13 through jev_evaluate
     queue/SKILL.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
     voice-chat/SKILL.md       # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
+    deslop/SKILL.md           # Rewrite user-facing prose in plain language that keeps the author's voice, and strip filler from engineering docs without losing any technical content; or list findings only
+    investigate/SKILL.md      # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
+    qa/SKILL.md               # Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report
     improve/SKILL.md          # (bundled) Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
@@ -107,6 +110,9 @@ tools/
     jev-typesafe.mdc     # mirrors jev-typesafe for Cursor
     queue.mdc            # mirrors queue for Cursor
     voice-chat.mdc       # mirrors voice-chat for Cursor
+    deslop.mdc           # mirrors deslop for Cursor
+    investigate.mdc      # mirrors investigate for Cursor
+    qa.mdc               # mirrors qa for Cursor
 .agents/
   skills/
     loop/SKILL.md             # Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver
@@ -138,6 +144,9 @@ tools/
     jev-typesafe/SKILL.md     # Add Jev (System 1) judgments to pi via OpenRouter: install pi-typesafe, drop the jev-openrouter.ts extension, and route micro-decisions to typesafe/jev-1.13 through jev_evaluate
     queue/SKILL.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
     voice-chat/SKILL.md       # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
+    deslop/SKILL.md           # Rewrite user-facing prose in plain language that keeps the author's voice, and strip filler from engineering docs without losing any technical content; or list findings only
+    investigate/SKILL.md      # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
+    qa/SKILL.md               # Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report
     improve/SKILL.md              # bridge to the bundled advisor and its references
 .agent/
   rules/
@@ -172,6 +181,9 @@ tools/
     jev-typesafe.md     # Add Jev (System 1) judgments to pi via OpenRouter: install pi-typesafe, drop the jev-openrouter.ts extension, and route micro-decisions to typesafe/jev-1.13 through jev_evaluate
     queue.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
     voice-chat.md       # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
+    deslop.md           # Rewrite user-facing prose in plain language that keeps the author's voice, and strip filler from engineering docs without losing any technical content; or list findings only
+    investigate.md      # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
+    qa.md               # Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report
 scripts/
   check-resolvable.ts            # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-skills-doc.ts           # regenerate docs/skills.md skill sections from RESOLVER.md

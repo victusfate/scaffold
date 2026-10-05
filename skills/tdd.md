@@ -25,8 +25,9 @@ Tests written in bulk verify imagined behavior and become insensitive to real ch
 ### Workflow per slice
 
 **Before writing any code:**
-- Confirm interface changes with the user
-- Confirm which behaviors to test (prioritize critical paths)
+- Decide the interface changes and which behaviors to test (prioritize critical
+  paths). Granularity was confirmed once at plan time; surface an interface
+  change to the user only if it departs from `plan.md`.
 - List behaviors to test — not implementation steps
 
 **Tracer bullet:** Write ONE test for ONE behavior → RED → minimal code → GREEN. Proves the path works end-to-end.
@@ -38,6 +39,10 @@ GREEN:    Write minimal code to pass → confirm it passes
 REFACTOR: Confirm quality scores — only after GREEN, never while RED
 ```
 Rules: one test at a time, only enough code to pass, don't anticipate future tests.
+
+**Unexpected failure:** if a RED test fails for a different reason than the one it
+was written for, or a previously green test breaks, stop the loop and run
+`/investigate` to find the root cause before writing more code.
 
 **The rubric is the generative voice, not a post-hoc judge.** Before writing GREEN code, load the quality rubric:
 
@@ -89,7 +94,7 @@ Append to `./docs/<feature-slug>/tdd-log.md`:
 
 ### Integration tests (optional, not always run)
 
-Unit and acceptance tests (`tools/<tool>/test`, `scripts/*.test.*`) cover behavior through public interfaces and run on every commit. Integration tests cover end-to-end consumer flows and live in a separate file:
+Unit and acceptance tests (`tools/<tool>/test`, `scripts/*.test.*`) cover behavior through public interfaces and run in `npm test`. Integration tests cover end-to-end consumer flows and live in a separate file:
 
 ```
 tools/<tool>/test-integration   # or scripts/<script>.integration.test.*
@@ -107,7 +112,7 @@ They are not required for every feature, but write one when:
 - Keep them independent and repeatable (no shared state, no network unless the feature requires it)
 - Report pass/fail in the same format as the acceptance test so output is uniform
 
-Add a `test-integration` entry to `tool.yaml` when one exists. The pre-commit hook runs only `test`; integration tests run manually or in a dedicated CI job.
+Add a `test-integration` entry to `tool.yaml` when one exists. `npm test` runs the tool tests listed in `package.json` — add a new tool's `test` there; integration tests run via `npm run test:integration` (add a new `test-integration` there too) or in a dedicated CI job.
 
 ### When all slices pass
 

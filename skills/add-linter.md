@@ -141,11 +141,11 @@ Ask: "Commit the added linter files? (y/n)"
 
 If yes:
 ```bash
-git add .
+git add <each written config, workflow file, package.json, package-lock.json>  # never *.bak / *.scaffold-new
 git commit -m "feat: add scaffold linter config for [languages]"
 ```
 
-If no, remind the user the files are staged and ready to commit manually.
+If no, list the written files so the user can stage and commit them manually.
 
 ## Notes
 

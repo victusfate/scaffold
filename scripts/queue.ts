@@ -19,6 +19,7 @@
 //   node scripts/queue.ts top <id> | remove <id>
 //   node scripts/queue.ts move <id> <pos>            # reorder to a 1-based position (as in `list`)
 //   node scripts/queue.ts hold <id> | unhold <id>    # park a task (drain skips it) | release it
+//   node scripts/queue.ts park <id> --branch b [--resume "next step"]  # lane stopped with work: [~]
 //   node scripts/queue.ts requeue <id>               # revive a failed task (pending, failures cleared)
 //   node scripts/queue.ts start | stop               # run/pause the worker
 //   node scripts/queue.ts interval 6m                # edit the wake interval
@@ -48,7 +49,7 @@ import {
   render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask,
-  holdTask, unclaimTask,
+  holdTask, unclaimTask, parkTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   deliveryAllows, selectDelivery,
@@ -56,6 +57,7 @@ import {
 } from './queue-model.ts';
 import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
 import { cmdLane } from './queue-lanes.ts';
+import { cmdAdvance } from './queue-delivery.ts';
 import { cmdWorktree } from './queue-worktrees.ts';
 
 // ---------------------------------------------------------------- flags
@@ -378,27 +380,18 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       save(unclaimTask(q, id, now())); log(`release ${id} by ${task.owner}`);
       console.log(`released ${id}; remaining work is pending`); return 0;
     }
+    case 'park': {
+      const branch = f.flags.get('branch') ?? '';
+      if (!needId() || !branch) { console.error('park: task id and --branch required'); return 1; }
+      save(parkTask(q, id, branch, f.flags.get('resume') ?? '', now())); log(`park ${id} on ${branch}`);
+      console.log(`parked ${id} on ${branch}; resume there`); return 0;
+    }
     case 'begin':
       if (!needId()) { console.error('begin: unknown task id'); return 1; }
       if (!deliveryAllows(q, id)) { console.error('begin: current delivery cycle must finish first'); return 1; }
       save(beginTask(q, id, now(), q.tasks.find(t => t.id === id)!.owner));
       console.log(`${id} → active`); return 0;
-    case 'advance': {
-      const pr = f.flags.get('pr') ?? '';
-      const branch = f.flags.get('branch') ?? '';
-      const task = q.tasks.find(t => t.id === id);
-      if (!id || q.config.deliveryTask !== id || !q.config.deliveryAccepted || (task && task.status !== 'done')
-          || q.tasks.some(t => t.status === 'active')
-          || !/^https:\/\/[^\s]+\/pull\/\d+$/.test(pr) || !branch.trim()) {
-        console.error('advance: requires selected completed task, no active claims, --pr <merged-pr-url> and --branch <fresh-working-branch>');
-        return 1;
-      }
-      const advanced = setConfig(q, { deliveryTask: '', deliveryAccepted: false });
-      save(advanced);
-      log(`advance ${id}: root attests authorized validated merge ${pr}; fresh branch ${branch}`);
-      console.log(`delivery acknowledged for ${id}; external merge/validation evidence is root-owned${drainKick(advanced)}`);
-      return 0;
-    }
+    case 'advance': return cmdAdvance(q, id, f.flags.get('pr') ?? '', f.flags.get('branch') ?? '');
     case 'done': return cmdDone(q, id, f.bools.has('skip-validate'));
     case 'fail': {
       if (!needId()) { console.error('fail: unknown task id'); return 1; }
@@ -488,7 +481,7 @@ function readStdin(): string[] {
   try { return readFileSync(0, 'utf8').split('\n'); } catch { return []; }
 }
 function cleanItem(line: string): string {
-  return line.replace(/^\s*[-*]\s*(\[[ >xX!]?\]\s*)?/, '').trim();
+  return line.replace(/^\s*[-*]\s*(\[[ >xX!~]?\]\s*)?/, '').trim();
 }
 
 

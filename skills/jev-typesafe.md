@@ -33,9 +33,9 @@ pi install npm:pi-typesafe
 #    An OpenRouter-provider pi agent already has it; otherwise:
 echo 'export OPENROUTER_API_KEY="sk-or-v1-xxxxxxxx"' >> ~/.bashrc
 
-# 3. Drop the extension into the personal extensions dir (full file below)
+# 3. Drop the extension into the personal extensions dir (source: docs/jev-openrouter-setup.md)
 mkdir -p ~/.pi/agent/extensions
-$EDITOR ~/.pi/agent/extensions/jev-openrouter.ts   # paste the file from this skill
+$EDITOR ~/.pi/agent/extensions/jev-openrouter.ts   # paste the extension source from docs/jev-openrouter-setup.md
 
 # 4. One-time loadability fixes (root causes in the setup doc's Troubleshooting):
 ln -s npm/node_modules ~/.pi/agent/node_modules          # expose pi install's node_modules to the extensions dir
@@ -56,7 +56,7 @@ Verify with a smoke test outside pi (mirrors what the tool does):
 
 ```bash
 node -e '
-import("/home/messel/.pi/agent/npm/node_modules/pi-typesafe/dist/index.js").then(async ({ createTypeSafe }) => {
+import(process.env.HOME + "/.pi/agent/npm/node_modules/pi-typesafe/dist/index.js").then(async ({ createTypeSafe }) => {
   const { readFileSync } = await import("node:fs");
   const stored = JSON.parse(readFileSync(process.env.HOME + "/.pi/agent/auth.json", "utf8"));
   const key = process.env.OPENROUTER_API_KEY || stored?.openrouter?.key;
@@ -78,9 +78,9 @@ Expected: answers with probabilities (e.g. `urgent: P(yes) = 0.99`), ~300–400 
 
 ## The extension file
 
-`~/.pi/agent/extensions/jev-openrouter.ts` — keep byte-identical with
-[`docs/jev-openrouter-setup.md`](../docs/jev-openrouter-setup.md) (the doc
-is the copy-paste source; this skill references it):
+`~/.pi/agent/extensions/jev-openrouter.ts` — copy it byte-identical from
+[`docs/jev-openrouter-setup.md`](../docs/jev-openrouter-setup.md), the single
+source for the extension.
 
 Read and follow the complete setup runbook in
 [`docs/jev-openrouter-setup.md`](../docs/jev-openrouter-setup.md), which
