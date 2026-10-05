@@ -464,7 +464,7 @@ function readStdin(): string[] {
   try { return readFileSync(0, 'utf8').split('\n'); } catch { return []; }
 }
 function cleanItem(line: string): string {
-  return line.replace(/^\s*[-*]\s*(\[[ >xX!]?\]\s*)?/, '').trim();
+  return line.replace(/^\s*[-*]\s*(\[[ >xX!~]?\]\s*)?/, '').trim();
 }
 
 
