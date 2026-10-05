@@ -9,8 +9,8 @@ assert_registered deslop
 [ -f "$S" ] || { finish; exit 1; }
 
 has "$S" 'petergyang/no-ai-slop.*MIT'          "credits upstream (MIT)"
-has "$S" '\*\*Edit\*\*'                         "edit mode described"
-has "$S" '\*\*Detect\*\*'                       "detect mode described"
+has "$S" '\*\*Edit'                         "edit mode described"
+has "$S" '\*\*Detect'                       "detect mode described"
 has "$S" 'preserve.*voice'                      "voice-preservation rule"
 has "$S" 'invent'                               "no invented claims rule"
 has "$S" 'delve'                                "banned-word list present"

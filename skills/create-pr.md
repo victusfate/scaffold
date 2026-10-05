@@ -209,6 +209,11 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 
 Keep bullets factual: what changed and why, not how you built it.
 
+**Prose check:** run `/deslop` in edit mode on the drafted title and the body's
+prose (Summary bullets, Test plan items). Keep the template headings, the gate and
+Quality Scores tables, and the session URL exactly as drafted. Use the edited
+title and body in Step 7.
+
 If auto-corrections were applied in Step 2, append this section:
 
 ```
