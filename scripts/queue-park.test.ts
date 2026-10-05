@@ -3,6 +3,7 @@
 // stopped with work in hand returns to pending but keeps its branch, and renders `[~]`.
 
 import { parseQueue, serializeQueue, parkTask, isParked, type Queue } from './queue-model.ts';
+import { parse } from './queue-cli-args.ts';
 
 let passed = 0, failed = 0;
 function assert(label: string, cond: boolean, detail = ''): void {
@@ -28,6 +29,14 @@ const NOW = '2026-08-12T20:00:00.000Z';
   assert('park without a branch is a no-op', parkTask(q, 'task-002', '', 'x', NOW).tasks[1].branch === null);
   const done = parseQueue('- [x] task-003 — finished\n');
   assert('park never reopens a done task', parkTask(done, 'task-003', 'b', '', NOW).tasks[0].status === 'done');
+}
+
+// The CLI hands `park <id> --branch b --resume "step"` its values (they were silently dropped before).
+{
+  const f = parse(['task-001', '--branch', 'feat/x', '--resume', 'slice 2 next']);
+  assert('park --branch reaches the command', f.flags.get('branch') === 'feat/x');
+  assert('park --resume reaches the command', f.flags.get('resume') === 'slice 2 next');
+  assert('the id stays positional', f.positionals[0] === 'task-001');
 }
 
 console.error(`\nqueue-park.test: ${passed} passed, ${failed} failed`);
