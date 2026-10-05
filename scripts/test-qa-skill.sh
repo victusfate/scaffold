@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Acceptance test for the /qa live-app QA skill and its feature-chain wiring.
 set -uo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/.." || exit 1
 . scripts/lib/skill-test.sh
 S=skills/qa.md
 

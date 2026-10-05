@@ -2,7 +2,7 @@
 
 [![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?style=for-the-badge&logo=github)](https://github.com/victusfate/scaffold/generate)
 
-An opinionated project scaffold for building software with AI coding agents. Drop it into any new project and your agent follows the same design → PRD → TDD workflow, with quality gates that score the code, whether you use Claude Code, Codex, Cursor, Antigravity, or pi.dev.
+An opinionated, cross-harness project scaffold for building software with AI coding agents. Drop it into any new project and your agent follows the same design → PRD → TDD workflow, with quality gates that score the code, whether you use Claude Code, Codex, Cursor, Antigravity, or pi.dev.
 
 ## Usage
 

@@ -50,6 +50,11 @@ keep the fact and drop only the filler around it.
 "seamless roaming" and similar terms with a specific technical meaning stay. A
 word on the banned list is only banned when it is decoration.
 
+**Keep the project's own key terms.** Its name, positioning words, and vocabulary
+it uses to describe itself ("cross-harness", "scaffold", "feature chain") are not
+jargon to cut, even in an intro where a newcomer won't know them yet. Keep the
+term; if it needs explaining, add a few plain words next to it.
+
 ## Scope guard
 
 Only prose changes. Leave untouched: fenced code blocks, inline code, identifiers,
