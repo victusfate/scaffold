@@ -78,9 +78,9 @@ weakened during GREEN, which the correctness track catches.
 
 **Commit the refiner's fixes** (`refactor(<feature-slug>): code-refiner fixes`,
 explicit paths) so the tree is clean, then **run `/qa`** when the feature has a
-user-facing entry point (UI route, API endpoint, CLI command, job). It starts the app, drives the changed entry points,
-fixes in-tier issues with a regression test each, and writes
-`docs/<feature-slug>/qa-report.md`. This is the reachability check from AGENTS.md
+user-facing entry point (UI route, API endpoint, CLI command, job). It starts the
+app, drives the changed entry points, fixes in-tier issues with a regression test
+each, and writes `docs/<feature-slug>/qa-report.md`. This is the reachability check from AGENTS.md
 *Veracity*: tests prove units, `/qa` proves the user can get to them. Skip it only
 when the change has no runtime entry point, and record the reason for Phase 4.
 Then proceed to Phase 4.
