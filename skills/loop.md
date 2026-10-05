@@ -55,6 +55,15 @@ Include these execution instructions in the agent prompt:
   changed, stop the loop and report before editing.
 - Work continuously during each run; the interval restarts an ended run, not
   permission to stop after one small action while useful work remains.
+- **Lane reconcile, every run, before dispatching.** Compare three views of "what is being
+  worked": the driver's live subagent handles (the client's agent list), the queue's `[>]`
+  active tasks, and `git worktree list`. A worker that replied and went idle is NOT a running
+  lane. Fix each mismatch on the spot: an active task with no running worker is either resumed
+  (message the worker its next step) or parked with
+  `node scripts/queue.ts park <id> --branch <b> --resume "<next step>"` (renders `[~]`: work
+  exists, nobody on it); a running worker with no `[>]` task is claimed or stopped; a worktree
+  with no task and no worker is merged, parked, or cleaned. The `[>]` count must equal the live
+  worker count when the run ends.
 - Reconcile only driver-owned handles and current-session worktree lanes before
   spawning. Do not inspect other agent sessions for cleanup, duplicate surviving
   jobs, or reclaim live leases. Do not start a second

@@ -18,6 +18,7 @@
 //   node scripts/queue.ts top <id> | remove <id>
 //   node scripts/queue.ts move <id> <pos>            # reorder to a 1-based position (as in `list`)
 //   node scripts/queue.ts hold <id> | unhold <id>    # park a task (drain skips it) | release it
+//   node scripts/queue.ts park <id> --branch b [--resume "next step"]  # lane stopped with work: [~]
 //   node scripts/queue.ts requeue <id>               # revive a failed task (pending, failures cleared)
 //   node scripts/queue.ts start | stop               # run/pause the worker
 //   node scripts/queue.ts interval 6m                # edit the wake interval
@@ -47,7 +48,7 @@ import {
   render as renderModel,
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask,
-  holdTask, unclaimTask,
+  holdTask, unclaimTask, parkTask,
   nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   type Queue, type Task,
@@ -363,6 +364,12 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       }
       save(unclaimTask(q, id, now())); log(`release ${id} by ${task.owner}`);
       console.log(`released ${id}; remaining work is pending`); return 0;
+    }
+    case 'park': {
+      const branch = f.flags.get('branch') ?? '';
+      if (!needId() || !branch) { console.error('park: task id and --branch required'); return 1; }
+      save(parkTask(q, id, branch, f.flags.get('resume') ?? '', now())); log(`park ${id} on ${branch}`);
+      console.log(`parked ${id} on ${branch}; resume there`); return 0;
     }
     case 'begin':
       if (!needId()) { console.error('begin: unknown task id'); return 1; }
