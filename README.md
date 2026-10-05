@@ -2,7 +2,7 @@
 
 [![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?style=for-the-badge&logo=github)](https://github.com/victusfate/scaffold/generate)
 
-An opinionated, cross-harness project scaffold for AI-assisted development. Drop it into any new project to get a consistent design → PRD → TDD workflow with scored quality gates, whether you're using Claude Code, Codex, Cursor, Gemini CLI, or pi.dev.
+An opinionated, cross-harness project scaffold for AI-assisted development. Drop it into any new project to get a consistent design → PRD → TDD workflow with scored quality gates, whether you're using Claude Code, Codex, Cursor, Antigravity, or pi.dev.
 
 ## Usage
 
@@ -89,7 +89,6 @@ is itself a `[Clarity/minor]` violation.
 | Claude Code | `CLAUDE.md` → imports `AGENTS.md`; `/skill-name` invokes skills |
 | Cursor | `.cursor/rules/*.mdc` — description-driven activation |
 | Google Antigravity | `GEMINI.md` + `AGENTS.md`; `.agents/skills/` (lazy-loaded) + `.agent/workflows/` (slash commands) |
-| Gemini CLI | `GEMINI.md` → references `AGENTS.md` |
 | OpenAI Codex | `AGENTS.md` directly; `.agents/skills/` via `$skill-name` or `/skills` |
 | pi.dev | `AGENTS.md` directly; `.pi/skills/<name>/SKILL.md` (lazy-loaded) |
 

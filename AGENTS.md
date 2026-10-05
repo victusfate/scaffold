@@ -2,7 +2,7 @@
 
 ## Harness capabilities
 
-These instructions support Claude Code, Codex, Cursor, Gemini, pi, and agy.
+These instructions support Claude Code, Codex, Cursor, Antigravity (agy), and pi.
 Use the tools actually exposed by the current client. A named tool below is not
 a guarantee that it is installed. User instructions take precedence over skill
 defaults; infer routine choices from the repository and existing authorization.
