@@ -2,7 +2,7 @@
 
 [![Use this template](https://img.shields.io/badge/Use%20this%20template-2ea44f?style=for-the-badge&logo=github)](https://github.com/victusfate/scaffold/generate)
 
-An opinionated, cross-harness project scaffold for AI-assisted development. Drop it into any new project to get a consistent design → PRD → TDD workflow with scored quality gates, whether you're using Claude Code, Codex, Cursor, Gemini CLI, or pi.dev.
+An opinionated, cross-harness project scaffold for building software with AI coding agents. Drop it into any new project and your agent follows the same design → PRD → TDD workflow, with quality gates that score the code, whether you use Claude Code, Codex, Cursor, Antigravity, or pi.dev.
 
 ## Usage
 
@@ -18,13 +18,13 @@ gh repo clone victusfate/my-new-project
 
 - **Single source of truth** — `AGENTS.md` holds all agent instructions. `CLAUDE.md` imports it; `GEMINI.md` references it; `.cursor/rules/agents.mdc` points to it. No duplication.
 - **Careful before fast** — features start with a structured design Q&A (`grill-with-docs`) that locks in vocabulary and decisions before any code is written.
-- **Automatic flow** — once Q&A is done, the chain runs to completion (PRD → TDD → review gate) without manual handoffs.
-- **Minimal viable diff** — agents are instructed to make the smallest change that achieves the goal, no opportunistic refactors.
-- **Quality is scored, not vibed** — every file is graded on a four-dimension rubric with cited, weighted deductions; the chain won't open a PR until each changed file scores 10/10.
+- **Automatic flow** — once the Q&A is done, the rest runs on its own (PRD → TDD → review gate), with no handoffs for you to manage.
+- **Minimum viable diff** — agents are told to make the smallest change that does the job and skip opportunistic refactors.
+- **Quality is scored, not vibed** — every changed file is graded on a four-dimension rubric with cited, weighted deductions, and the chain won't open a PR until each one scores 10/10.
 
 ## Workflow
 
-Start a feature by describing what you want to build. The `feature-chain` skill fires automatically and runs four phases:
+Start a feature by telling your agent what you want to build. The `feature-chain` skill picks it up and runs four phases:
 
 ```
 grill-with-docs → to-prd → tdd → review
@@ -34,7 +34,7 @@ grill-with-docs → to-prd → tdd → review
 1. **grill-with-docs** — Agent interviews you one question at a time, sharpens terminology, stress-tests against the codebase, and produces `./docs/<slug>/design.md` with a canonical vocabulary and Mermaid/ASCII diagrams as structure becomes clear.
 2. **to-prd** — Synthesizes the conversation and codebase into `./docs/<slug>/prd.md` automatically. No re-interviewing.
 3. **tdd** — Derives `plan.md` from the PRD, then executes RED → GREEN → REFACTOR one vertical slice at a time, scoring each slice against the quality rubric as it goes. Commits per slice.
-4. **Review** — Once the slices pass, `simplify` brings every changed file to 10/10 on all four rubric dimensions, then the chain presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
+4. **Review** — Once the slices pass, `simplify` brings every changed file to 10/10 on all four rubric dimensions, and `qa` runs the app through the changed entry points and fixes what breaks. Then the chain shows you a summary of what was built, which tests pass, and any departures from the plan, and waits for your review before merging.
 
 Skills can also be invoked individually. See [`docs/skills.md`](docs/skills.md) for the full skill list and repo layout.
 
@@ -47,10 +47,10 @@ skill that scores code. Each dimension starts at 10 and every deduction must cit
 a `filename:line` (`Score = 10 − Σ(violation weights)`), so a score is never a
 vibe.
 
-The rubric is woven through the chain, not bolted on at the end:
+The rubric is used at three points in the chain:
 
-- **tdd** loads the rubric as the *generative voice* — code that would violate it
-  is never written, and REFACTOR is a confirmation pass.
+- **tdd** loads the rubric before writing code — code that would violate it isn't
+  written in the first place, and REFACTOR only confirms the scores.
 - **`/simplify`** scores the changed files once the slices pass
   (auto-fix in the chain, review mode standalone). All files must reach 10/10
   before a PR is opened, and `create-pr` re-runs it as a gate.
@@ -89,7 +89,6 @@ is itself a `[Clarity/minor]` violation.
 | Claude Code | `CLAUDE.md` → imports `AGENTS.md`; `/skill-name` invokes skills |
 | Cursor | `.cursor/rules/*.mdc` — description-driven activation |
 | Google Antigravity | `GEMINI.md` + `AGENTS.md`; `.agents/skills/` (lazy-loaded) + `.agent/workflows/` (slash commands) |
-| Gemini CLI | `GEMINI.md` → references `AGENTS.md` |
 | OpenAI Codex | `AGENTS.md` directly; `.agents/skills/` via `$skill-name` or `/skills` |
 | pi.dev | `AGENTS.md` directly; `.pi/skills/<name>/SKILL.md` (lazy-loaded) |
 
@@ -386,6 +385,14 @@ No manual steps needed day-to-day:
 ## Credits
 
 The `grill-with-docs`, `to-prd`, and `tdd` skills are adapted from [Matt Pocock's skills repo](https://github.com/mattpocock/skills/tree/main/skills/engineering). The core workflow — careful design Q&A → PRD → vertical-slice TDD — is his.
+
+Other skills adapted from MIT-licensed projects:
+
+- `qa` — [garrytan/gstack](https://github.com/garrytan/gstack) (`qa`)
+- `investigate` — [obra/superpowers](https://github.com/obra/superpowers) (`systematic-debugging`, `verification-before-completion`)
+- `deslop` — [petergyang/no-ai-slop](https://github.com/petergyang/no-ai-slop)
+- `ponytail` — [DietrichGebert/ponytail](https://github.com/DietrichGebert/ponytail)
+- `improve` — [shadcn/improve](https://github.com/shadcn/improve)
 
 ## License
 

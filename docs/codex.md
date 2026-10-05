@@ -1,6 +1,6 @@
 # Codex support
 
-Scaffold supports Codex alongside Claude Code, Cursor, Gemini, pi, and agy.
+Scaffold supports Codex alongside Claude Code, Cursor, Antigravity (agy), and pi.
 The shared development workflow is design → PRD → TDD → review. Codex reads
 `AGENTS.md` directly and discovers `.agents/skills/<name>/SKILL.md`; each wrapper
 links to its canonical body in `skills/`. See the official

@@ -2,15 +2,6 @@
 > plugin or package (Claude Code, agy, Codex, pi), that is the primary path; this skill routes to
 > it and is the fallback everywhere else (Cursor) via one npm CLI.
 
----
-name: modern-web
-description: Use Google Chrome's Modern Web Guidance before writing HTML/CSS/client-side JS — prefer the harness's native modern-web-guidance plugin or package (Claude Code, agy, Codex, pi); otherwise search, retrieve, and verify against the guides via the npm CLI
-license: MIT
----
-
-> **Note:** The frontmatter above is for pi/Agent Skills discovery. The skill
-> instructions follow and are identical across harnesses.
-
 # Modern Web Guidance
 
 [Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance) is a

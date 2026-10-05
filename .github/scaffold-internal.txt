@@ -50,6 +50,7 @@ bin/sync
 
 # Scaffold's own dev/test scripts (compute-bump ships — create-pr skill depends on it)
 scripts/test-*.sh
+scripts/lib/skill-test.sh
 
 # Scaffold-internal tooling (not part of the consumer payload)
 tools/README.md
