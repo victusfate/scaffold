@@ -111,6 +111,10 @@ in order to, going forward, let's dive in.
 
 ## Patterns to cut
 
+The patterns below are defaults, not overrides. A deliberate phrase in the
+writer's voice (a tagline, a joke, a punchy heading like "scored, not vibed")
+stays even when it matches a pattern; cut only the ones that read as autopilot.
+
 - **Binary contrasts.** "It's not X, it's Y." / "Not just X but Y." → state Y.
 - **Throat-clearing openers.** "Here's the thing", "Let me be clear" → cut.
 - **Faux-insight setups.** "What most people miss", "Here's what nobody tells you" → make the claim.
@@ -123,7 +127,12 @@ in order to, going forward, let's dive in.
 - **Synonym cycling.** Repeat the right word; don't rotate agent/assistant/tool for variety.
 - **Kickers and recaps.** Delete a closing aphorism or "In conclusion…" paragraph; end on the last concrete point or next action.
 - **Formatting slop.** Emoji headings, bold scattered mid-sentence, bullets that should be two sentences, headers over two-line sections.
-- **Em dashes.** None in short copy; one or two in long text when they beat a comma or period.
+- **Em dashes.** None in short copy; one or two in long text when they beat a comma or period. A dash used consistently as a
+  list-label separator ("**Label** — text") is house style, not slop.
+
+**Keep house style.** Match the document's existing conventions: list-label
+style, heading case, bullet punctuation, spelling. Never change a convention in one
+section and not the rest; if a convention itself is the problem, flag it instead.
 
 ## Workflow
 
