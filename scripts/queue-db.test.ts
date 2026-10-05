@@ -9,6 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { load, save, dbFile } from './queue-io.ts';
 import { addTask, removeTask, parseQueue, newTask } from './queue-model.ts';
+import { withStore, setMeta, getMeta } from './queue-db.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'queue-db-'));
 const file = join(dir, 'queue.md');
@@ -32,6 +33,35 @@ try {
   assert.throws(() => save(dup), /duplicate task id task-001/);
   assert.deepEqual(load().tasks, loaded.tasks, 'store unchanged after a rejected save');
   assert.equal(readFileSync(file, 'utf8'), before, 'view unchanged after a rejected save');
+
+  // Retrying acquisition must never replay a transaction callback or its effects.
+  let calls = 0, effects = 0;
+  const busy = Object.assign(new Error('database is locked'), { errcode: 5 });
+  assert.throws(() => withStore(dbFile(), (db, fresh, defer) => {
+    calls++;
+    setMeta(db, 'uncommitted', 'must roll back');
+    defer(() => { effects++; });
+    throw busy;
+  }), error => error === busy);
+  assert.equal(calls, 1, 'a callback SQLITE_BUSY is propagated without replay');
+  assert.equal(effects, 0, 'rollback never executes deferred effects');
+  assert.equal(withStore(dbFile(), db => getMeta(db, 'uncommitted')), null);
+  assert.equal(readFileSync(file, 'utf8'), before, 'rollback leaves the rendered view intact');
+
+  const { DatabaseSync } = await import('node:sqlite');
+  // eslint-disable-next-line @typescript-eslint/unbound-method -- invoked with .call(this) and restored verbatim
+  const exec = DatabaseSync.prototype.exec;
+  let acquisitionCalls = 0;
+  const nonBusy = Object.assign(new Error('not a database'), { errcode: 26 });
+  DatabaseSync.prototype.exec = function (sql: string): void {
+    if (sql === 'BEGIN IMMEDIATE') { acquisitionCalls++; throw nonBusy; }
+    exec.call(this, sql);
+  };
+  try {
+    assert.throws(() => withStore(dbFile(), () => assert.fail('must not enter transaction')),
+      error => error === nonBusy);
+    assert.equal(acquisitionCalls, 1, 'non-BUSY acquisition failures are never retried');
+  } finally { DatabaseSync.prototype.exec = exec; }
 
   // The counter is monotonic: a removed id is never handed out again. A stale
   // snapshot whose counter lags the store cannot recycle one either.
