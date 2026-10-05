@@ -34,7 +34,7 @@ grill-with-docs → to-prd → tdd → review
 1. **grill-with-docs** — Agent interviews you one question at a time, sharpens terminology, stress-tests against the codebase, and produces `./docs/<slug>/design.md` with a canonical vocabulary and Mermaid/ASCII diagrams as structure becomes clear.
 2. **to-prd** — Synthesizes the conversation and codebase into `./docs/<slug>/prd.md` automatically. No re-interviewing.
 3. **tdd** — Derives `plan.md` from the PRD, then executes RED → GREEN → REFACTOR one vertical slice at a time, scoring each slice against the quality rubric as it goes. Commits per slice.
-4. **Review** — Once the slices pass, `simplify` brings every changed file to 10/10 on all four rubric dimensions, then the chain presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
+4. **Review** — Once the slices pass, `simplify` brings every changed file to 10/10 on all four rubric dimensions and `qa` drives the running app through the changed entry points (fixing what breaks), then the chain presents a summary of what was built, tests passing, and any plan deviations. Prompts you to review before merging.
 
 Skills can also be invoked individually. See [`docs/skills.md`](docs/skills.md) for the full skill list and repo layout.
 
