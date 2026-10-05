@@ -57,6 +57,7 @@ scripts/queue-park.test.ts
 scripts/queue-console.ts
 scripts/queue-console.template.html
 scripts/queue-console.test.ts
+scripts/queue-console-concurrency.test.ts
 scripts/queue-host-status.ts
 scripts/queue-host-status.test.ts
 scripts/queue-isolation.test.ts

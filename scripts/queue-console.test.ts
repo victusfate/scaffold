@@ -367,6 +367,7 @@ maxParallel: 2
   const state = await (await fetch(`${base}/api/queue`)).json() as { tasks: { id: string }[] };
   assert('GET /api/queue reflects the file', state.tasks.map(t => t.id).join(',') === 'task-001,task-002');
 
+
   const host = await (await fetch(`${base}/api/host`)).json() as typeof hostStatus;
   assert('GET /api/host serves the injected host snapshot', host.cpu.available
     && host.cpu.utilizationPercent === 37.5 && host.memory.availableBytes === 23 * 1024 ** 3);
@@ -451,6 +452,22 @@ maxParallel: 2
     body: JSON.stringify({ op: 'config', key: 'idlePoll', value: '25m' }),
   });
   assert('json with charset suffix accepted', charset.status === 200);
+
+  const corruptStore = join(dir, 'corrupt.db');
+  writeFileSync(corruptStore, 'not a SQLite database');
+  // Expire the host snapshot so /api/host exercises its synchronous queue load.
+  await new Promise(resolve => setTimeout(resolve, 2100));
+  process.env.QUEUE_DB = corruptStore;
+  for (const route of ['/api/queue', '/api/lanes', '/api/host']) {
+    const response = await fetch(`${base}${route}`);
+    const body = await response.json() as { error?: string };
+    assert(`${route} exposes a nontransient database error without crashing`,
+      response.status === 500 && /not a database/.test(body.error ?? ''));
+  }
+  delete process.env.QUEUE_DB;
+  assert('server still serves the intact store after database errors',
+    (await fetch(`${base}/api/queue`)).status === 200);
+
 
   // close() must complete even with this SSE stream still open (it ends the
   // stream and detaches the file watcher) — a hang here fails the whole run
