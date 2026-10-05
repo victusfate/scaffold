@@ -39,13 +39,23 @@ A:
   internal-only changes, with the reason stated in the Phase 4 summary.
 - `/investigate` → `/create-pr` Step 2's auto-correction "Diagnose" step, and
   `/tdd` when a test fails for a reason the current slice did not predict.
-- `/deslop` → `/create-pr` Step 6, run in detect-then-edit mode on the drafted PR
+- `/deslop` → `/create-pr` Step 6, run in edit mode on the drafted PR
   title and body before the PR is created. It enforces the AGENTS.md rule against
   self-labels like "honest" / "to be clear".
 
 **Q: Home (agent-authoring-requirements §1)?**
 A: Prompt skills: canonical `skills/<name>.md` plus the four harness wrappers,
 registered in RESOLVER.md and the sync manifest. No new tool, script, or bin.
+
+**Q: How hard should `/deslop` edit engineering docs?** (added after first review)
+A: Barely. The user's direction: it must not lose essential engineering
+documentation; its job is to make user-facing content sound like normal people
+wrote it. So `/deslop` picks a pass per section. User-facing text (README intro,
+release notes, PR Summary, UI copy) gets a full plain-language rewrite.
+Engineering reference (design/PRD/plan, AGENTS.md, skill bodies, API docs,
+runbooks) gets a filler-only pass, or detect mode when unsure. In both passes,
+steps, commands, constraints, caveats, numbers, rationale, and MUST/NEVER rules
+are never removed, and terms of art are not treated as slop.
 
 ## Canonical vocabulary
 
@@ -59,5 +69,7 @@ registered in RESOLVER.md and the sync manifest. No new tool, script, or bin.
   diverges from intent; `/investigate` fixes there, not at the symptom.
 - **Evidence** — command output, screenshot, or exit code produced in the current
   turn. A claim of "works / fixed / passes" without fresh evidence is not allowed.
+- **User-facing pass / engineering pass** — `/deslop`'s full plain-language
+  rewrite vs. its filler-only edit that preserves every technical statement.
 - **Slop pattern** — a named writing pattern from the `/deslop` list; findings
   cite the pattern name and quote the line.

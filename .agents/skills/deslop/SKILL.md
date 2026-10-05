@@ -1,7 +1,7 @@
 ---
 name: deslop
 description: |
-  Check prose for AI-slop patterns (filler words, binary contrasts, puffery, self-labels like "honest") and edit it into direct writing that keeps the author's voice, or list findings only with --detect. Use on PR bodies, commit messages, docs, and design/PRD artifacts, or when asked to "deslop", "make this sound human", or "check this for AI slop".
+  Make user-facing writing (READMEs, release notes, PR summaries, UI copy, announcements) sound like a person wrote it, in plain language, and strip filler from engineering docs without dropping any step, constraint, or caveat. Edit mode by default, or list findings only with --detect. Use when asked to "deslop", "make this sound human", "make this readable", or "check this for AI slop".
 license: MIT
 metadata:
   author: victusfate

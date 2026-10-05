@@ -3,10 +3,13 @@
 > **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
 > Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
 
-Check prose for AI-slop patterns and fix them while keeping the writer's voice.
-Targets: PR titles and bodies, commit messages, `design.md` / `prd.md`, READMEs,
-docs, release notes, and any draft the user pastes. It also enforces the AGENTS.md
-*Veracity* rule against self-labels like "honest", "to be clear", "frankly".
+Make user-facing writing sound like a person wrote it, and strip filler from
+engineering docs without losing any of their substance. It also enforces the
+AGENTS.md *Veracity* rule against self-labels like "honest", "to be clear",
+"frankly".
+
+The goal is readable text, not shorter text. Removing a step, a caveat, or a
+reason to save words is a failure, even when the result reads more smoothly.
 
 Adapted from [petergyang/no-ai-slop](https://github.com/petergyang/no-ai-slop) (MIT).
 
@@ -24,12 +27,50 @@ guess whether AI wrote it. Pattern names are evidence the reader can check;
 Invocation: `/deslop` (edit the text in context), `/deslop <path>` (edit that file
 in place), `/deslop --detect <path>`.
 
+## Pick the pass by content type
+
+Decide which kind of text this is before editing. When a file mixes both, apply
+each pass to its own sections.
+
+| Content | Examples | Pass |
+|---|---|---|
+| **User-facing** | README intro and "why", release notes, changelog entries, landing or marketing copy, UI strings, emails, announcements, PR Summary bullets | **Full rewrite** in plain language (rules below) |
+| **Engineering reference** | `design.md`, `prd.md`, `plan.md`, AGENTS.md, skill bodies, API docs, runbooks, architecture notes, code comments, install and config steps | **Filler-only pass**: remove banned words, self-labels, and throat-clearing. Do not restructure, shorten, or rephrase technical sentences. When unsure, list findings (detect mode) instead of editing |
+
+### Never lose engineering content
+
+In either pass, **never delete, merge away, or soften** any step, command,
+constraint, caveat, edge case, number, default, version, error message, warning,
+rationale ("because…"), or example. Keep normative words exactly as written:
+MUST, NEVER, SHOULD, "only", "always", "do not". Keep tables, lists, and headings
+that carry structure. If a sentence is both filler-shaped and carries a fact,
+keep the fact and drop only the filler around it.
+
+**Terms of art are not slop.** "Harness", "robust estimator", "leverage ratio",
+"seamless roaming" and similar terms with a specific technical meaning stay. A
+word on the banned list is only banned when it is decoration.
+
 ## Scope guard
 
 Only prose changes. Leave untouched: fenced code blocks, inline code, identifiers,
 file paths, command lines, URLs, quoted error output, table cells holding data, and
 anything inside a template the caller requires verbatim (e.g. the `/create-pr`
 section headings). If unsure whether a span is prose, leave it.
+
+## Plain language for user-facing text
+
+Write it the way you would explain it to a smart friend who doesn't work on the
+project:
+
+- Say what it does for the reader first, then how. "Your PRs open with tests
+  already run" beats "Automated pre-merge validation pipeline".
+- Use plain words: "use" not "utilize", "help" not "facilitate", "start" not
+  "initialize" (unless it's the command name).
+- Address the reader as "you". Name who does what.
+- Define jargon the first time, or replace it. Keep a technical term when the
+  reader will need it later (a command, a setting name).
+- Short sentences are fine; so is a long one that reads naturally out loud.
+- Keep real enthusiasm, but show it with a concrete detail, not adjectives.
 
 ## Editing rules
 
@@ -87,6 +128,7 @@ in order to, going forward, let's dive in.
 ## Workflow
 
 1. Read the whole text. Identify its job, its reader, and the voice traits to keep.
+   Pick the pass for each section (user-facing or engineering reference).
 2. Detect mode: list findings as `pattern — "quoted line" — fix`, then stop.
 3. Edit mode: apply the minimum edits within the scope guard.
 4. **Self-check** the result; fix and re-check until every answer is yes:
@@ -94,11 +136,15 @@ in order to, going forward, let's dive in.
    - Would the writer recognize it as their own voice?
    - No banned words, self-labels, or listed patterns left (outside quotes and code)?
    - Code, paths, identifiers, and required template headings unchanged?
+   - Every step, command, constraint, caveat, number, and MUST/NEVER rule from
+     the original still present? Compare the two side by side. If anything was
+     lost, put it back.
    - Ends on a concrete point, not a recap or kicker?
 5. Output the edited text (or write the file) and the **What changed** list.
 
 ## Called from other skills
 
 - `/create-pr` Step 6 runs `/deslop` in edit mode on the drafted title and body
-  before the PR is created. It keeps the template headings and the Quality Scores
-  and gate tables exactly as drafted.
+  before the PR is created. The Summary bullets get the user-facing pass; the Test
+  plan gets the engineering pass. Template headings and the Quality Scores and gate
+  tables stay exactly as drafted.
