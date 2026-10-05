@@ -60,8 +60,8 @@ Include these execution instructions in the agent prompt:
   active tasks, and `git worktree list`. A worker that replied and went idle is NOT a running
   lane. Fix each mismatch on the spot: an active task with no running worker is either resumed
   (message the worker its next step) or parked with
-  `node scripts/queue.ts park <id> --branch <b> --resume "<next step>"` (renders `[~]`: work
-  exists, nobody on it); a running worker with no `[>]` task is claimed or stopped; a worktree
+  `node scripts/queue.ts park <id> --branch <b> --resume "<next step>"` (keeps the branch, clears
+  the owner and lease, banks elapsed time; renders `[~]`: work exists, nobody on it); a running worker with no `[>]` task is claimed or stopped; a worktree
   with no task and no worker is merged, parked, or cleaned. The `[>]` count must equal the live
   worker count when the run ends.
 - Reconcile only driver-owned handles and current-session worktree lanes before

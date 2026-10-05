@@ -107,6 +107,7 @@ export const DEFAULT_CONFIG: QueueConfig = {
 };
 
 const MS_PER_MIN = 60000;
+const ISO_DATE_LEN = 'YYYY-MM-DD'.length;
 const ID_PAD = 3;
 
 const MARK: Record<TaskStatus, string> = { pending: ' ', active: '>', done: 'x', failed: '!' };
@@ -514,7 +515,7 @@ export function parkTask(q: Queue, id: string, branch: string, resume: string, n
   if (!branch) return q;
   return mapTask(q, id, t => {
     const banked = t.status === 'active' ? bankSession(t, nowIso) : t.elapsedSecs;
-    const line = `parked ${nowIso.slice(0, 10)}: ${resume || 'resume on ' + branch}`;
+    const line = `parked ${nowIso.slice(0, ISO_DATE_LEN)}: ${resume || 'resume on ' + branch}`;
     return {
       ...t, status: t.status === 'active' || t.status === 'pending' ? 'pending' : t.status,
       owner: null, startedAt: null, elapsedSecs: banked, branch,

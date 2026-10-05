@@ -74,7 +74,7 @@ integrationBranch:
   - owner: worker-a
 ```
 
-- `[ ]` pending · `[~]` parked (work on its branch, no lane) · `[>]` active · `[x]` done · `[!]` failed
+- `[ ]` pending · `[>]` active · `[x]` done · `[!]` failed
 - **config:** `status` run/pause · `interval` wake cadence · `maxFailures` retry cap
   · `leaseMinutes` stale-lease threshold · `maxParallel` fan-out width ·
   `integrationBranch` where completed worktree branches merge (blank = current).
@@ -123,7 +123,6 @@ tick                                    # serial loop entry: ownership check →
 signal                                  # print DRAIN-WANTED iff drainable (Monitor poll; exit 0/3)
 claim <id> [--worker w]                # atomic claim for a parallel worker
 release <id> --worker w                # return a confirmed-ended owned claim to pending
-park <id> --branch b [--resume "step"]  # lane stopped WITH work: pending + branch, renders [~]
 done <id> [--skip-validate]            # validate, complete, then auto-archive out of the queue
 fail <id> [reason...]                  # record a failure (retries, then terminal)
 top <id> | move <id> <pos> | remove <id>   # reprioritize (1-based pos, as `list` numbers) | prune
