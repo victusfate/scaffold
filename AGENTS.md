@@ -201,6 +201,54 @@ When given a standing directive to work autonomously toward a goal — an explic
   reasonable first pass, stage anything user-facing for review, and keep going.
   Steering *refines* the work; it is not a prerequisite for starting it.
 
+## Owner status reports (remote owner)
+
+When the owner says they'll be away or checking in intermittently and asks for
+status reports, the session's orchestrator owns the report. That's whichever
+harness is orchestrating: Claude Code, Codex, pi or another client. Workers
+never send it.
+
+- **Schedule.** Send one report a day at the owner's requested local time
+  (default 8am in the owner's timezone). It covers the previous 24 hours. Use the
+  client's scheduler (a cron or wakeup tool) and confirm with a successful tool
+  call; never claim a schedule exists without one. Session-scoped schedulers
+  expire, so state the expiry and re-arm it when resuming a session.
+- **Channel.** Use the client's mail integration (for example a Gmail connector's
+  send tool) to the owner's own address. With no mail tool, publish the report
+  where the owner already looks (a private artifact or page, or the PR/issue
+  thread) and say which. Send exactly one report per day; never send a duplicate
+  after a resume.
+- **Before sending, bring public surfaces up to date.** For every merge in the
+  window, make sure the surfaces the project policy names are current: landing
+  page, dev blog, experiments, model galleries. Ship any gap as its own small
+  merged change, deployed and checked in a real browser, before reporting.
+- **Contents.** Keep it skimmable and factual, with links:
+  1. **Merged into main:** PR number, title, one plain-language line each.
+  2. **In progress:** lanes and tasks, with their state.
+  3. **Needs your decision:** each item with a recommended option.
+  4. **Problems and risks:** failing checks, regressions, blocked work.
+  5. **Live links.**
+
+  Report what the evidence shows. Unmeasured is "not measured", not "fine".
+- **Merging continues between reports.** The report summarises per-task merges; it
+  never batches or delays them.
+- **Persistence.** Record the requested time, the address source and the surfaces
+  to update in the project's handoff or policy file. Then a different harness
+  taking over orchestration keeps sending the same report.
+- **Claude Code specifics.**
+  - Schedule with `CronCreate` (a recurring 5-field cron in local time). Pick an
+    off-minute just before the hour, e.g. `57 7 * * *` for an 8am report.
+  - `CronCreate` jobs are session-only and expire after 7 days. Re-create the
+    job on every session resume (check `CronList` first, so it's never doubled),
+    and tell the owner the expiry.
+  - Send with the Gmail connector's `send_message` tool, using an `htmlBody`.
+  - Fallback: a private page via the `Artifact` tool, with the link sent through
+    `SendUserFile` or `PushNotification` when they are available.
+  - In bypass-permissions mode the mail tool may still prompt. Tell the owner
+    they can allow that one tool once.
+
+  Other harnesses (Codex, pi) document their own scheduler and mail tools here.
+
 ## Understand the shape of the problem first
 
 Before committing to a solution, map the **shape of the problem** — the

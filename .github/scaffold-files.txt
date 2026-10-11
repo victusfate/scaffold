@@ -277,6 +277,11 @@ skills/deslop.md
 .cursor/rules/deslop.mdc
 .agents/skills/deslop/SKILL.md
 .agent/workflows/deslop.md
+skills/upstream.md
+.claude/skills/upstream/SKILL.md
+.cursor/rules/upstream.mdc
+.agents/skills/upstream/SKILL.md
+.agent/workflows/upstream.md
 .claude/skills/improve/LICENSE
 .claude/skills/improve/references/audit-playbook.md
 .claude/skills/improve/references/closing-the-loop.md
