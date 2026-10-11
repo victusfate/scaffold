@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/loop`, `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/modern-web`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`, `/deslop`, `/investigate`, `/qa`.
+Skills can be invoked individually: `/loop`, `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/modern-web`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`, `/deslop`, `/upstream`, `/investigate`, `/qa`.
 
 In Codex, use `$skill-name` or `/skills` to select these workflows from `.agents/skills`. See [Codex support](codex.md) for setup and client-specific behavior.
 
@@ -69,6 +69,7 @@ tools/
     queue/SKILL.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
     voice-chat/SKILL.md       # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
     deslop/SKILL.md           # Rewrite user-facing prose in plain language that keeps the author's voice, and strip filler from engineering docs without losing any technical content; or list findings only
+    upstream/SKILL.md         # Move a generic change into scaffold via PR, merge on green CI, then sync scaffold back into this repo
     investigate/SKILL.md      # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
     qa/SKILL.md               # Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report
     improve/SKILL.md          # (bundled) Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute
@@ -111,6 +112,7 @@ tools/
     queue.mdc            # mirrors queue for Cursor
     voice-chat.mdc       # mirrors voice-chat for Cursor
     deslop.mdc           # mirrors deslop for Cursor
+    upstream.mdc         # mirrors upstream for Cursor
     investigate.mdc      # mirrors investigate for Cursor
     qa.mdc               # mirrors qa for Cursor
 .agents/
@@ -145,6 +147,7 @@ tools/
     queue/SKILL.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
     voice-chat/SKILL.md       # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
     deslop/SKILL.md           # Rewrite user-facing prose in plain language that keeps the author's voice, and strip filler from engineering docs without losing any technical content; or list findings only
+    upstream/SKILL.md         # Move a generic change into scaffold via PR, merge on green CI, then sync scaffold back into this repo
     investigate/SKILL.md      # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
     qa/SKILL.md               # Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report
     improve/SKILL.md              # bridge to the bundled advisor and its references
@@ -182,6 +185,7 @@ tools/
     queue.md            # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
     voice-chat.md       # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
     deslop.md           # Rewrite user-facing prose in plain language that keeps the author's voice, and strip filler from engineering docs without losing any technical content; or list findings only
+    upstream.md         # Move a generic change into scaffold via PR, merge on green CI, then sync scaffold back into this repo
     investigate.md      # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
     qa.md               # Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report
 scripts/
