@@ -491,6 +491,21 @@ project in two.
   lane → merge/rebase its worktree branch into the local one branch → resolve → delete the worktree →
   mark the ledger. Do it before spawning the next thing. (Pushing to GitHub is a SEPARATE, controlled,
   batched step by the orchestrator — see the push rule below.)
+- **Refresh a lane against its integration target before integrating it.** The target is
+  whatever this repo's delivery mode integrates into: main under per-task merges, a shared
+  working branch, or a branch left open for a separate review process. That target keeps
+  moving while the lane runs, and two lanes that each pass on their own can break when
+  combined. Before opening the lane's PR or integrating it:
+  1. **Merge** the current target into the lane branch, as one merge commit with one
+     conflict resolution. Don't rebase a long lane branch: rebasing replays every commit
+     and can hit the same conflict once per commit.
+  2. Re-run the gates **on the merged result**, not on the lane's old base. That means
+     lint over every target, including test code; the full test suite of every touched
+     package (not only the new tests); and a regeneration of any derived artifacts the
+     change affects (generated guides, manifests, lockfiles). Commit any regenerated files.
+  3. Integrate only when that merged result is green. Hosted CI then confirms main
+     instead of discovering the combination failure. Short-lived lanes drift less, so
+     integrate each lane as soon as it finishes.
 - **Retire completed artifacts at integration.** Preserve required source and unique
   evidence with a durable index before removing verified-ended lane worktrees and
   merged branches; clear ended display state through existing queue lifecycle commands.
