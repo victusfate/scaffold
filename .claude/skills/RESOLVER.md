@@ -40,6 +40,7 @@ the first match.
 | upstream | `/(?:^\/upstream\b)|(?:upstream|codify|add|pr)\s+(?:this|it|that)\s+(?:to|in|into)\s+(?:the\s+)?scaffold|scaffold\s+pr\b.*sync\s+back/i` | `skills/upstream.md` | Move a generic change into scaffold via PR, merge on green CI, then sync scaffold back into this repo |
 | investigate | `/(?:^\/investigate\b)|(?:root[-\s]?cause|debug|investigate)\s+(?:this|the|a)\s+(?:bug|failure|error|crash|test)/i` | `skills/investigate.md` | Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim |
 | qa | `/(?:^\/qa\b)|(?:qa|smoke[-\s]?test)\s+(?:this|the\s+(?:app|feature|change))|check\s+(?:that\s+)?it\s+actually\s+works/i` | `skills/qa.md` | Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report |
+| gmail-automation | `/(?:^\/gmail-automation\b)|gmail\s+(?:filter|label|tag|automation)s?|(?:auto[-\s]?(?:tag|label)|filter)\s+(?:my\s+)?(?:e-?mails?|inbox)/i` | `skills/gmail-automation.md` | Automate Gmail tasks, filter setup, email tagging, and programmatic inbox management without using the desktop web interface. Use when the user wants to set up filters, apply tags, or process emails via API, scripts, or agentic commands. |
 
 ## Column contract
 

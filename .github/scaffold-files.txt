@@ -267,6 +267,11 @@ skills/qa.md
 .cursor/rules/qa.mdc
 .agents/skills/qa/SKILL.md
 .agent/workflows/qa.md
+skills/gmail-automation.md
+.claude/skills/gmail-automation/SKILL.md
+.cursor/rules/gmail-automation.mdc
+.agents/skills/gmail-automation/SKILL.md
+.agent/workflows/gmail-automation.md
 skills/investigate.md
 .claude/skills/investigate/SKILL.md
 .cursor/rules/investigate.mdc
