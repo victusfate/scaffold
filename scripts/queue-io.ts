@@ -6,7 +6,7 @@
 import {
   readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, openSync, closeSync, rmSync, renameSync,
 } from 'node:fs';
-import { join, dirname, extname, resolve, basename } from 'node:path';
+import { join, dirname, extname, resolve, basename, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
@@ -275,6 +275,43 @@ export function importView(dryRun: boolean, force = false): ImportReport {
 /** `queue render`: rewrite the view from the store, discarding hand edits to it. */
 export function renderFromStore(): void {
   openStore((db, defer) => renderView(db, defer, readStore(db), { discardEdits: true }));
+}
+
+/**
+ * `queue check-view`: the committed view (git HEAD) next to a fresh render of the store. The
+ * store is the truth, but people and dashboards read the committed queue.md, so a claim or
+ * status change that is never re-rendered and committed shows them a stale queue.
+ * `committed` is null when the view is not tracked in git.
+ */
+export function viewDrift(): { path: string; committed: string | null; rendered: string } {
+  const rendered = openStore(db => serializeQueue(readStore(db)));
+  const path = resolve(queueFile());
+  const git = (cwd: string, ...args: string[]) =>
+    execFileSync('git', ['-C', cwd, ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+  try {
+    const top = git(dirname(path), 'rev-parse', '--show-toplevel').trim();
+    return { path, committed: git(top, 'show', `HEAD:${relative(top, path)}`), rendered };
+  } catch {
+    return { path, committed: null, rendered };
+  }
+}
+
+/**
+ * A warning when an `accept` value names a spec file that worker lanes cannot read: lanes
+ * branch from the remote main, so a spec that is missing or untracked in this checkout is
+ * invisible to them. Returns null when the value names no file-like path, or the file is tracked.
+ */
+export function specPathWarning(value: string): string | null {
+  const m = value.match(/(?:^|\s)((?:\.?\/)?[\w./-]+\.(?:md|txt|json))(?=\s|$)/);
+  if (!m) return null;
+  const spec = m[1];
+  if (!existsSync(spec)) return `queue: warning — accept names ${spec}, which does not exist here`;
+  try {
+    execFileSync('git', ['ls-files', '--error-unmatch', spec], { stdio: 'ignore' });
+    return null;
+  } catch {
+    return `queue: warning — ${spec} is not committed; worker lanes branched from main cannot read it. Commit it.`;
+  }
 }
 
 export function log(msg: string): void {
