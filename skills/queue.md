@@ -95,6 +95,13 @@ deliveryTask:
   `render` (rewrite the view from the store, discarding them). A git checkout,
   pull, merge, or stash that changes `queue.md` counts too; there `render` is
   usually right, because the store already holds the truth.
+- **Keep the committed view current.** The store is the truth, but people and dashboards read
+  the committed `queue.md`. Claim a task when its worker starts, release it or mark it done when
+  the worker stops or merges, then `render` and commit the view. `queue check-view` exits non-zero
+  when the committed view no longer matches the store; run it after each merge or loop tick.
+- **Commit specs before a worker needs them.** `set <id> accept <path>` warns when the spec file
+  is missing or untracked. Worker lanes branch from the remote main and cannot see files that
+  exist only in the main checkout.
 
 Task lines and their fields survive worker writes; **freeform prose does not**.
 Runtime sidecars `log.md` (audit trail) and `archive.md` sit alongside and are

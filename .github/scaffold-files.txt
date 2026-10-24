@@ -41,6 +41,7 @@ scripts/queue-worktrees.ts
 scripts/queue-gates.ts
 scripts/queue-delivery.ts
 scripts/queue-edit.test.ts
+scripts/queue-view.test.ts
 scripts/queue-lock.test.ts
 scripts/queue-cli-args.ts
 scripts/sse-watch.ts

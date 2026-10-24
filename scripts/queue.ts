@@ -41,7 +41,7 @@ import { pathToFileURL } from 'node:url';
 import { isDeepStrictEqual } from 'node:util';
 import { execSync } from 'node:child_process';
 import {
-  ROOT, sidecar, now, load, save, log, appendArchive, withLock, unlocked, importView, renderFromStore,
+  ROOT, sidecar, now, load, save, log, appendArchive, withLock, unlocked, importView, renderFromStore, viewDrift, specPathWarning,
 } from './queue-io.ts';
 import { formatReport, QueueIntegrityError } from './queue-db.ts';
 import { cmdGate, cmdUngate, drainKick } from './queue-gates.ts';
@@ -350,6 +350,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       }
       q = setField(q, id, taskOverrides(parse([`--${field}`, v.join(' ')])));
       save(q);
+      if (field === 'accept') { const warning = specPathWarning(v.join(' ')); if (warning) console.error(warning); }
       console.log(`set ${id}.${field}${drainKick(q)}`); return 0;
     }
 
@@ -465,6 +466,13 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       return 0;
     }
     case 'render': renderFromStore(); console.log('queue: view re-rendered from the store'); return 0;
+    case 'check-view': {
+      const { path, committed, rendered } = viewDrift();
+      if (committed === null) { console.error(`queue check-view: ${path} is not committed in git`); return 1; }
+      if (committed === rendered) { console.log('queue check-view: the committed view matches the store'); return 0; }
+      console.error(`queue check-view: the committed ${path} is stale; run \`node scripts/queue.ts render\` and commit it`);
+      return 1;
+    }
     case 'loop': return cmdLoop(q);
     case 'worktree': case 'wt': return cmdWorktree(q, f.positionals[0] ?? '', f.positionals[1] ?? '');
     case 'lane': return cmdLane(q, f.positionals[0] ?? '', f.positionals[1] ?? '', f);
@@ -472,7 +480,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     default:
       console.error(`unknown command: ${cmd}\ncommands: list show add add-many set next ready tick `
         + `signal claim release begin done advance fail top move hold unhold requeue remove start stop pause interval config `
-        + `gate ungate archive import render loop worktree lane`);
+        + `gate ungate archive import render check-view loop worktree lane`);
       return 1;
   }
 }

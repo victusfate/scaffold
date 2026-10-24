@@ -201,6 +201,35 @@ When given a standing directive to work autonomously toward a goal — an explic
   reasonable first pass, stage anything user-facing for review, and keep going.
   Steering *refines* the work; it is not a prerequisite for starting it.
 
+## Orchestration hygiene (lessons from long autonomous runs)
+
+These failures each cost hours in a real run; each has a cheap guard.
+
+- **Confirm a merge before cleaning up.** Check that the PR is `MERGED` and that its squash
+  commit is in `origin/main` before you delete branches or worktrees or mark tasks done. A merge
+  refused for a conflict must stop the cleanup chain.
+- **Gate with the full suite, not the first failure.** When a known-failing test target exists,
+  run every target (`cargo test --no-fail-fast`, `jest --bail=false`, and so on) and diff the
+  per-target failure set against main. A runner that stops at the first failing target hides
+  every target after it. A mass rename can also rewrite deliberately invalid test fixtures into
+  valid ones, so read the test diff, not just the result.
+- **Never feed parsed command output into `rm`, `mv` or delete loops.** Handle each named
+  path explicitly after looking at it, and never act on a directory you didn't create. After
+  you kill a destructive job, kill its children too: a `mv` across mounts copies first and
+  keeps running after its parent dies.
+- **Subagents that "wait" may be asleep.** A worker that ends its turn waiting on its own
+  background job often has nothing running and never wakes. Check that the worker's processes
+  are alive each tick and resume it if not. Tell workers never to end a turn idle: poll with
+  short foreground checks instead.
+- **Isolate shared state in tests.** Tests use their own save and user directories, never a
+  default slot or a directory other runs share. A stale prompt or a leftover profile in shared
+  state turns into false failures, or false passes, far from the real cause.
+- **Hold a host lock around one command, never a shell.** Wrapping a shell or script in an
+  exclusive lock lets a nested request for the same lock deadlock every job on the host.
+- **Keep the task board true.** Claims, releases and completions happen as workers start,
+  stop and merge, and the committed queue view is re-rendered with them (see `/queue`,
+  `queue check-view`).
+
 ## Owner status reports (remote owner)
 
 When the owner says they'll be away or checking in intermittently and asks for
