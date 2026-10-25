@@ -137,20 +137,24 @@ check_file() {
 }
 
 # Resolve files: explicit args, staged files, or files changed vs main.
+# A read loop rather than mapfile, so this runs on macOS's bash 3.2 (the hook
+# ships to consumers' machines), and the loop guard keeps an empty set safe there.
 SOURCE_RE='\.(js|mjs|ts|tsx|sh|py|rb|go)$'
+FILES=()
+collect() { while IFS= read -r f; do FILES+=("$f"); done < <(grep -E "$SOURCE_RE" || true); }
 if [ "${1:-}" = "--staged" ]; then
-  mapfile -t FILES < <(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null \
-    | grep -E "$SOURCE_RE" || true)
+  collect < <(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null)
 elif [ $# -gt 0 ]; then
   FILES=("$@")
 else
-  mapfile -t FILES < <(git diff main...HEAD --name-only 2>/dev/null \
-    | grep -E "$SOURCE_RE" || true)
+  collect < <(git diff main...HEAD --name-only 2>/dev/null)
 fi
 
-for f in "${FILES[@]}"; do
-  check_file "$f"
-done
+if [ ${#FILES[@]} -gt 0 ]; then
+  for f in "${FILES[@]}"; do
+    check_file "$f"
+  done
+fi
 
 if [ "$VIOLATIONS" -gt 0 ]; then
   echo ""
