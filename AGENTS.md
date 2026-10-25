@@ -230,6 +230,26 @@ These failures each cost hours in a real run; each has a cheap guard.
   stop and merge, and the committed queue view is re-rendered with them (see `/queue`,
   `queue check-view`).
 
+## Knowledge state: typed and evidenced, not prose
+
+Prose that a script parses is an accidental database, and a claim nobody re-checks is a rumor.
+Full rationale and pilot plan: [`docs/knowledge-architecture.md`](docs/knowledge-architecture.md).
+
+- **Lifecycle state lives in typed fields, not acceptance prose.** Branch, plan, PR, evidence and
+  decision references are written with the queue CLI's typed setters (add one if it's missing),
+  never as markers such as `BRANCH:` appended to the acceptance text. Scripts read those fields.
+- **Done requires evidence.** A task is done only with a recorded PR, test ids, the commit they
+  passed at and their scope. Evidence goes stale when the files it covers change. Check existing
+  evidence before dispatching, so finished work isn't rediscovered.
+- **Record decisions when they are made.** Each owner decision gets one home with an id, the
+  owner's words, scope, status and supersession, plus a code reference or a reproducible
+  measurement. Record it before replying, because chat summaries are lossy. Everything else cites
+  the id. An unmeasured claim is marked unverified.
+- **Generate hook points; don't hand-write them.** Code locations come from code at a named
+  commit, and plans state intent and gates. Workers own the details and write discoveries back.
+- **Never keep project facts only in harness-private memory.** Facts every worker needs live in
+  the repo, readable by every harness. Private memory holds harness preferences only.
+
 ## Owner status reports (remote owner)
 
 When the owner says they'll be away or checking in intermittently and asks for
