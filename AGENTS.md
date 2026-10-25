@@ -347,6 +347,37 @@ feature as done, live, or working when it is built-but-unwired.
 Reviewers enforce the code side of this via the rubric's *Vestige & Layering* R5
 ("liveness is the call graph, not tests") and `/validate`'s test-integrity pass.
 
+## Deterministic first — code over model judgment
+
+Anything that can be decided explicitly or algorithmically is done by code, not by
+an LLM. A script, linter rule, type, schema, test or CLI gives the same answer every
+run, costs nothing per call, and can gate CI; a model's judgment does none of those.
+Reserve LLM judgment for what genuinely needs it: intent, naming, design tradeoffs,
+prose quality, ambiguous root causes.
+
+- **Before asking a model to check, count, compare, parse, format, route or
+  validate, ask whether a tool can.** File length, import boundaries, magic
+  literals, formatting, schema shape, stale generated files, version bumps and
+  dependency direction are rules — encode them as rules (lint config, a `scripts/`
+  check, a type, a test) and gate on them.
+- **Promote repeated judgment to code.** When you or a reviewer prompt keep applying
+  the same call, turn it into a check. A rubric criterion a script can decide is
+  marked `[mechanical]` and enforced by `check-quality-mechanical.sh` or a linter,
+  not by a reviewer reading for it.
+- **Model output that drives a decision passes a deterministic gate.** Parse it
+  against a schema, run the tests, diff it against the expected result — never act
+  on free-form model text that a check could have validated.
+- **Mechanical results win on conflict.** A failing lint, type check or test is not
+  overridden by a reviewer's "looks fine"; mechanical violations are fixed (see the
+  rubric's override rules).
+- **Keep deterministic gates near-zero false-positive.** A noisy rule teaches agents
+  to ignore it. Narrow or remove it rather than leaving it as an unenforced warning.
+- **Skills follow the same split.** The skill's script does the deterministic steps
+  (enumerate, compute, write, verify); its prose carries only the judgment calls.
+
+Related: *Knowledge state* (typed fields over parsed prose) and *Veracity*
+(evidence, not claims).
+
 ## Default language
 
 This repo's default language for new code — source, scripts, and tooling — is
