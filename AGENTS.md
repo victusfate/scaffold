@@ -7,6 +7,10 @@ Use the tools actually exposed by the current client. A named tool below is not
 a guarantee that it is installed. User instructions take precedence over skill
 defaults; infer routine choices from the repository and existing authorization.
 
+- **Project policy:** if `.agent/project.md` exists, read it at session start and follow it. It is
+  consumer-owned — scaffold never syncs or overwrites it — and holds this repo's own rules, so
+  AGENTS.md itself stays upstream-verbatim and syncs without conflicts. On a conflict, project
+  policy wins on specifics and these guidelines win on intent. Absent: no project policy.
 - **Skills:** `/name` below denotes a scaffold skill. In Codex, invoke `$name`
   or select it via `/skills`; read `.agents/skills/<name>/SKILL.md`, then its
   linked `skills/<name>.md`. Explicitly read referenced `@path` files relative
