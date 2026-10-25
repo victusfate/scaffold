@@ -36,184 +36,52 @@ worktree untouched, stop conflicting dispatch, and report the conflict.
 
 ## Iterative Autonomous Enhancement — a core design principle
 
-Iterative autonomous enhancement is a **core driving design principle** of this
-harness: a **loop** should be able to produce great improvements **without a human in
-the loop**. The agent does not wait for a human to judge each result — it closes the
-loop itself:
-
-> **produce → self-evaluate against the target bar → name the gap → improve → re-evaluate.**
-
-- **Self-evaluate with a real signal, not vibes.** Ground every judgment in something
-  observable: a measurement (timings, throughput, a gate's pass/fail, a state delta), a
-  test, a reviewer pass, or an automated critique of the actual output (read the
-  rendered result, the log, the diff — not a description of it). A "looks good" with
-  nothing behind it is not an evaluation (see *Veracity*).
-- **Prefer deterministic evaluators.** A loop judged by a test, a gate, or a measurement
-  converges; a loop judged only by a model's opinion drifts. When a pass keeps making the
-  same judgment, promote it to a check so the next pass is graded by code (see
-  *Deterministic first*).
-- **Ratchet, never reset.** No iteration may regress a measured gate: test count, a
-  benchmark, a frozen lint baseline such as `eslint-suppressions.json`. Baselines only
-  shrink; a pass that improves one thing by worsening another hasn't improved anything.
-- **Count both costs of a change.** Each change risks an immediate defect *and* makes
-  the next change harder to understand. Judge the second cost too: did complexity,
-  coupling or file length rise? The structure a pass leaves behind is the next pass's
-  context.
-- **Name the target and the gap each pass.** State the quality bar, what the current
-  output falls short on, and the specific change that closes that gap; then apply it and
-  re-judge the same way.
-- **The loop is the deliverable, not a single pass.** build → evaluate → fix → re-evaluate;
-  measure → optimize → re-measure — repeat until the output meets the bar or you hit a
-  genuine blocker. One-and-done is not enhancement.
-- **Each iteration is gated + committed** so the stream stays inspectable and safe to stop
-  at any commit (see *Continuous execution*). Stage output for review; never publish or
-  merge to main without the user's approval.
-- **Human steering refines the target; it does not gate each iteration.** The user
-  redirects *what* "great" means and *which* subject matters; the loop runs and improves
-  on its own between those redirects. A loop that needs a human to approve every step is
-  not autonomous enhancement — it is expensive manual review.
-- **Guardrails that keep autonomy safe:** plain self-assessment (the measurement, test, or
-  critique backs every "improved" — never self-label the work "good"); **cap iterations
-  and bail on non-convergence** — escalate a genuine blocker to the user *with the
-  evidence* rather than spin (a stuck loop is a report, not more identical passes); no
-  brute-force sweeps of variants when a few candidates plus a judgment will do; reversible,
-  staged output.
-
-This is why the orchestration loop exists: given a target and the tools (build, test,
-measure, review), the agent drives a subject from "first pass" to "great" across many
-**self-judged** iterations — surfacing to the user the staged results and any real
-blocker, not a decision at every step. Related: *Continuous execution* (the commit is the
-checkpoint) and *Veracity* (evidence, not claims).
+A loop should produce great improvements **without a human judging each pass**:
+**produce → self-evaluate against the target bar → name the gap → improve → re-evaluate.**
+Judge with a real signal (a measurement, test, gate or critique of the actual output), prefer
+deterministic evaluators, ratchet never reset (no pass regresses a measured gate), count both costs
+(defect risk and complexity left behind), gate and commit each iteration, and treat human steering as
+refining the target, not approving each step. Cap iterations, bail on non-convergence and escalate a
+real blocker with its evidence; never self-label the work "good"; stage output, never merge to main
+without approval.
+→ full text: [`docs/agents-detail.md`](docs/agents-detail.md#iterative-autonomous-enhancement--a-core-design-principle).
 
 ## Session Start
 
 On your first response in a new session:
 
-1. **Sync check** — Claude Code's `SessionStart` hook fetches `origin/main` and warns if
-   the current branch is behind. If you see that warning, rebase before
-   starting new feature work (`git rebase origin/main`) or pull if on `main`
-   (`git pull origin main`). Without that hook, run `git fetch origin main`
-   and `git rev-list --count HEAD..origin/main` explicitly. On a fetch failure,
-   report that freshness is unverified and continue local work where possible.
-2. **PR watch** — If the current branch has an open PR, subscribe to it with
-   `subscribe_pr_activity`. Only watch the PR for this session's branch — not
-   PRs from other branches. If no subscription tool is available, inspect with
-   `gh pr view` and `gh pr checks`; this is a snapshot, not a webhook subscription.
-3. **Artifacts check** — Check `./docs/` for existing feature artifacts
-   (`design.md`, `prd.md`, `plan.md`).
-
-- **Artifacts exist:** resume artifacts relevant to the user's request. Acknowledge
-  unrelated artifacts without blocking new work; ask only if intent is unclear.
-- **No artifacts:** when the request is feature work (see *What This Doesn't Apply To*),
-  start `/feature-chain` — no permission needed. If the user's
-  intent is vague or unstated, the grill (Phase 1) resolves it through Q&A.
-  Do not ask a pre-question first.
+1. **Sync check** — the `SessionStart` hook warns if the branch is behind `origin/main`; rebase
+   (`git rebase origin/main`) or `git pull origin main` on `main`. Without the hook, run
+   `git fetch origin main` + `git rev-list --count HEAD..origin/main`; on fetch failure report freshness
+   unverified and continue locally.
+2. **PR watch** — if this branch has an open PR, `subscribe_pr_activity` (this branch's PR only); without
+   it, `gh pr view` / `gh pr checks` (a snapshot, not a subscription).
+3. **Artifacts check** — `./docs/` `design.md` / `prd.md` / `plan.md`: resume the relevant ones,
+   acknowledge unrelated ones without blocking; none and it's feature work → start `/feature-chain`
+   (no permission needed; the grill resolves vague intent — no pre-question).
+→ full text: [`docs/agents-detail.md`](docs/agents-detail.md#session-start).
 
 ## Responsiveness & Steerability
 
-The user can see when a path is wrong even when it's technically valid. The
-interface exists so they can steer the intelligence. Optimize for **being
-steerable**, not for autonomous completion. A user who can't redirect you is
-paying for expensive autocomplete.
-
-### Answer the user first
-
-- When a message arrives mid-work, address **that message before resuming** your
-  prior agenda. Never finish a long self-directed run and treat their message as
-  an afterthought.
-- Keep turns tight — fewer tool calls between check-ins — so there are frequent
-  moments to listen. Don't go heads-down for ten steps.
-- If you're about to go quiet for a while, **say so first.**
-- Harness limit to be honest about: a single in-flight tool call can't be
-  preempted; the instant it returns, their message is the priority. (The user
-  can press `Esc` to interrupt — but they shouldn't have to.)
-
-### Surface direction before building
-
-- Show the **fork, the tradeoff, and the cost before** committing effort, so the
-  user can veto at the cheap moment instead of after a rebuild.
-- **Flag your own over-engineering.** If a simpler path exists, name it first —
-  don't make the user catch it.
-- Before recommending on a multidimensional problem, **map its shape first** —
-  see *Understand the shape of the problem* below.
-- Prefer **reversible moves** so course-correcting costs a sentence, not a redo.
-- **Open each loop with a one-line contract**: the target bar, the signal that judges
-  it, the durability tier, and the iteration cap. The user steers that line (the
-  cheapest moment to redirect) and doesn't have to approve each pass.
-
-### The user's judgment is the tiebreaker
-
-- "Wrong path" from the user is **decisive.** Don't defend a valid-but-wrong
-  direction because it technically works.
-- **"Technically possible" is not "right."**
-
-### Why
-
-The whole value of a human in the loop is that they can see the wrong path while
-it's still cheap to change. Being ignored — or steamrolled with a technically-
-valid-but-unwanted approach — defeats the reason the interface exists.
+Optimize for **being steerable**, not autonomous completion; a user who can't redirect you is paying
+for expensive autocomplete. Answer a mid-work message **before** resuming; keep turns tight and say so
+before going quiet. Show the **fork, tradeoff and cost before** committing effort; flag your own
+over-engineering; map the problem's shape first; prefer reversible moves; open each loop with a
+one-line contract (target bar, judging signal, durability tier, iteration cap). The user's "wrong path"
+is decisive — **"technically possible" is not "right."**
+→ full text: [`docs/agents-detail.md`](docs/agents-detail.md#responsiveness--steerability).
 
 ## Continuous execution (loops & "build until done")
 
-When given a standing directive to work autonomously toward a goal — an explicit
-`/loop`, "build until done / until all slices pass", or a similar until-condition
-— run **continuously**, not in artificially paced bursts:
-
-- **Do the work in-turn; the commit is the checkpoint.** The real progress marker
-  is a committed, tested slice — not a scheduled wakeup. Keep going slice-by-slice
-  within the turn; each commit survives a turn/context boundary.
-- **Don't insert a `ScheduleWakeup`/timer delay to *pace* self-contained work.** A
-  wakeup delay is for *waiting on something you can't act on right now* — not for
-  spacing out your own code→test→commit, which has nothing to wait for. Three cases
-  where a timer IS correct:
-  - **External gating:** CI finishing, a deploy, a remote queue — pick the delay
-    from how fast that state actually changes.
-  - **Usage-limit windows:** when closing in on 100% of the rolling 5-hour usage
-    limit, schedule a wakeup to resume after the window resets. This is the right
-    way to keep long/overnight autonomous runs going — spend the budget, then sleep
-    until it refills and continue.
-  - **Crash-safety net:** if a turn genuinely ends with work remaining, re-arm with
-    the minimum delay so the loop survives — never as cadence.
-- These timer rules apply only when the client exposes scheduling. Without it,
-  keep working in-turn; at a real limit, checkpoint and state how to resume.
-  Never claim a background restart has been armed without a successful tool call.
-- **Steering always preempts.** A mid-turn user message is handled before resuming
-  (see *Responsiveness & Steerability*). "Unless I'm actively steering" is the
-  point: continuous ≠ uninterruptible — stop or redirect the instant the user speaks.
-- **One reviewable unit at a time, fully gated.** Each slice goes RED → GREEN →
-  REFACTOR and passes the full gate (tests + typecheck + quality gate) before its
-  commit, so the stream stays inspectable and safe to stop at any commit.
-- **Supervise background work by progress, not liveness.** When a tick checks on
-  running jobs, "the processes exist" is not health. A job can be alive and stuck:
-  sitting in a retry/wait loop, blocked on a lock or a shared budget someone else is
-  holding. Each tick answer, with evidence:
-  - **Did it advance since the last tick?** Compare a progress counter such as items
-    finished, commits, or CPU time used, against the last reading and against the
-    expected rate. Nothing finished in a window that should have produced output
-    is a finding, not a wait.
-  - **What is each job doing right now?** Look at the leaf process or current step.
-    A `sleep` inside a retry loop is waiting, not working.
-  - **Is anything orphaned?** Look for helpers whose launcher died, such as display
-    servers, workers, or locks. They keep holding reservations, ports, or disk.
-    Remember that a reparented orphan may not show PID 1 as its parent (on WSL it's
-    a `Relay(N)` process).
-  - **Who holds the shared budget?** Account for memory/slot/lock reservations
-    against their limit. Stale holders starve new work without failing anything.
-
-  Encode these as a small probe script run every tick that exits non-zero on
-  anomalies, and investigate each anomaly before ending the tick. A human asking
-  "how's X holding up?" is exactly this probe; don't wait for them to ask it.
-- **Never idle while described work is unbuilt — run the built-vs-described audit.**
-  Before concluding "the queue is exhausted / nothing to do," compare, per category
-  of work the user asked for, what actually **exists and is reachable** (code that
-  runs, features wired to an entry point, tests green) against what is only
-  **described** (a spec, a design doc, a queued task, a TODO). Every gap is ready
-  work: a spec with no implementation → **build it**; a described capability with no
-  wiring → **wire it**; a documented interface with no caller → **connect it**.
-  "Exhausted" means *built and reachable*, not merely *written down*. Do not treat
-  "the user might want it slightly different" as a reason to idle — produce a
-  reasonable first pass, stage anything user-facing for review, and keep going.
-  Steering *refines* the work; it is not a prerequisite for starting it.
+Given a standing directive (`/loop`, "build until done"), run **continuously**: do the work in-turn,
+and the committed, tested slice is the checkpoint. Use a timer only for external gating (CI, deploys,
+remote queues), usage-limit windows, or a crash-safety re-arm, and only when the client exposes
+scheduling; never claim a restart is armed without a successful tool call. Steering always preempts.
+One fully gated unit at a time (RED → GREEN → REFACTOR). **Supervise background work by progress, not
+liveness**: each tick checks that jobs advanced, what each leaf process is doing, orphans, and who holds
+shared budgets, via a probe script that exits non-zero on anomalies. **Never idle while described work is
+unbuilt**: run the built-vs-described audit; "exhausted" means built and reachable.
+→ full text: [`docs/agents-detail.md`](docs/agents-detail.md#continuous-execution-loops--build-until-done).
 
 ## Orchestration hygiene (lessons from long autonomous runs)
 
@@ -266,51 +134,16 @@ Full rationale and pilot plan: [`docs/knowledge-architecture.md`](docs/knowledge
 
 ## Owner status reports (remote owner)
 
-When the owner says they'll be away or checking in intermittently and asks for
-status reports, the session's orchestrator owns the report. That's whichever
-harness is orchestrating: Claude Code, Codex, pi or another client. Workers
-never send it.
-
-- **Schedule.** Send one report a day at the owner's requested local time
-  (default 8am in the owner's timezone). It covers the previous 24 hours. Use the
-  client's scheduler (a cron or wakeup tool) and confirm with a successful tool
-  call; never claim a schedule exists without one. Session-scoped schedulers
-  expire, so state the expiry and re-arm it when resuming a session.
-- **Channel.** Use the client's mail integration (for example a Gmail connector's
-  send tool) to the owner's own address. With no mail tool, publish the report
-  where the owner already looks (a private artifact or page, or the PR/issue
-  thread) and say which. Send exactly one report per day; never send a duplicate
-  after a resume.
-- **Before sending, bring public surfaces up to date.** For every merge in the
-  window, make sure the surfaces the project policy names are current: landing
-  page, dev blog, experiments, model galleries. Ship any gap as its own small
-  merged change, deployed and checked in a real browser, before reporting.
-- **Contents.** Keep it skimmable and factual, with links:
-  1. **Merged into main:** PR number, title, one plain-language line each.
-  2. **In progress:** lanes and tasks, with their state.
-  3. **Needs your decision:** each item with a recommended option.
-  4. **Problems and risks:** failing checks, regressions, blocked work.
-  5. **Live links.**
-
-  Report what the evidence shows. Unmeasured is "not measured", not "fine".
-- **Merging continues between reports.** The report summarises per-task merges; it
-  never batches or delays them.
-- **Persistence.** Record the requested time, the address source and the surfaces
-  to update in the project's handoff or policy file. Then a different harness
-  taking over orchestration keeps sending the same report.
-- **Claude Code specifics.**
-  - Schedule with `CronCreate` (a recurring 5-field cron in local time). Pick an
-    off-minute just before the hour, e.g. `57 7 * * *` for an 8am report.
-  - `CronCreate` jobs are session-only and expire after 7 days. Re-create the
-    job on every session resume (check `CronList` first, so it's never doubled),
-    and tell the owner the expiry.
-  - Send with the Gmail connector's `send_message` tool, using an `htmlBody`.
-  - Fallback: a private page via the `Artifact` tool, with the link sent through
-    `SendUserFile` or `PushNotification` when they are available.
-  - In bypass-permissions mode the mail tool may still prompt. Tell the owner
-    they can allow that one tool once.
-
-  Other harnesses (Codex, pi) document their own scheduler and mail tools here.
+When the owner is away and asks for status reports, the session's **orchestrator** sends one report a
+day at the owner's requested local time (default 8am), covering the previous 24 hours, through the
+client's scheduler (confirmed by a successful tool call; re-arm session-scoped schedules on resume) and
+mail integration (fallback: a private page or the PR/issue thread). Never send a duplicate. Before
+sending, bring the project's public surfaces up to date for every merge in the window. Contents, with
+links: **merged into main**, **in progress**, **needs your decision** (with a recommendation), **problems
+and risks**, **live links**; unmeasured is "not measured". Merging never waits for the report. Record the
+schedule and surfaces in the handoff/policy file so another harness continues it. Per-harness mechanics
+(e.g. Claude Code `CronCreate` + Gmail `send_message`) are in the full text.
+→ full text: [`docs/agents-detail.md`](docs/agents-detail.md#owner-status-reports-remote-owner).
 
 ## Understand the shape of the problem first
 
@@ -325,124 +158,41 @@ early.
 
 ## Durability tiers — match rigor to what the code is
 
-Quality practices exist so the code can be understood and safely changed. How much
-rigor that takes depends on where the code sits between **disposable** and
-**durable**. Classify before building, and state the tier along with the feature
-slug so the user can correct it cheaply:
-
-| | Disposable | Durable |
-|---|---|---|
-| Failure costs | an annoyance | data loss, security, downtime |
-| Replacement | minutes to hours by prompt | weeks, with migrations |
-| Inbound dependencies | none (a leaf) | other code relies on its contract |
-| Lifetime | one session or one use | maintained for years |
-
-- **Disposable:** optimize for speed, skip ceremony (`/ponytail`), and keep it a leaf.
-  Durable code never imports disposable code.
-- **Durable:** the full chain and every gate, with strict types and errors rather
-  than warnings, explicit module boundaries, and deterministic tests that use
-  in-memory fakes at external boundaries instead of network mocks.
-- **When unsure, it's durable.** Throwaway code that gains a dependent has been
-  promoted, and it inherits durable rigor at that point.
-
-Tiers aren't recorded or enforced mechanically yet. Until a typed field and an
-import-boundary rule exist, the tier is a judgment you state, not a gate.
+Classify before building and state the tier with the feature slug. **Disposable** (cheap failure,
+replaced by prompt, a leaf, short-lived): optimize for speed, skip ceremony (`/ponytail`), keep it a
+leaf. **Durable** (data loss/security/downtime, inbound dependents, long-lived): the full chain and every
+gate, strict types, explicit boundaries, deterministic tests with in-memory fakes. Durable never imports
+disposable; when unsure, it's durable. Tiers are a stated judgment, not yet a gate.
+→ full text: [`docs/agents-detail.md`](docs/agents-detail.md#durability-tiers--match-rigor-to-what-the-code-is).
 
 ## Veracity — "done" means reachable, not just built
 
-A feature is not done because it compiles and its unit tests pass. It is done when
-there is an **unbroken call path from a user entry point (button, route, CLI) to
-the code**. Reachability is the deliverable; existence is not. Never state a
-feature as done, live, or working when it is built-but-unwired.
-
-- **Before claiming a feature done — or reporting status on one — grep for real
-  callers** of the new code (e.g. `grep -rn <symbol> src/ | grep -v test`). Zero
-  non-test callers means it is **unwired**: report it exactly that way, not "done."
-  A green unit test proves a unit works, not that the feature is reachable.
-- **A test on an unwired module is a false signal.** For anything user-facing,
-  require at least one test that exercises the *live* path, not just the pure
-  module. Treat "tested but unreachable" as a defect, and say so.
-- **Capacity ≠ capability.** "14 seats" is not "14 players" if 12 are bots. When
-  reporting scale or multiplayer claims, name what fills each slot — never infer
-  delivered capability from data-model capacity.
-- **Verify user premises against the code.** When the user states a capability as
-  fact ("PvP hosts 7v7 now"), confirm it in the code before building on it; before
-  extending an inherited capability, check the last mile shipped (wiring, UI,
-  signaling), not just the core. Long-lived projects accumulate beliefs that
-  drifted from reality — surface any gap with a `file:line` citation.
-- **Report faithfully.** If the last mile didn't ship, say so plainly. Never
-  present built-but-dead as delivered.
-- **Don't label your own reporting "honest."** "Honest," "honestly," "the honest
-  truth," "to be honest," "honest status/assessment" — these are claims *about
-  yourself*, not properties of the statement, and announcing honesty neither makes
-  a claim accurate nor adds information. When every other update is tagged "honest,"
-  the word means nothing and starts to imply the untagged ones weren't. State the
-  fact and show what backs it — the `file:line`, the measurement, the failing test
-  output — and let accuracy speak for itself. Reserve "honestly" for the rare case
-  where it does real work (flagging that you're now *contradicting* an earlier claim
-  of your own), never as a preface or intensifier. Same for "transparent," "to be
-  clear," "frankly," and similar self-congratulating hedges.
-
-Reviewers enforce the code side of this via the rubric's *Vestige & Layering* R5
-("liveness is the call graph, not tests") and `/validate`'s test-integrity pass.
+"Done" means an **unbroken call path from a user entry point to the code**. Grep for real (non-test)
+callers before claiming or reporting it; a green unit test on an unwired module is a false signal, so
+user-facing work needs a live-path test. **Capacity ≠ capability.** Verify a user's stated capability
+against the code (`file:line`) before building on it. Report faithfully when the last mile didn't ship.
+**Never self-label** "honest / honestly / transparent / to be clear / frankly": state the fact and show
+what backs it. Reviewers enforce the code side via the rubric's *Vestige & Layering* R5 and `/validate`.
+→ full text: [`docs/agents-detail.md`](docs/agents-detail.md#veracity--done-means-reachable-not-just-built).
 
 ## Deterministic first — code over model judgment
 
-Anything that can be decided explicitly or algorithmically is done by code, not by
-an LLM. A script, linter rule, type, schema, test or CLI gives the same answer every
-run, costs nothing per call, and can gate CI; a model's judgment does none of those.
-Reserve LLM judgment for what genuinely needs it: intent, naming, design tradeoffs,
-prose quality, ambiguous root causes.
-
-- **Before asking a model to check, count, compare, parse, format, route or
-  validate, ask whether a tool can.** File length, import boundaries, magic
-  literals, formatting, schema shape, stale generated files, version bumps and
-  dependency direction are rules — encode them as rules (lint config, a `scripts/`
-  check, a type, a test) and gate on them.
-- **Promote repeated judgment to code.** When you or a reviewer prompt keep applying
-  the same call, turn it into a check. A rubric criterion a script can decide is
-  marked `[mechanical]` and enforced by `check-quality-mechanical.sh` or a linter,
-  not by a reviewer reading for it.
-- **Model output that drives a decision passes a deterministic gate.** Parse it
-  against a schema, run the tests, diff it against the expected result — never act
-  on free-form model text that a check could have validated.
-- **Mechanical results win on conflict.** A failing lint, type check or test is not
-  overridden by a reviewer's "looks fine"; mechanical violations are fixed (see the
-  rubric's override rules).
-- **Keep deterministic gates near-zero false-positive.** A noisy rule teaches agents
-  to ignore it. Narrow or remove it rather than leaving it as an unenforced warning.
-- **Skills follow the same split.** The skill's script does the deterministic steps
-  (enumerate, compute, write, verify); its prose carries only the judgment calls.
-
-Related: *Knowledge state* (typed fields over parsed prose) and *Veracity*
-(evidence, not claims).
+Anything decidable explicitly or algorithmically is done by **code**, not an LLM: a script, lint
+rule, type, schema, test or CLI gives the same answer every run and can gate CI. Before asking a model
+to check, count, compare, parse, format, route or validate, ask whether a tool can; promote repeated
+judgment to a check (`[mechanical]` rubric items); model output that drives a decision passes a
+deterministic gate; mechanical results win on conflict; keep gates near-zero false-positive; skills put
+deterministic steps in their script and only judgment in prose.
+→ full text: [`docs/agents-detail.md`](docs/agents-detail.md#deterministic-first--code-over-model-judgment).
 
 ## Default language
 
-This repo's default language for new code — source, scripts, and tooling — is
-declared in **`.agent/default-language.md`**. Read that file at the start of any
-task that writes code and honor it:
-
-- **When it names a language,** write new code in that language and file format by
-  default. When a task could be done in several languages, choose the declared
-  one; do not introduce another language, extension, or a second runtime just
-  because it's conventional elsewhere.
-- **When the file is absent, or declares the language `unset`,** there is no repo
-  default — infer the language from the existing codebase and match what's already
-  there.
-
-The only exception is a **hard blocking need** — a tool whose own loader or runtime
-*requires* a different language/format (e.g. `eslint.config.mjs`: ESLint's
-flat-config loader resolves the config as an ES module and can't load a `.ts` file
-directly). When you hit one, **stop and get explicit approval before adding the
-off-language file**, and note the reason in a comment at the top of it. "It's a
-script, X is conventional" is not a blocking need — use the declared language.
-
-**Setting the default (per repo).** `.agent/default-language.md` is
-consumer-owned — scaffold does not sync or overwrite it, so each repo sets its own.
-Create it with a level-1 heading naming the language, then a sentence or two on the
-file extension, how code runs, and any formats to avoid. To opt out of a repo
-default, omit the file or write `# Default language: unset`.
+New code — source, scripts, tooling — uses the language declared in **`.agent/default-language.md`**
+(read it before writing code). Absent or `unset`: match the existing codebase. The only exception is a
+**hard blocking need** (a tool whose loader requires another format, e.g. `eslint.config.mjs`): get
+explicit approval first and note the reason in a comment at the top of the file. The file is
+consumer-owned; scaffold never syncs it.
+→ full text: [`docs/agents-detail.md`](docs/agents-detail.md#default-language).
 
 ## Modern web platform code
 
@@ -455,119 +205,49 @@ this file to override the guides' Baseline default.
 
 ## Minimum Viable Diff
 
-Prefer the smallest change that achieves the goal.
+Prefer the smallest change that achieves the goal: targeted edits, existing structure and naming
+preserved, no opportunistic refactors or style rewrites (surface them separately); ask before a diff
+larger than ~30 lines. → full text: [`docs/agents-detail.md`](docs/agents-detail.md#minimum-viable-diff).
 
-- Single, targeted edits. Don't rewrite when a few-line change works.
-- Preserve existing structure, naming, and patterns unless a rewrite is asked for.
-- No opportunistic refactors — surface them as separate suggestions.
-- No style-preference rewrites. Working code stays as-is.
-- When in doubt, ask before producing a diff larger than ~30 lines.
+## Feature-chain workflow
+
+Non-trivial features run `/feature-chain` (or each phase alone): **Design** `/grill-with-docs` →
+`design.md` with Q&A, decisions and a canonical vocabulary, then `/design-review` (auto-fix) →
+**PRD** `/to-prd` → `prd.md` → **Plan**: vertical slices (data → logic → UI → tests) in `plan.md`,
+granularity confirmed once → **TDD** `/tdd`: RED → GREEN → REFACTOR per slice, then `/code-refiner`, then
+`/qa` when there is a user-facing entry point; keep `tdd-log.md`. **Stop** any time on "stop", "pause" or
+"just answer". → full text: [`docs/agents-detail.md`](docs/agents-detail.md#feature-chain-workflow).
+
+- **Artifacts:** one folder per feature, `./docs/<feature-slug>/` (`design.md`, `prd.md`, `plan.md`,
+  `tdd-log.md`); state the slug (kebab-case, no articles, under ~30 chars) before the first file.
+  → [`docs/agents-detail.md`](docs/agents-detail.md#artifacts--one-folder-per-feature).
+- **Commits, one per step:** `docs(<slug>): design Q&A and vocabulary` · `docs(<slug>): PRD` ·
+  `docs(<slug>): implementation plan`; per slice `test(<slug>): slice N red — …`,
+  `feat(<slug>): slice N green — …`, `refactor(<slug>): slice N — …` (only if it happened).
+  → [`docs/agents-detail.md`](docs/agents-detail.md#git-commits--one-per-step).
+- **Retry from the prior artifact:** bad slice → revert it and re-run from `plan.md` slice N; plan off →
+  re-plan from `prd.md`; PRD gap → extend `design.md`, rewrite `prd.md`; term drift → update the
+  vocabulary, then propagate. → [`docs/agents-detail.md`](docs/agents-detail.md#retry-semantics).
+- **Skip the chain for:** bug fixes under ~10 lines, one-off scripts or prototypes, config edits /
+  dependency bumps / lint fixes, doc-only changes, or "just write it", "no tests", "quick fix".
+  → [`docs/agents-detail.md`](docs/agents-detail.md#what-this-doesnt-apply-to).
 
 ## Proactive file-length maintenance
 
-**Never trim comments, densify code, or hold back a useful edit to keep a file
-under the length limit — that is an antipattern.** It trades clarity for a line
-count and quietly makes the code worse. Do not tell the user to "be lean here" to
-preserve file size, and do not do it to your own edits.
-
-The limit is a signal to **split the file into cohesive modules at
-single-responsibility seams** — behavior-preserving, tests green — not a budget to
-cram within. When a file grows near the limit, extract modules; never starve it of
-comments or clarity to fit. Splitting, never cramming, is the remedy for a long or
-growing file.
-
-**Escape hatch, used sparingly.** When a file is genuinely *one cohesive unit* —
-every candidate seam is shallow and a split would scatter one concept across files
-(a model/schema/state-machine over a single type) — an inline `quality-ok:
-file-length — <reason>` pragma on the first non-shebang line is preferable to an
-arbitrary split that fragments the concept. A real seam always wins over the
-override; reach for it only when keeping the file whole aids comprehension more than
-splitting it, and cite why.
-
-Run `/feature-chain` to execute all phases automatically. Or invoke individually:
-
-1. **Design** — `/grill-with-docs`. Interview one question at a time until
-   the design tree is resolved. Produces `design.md` with Q&A, decisions, and
-   a **canonical vocabulary**. Run `/design-review` (auto-fix mode) before
-   advancing — patches `design.md` directly. Auto-advances to PRD when complete.
-
-2. **PRD** — `/to-prd`. Synthesize context and codebase into `prd.md` without
-   re-interviewing. Auto-advances to TDD when complete.
-
-3. **Plan** — break `prd.md` into **vertical slices** (each cuts through all
-   layers: data → logic → UI → tests). Output `plan.md`. Confirm granularity
-   once before coding.
-
-4. **TDD** — `/tdd`. Execute `plan.md` one slice at a time: RED → GREEN →
-   REFACTOR. When all slices pass, run `/code-refiner` (auto-fix mode —
-   parallel correctness + structural review, merged findings applied in one
-   pass, then re-verified to 10/10), then `/qa` when the feature has a
-   user-facing entry point (drives the running app, fixes what breaks, writes
-   `qa-report.md`), before advancing to the review summary.
-   Maintain `tdd-log.md` with per-slice status.
-
-**Stop** the chain at any point by saying "stop", "pause", or "just answer".
-
-## Artifacts — One Folder Per Feature
-
-State the slug before writing the first file so I can correct it.
-
-```
-./docs/<feature-slug>/
-  ├── design.md      # Q&A, decisions, scenarios, canonical vocabulary
-  ├── prd.md         # full PRD
-  ├── plan.md        # vertical slices
-  └── tdd-log.md     # per-slice TDD status
-```
-
-Feature-slug rule: kebab-case, drop articles, keep it under ~30 chars.
-
-## Git Commits — One Per Step
-
-Commit each artifact before moving on:
-
-- `docs(<slug>): design Q&A and vocabulary`
-- `docs(<slug>): PRD`
-- `docs(<slug>): implementation plan`
-
-For TDD, commit per phase per slice:
-
-- `test(<slug>): slice N red — <behavior>`
-- `feat(<slug>): slice N green — <behavior>`
-- `refactor(<slug>): slice N — <what changed>` (only if refactor happened)
-
-## Retry Semantics
-
-Each step's input is the prior step's artifact:
-
-- Bad TDD slice → revert those commits, re-run from `plan.md` slice N.
-- Plan off → re-plan from `prd.md`.
-- PRD missed something → extend `design.md`, then rewrite `prd.md`.
-- Terms drift → update vocabulary in `design.md`, then propagate.
-
-## What This Doesn't Apply To
-
-Skip the chain for:
-
-- Bug fixes under ~10 lines
-- One-off scripts or throwaway prototypes
-- Config edits, dependency bumps, lint fixes
-- Doc-only changes
-- Anything where I say "just write it", "no tests", or "quick fix"
+**Never trim comments, densify code or hold back a useful edit to fit a length limit** — that is an
+antipattern. The limit is a signal to **split at single-responsibility seams** (behavior-preserving, tests
+green). Escape hatch, sparingly: for a genuinely indivisible unit, an inline `quality-ok: file-length —
+<reason>` pragma on the first non-shebang line, citing why.
+→ full text: [`docs/agents-detail.md`](docs/agents-detail.md#proactive-file-length-maintenance).
 
 ## PR Workflow
 
-**Default: one independent task per PR/merge cycle.** Finish full acceptance,
-review and validate locally, create/update its PR, verify real required hosted
-checks on the final head, then merge **only with explicit session or standing
-project authorization**. Creating a PR does not authorize merging. Without that
-permission, preserve the ready PR and gate the next task. A failed gate remains
-part of the current task; never grow the branch with another feature to defer it.
-Confirm the actual merge and cut a fresh branch from updated main before the next
-independent task. Subagents may parallelize subtasks of the current task; only the
-root integrates, pushes and merges. Explicit project policy may opt into legacy
-batch delivery (`queue config deliveryMode batch`). See `skills/queue.md` for
-runtime boundaries, migration and the `advance` acknowledgment.
+**One independent task per PR/merge cycle.** Finish acceptance, validate locally, open/update its PR,
+verify real required hosted checks on the final head, then merge **only with explicit session or
+standing project authorization** (creating a PR does not authorize merging). A failed gate stays part of
+the current task; never grow the branch with another feature. Confirm the merge and cut a fresh branch
+before the next task. Only the root integrates, pushes and merges. Opt-in legacy batch delivery:
+`queue config deliveryMode batch` (see `skills/queue.md`). → full text: [`docs/agents-detail.md`](docs/agents-detail.md#pr-workflow).
 
 1. Pull latest main: `git checkout main && git pull origin main`
 2. Create a clean branch: `git checkout -b <prefix>/<short-descriptive-name>`
