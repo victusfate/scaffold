@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # check-quality-mechanical.sh — mechanical code quality checks.
-# Usage: check-quality-mechanical.sh [file ...] (defaults to git changed files)
+# Usage: check-quality-mechanical.sh [--staged | file ...]
+#   (defaults to files changed vs main; --staged checks the git index, for pre-commit)
 # Exits non-zero if any violation is found. All violations include filename:line citations.
 set -euo pipefail
 
@@ -135,13 +136,16 @@ check_file() {
   done < "$file"
 }
 
-# Resolve files: args or git changed files
-if [ $# -gt 0 ]; then
+# Resolve files: explicit args, staged files, or files changed vs main.
+SOURCE_RE='\.(js|mjs|ts|tsx|sh|py|rb|go)$'
+if [ "${1:-}" = "--staged" ]; then
+  mapfile -t FILES < <(git diff --cached --name-only --diff-filter=ACMR 2>/dev/null \
+    | grep -E "$SOURCE_RE" || true)
+elif [ $# -gt 0 ]; then
   FILES=("$@")
 else
   mapfile -t FILES < <(git diff main...HEAD --name-only 2>/dev/null \
-    | grep -E '\.(js|mjs|ts|tsx|sh|py|rb|go)$' \
-    || true)
+    | grep -E "$SOURCE_RE" || true)
 fi
 
 for f in "${FILES[@]}"; do

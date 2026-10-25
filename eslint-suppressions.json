@@ -1,0 +1,103 @@
+{
+  "scripts/agent-loop-process.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "scripts/agent-loop-runner.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "scripts/agent-loop.ts": {
+    "complexity": {
+      "count": 3
+    }
+  },
+  "scripts/mermaid-render.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "scripts/queue-console.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "scripts/queue-lanes.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "scripts/queue-model.ts": {
+    "complexity": {
+      "count": 3
+    },
+    "max-params": {
+      "count": 2
+    }
+  },
+  "scripts/queue.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "scripts/voice/agent.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "scripts/voice/voice-loop.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "tools/hoist-skill/emitters.ts": {
+    "max-params": {
+      "count": 7
+    }
+  },
+  "tools/hoist-skill/hoist.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "tools/lib/resolver-parse.ts": {
+    "complexity": {
+      "count": 2
+    }
+  },
+  "tools/lib/safe-write.ts": {
+    "complexity": {
+      "count": 1
+    },
+    "max-params": {
+      "count": 1
+    }
+  },
+  "tools/linter-setup/deps.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "tools/linter-setup/emit.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "tools/sync/policy.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "tools/sync/promote.ts": {
+    "complexity": {
+      "count": 1
+    }
+  },
+  "tools/sync/run.ts": {
+    "complexity": {
+      "count": 3
+    }
+  }
+}

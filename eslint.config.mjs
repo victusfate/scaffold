@@ -15,8 +15,8 @@ import js from '@eslint/js';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const MAX_FILE_LINES = 500;
 const MAX_COMPLEXITY = 10;
+const MAX_PARAMS = 4;
 
 export default tseslint.config(
   { ignores: ['lib/linters/**', '**/*.scaffold-new', 'node_modules/**'] },
@@ -31,11 +31,16 @@ export default tseslint.config(
       },
     },
     rules: {
-      // Match the shipped template's rubric thresholds (warn — informational).
-      'max-lines': ['warn', { max: MAX_FILE_LINES }],
-      'max-params': ['warn', 4],
-      'complexity': ['warn', MAX_COMPLEXITY],
-      'no-magic-numbers': ['warn', { ignore: [0, 1], ignoreArrayIndexes: true }],
+      // Rubric thresholds ESLint owns: they need the AST, which the mechanical
+      // check can't parse. Errors, not warnings — existing violations are frozen
+      // in eslint-suppressions.json and may only shrink (prune when fixed).
+      'max-params': ['error', MAX_PARAMS],
+      'complexity': ['error', MAX_COMPLEXITY],
+      // File length and magic numbers belong to scripts/check-quality-mechanical.sh,
+      // which honors `quality-ok:` pragmas and test-file exclusions. Duplicating
+      // them here only produced unfixable noise that disagreed with the gate.
+      'max-lines': 'off',
+      'no-magic-numbers': 'off',
       // See lib/linters/ts/eslint.config.mjs — autofix strips assertions tsc needs.
       '@typescript-eslint/no-unnecessary-type-assertion': 'off',
     },

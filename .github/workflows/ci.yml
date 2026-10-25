@@ -33,6 +33,7 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .node-version
-      - run: npm install --no-save eslint @eslint/js globals typescript-eslint typescript @types/node
-      - run: npx eslint .
-      - run: npx tsc --noEmit
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck

@@ -1,7 +1,41 @@
 #!/usr/bin/env sh
-# Skill-engine routing gate. Enable with:  git config core.hooksPath .githooks
-# Blocks the commit on architectural errors (orphans, routing collisions,
-# MECE violations, unsynced skills). DRY duplication is a warning here; run
-# `node scripts/check-resolvable.ts --strict` in CI to make it block too.
-node scripts/check-resolvable.ts
-node scripts/update-skills-doc.ts --check
+# Pre-commit gate. Enable with:  git config core.hooksPath .githooks
+# (Claude Code cloud sessions enable it automatically via .claude/session-start/hook.sh).
+#
+# Runs the deterministic checks CI runs, scoped to what is staged so a commit stays
+# fast (measured ~5s in scaffold). CI stays the authority. Each step runs only where its tool exists —
+# this hook ships to every consumer repo, whatever its language:
+#   - ESLint on staged JS/TS (repo's own config, so its own warn/error levels)
+#   - the mechanical quality check on staged source files
+#   - the whole-project typecheck (types cross file boundaries)
+#   - the skill-engine routing gate (orphans, routing collisions, MECE violations,
+#     unsynced skills) and the skills-doc freshness check. DRY duplication only
+#     warns here; CI runs check-resolvable --strict to block it.
+set -eu
+
+# Linters read the working-tree copy, so a partially staged file is checked as edited.
+staged() { git diff --cached --name-only --diff-filter=ACMR -z -- "$@"; }
+
+if ls eslint.config.* > /dev/null 2>&1; then
+  if [ -x node_modules/.bin/eslint ]; then
+    staged '*.js' '*.mjs' '*.cjs' '*.ts' '*.tsx' |
+      xargs -0 -r node_modules/.bin/eslint --no-warn-ignored --
+  else
+    echo "pre-commit: ESLint configured but not installed — skipping (install deps, e.g. npm ci)" >&2
+  fi
+fi
+
+if [ -f scripts/check-quality-mechanical.sh ]; then
+  bash scripts/check-quality-mechanical.sh --staged
+fi
+
+if [ -f tsconfig.json ]; then
+  if [ -x node_modules/.bin/tsc ]; then
+    node_modules/.bin/tsc --noEmit
+  else
+    echo "pre-commit: tsconfig.json present but tsc not installed — skipping (install deps, e.g. npm ci)" >&2
+  fi
+fi
+
+if [ -f scripts/check-resolvable.ts ]; then node scripts/check-resolvable.ts; fi
+if [ -f scripts/update-skills-doc.ts ]; then node scripts/update-skills-doc.ts --check; fi

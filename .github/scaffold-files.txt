@@ -13,6 +13,8 @@ docs/skills.md
 .claude/settings.json
 .claude/statusline.sh
 .claude/session-start/hook.sh
+.claude/session-start/node.sh
+.node-version
 .claude/read-once/hook.sh
 .claude/read-once/compact.sh
 bin/bootstrap.sh

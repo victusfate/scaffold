@@ -126,7 +126,7 @@ scripts/
   test-sync.sh                   # isolated tests for bin/sync-from-scaffold.sh
   test-bootstrap.sh              # isolated tests for bin/bootstrap.sh
 .githooks/
-  pre-commit                     # runs the linter and skills-doc freshness check — enable via core.hooksPath
+  pre-commit                     # staged ESLint + mechanical check, tsc, routing + skills-doc gates — enable via core.hooksPath
 .github/
   scaffold-files.txt             # manifest of files managed by scaffold
   workflows/

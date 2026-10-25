@@ -4,7 +4,6 @@ build/
 coverage/
 
 *.lock
-package-lock.json
 *.min.js
 
 .DS_Store
