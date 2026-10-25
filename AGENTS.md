@@ -48,6 +48,17 @@ loop itself:
   test, a reviewer pass, or an automated critique of the actual output (read the
   rendered result, the log, the diff — not a description of it). A "looks good" with
   nothing behind it is not an evaluation (see *Veracity*).
+- **Prefer deterministic evaluators.** A loop judged by a test, a gate, or a measurement
+  converges; a loop judged only by a model's opinion drifts. When a pass keeps making the
+  same judgment, promote it to a check so the next pass is graded by code (see
+  *Deterministic first*).
+- **Ratchet, never reset.** No iteration may regress a measured gate: test count, a
+  benchmark, a frozen lint baseline such as `eslint-suppressions.json`. Baselines only
+  shrink; a pass that improves one thing by worsening another hasn't improved anything.
+- **Count both costs of a change.** Each change risks an immediate defect *and* makes
+  the next change harder to understand. Judge the second cost too: did complexity,
+  coupling or file length rise? The structure a pass leaves behind is the next pass's
+  context.
 - **Name the target and the gap each pass.** State the quality bar, what the current
   output falls short on, and the specific change that closes that gap; then apply it and
   re-judge the same way.
@@ -126,6 +137,9 @@ paying for expensive autocomplete.
 - Before recommending on a multidimensional problem, **map its shape first** —
   see *Understand the shape of the problem* below.
 - Prefer **reversible moves** so course-correcting costs a sentence, not a redo.
+- **Open each loop with a one-line contract**: the target bar, the signal that judges
+  it, the durability tier, and the iteration cap. The user steers that line (the
+  cheapest moment to redirect) and doesn't have to approve each pass.
 
 ### The user's judgment is the tiebreaker
 
@@ -309,6 +323,31 @@ refactors, debugging, decisions alike, not just formal councils (`/council`
 applies it in framing). Surfacing the shape is also what lets the user steer
 early.
 
+## Durability tiers — match rigor to what the code is
+
+Quality practices exist so the code can be understood and safely changed. How much
+rigor that takes depends on where the code sits between **disposable** and
+**durable**. Classify before building, and state the tier along with the feature
+slug so the user can correct it cheaply:
+
+| | Disposable | Durable |
+|---|---|---|
+| Failure costs | an annoyance | data loss, security, downtime |
+| Replacement | minutes to hours by prompt | weeks, with migrations |
+| Inbound dependencies | none (a leaf) | other code relies on its contract |
+| Lifetime | one session or one use | maintained for years |
+
+- **Disposable:** optimize for speed, skip ceremony (`/ponytail`), and keep it a leaf.
+  Durable code never imports disposable code.
+- **Durable:** the full chain and every gate, with strict types and errors rather
+  than warnings, explicit module boundaries, and deterministic tests that use
+  in-memory fakes at external boundaries instead of network mocks.
+- **When unsure, it's durable.** Throwaway code that gains a dependent has been
+  promoted, and it inherits durable rigor at that point.
+
+Tiers aren't recorded or enforced mechanically yet. Until a typed field and an
+import-boundary rule exist, the tier is a judgment you state, not a gate.
+
 ## Veracity — "done" means reachable, not just built
 
 A feature is not done because it compiles and its unit tests pass. It is done when
@@ -346,6 +385,37 @@ feature as done, live, or working when it is built-but-unwired.
 
 Reviewers enforce the code side of this via the rubric's *Vestige & Layering* R5
 ("liveness is the call graph, not tests") and `/validate`'s test-integrity pass.
+
+## Deterministic first — code over model judgment
+
+Anything that can be decided explicitly or algorithmically is done by code, not by
+an LLM. A script, linter rule, type, schema, test or CLI gives the same answer every
+run, costs nothing per call, and can gate CI; a model's judgment does none of those.
+Reserve LLM judgment for what genuinely needs it: intent, naming, design tradeoffs,
+prose quality, ambiguous root causes.
+
+- **Before asking a model to check, count, compare, parse, format, route or
+  validate, ask whether a tool can.** File length, import boundaries, magic
+  literals, formatting, schema shape, stale generated files, version bumps and
+  dependency direction are rules — encode them as rules (lint config, a `scripts/`
+  check, a type, a test) and gate on them.
+- **Promote repeated judgment to code.** When you or a reviewer prompt keep applying
+  the same call, turn it into a check. A rubric criterion a script can decide is
+  marked `[mechanical]` and enforced by `check-quality-mechanical.sh` or a linter,
+  not by a reviewer reading for it.
+- **Model output that drives a decision passes a deterministic gate.** Parse it
+  against a schema, run the tests, diff it against the expected result — never act
+  on free-form model text that a check could have validated.
+- **Mechanical results win on conflict.** A failing lint, type check or test is not
+  overridden by a reviewer's "looks fine"; mechanical violations are fixed (see the
+  rubric's override rules).
+- **Keep deterministic gates near-zero false-positive.** A noisy rule teaches agents
+  to ignore it. Narrow or remove it rather than leaving it as an unenforced warning.
+- **Skills follow the same split.** The skill's script does the deterministic steps
+  (enumerate, compute, write, verify); its prose carries only the judgment calls.
+
+Related: *Knowledge state* (typed fields over parsed prose) and *Veracity*
+(evidence, not claims).
 
 ## Default language
 

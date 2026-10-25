@@ -73,3 +73,5 @@ scripts/voice/agent.test.ts
 scripts/voice/fixtures/cli.ts
 
 scripts/queue-delivery.test.ts
+eslint-suppressions.json
+package-lock.json

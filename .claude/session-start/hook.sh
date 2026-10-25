@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 # session-start: SessionStart hook for Claude Code
-# Fetches origin/main silently and warns if the working branch is behind.
+# Enables the pre-commit gate in cloud sessions, then fetches origin/main silently
+# and warns if the working branch is behind.
 # Exits 0 always — a fetch failure must never block a session.
+
+cd "${CLAUDE_PROJECT_DIR:-.}" || exit 0
 
 # Not a git repo? Nothing to do.
 git rev-parse --git-dir > /dev/null 2>&1 || exit 0
+
+# Cloud sessions get the pre-commit gate without anyone remembering to opt in.
+# Locally, enabling hooks stays your choice: git config core.hooksPath .githooks
+if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -f .githooks/pre-commit ] &&
+  [ -z "$(git config core.hooksPath)" ]; then
+  git config core.hooksPath .githooks
+fi
 
 # Fetch origin/main quietly; ignore network errors.
 git fetch origin main --quiet 2>/dev/null || exit 0
