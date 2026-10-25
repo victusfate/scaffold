@@ -3,6 +3,8 @@
 .claude/skills/jev-typesafe/SKILL.md
 .cursor/rules/jev-typesafe.mdc
 AGENTS.md
+scripts/check-agents-detail.ts
+docs/agents-detail.md
 CLAUDE.md
 CODEOWNERS
 GEMINI.md
