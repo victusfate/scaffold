@@ -48,6 +48,17 @@ loop itself:
   test, a reviewer pass, or an automated critique of the actual output (read the
   rendered result, the log, the diff — not a description of it). A "looks good" with
   nothing behind it is not an evaluation (see *Veracity*).
+- **Prefer deterministic evaluators.** A loop judged by a test, a gate, or a measurement
+  converges; a loop judged only by a model's opinion drifts. When a pass keeps making the
+  same judgment, promote it to a check so the next pass is graded by code (see
+  *Deterministic first*).
+- **Ratchet, never reset.** No iteration may regress a measured gate: test count, a
+  benchmark, a frozen lint baseline such as `eslint-suppressions.json`. Baselines only
+  shrink; a pass that improves one thing by worsening another hasn't improved anything.
+- **Count both costs of a change.** Each change risks an immediate defect *and* makes
+  the next change harder to understand. Judge the second cost too: did complexity,
+  coupling or file length rise? The structure a pass leaves behind is the next pass's
+  context.
 - **Name the target and the gap each pass.** State the quality bar, what the current
   output falls short on, and the specific change that closes that gap; then apply it and
   re-judge the same way.
@@ -126,6 +137,9 @@ paying for expensive autocomplete.
 - Before recommending on a multidimensional problem, **map its shape first** —
   see *Understand the shape of the problem* below.
 - Prefer **reversible moves** so course-correcting costs a sentence, not a redo.
+- **Open each loop with a one-line contract**: the target bar, the signal that judges
+  it, the durability tier, and the iteration cap. The user steers that line (the
+  cheapest moment to redirect) and doesn't have to approve each pass.
 
 ### The user's judgment is the tiebreaker
 
@@ -308,6 +322,31 @@ recommend from that mapped space, not a hunch. A general stance — design,
 refactors, debugging, decisions alike, not just formal councils (`/council`
 applies it in framing). Surfacing the shape is also what lets the user steer
 early.
+
+## Durability tiers — match rigor to what the code is
+
+Quality practices exist so the code can be understood and safely changed. How much
+rigor that takes depends on where the code sits between **disposable** and
+**durable**. Classify before building, and state the tier along with the feature
+slug so the user can correct it cheaply:
+
+| | Disposable | Durable |
+|---|---|---|
+| Failure costs | an annoyance | data loss, security, downtime |
+| Replacement | minutes to hours by prompt | weeks, with migrations |
+| Inbound dependencies | none (a leaf) | other code relies on its contract |
+| Lifetime | one session or one use | maintained for years |
+
+- **Disposable:** optimize for speed, skip ceremony (`/ponytail`), and keep it a leaf.
+  Durable code never imports disposable code.
+- **Durable:** the full chain and every gate, with strict types and errors rather
+  than warnings, explicit module boundaries, and deterministic tests that use
+  in-memory fakes at external boundaries instead of network mocks.
+- **When unsure, it's durable.** Throwaway code that gains a dependent has been
+  promoted, and it inherits durable rigor at that point.
+
+Tiers aren't recorded or enforced mechanically yet. Until a typed field and an
+import-boundary rule exist, the tier is a judgment you state, not a gate.
 
 ## Veracity — "done" means reachable, not just built
 
