@@ -29,6 +29,15 @@ Knowledge-graph advocates argue that resolving entities offline, storing typed r
 
 Faster retrieval of a stale or unmeasured claim only makes the team wrong sooner. What these failures have in common is **state that was written once and never verified**. The fix is typed lifecycle state with evidence, kept as plain, git-diffable records that every harness can read. It does not need a graph database, embeddings or a wikilink crawler.
 
+## Storage: extend the queue's database, don't add a new store
+
+If the task queue already lives in an embedded database (for example SQLite through the runtime's built-in driver) with a rendered markdown view, put the new records **in that same database as typed tables**, and render human-readable views from it the way the queue view is rendered:
+- `decisions` (id, statement, owner quote, scope, status, supersedes, code ref or probe command);
+- `evidence` (task, PR, test ids, commit, scope, covered files);
+- one typed `edges` table (`from_kind, from_id, relation, to_kind, to_id`).
+
+A single edge table is what makes this a queryable knowledge graph in plain SQL, with no separate graph store. It reuses the existing locking, CLI and render path. Use plain files (JSON Lines) only when no database exists yet.
+
 ## Recommendation
 
 ### 1. Typed lifecycle state on the existing task queue
