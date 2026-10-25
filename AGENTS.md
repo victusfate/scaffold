@@ -169,6 +169,17 @@ gate, strict types, explicit boundaries, deterministic tests with in-memory fake
 disposable; when unsure, it's durable. Tiers are a stated judgment, not yet a gate.
 → full text: [`docs/agents-detail.md`](docs/agents-detail.md#durability-tiers--match-rigor-to-what-the-code-is).
 
+## Visual self-review — never surface unreviewed generated content
+
+Open and review every generated visual — render, image, model, animation, UI — yourself before
+showing the user, and iterate to the quality bar on your own (fix and re-render); never hand a defect
+to the user to catch, and never relay a worker's quality claim you haven't visually confirmed. Show
+only passing work with a one-line note of what you checked; save the user's eyes for taste calls.
+**Deployed web work isn't "ready" until the live URL passes a real browser check** at desktop and phone
+size (no 4xx/5xx, media plays, images decode, no page errors) and you have looked at the screenshots;
+checking source references or curling a URL once is not verification. Projects name their own quality
+bar and browser-check tool in `.agent/project.md`.
+
 ## Veracity — "done" means reachable, not just built
 
 "Done" means an **unbroken call path from a user entry point to the code**. Grep for real (non-test)
