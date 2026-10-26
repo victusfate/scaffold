@@ -500,3 +500,182 @@ a dependency fails — and the gate passes silently. (Same for path-filtered or
 Never commit directly to main for feature work.
 A session spans the full lifetime of a branch — from creation until it is merged or discarded. Only switch branches after the current feature branch is merged or the user explicitly asks; keep committing to the current branch until then. The one permitted exception is checking out main solely to pull and immediately create a new feature branch.
 Start a fresh branch off main when no active feature branch is being resumed.
+
+## Harness capabilities
+
+These instructions support Claude Code, Codex, Cursor, Antigravity (agy), and pi.
+Use the tools actually exposed by the current client. A named tool below is not
+a guarantee that it is installed. User instructions take precedence over skill
+defaults; infer routine choices from the repository and existing authorization.
+
+- **Skills:** `/name` below denotes a scaffold skill. In Codex, invoke `$name`
+  or select it via `/skills`; read `.agents/skills/<name>/SKILL.md`, then its
+  linked `skills/<name>.md`. Explicitly read referenced `@path` files relative
+  to the containing document; do not assume Claude's import expansion.
+- **Delegation:** use native subagents when available. Respect client concurrency
+  limits by batching independent reviewers. Use fresh context for review when
+  supported; otherwise disclose the limitation and apply the criteria serially.
+  Editing lanes use explicit git worktrees if the client lacks an isolation flag.
+- **Optional tools:** PR subscriptions, monitors, timers, memory, and file-delivery
+  tools depend on the client. Use the fallbacks below; never claim an unavailable
+  integration is active. Do not change global model, trust, or permission settings
+  to make a workflow run.
+
+## Session and process ownership
+
+Each session has exactly one orchestrator. Separate sessions may work concurrently,
+including in the same repository, but they are independent owners. Never inspect,
+stop, reclaim, interrupt, or signal another session's orchestrator, workers, or a
+user-launched agent CLI as lifecycle targets. Read-only aggregate resource checks
+may observe them, but process names, PIDs, terminals, queue owner labels, lease
+timestamps, and worktrees never establish authority over them.
+
+Only a lifecycle controller may terminate the exact child tree it created for its
+current generation, and only on explicit cancel or timeout. Normal child completion
+must not send a cleanup signal. If ownership is ambiguous, leave the process and
+worktree untouched, stop conflicting dispatch, and report the conflict.
+
+## Orchestration hygiene (lessons from long autonomous runs)
+
+These failures each cost hours in a real run; each has a cheap guard.
+
+- **Confirm a merge before cleaning up.** Check that the PR is `MERGED` and that its squash
+  commit is in `origin/main` before you delete branches or worktrees or mark tasks done. A merge
+  refused for a conflict must stop the cleanup chain.
+- **Gate with the full suite, not the first failure.** When a known-failing test target exists,
+  run every target (`cargo test --no-fail-fast`, `jest --bail=false`, and so on) and diff the
+  per-target failure set against main. A runner that stops at the first failing target hides
+  every target after it. A mass rename can also rewrite deliberately invalid test fixtures into
+  valid ones, so read the test diff, not just the result.
+- **Never feed parsed command output into `rm`, `mv` or delete loops.** Handle each named
+  path explicitly after looking at it, and never act on a directory you didn't create. After
+  you kill a destructive job, kill its children too: a `mv` across mounts copies first and
+  keeps running after its parent dies.
+- **Subagents that "wait" may be asleep.** A worker that ends its turn waiting on its own
+  background job often has nothing running and never wakes. Check that the worker's processes
+  are alive each tick and resume it if not. Tell workers never to end a turn idle: poll with
+  short foreground checks instead.
+- **Isolate shared state in tests.** Tests use their own save and user directories, never a
+  default slot or a directory other runs share. A stale prompt or a leftover profile in shared
+  state turns into false failures, or false passes, far from the real cause.
+- **Hold a host lock around one command, never a shell.** Wrapping a shell or script in an
+  exclusive lock lets a nested request for the same lock deadlock every job on the host.
+- **Keep the task board true.** Claims, releases and completions happen as workers start,
+  stop and merge, and the committed queue view is re-rendered with them (see `/queue`,
+  `queue check-view`).
+
+## Knowledge state: typed and evidenced, not prose
+
+Prose that a script parses is an accidental database, and a claim nobody re-checks is a rumor.
+Full rationale and pilot plan: [`docs/knowledge-architecture.md`](docs/knowledge-architecture.md).
+
+- **Lifecycle state lives in typed fields, not acceptance prose.** Branch, plan, PR, evidence and
+  decision references are written with the queue CLI's typed setters (add one if it's missing),
+  never as markers such as `BRANCH:` appended to the acceptance text. Scripts read those fields.
+- **Done requires evidence.** A task is done only with a recorded PR, test ids, the commit they
+  passed at and their scope. Evidence goes stale when the files it covers change. Check existing
+  evidence before dispatching, so finished work isn't rediscovered.
+- **Record decisions when they are made.** Each owner decision gets one home with an id, the
+  owner's words, scope, status and supersession, plus a code reference or a reproducible
+  measurement. Record it before replying, because chat summaries are lossy. Everything else cites
+  the id. An unmeasured claim is marked unverified.
+- **Generate hook points; don't hand-write them.** Code locations come from code at a named
+  commit, and plans state intent and gates. Workers own the details and write discoveries back.
+- **Never keep project facts only in harness-private memory.** Facts every worker needs live in
+  the repo, readable by every harness. Private memory holds harness preferences only.
+
+## Understand the shape of the problem first
+
+Before committing to a solution, map the **shape of the problem** — the
+dimensions it balances and where the real tension lives — instead of jumping to
+the first approach or flattening a complex problem to one axis. Name the axes
+(cost, speed, risk, reversibility, clarity…), find where the frontier sits, and
+recommend from that mapped space, not a hunch. A general stance — design,
+refactors, debugging, decisions alike, not just formal councils (`/council`
+applies it in framing). Surfacing the shape is also what lets the user steer
+early.
+
+## Modern web platform code
+
+Before writing or reviewing browser-facing code — HTML, CSS, client-side JS, or
+components that render to the DOM — run `/modern-web`. It uses the harness's
+native [Modern Web Guidance](https://developer.chrome.com/docs/modern-web-guidance)
+plugin where one exists and the npm CLI otherwise. Skip it for backend, CI, and
+non-browser code. A repo may record a `**Browser Support:**` line anywhere in
+this file to override the guides' Baseline default.
+
+## ONE Working Branch — fan-out integration (NON-NEGOTIABLE)
+
+**A session has EXACTLY ONE working branch** — the current task’s feature branch, rotated only after its authorized merge.
+Code, assets, docs, lore, ledgers — *everything* lands on that one branch. This is the
+single most important operational rule when fanning out; violating it silently splits the
+project in two.
+
+- **Lanes work in isolated git worktrees** (`isolation: "worktree"`), each branched off the
+  ONE working branch, and gate their own diff.
+- **The orchestrator merges each lane into the ONE working branch LOCALLY the moment that lane
+  completes** — not into a separate "integration" branch, not batched "later". One completed
+  lane → merge/rebase its worktree branch into the local one branch → resolve → delete the worktree →
+  mark the ledger. Do it before spawning the next thing. (Pushing to GitHub is a SEPARATE, controlled,
+  batched step by the orchestrator — see the push rule below.)
+- **Refresh a lane against its integration target before integrating it.** The target is
+  whatever this repo's delivery mode integrates into: main under per-task merges, a shared
+  working branch, or a branch left open for a separate review process. That target keeps
+  moving while the lane runs, and two lanes that each pass on their own can break when
+  combined. Before opening the lane's PR or integrating it:
+  1. **Merge** the current target into the lane branch, as one merge commit with one
+     conflict resolution. Don't rebase a long lane branch: rebasing replays every commit
+     and can hit the same conflict once per commit.
+  2. Re-run the gates **on the merged result**, not on the lane's old base. That means
+     lint over every target, including test code; the full test suite of every touched
+     package (not only the new tests); and a regeneration of any derived artifacts the
+     change affects (generated guides, manifests, lockfiles). Commit any regenerated files.
+  3. Integrate only when that merged result is green. Hosted CI then confirms main
+     instead of discovering the combination failure. Short-lived lanes drift less, so
+     integrate each lane as soon as it finishes.
+- **Retire completed artifacts at integration.** Preserve required source and unique
+  evidence with a durable index before removing verified-ended lane worktrees and
+  merged branches; clear ended display state through existing queue lifecycle commands.
+  After the authorized main merge, verify no unique commits before retiring the task
+  branch. Keep generated state ignored and completed narrative archived; retain active
+  scope, dependencies and evidence links. See [integration cleanup](skills/queue-drivers.md#integration-cleanup-all-delivery-modes).
+- **Reap zombie worktrees after an interrupted session.** The normal merge step deletes
+  each lane's worktree. A session that ends abruptly skips that step: weekly usage runs
+  out, the harness crashes, or the machine power-cycles. The lane's worktree is then left
+  half-done. Sometimes it's still registered with unmerged commits; sometimes it has
+  dropped out of `git worktree list` (after `git worktree prune`, or in a harness-managed
+  isolation dir such as `.claude/worktrees/agent-*`) while its directory stays on disk with
+  every ignored and untracked build output. In one consumer repo, ten such zombies quietly
+  held 146 GB. On session start or resume, and on each loop tick, list the worktree roots
+  owned by this session and flag each directory with its size and age. Staleness
+  never grants authority over another session; verify ownership and actual worker end
+  before cleanup:
+  - Registered with unmerged commits: **finish or merge the lane** (don't lose the work).
+  - Registered and clean: remove only after verifying owned worker end and preserving unique evidence.
+  - Unregistered: check for unique, non-reproducible content before deleting, and get the
+    user's OK when it isn't clearly reproducible.
+- **The orchestrator commits ALL of its OWN work — ledgers, queue, docs, lore, web, hotfixes —
+  to that SAME ONE branch**, never to a different branch than the lanes merge into.
+- **NEVER run two long-lived branches at once** (e.g. an "integration" branch *and* an "asset"
+  branch; a "code" branch *and* a "docs" branch). If a prior session handed you two, your FIRST
+  act is to consolidate them into one before any new work.
+- **Self-check every few lanes / whenever you notice you've pushed to a branch name:** *"Is
+  more than one branch accumulating commits this session?"* If yes — **STOP and merge them now.**
+  A code-on-branch-A / bookkeeping-on-branch-B divergence is a process failure, not a workflow.
+- The one working branch is what the user plays, and what becomes the PR. It must ALWAYS hold
+  both the lane code AND the orchestrator's bookkeeping — never one without the other.
+
+### NO PUSH RACE — lanes commit LOCALLY, the orchestrator merges + gates + pushes
+
+**Subagent worktree lanes NEVER `git push` to GitHub.** A lane commits to its OWN worktree branch and
+reports; it does not touch `origin`. Telling a lane to `git push origin HEAD:<branch>` is a bug — it
+creates a **push race** where N lanes pushing rapidly each trigger a full CI run and rapid pushes
+cancel + cold-restart the slow gates, torching CI minutes. There is ONE pusher: the orchestrator.
+
+Every time: (1) lane commits locally in its worktree, reports — no push; (2) orchestrator merges the
+lane branch into the LOCAL one working branch, deletes the worktree; (3) orchestrator runs the CI
+gates **LOCALLY as a pre-flight** (a fast local `make ci`/preflight of the same checks CI runs) and
+fixes locally before spending a GitHub run; (4) orchestrator pushes to GitHub in **controlled batches**
+(rebase-retry, never force). GitHub CI is a fast confirmation, not the failure-finder. The
+orchestrator's own commits ride the same batched push. There is no second branch, and there is never a
+push race.
