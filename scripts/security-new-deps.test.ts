@@ -53,3 +53,8 @@ void test('cargo: CRLF and loose spacing still parse; a nameless package refuses
 	assert.deepEqual(cargoDeps('version = 4\r\n\r\n[[package]]\r\nname="x"\r\nversion = "1"\r\nsource="git+https://e.com/x#a"\r\n').map(d => d.source), ['git+https://e.com/x#a']);
 	assert.throws(() => cargoDeps('version = 4\n\n[[package]]\nversion = "1"\n'));
 });
+
+void test('cargo: a source that only starts with the crates.io index URL is held', async () => {
+	const why = await judge({ ecosystem: 'crates', name: 'serde', source: 'registry+https://github.com/rust-lang/crates.io-index.evil.example' });
+	assert.match(why, /non-crates\.io source/);
+});

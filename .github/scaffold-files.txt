@@ -36,6 +36,10 @@ scripts/compute-bump.test.ts
 scripts/security-gate.ts
 scripts/security-gate.test.ts
 scripts/security-scan.ts
+scripts/security-scan-core.ts
+scripts/security-scan-tools.ts
+scripts/security-scan-deps.ts
+scripts/security-eslint.ts
 scripts/security-new-deps.ts
 scripts/security-new-deps.test.ts
 scripts/security-rules.sha256

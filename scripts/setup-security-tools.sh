@@ -54,13 +54,13 @@ fi
 # changed pack is a reviewed repo change, never a silent download. --refresh-rules re-downloads and rewrites
 # that file (commit it after reviewing the rule diff; the gate holds it as a gate change for owner sign-off).
 SUMS=$REPO/scripts/security-rules.sha256
-for pack in default secrets r2c-security-audit; do
+for pack in default secrets r2c-security-audit typescript nodejsscan; do
 	if [[ ${1:-} = --refresh-rules || ! -f $D/rules/$pack.yml ]]; then
 		curl -sfL "https://semgrep.dev/c/p/$pack" -o "$D/rules/$pack.yml.tmp" || fail "download of semgrep pack $pack failed"
 		mv -f "$D/rules/$pack.yml.tmp" "$D/rules/$pack.yml"
 	fi
 done
-[[ ${1:-} = --refresh-rules ]] && (cd "$D/rules" && sha256sum ./default.yml ./r2c-security-audit.yml ./secrets.yml > "$SUMS")
+[[ ${1:-} = --refresh-rules ]] && (cd "$D/rules" && sha256sum ./default.yml ./nodejsscan.yml ./r2c-security-audit.yml ./secrets.yml ./typescript.yml > "$SUMS")
 [[ -f $SUMS ]] || fail "no tracked rule checksums at $SUMS"
 (cd "$D/rules" && sha256sum -c --quiet "$SUMS") || fail "semgrep rule packs differ from scripts/security-rules.sha256; review, then --refresh-rules"
 echo "setup-security-tools: gitleaks $GITLEAKS, osv-scanner $OSV, semgrep $SEMGREP, zizmor $ZIZMOR, cargo-deny $CARGO_DENY ready in $D/bin"

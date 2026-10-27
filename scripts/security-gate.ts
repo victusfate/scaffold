@@ -27,13 +27,14 @@ import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileS
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import type { Finding } from './security-scan.ts';
+import type { Finding } from './security-scan-core.ts';
 
 /** The gate's own files and approvals (paths or directories), exported from origin/main by the launcher.
  *  security-scan.ts holds a change to any of them for the owner's sign-off (`gate-change:<path>`). */
-export const GATE_FILES = ['scripts/security-gate.ts', 'scripts/security-scan.ts', 'scripts/security-new-deps.ts',
-  'scripts/security-rules.sha256', 'security/approved-deps.txt', '.gitleaks.toml', 'deny.toml', '.semgrep',
-  'security/checks'];
+export const GATE_FILES = ['scripts/security-gate.ts', 'scripts/security-scan.ts', 'scripts/security-scan-core.ts',
+  'scripts/security-scan-tools.ts', 'scripts/security-scan-deps.ts', 'scripts/security-eslint.ts',
+  'scripts/security-new-deps.ts', 'scripts/security-rules.sha256', 'security/approved-deps.txt',
+  'security/eslint-tuning.json', '.gitleaks.toml', 'deny.toml', '.semgrep', 'security/checks'];
 export const EXIT_REFUSE = 4;
 const SCAN_OK = [0, 1, 3];   // security-scan.ts: clean, findings, held — anything else is a scanner error
 const SELF = 'scripts/security-gate.ts';
@@ -52,23 +53,29 @@ function lines(text: string): string[] {
   return text.split('\n').map(l => l.replace(/\r$/, ''));
 }
 
-/** `security-ack: <id> — <reason>` as a whole line: an id merely quoted elsewhere does not count. */
-export function ackLine(body: string, id: string): string | undefined {
-  const p = `security-ack: ${id} — `;
-  return lines(body).find(l => l.startsWith(p) && l.length > p.length);
+/** Lines of `text` that start with `prefix` and continue with a non-blank reason. */
+function reasoned(text: string, prefix: string): string[] {
+  return lines(text).filter(l => l.startsWith(prefix) && l.slice(prefix.length).trim() !== '');
 }
 
-/** True when some ack line for `id` carries the owner's quoted sign-off. */
+/** `security-ack: <id> — <reason>` as a whole line: an id merely quoted elsewhere does not count. */
+export function ackLine(body: string, id: string): string | undefined {
+  return reasoned(body, `security-ack: ${id} — `)[0];
+}
+
+/** True when some ack line for `id` quotes the owner: `owner sign-off: "<words>"` (closing quote required).
+ *  This is text, not authentication: see docs/security-review.md "What the gate cannot prove". */
 export function ownerSignedOff(body: string, id: string): boolean {
-  const p = `security-ack: ${id} — `;
-  return lines(body).some(l => l.startsWith(p) && l.includes('owner sign-off: "'));
+  return reasoned(body, `security-ack: ${id} — `).some(l => /owner sign-off: "[^"]*\S[^"]*"/.test(l));
 }
 
 /** True when approved-deps.txt has `<eco>:<name> — <owner words>` for this dependency. */
 export function depApproved(approvals: string, dep: string): boolean {
-  const p = `${dep} — `;
-  return lines(approvals).some(l => l.startsWith(p) && l.length > p.length);
+  return reasoned(approvals, `${dep} — `).length > 0;
 }
+
+/** Holds released by the owner's quoted sign-off on the ack line (rather than by approved-deps.txt). */
+const SIGN_OFF_HOLDS = ['gate-change:', 'lockfile:'];
 
 /** The text of the `## Security review` section (up to the next `## ` heading). */
 export function reviewSection(body: string): string {
@@ -88,9 +95,9 @@ export function uncovered(section: string, changed: string[]): string[] {
 function judgeFinding(f: Finding, body: string, gateDir: string): void {
   if (!ackLine(body, f.id)) refuse(`finding ${f.id} is neither fixed nor acknowledged ('security-ack: ${f.id} — <reason>' on its own line)`);
   if (!f.hold) return;
-  if (f.id.startsWith('gate-change:')) {
-    // Gate or approval files changed: the ack line itself must carry the owner's sign-off, quoted.
-    if (!ownerSignedOff(body, f.id)) refuse(`${f.id} changes the gate; its ack line needs 'owner sign-off: "<owner quote>"'`);
+  if (SIGN_OFF_HOLDS.some(h => f.id.startsWith(h))) {
+    // Gate/approval files or an unvettable lockfile changed: the ack line itself must quote the owner's sign-off.
+    if (!ownerSignedOff(body, f.id)) refuse(`${f.id} is held; its ack line needs 'owner sign-off: "<owner quote>"'`);
     return;
   }
   // A held new dependency merges only when the OWNER approved it in security/approved-deps.txt as merged on
@@ -127,7 +134,7 @@ function humanHalf(body: string): void {
   if (!section.trim()) refuse("the PR body has no '## Security review' section");
   const mb = git(['merge-base', 'origin/main', 'HEAD']);
   if (!mb.ok) refuse('no merge base with origin/main');
-  const diff = git(['-c', 'core.quotePath=false', 'diff', '-z', '--name-only', mb.out.trim(), 'HEAD']);
+  const diff = git(['-c', 'core.quotePath=false', 'diff', '-z', '--name-only', '--no-renames', mb.out.trim(), 'HEAD']);
   if (!diff.ok) refuse('cannot list the changed files');
   const missing = uncovered(section, diff.out.split('\0').filter(Boolean));
   if (missing.length) refuse(`the security review does not cover \`${missing[0]}\``);

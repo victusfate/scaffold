@@ -109,9 +109,15 @@ first (Step 6 template) to a file, including the `## Security review` section th
 file as `` `path` `` with its line-by-line review (the reviewer is not the author). Then run
 **origin/main's copy** of the gate — never the branch's, which the branch itself could have edited:
 
+Write the body with your file-write tool, or with a **quoted** heredoc (`<<'EOF'`), so backticked paths and
+`$` in the body are never executed or expanded by the shell — never `printf`/`echo` the body inside double quotes:
+
 ```bash
 git fetch -q origin main
-body=$(mktemp) && printf '%s\n' "<drafted PR body>" > "$body"
+body=$(mktemp)
+cat > "$body" <<'PR_BODY_EOF'
+<drafted PR body, verbatim>
+PR_BODY_EOF
 gate=$(mktemp -d) && git show origin/main:scripts/security-gate.ts > "$gate/security-gate.ts" \
   && node "$gate/security-gate.ts" "$body"; echo "SECURITY_GATE_EXIT=$?"; rm -rf "$gate"
 ```
@@ -119,9 +125,10 @@ gate=$(mktemp -d) && git show origin/main:scripts/security-gate.ts > "$gate/secu
 - **Exit 0** → continue. Record "security gate: pass" in the *Pre-merge gate status* table.
 - **Findings** → fix each one, or acknowledge a reviewed false positive on its own line in the body:
   `security-ack: <finding id> — <why it is safe>` (exact id). Re-run until it passes.
-- **Held** (`newdep:*`, `gate-change:*`) → only the owner can release it: a dependency needs an
+- **Held** (`newdep:*`, `gate-change:*`, `lockfile:*`) → only the owner can release it: a dependency needs an
   `<eco>:<name> — <owner words>` line in `security/approved-deps.txt` merged on `origin/main` first; a gate
-  change needs `owner sign-off: "<owner words>"` on its ack line. Ask the owner; never write their approval.
+  change or an unparseable lockfile needs `owner sign-off: "<owner words>"` on its ack line. Ask the owner;
+  never write their approval (the gate cannot tell who wrote it — see "What the gate cannot prove").
 - **Exit 2 / scanners missing** → run `scripts/setup-security-tools.sh`; the gate fails closed without them.
 - `origin/main` has no gate yet (this PR adds it) → run the branch's copy once with
   `SECURITY_GATE_BOOTSTRAP=1 node scripts/security-gate.ts "$body"`.
@@ -311,8 +318,17 @@ only after verifying those facts. Subagents never push or merge the root's branc
 ### Security gate (before any merge)
 
 Re-run the Step 2c security gate against the PR body **as it stands on GitHub**, on the final head, right
-before merging (`gh pr view <pr> --json body -q .body > "$body"`, then origin/main's gate as in Step 2c).
-A non-zero exit refuses the merge — no exceptions, no `--admin` around it.
+before merging, and merge exactly the commit the gate judged — a push after the gate ran must not slip in:
+
+```bash
+gh pr view <pr> --json body -q .body > "$body"
+sha=$(git rev-parse HEAD)
+[ "$(gh pr view <pr> --json headRefOid -q .headRefOid)" = "$sha" ] || { echo "PR head moved; pull and re-gate"; exit 1; }
+# ...origin/main's gate as in Step 2c, on this checkout at $sha; then, only on exit 0:
+gh pr merge <pr> --match-head-commit "$sha"   # plus the repo's merge-method flag (--squash / --merge)
+```
+
+A non-zero gate exit refuses the merge — no exceptions, no `--admin` around it.
 
 ### Verifying a real green (before any merge)
 

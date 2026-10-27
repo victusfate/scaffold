@@ -87,10 +87,11 @@ export function npmResolvedName(resolved: string): string | null {
   return m ? decodeURIComponent(m[1]) : null;
 }
 
-const CRATES_SOURCES = ['registry+https://github.com/rust-lang/crates.io-index', 'sparse+https://index.crates.io/'];
+/** crates.io's exact lockfile source strings (a longer URL that merely starts with one is another registry). */
+const CRATES_SOURCES = new Set(['registry+https://github.com/rust-lang/crates.io-index', 'sparse+https://index.crates.io/']);
 
 async function judgeCrate(d: Dep, ageDays: (iso: string) => number): Promise<string> {
-  if (!CRATES_SOURCES.some(s => d.source.startsWith(s))) return `non-crates.io source ${d.source.split('#')[0]}`;
+  if (!CRATES_SOURCES.has(d.source)) return `non-crates.io source ${d.source.split('#')[0]}`;
   // quality-ok: magic-number — crates.io's own crate-name length limit
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(d.name)) return `invalid crate name ${JSON.stringify(d.name)}`;
   const meta = await json<{ crate?: { created_at: string; downloads: number } }>(

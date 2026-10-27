@@ -14,13 +14,18 @@ tmp=$(mktemp -d) && git show origin/main:scripts/security-gate.ts > "$tmp/securi
   && node "$tmp/security-gate.ts" <pr-body-file>; echo "gate exit=$?"; rm -rf "$tmp"
 ```
 
-The launcher exports the gate, the scanner and their configs (`GATE_FILES` in `scripts/security-gate.ts`:
-`security-scan.ts`, `security-new-deps.ts`, `security-rules.sha256`, `security/approved-deps.txt`,
-`.gitleaks.toml`, `deny.toml`, `.semgrep/`, `security/checks/`) **from `origin/main`** into a temp dir and runs
+Write the PR body to that file with a file-write tool or a quoted heredoc (`<<'EOF'`); never `printf`/`echo` it
+inside double quotes, where its backticked paths would run as commands.
+
+The launcher exports the gate, the scanner and their configs (`GATE_FILES` in `scripts/security-gate.ts`: the
+`security-scan*.ts`, `security-eslint.ts` and `security-new-deps.ts` scripts, `security-rules.sha256`,
+`security/approved-deps.txt`, `security/eslint-tuning.json`, `.gitleaks.toml`, `deny.toml`, `.semgrep/`,
+`security/checks/`) **from `origin/main`** into a temp dir and runs
 that copy, so a branch cannot weaken its own gate; changes to them take effect only after they merge. If
 `origin/main` has no gate yet (the gate's own first merge into a repo), run the branch's copy once with
 `SECURITY_GATE_BOOTSTRAP=1 node scripts/security-gate.ts <pr-body-file>`; it is ignored once main has a gate.
-Exit 0 = may merge; 4 = refused.
+Exit 0 = may merge; 4 = refused. Merge exactly the commit the gate judged: `gh pr merge --match-head-commit <sha>`
+after checking `gh pr view --json headRefOid` equals that `HEAD` (the `create-pr` skill does both).
 
 ## 1. Machine half — `scripts/security-scan.ts`
 
@@ -35,15 +40,29 @@ point the scan at tools installed elsewhere.
 | Check | Tool | Fails on (finding id) |
 |---|---|---|
 | Secrets in the merged commits | gitleaks (`.gitleaks.toml`) | any credential pattern, values redacted (`secret:<fingerprint>`) |
-| Static analysis of changed files | Semgrep: pinned registry packs + the repo's `.semgrep/` rules | ERROR/WARNING findings introduced by this diff (`sast:<rule>@<file>:<line>`); a file it could not parse (`sast-error:<type>@<file>`) |
+| Static analysis of changed files | Semgrep: pinned registry packs (`default`, `secrets`, `r2c-security-audit`, `typescript`, `nodejsscan`) + the repo's `.semgrep/` rules | ERROR/WARNING findings introduced by this diff (`sast:<rule>@<file>:<line>`); a file it could not parse (`sast-error:<type>@<file>`) |
 | Known-vulnerable dependencies | osv-scanner | a vulnerable package/version the diff adds (`vuln:<id>:<pkg>@<version>`) |
-| Rust crate sources | cargo-deny (`deny.toml`, `--locked`) | any non-crates.io source, lockfile drift (`cargo-deny:sources-bans`) |
+| Rust crate sources | cargo-deny (`deny.toml`, `--frozen`) on an isolated copy of HEAD | any non-crates.io source or ban, lockfile drift (`cargo-deny:<code>`) |
+| JS/TS security lint, changed lines only | ESLint via `scripts/security-eslint.ts`: eslint-plugin-security, eslint-plugin-no-unsanitized, typescript-eslint type-aware rules | an error on a line this diff added or changed, or a file it cannot parse (`eslint:<rule>@<file>:<line>`) |
 | GitHub Actions | zizmor | medium+ workflow issues when workflows change (`actions:<rule>@<file>:<line>`) |
 | New dependency names | `scripts/security-new-deps.ts` | a new crate/npm name that does not exist, is < 90 days old, or has little adoption → **held for the owner** (`newdep:<eco>:<name>`, exit 3) |
-| Gate and approval files | the scan itself | any change to a `GATE_FILES` path → **held for the owner** (`gate-change:<path>`, exit 3) |
+| Gate and approval files | the scan itself | any change to a `GATE_FILES` path or a `.semgrepignore` / `.gitleaksignore`, deletions and renames included → **held for the owner** (`gate-change:<path>`, exit 3) |
+| Lockfiles the dependency guard cannot read | the scan itself | any change to `yarn.lock`, `pnpm-lock.yaml`, `bun.lock[b]`, `uv.lock`, `Pipfile.lock`, `Gemfile.lock`, `poetry.lock`, `go.sum`, `requirements*.txt` → **held for the owner** (`lockfile:<path>`, exit 3) |
 | Project checks | `security/checks/*` | whatever the project's own checks report (`check:<file>:<id>`) |
 
-Exit codes: 0 clean, 1 findings, 2 setup/scanner error, 3 held. A missing tool, a scanner error or an invalid
+Exit codes: 0 clean, 1 findings, 2 setup/scanner error, 3 held.
+
+**The branch cannot switch the scanners off.** Every scanner and project check runs with a minimal environment
+(`PATH`, locale, temp dir, proxy/CA settings and a throwaway `HOME`; no tokens), and in-repo suppressions are
+disabled: gitleaks ignores `gitleaks:allow` comments and the branch's `.gitleaksignore`, and always uses the
+gate's `.gitleaks.toml` (missing → exit 2); Semgrep runs with `--disable-nosem` and no file-size limit; zizmor
+runs with `--no-config --no-ignores`; ESLint ignores `eslint-disable` comments and never loads the branch's
+`eslint.config.*`. cargo-deny runs `cargo metadata`, which would honour the branch's `.cargo/config.toml`
+(`rustc-wrapper`, credential providers, source replacement) and `rust-toolchain` files, so it judges a `git archive`
+copy of HEAD with those removed, an isolated `CARGO_HOME` holding a copy of the crates.io index and crate cache,
+no wrapper, offline and locked. A cargo-deny crash (it could not resolve the graph) fails the scan (exit 2); only a
+policy diagnostic is an acknowledgeable finding. Known limitation: a git-sourced crate cannot be resolved
+offline, so it fails the scan rather than being judged. A missing tool, a scanner error or an invalid
 report fails closed (exit 2, no merge). A finding is either **fixed**, or acknowledged in the PR body on its own
 line as `security-ack: <finding id> — <why it is safe>` (a false positive, or a reviewed and justified use); the
 line must start with `security-ack: ` and the id must match exactly.
@@ -53,12 +72,14 @@ Held findings need the owner, not just an ack:
 - **New dependency** (`newdep:*`): also a line `<ecosystem>:<name> — <owner's words, date>` in
   `security/approved-deps.txt` **as merged on `origin/main`** (the gate reads it from there, so a branch cannot
   approve its own dependency). Approve in a small PR of its own, merged first.
-- **Gate change** (`gate-change:<path>`): the ack line itself quotes the owner:
-  `security-ack: gate-change:<path> — owner sign-off: "<owner words>"`.
+- **Gate change** (`gate-change:<path>`) or **unparseable lockfile** (`lockfile:<path>`): the ack line itself
+  quotes the owner: `security-ack: <id> — owner sign-off: "<owner words>"` (opening and closing quote).
+
+An ack needs a non-blank reason after ` — `.
 
 ### Extending the gate in your project
 
-Scaffold ships the gate; projects add their own checks without forking it. Both extension points are gate files
+Scaffold ships the gate; projects add their own checks and tuning without forking it. All three extension points are gate files
 (read from `origin/main`, changes held for owner sign-off):
 
 - **`.semgrep/`** — your own Semgrep rules (a directory of rule YAML), loaded alongside the pinned packs when
@@ -68,10 +89,32 @@ Scaffold ships the gate; projects add their own checks without forking it. Both 
   `--base <merge-base> -- <changed paths...>` (`.ts` files run with `node`; anything else must be executable)
   and must print a JSON array of `{ "id", "at", "msg" }` and exit 0. Findings are recorded as
   `check:<file>:<id>` and acknowledged like any other; a non-zero exit or invalid output fails the scan closed.
+- **`security/eslint-tuning.json`** — tune the security ESLint pass: `{ "rules": { "<rule>": "off" | "error" },
+  "ignores": ["<glob>"] }`, applied last (e.g. `"security/detect-possible-timing-attacks": "off"`, or
+  `"security/detect-non-literal-fs-filename": "error"` to turn on a rule left off for noise). The pass needs the
+  repo's devDependencies installed (`npm ci`): `eslint`, `typescript-eslint`, `eslint-plugin-security`,
+  `eslint-plugin-no-unsanitized`; without them a change to a JS/TS file fails the scan closed. Type-aware rules
+  need the file in a `tsconfig.json` project; a file outside one is reported as `eslint:parse@<file>:<line>`.
 
 Scaffold sync ships `deny.toml`, `.gitleaks.toml` and `security/approved-deps.txt` as starting points. Once you
 customise one (an allowlist entry, an approval), add it to `.scaffold-keep` so sync never overwrites it.
-`.semgrep/` and `security/checks/` are never shipped by scaffold, so they are always yours.
+`.semgrep/`, `security/checks/` and `security/eslint-tuning.json` are never shipped by scaffold, so they are
+always yours.
+
+### What the gate cannot prove
+
+- **An owner sign-off is text, not authentication.** `owner sign-off: "…"` on an ack line, and a line in
+  `security/approved-deps.txt`, are checked for their shape only. While agents run with the owner's own
+  credentials (git push, `gh`, the PR body), an agent can write those lines and the gate cannot tell. The
+  approvals record a decision and make it reviewable after the fact. They do not stop an agent that ignores the
+  rules. The real fix is sandboxed agents without the owner's credentials (separate bot accounts that cannot
+  edit `main`, protected branches requiring a human approving review, CODEOWNERS on the gate files).
+- **The gate is a check agents run, not a barrier.** It is enforced only as far as the workflow runs it before
+  merging (the `create-pr` skill does). A server-side required check or branch protection is what enforces it.
+- **The ESLint pass loads plugins from the repo's `node_modules`**, which was installed from the branch's own
+  lockfile. Installing a malicious lockfile already runs its code (`npm install` scripts), so the pass adds no new
+  exposure, but it is not isolated the way the pinned scanners are.
+- **PyPI dependencies of semgrep and zizmor** are version-resolved, not hash-pinned (see setup).
 
 ## 2. Human half — the line-by-line review
 
