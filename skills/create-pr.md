@@ -101,6 +101,34 @@ Capture each phase's PASS/FAIL from the output. **Track readiness** for the PR b
 Record the per-phase PASS/FAIL table + the readiness verdict (READY / DRAFT-<red gates> / UNVERIFIED)
 for Step 6.
 
+### Step 2c — security gate (before push, and again before merge)
+
+If the repo has `scripts/security-gate.ts` (the scaffold security gate,
+[`docs/security-review.md`](../docs/security-review.md)), every merge must pass it. Write the PR body
+first (Step 6 template) to a file, including the `## Security review` section that names every changed
+file as `` `path` `` with its line-by-line review (the reviewer is not the author). Then run
+**origin/main's copy** of the gate — never the branch's, which the branch itself could have edited:
+
+```bash
+git fetch -q origin main
+body=$(mktemp) && printf '%s\n' "<drafted PR body>" > "$body"
+gate=$(mktemp -d) && git show origin/main:scripts/security-gate.ts > "$gate/security-gate.ts" \
+  && node "$gate/security-gate.ts" "$body"; echo "SECURITY_GATE_EXIT=$?"; rm -rf "$gate"
+```
+
+- **Exit 0** → continue. Record "security gate: pass" in the *Pre-merge gate status* table.
+- **Findings** → fix each one, or acknowledge a reviewed false positive on its own line in the body:
+  `security-ack: <finding id> — <why it is safe>` (exact id). Re-run until it passes.
+- **Held** (`newdep:*`, `gate-change:*`) → only the owner can release it: a dependency needs an
+  `<eco>:<name> — <owner words>` line in `security/approved-deps.txt` merged on `origin/main` first; a gate
+  change needs `owner sign-off: "<owner words>"` on its ack line. Ask the owner; never write their approval.
+- **Exit 2 / scanners missing** → run `scripts/setup-security-tools.sh`; the gate fails closed without them.
+- `origin/main` has no gate yet (this PR adds it) → run the branch's copy once with
+  `SECURITY_GATE_BOOTSTRAP=1 node scripts/security-gate.ts "$body"`.
+
+If the gate does not pass, open the PR as a DRAFT and list the security gate as red (same rule as Step 2b).
+If the repo has no `scripts/security-gate.ts`, skip this step and note "no security gate" in the status table.
+
 ### Step 3 — bump version on the branch
 
 If the repo has no `package.json`, skip this step silently.
@@ -194,6 +222,11 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 | <static / mechanical phase, e.g. shellcheck / quality checks> | ✅ pass |
 | <heavy integration phase, run locally> | ✅ pass |
 | <other phases the local gate reported> | ✅ / ❌ |
+| security gate (`scripts/security-gate.ts`, Step 2c) | ✅ / ❌ / n/a |
+
+## Security review
+- `<path/of/every/changed/file>` — <what it does from a security point of view, or "no security impact" + why>
+<one `security-ack: <id> — <reason>` line per acknowledged finding, if any>
 
 ## Quality Scores
 | File | Quality | Readability | Encapsulation | Clarity |
@@ -274,6 +307,12 @@ head, an authorized merge actually completes, and a fresh working branch exists.
 If authority is absent, preserve the ready PR and report that blocker; do not
 start another independent task. Follow `queue advance` in [queue.md](queue.md)
 only after verifying those facts. Subagents never push or merge the root's branch.
+
+### Security gate (before any merge)
+
+Re-run the Step 2c security gate against the PR body **as it stands on GitHub**, on the final head, right
+before merging (`gh pr view <pr> --json body -q .body > "$body"`, then origin/main's gate as in Step 2c).
+A non-zero exit refuses the merge — no exceptions, no `--admin` around it.
 
 ### Verifying a real green (before any merge)
 

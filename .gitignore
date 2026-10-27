@@ -22,3 +22,6 @@ coverage/
 # Local editor prefs & personal scratch diagrams (not part of scaffold)
 .vscode/
 diagrams/
+
+# Pinned security scanners (scripts/setup-security-tools.sh) — machine-local, never committed
+.tooling/

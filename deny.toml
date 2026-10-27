@@ -1,0 +1,17 @@
+# cargo-deny policy for the security gate (docs/security-review.md). scripts/security-scan.ts
+# runs `cargo deny --locked check sources bans` whenever Cargo manifests change; known vulnerabilities are
+# judged per diff by osv-scanner there, and the new-dependency guard vets new crate names.
+# Consumer-owned once customised: list it in .scaffold-keep so scaffold sync never overwrites it.
+[graph]
+all-features = true
+
+[sources]
+# Only crates.io. A git or alternative-registry dependency must be added here deliberately, in a reviewed PR.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
+
+[bans]
+multiple-versions = "allow"
+wildcards = "allow"   # workspace crates use path deps; the sources policy above is the guard

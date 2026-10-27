@@ -1,0 +1,10 @@
+# gitleaks config for the security gate (docs/security-review.md): the default rules, no
+# allowlist. Add reviewed false positives (never real secrets) by uncommenting the table below — gitleaks
+# rejects an [allowlist] with no paths/regexes/commits/stopwords, so it stays commented until it has one.
+# Consumer-owned once customised: list it in .scaffold-keep so scaffold sync never overwrites it.
+[extend]
+useDefault = true
+
+# [allowlist]
+# description = "reviewed false positives"
+# paths = ['''^path/to/fixture\.json$''']
