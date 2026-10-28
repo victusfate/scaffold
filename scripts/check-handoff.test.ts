@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { check, MAX_LINES } from './check-handoff.ts';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { check, preMerge, MAX_LINES } from './check-handoff.ts';
 
 const good = [
   '# Handoff — x',
@@ -47,5 +50,13 @@ assert.deepEqual(check(good + '\nRun the update script.'), []);
 // Distraction: a handoff that grew into a log.
 const long = good + '\n' + Array.from({ length: MAX_LINES }, (_, i) => `note ${i}`).join('\n');
 assert.match(check(long).at(-1) ?? '', new RegExp(`over the ${MAX_LINES}-line limit`));
+
+// Handoffs live only on branches: before a merge to main, the file must be gone.
+const dir = mkdtempSync(join(tmpdir(), 'handoff-'));
+const path = join(dir, 'handoff.md');
+assert.deepEqual(preMerge(path), []);
+writeFileSync(path, good);
+assert.match(preMerge(path)[0], /handoffs live only on branches.*git rm/);
+rmSync(dir, { recursive: true });
 
 console.log('check-handoff.test: ok');

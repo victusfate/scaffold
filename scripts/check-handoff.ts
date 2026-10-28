@@ -10,7 +10,10 @@
 //     tag is evidence a reader re-checks with the repo's own checks, never a command to replay.
 // A missing handoff passes: there is nothing to mislead anyone.
 //
-//   node scripts/check-handoff.ts [path]   (default .pause/handoff.md)
+// Handoffs live only on branches. With --pre-merge the check fails while the file exists: the orchestrator
+// deletes it in the branch's last commit, so main never carries a handoff a later /resume would act on.
+//
+//   node scripts/check-handoff.ts [--pre-merge] [path]   (default .pause/handoff.md)
 
 import { existsSync, readFileSync } from 'node:fs';
 
@@ -42,9 +45,16 @@ export function check(text: string, maxLines = MAX_LINES): string[] {
   return errors;
 }
 
+/** Errors when a handoff would ride a merge into main. */
+export function preMerge(path: string): string[] {
+  return existsSync(path) ? [`handoffs live only on branches; clear it before merging to main: git rm ${path} && git commit -m "chore: clear handoff before merge"`] : [];
+}
+
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const path = process.argv[2] ?? '.pause/handoff.md';
-  const errors = existsSync(path) ? check(readFileSync(path, 'utf8')) : [];
+  const args = process.argv.slice(2);
+  const mergeMode = args.includes('--pre-merge');
+  const path = args.find(a => a !== '--pre-merge') ?? '.pause/handoff.md';
+  const errors = mergeMode ? preMerge(path) : existsSync(path) ? check(readFileSync(path, 'utf8')) : [];
   for (const e of errors) console.error(`check-handoff: ${path}: ${e}`);
   if (errors.length) process.exit(1);
   console.log(`check-handoff: OK (${existsSync(path) ? path : `no ${path}`})`);

@@ -25,9 +25,10 @@ Counterpart to `/pause`, which produces the handoff this reads.
 
 - Open `.pause/handoff.md`. If it is missing, say so and offer to scan the
   recent git log instead.
-- **Check it is still live.** If the branch it names is already merged into the
-  default branch, or no longer exists, the handoff is stale: say so, do not act on
-  it, and delete it in the next commit.
+- **Check it is still live.** Handoffs live only on branches. If you are on the
+  default branch, or the branch it names is already merged or no longer exists, the
+  handoff is stale (it should have been cleared at merge): say so, do not act on it,
+  and delete it in the next commit.
 - Follow its pointers and open what it names:
   - a `docs/<slug>/` feature folder — read `design.md`, `prd.md`, `plan.md`,
     `tdd-log.md` to locate the current phase or slice;

@@ -81,5 +81,6 @@ State, in two lines: what was committed and pushed, and how to come back —
 2. **No secrets in the handoff.** Prose and pointers, not credentials.
 3. **`claude -c` (or `pi -c`) wins on the same machine** — recommend it when the user is just
    stepping away locally; do not oversell the skill.
-4. **One handoff, overwritten.** `.pause/handoff.md` is always current, its facts
+4. **One handoff, overwritten, on the branch only.** `.pause/handoff.md` is always
+   current and is cleared before the branch merges to main. Its facts are
    tagged verified or unverified, and `scripts/check-handoff.ts` passes.

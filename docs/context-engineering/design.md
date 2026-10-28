@@ -44,6 +44,12 @@ trust. Both have the same fix: verify by machine where a check is cheap, and spe
   months earlier, and any `/resume` would have read it as current state. That was the exact poisoning
   this change targets.
 
+- **D5 — handoffs live only on branches.** Owner, 2026-10-28: "update merge rules for orchestrator - when
+  branches are merged to main their handoff shoud be cleared / handoffs should only live in branches". The
+  orchestrator's last commit before merging to main deletes `.pause/handoff.md`, and
+  `check-handoff.ts --pre-merge` must pass on the merged head. CI does not fail on a handoff's presence:
+  `/save` pushes one on every step of a long run, and a PR kept red by design is noise.
+
 ## Vocabulary
 
 - **Verified claim:** a fact in a handoff or plan followed by `[verified: <command or file:line>]` that a

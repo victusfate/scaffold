@@ -96,8 +96,9 @@ rate-limit signal), do not burn the remainder:
    pushes converged work; lanes commit locally only.
 3. **Explicit paths, no junk.** Stage converged work by path; never `git add -A`
    in a repo carrying build or forge intermediates.
-4. **One handoff, overwritten.** `.pause/handoff.md` is always current; history
-   keeps the rest. It is the same file `/pause` writes and `/resume` reads.
+4. **One handoff, overwritten, on the branch only.** `.pause/handoff.md` is always
+   current; history keeps the rest. It never reaches main: the orchestrator clears it
+   before merging (`/create-pr`, *Clear the handoff*). It is the same file `/pause` writes and `/resume` reads.
    Its facts are tagged verified or unverified, and `scripts/check-handoff.ts`
    passes before it is committed (AGENTS.md, *Context hygiene*).
 5. **Near the limit: refresh, point, then wake or hand off.** Checkpoint, drop

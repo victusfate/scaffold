@@ -541,7 +541,7 @@ runtime boundaries, migration and the `advance` acknowledgment.
 3. Do the work, verify with build/tests
 4. Commit, push: `git push -u origin <branch>`
 5. When changes are ready for review, run `/create-pr` — it creates the PR and subscribes where supported, or checks CI with `gh` and reports the monitoring limit.
-6. Before merging, verify the green is **real** (see below).
+6. Before merging, clear the handoff and verify the green is **real** (see below).
 7. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
 
 **A green PR is not always green — required checks can fail *open*.** GitHub treats
@@ -558,6 +558,14 @@ a dependency fails — and the gate passes silently. (Same for path-filtered or
 - **If you own the CI, make roll-ups fail *closed*:** `if: ${{ always() }}` forces
   the job to run, plus a guard step that exits non-zero unless every dependency
   succeeded (`needs.*.result != 'success'`).
+
+**Handoffs live only on branches.** `.pause/handoff.md` is the checkpoint for work in flight: `/save` and
+`/pause` push it on the working branch, and lane merges into that branch keep it. Once the branch merges,
+the work is done, and a handoff left on main would be read by the next `/resume` as current state (context
+poisoning). So the orchestrator's last commit before merging to main is `git rm .pause/handoff.md`
+(`chore: clear handoff before merge`). `node scripts/check-handoff.ts --pre-merge` must exit 0 on the head
+being merged, and the merge uses that head (`--match-head-commit`). The decisions and facts it held belong in the
+PR body, `design.md` or the decision registry, not in the handoff.
 
 Never commit directly to main for feature work.
 A session spans the full lifetime of a branch — from creation until it is merged or discarded. Only switch branches after the current feature branch is merged or the user explicitly asks; keep committing to the current branch until then. The one permitted exception is checking out main solely to pull and immediately create a new feature branch.

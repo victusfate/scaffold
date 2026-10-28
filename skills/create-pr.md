@@ -325,6 +325,19 @@ If authority is absent, preserve the ready PR and report that blocker; do not
 start another independent task. Follow `queue advance` in [queue.md](queue.md)
 only after verifying those facts. Subagents never push or merge the root's branch.
 
+### Clear the handoff (before any merge)
+
+Handoffs live only on branches. If the branch carries `.pause/handoff.md`, delete it in the last commit
+before merging to main, so main never holds a handoff a later `/resume` would act on. Move anything still
+worth keeping into the PR body or `design.md` first:
+
+```bash
+[ -f .pause/handoff.md ] && git rm -q .pause/handoff.md && git commit -m "chore: clear handoff before merge" && git push
+node scripts/check-handoff.ts --pre-merge   # must exit 0 on the head you merge
+```
+
+Do this before the security gate below, so the gate judges, and the merge uses, the cleared head.
+
 ### Security gate (before any merge)
 
 Re-run the Step 2c security gate against the PR body **as it stands on GitHub**, on the final head, right
