@@ -20,6 +20,7 @@ docs/skills.md
 .claude/statusline.sh
 .claude/session-start/hook.sh
 .claude/session-start/node.sh
+.claude/session-start/security-tools.sh
 .node-version
 .claude/read-once/hook.sh
 .claude/read-once/compact.sh

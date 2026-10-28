@@ -19,7 +19,8 @@ const MAX_COMPLEXITY = 10;
 const MAX_PARAMS = 4;
 
 export default tseslint.config(
-  { ignores: ['lib/linters/**', '**/*.scaffold-new', 'node_modules/**'] },
+  // .tooling/** is untracked local tooling (the security scanners' venv and ESLint stack).
+  { ignores: ['lib/linters/**', '**/*.scaffold-new', 'node_modules/**', '.tooling/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {

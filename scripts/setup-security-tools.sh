@@ -4,8 +4,8 @@
 # origin/main's copy, never a branch's:
 #   git show origin/main:scripts/setup-security-tools.sh > "$tmp/setup.sh" && bash "$tmp/setup.sh"
 #
-# Off-language (bash, not TypeScript) by hard blocking need: every step is an external installer — `gh release
-# download`, `sha256sum -c`, `tar`, `python -m venv` + `pip`, `npm ci` — so a TypeScript port would be a
+# Off-language (bash, not TypeScript) by hard blocking need: every step is an external installer — `curl` of a
+# release asset, `sha256sum -c`, `tar`, `python -m venv` + `pip`, `npm ci` — so a TypeScript port would be a
 # line-for-line wrapper of these same commands with no logic of its own. Keep it this minimal.
 #
 # Supply-chain rules for the scanners themselves: exact versions, each release at least two weeks old when pinned;
@@ -37,16 +37,22 @@ gate_file() {
 	else fail "origin/main has no $1 (set SECURITY_GATE_BOOTSTRAP=1 for the gate's first merge)"; fi
 }
 cd "$D/dl"
-command -v gh > /dev/null || fail "gh is required (release downloads)"
+command -v curl > /dev/null || fail "curl is required (release downloads)"
+# Release assets by their public download URL: no gh, no GitHub API and no token, so it works in cloud sandboxes
+# whose proxy scopes the API to the session's own repos. Integrity comes from the checksums below, not the transport.
+release() { # <owner/repo> <tag> <asset>...
+	local repo=$1 tag=$2 a; shift 2
+	for a in "$@"; do curl -sSfL --retry 3 -o "$a" "https://github.com/$repo/releases/download/$tag/$a" || fail "download of $repo $tag $a failed"; done
+}
 
 if [[ "$("$D/bin/gitleaks" version 2> /dev/null)" != "$GITLEAKS" ]]; then
-	gh release download "v$GITLEAKS" -R gitleaks/gitleaks -p "gitleaks_${GITLEAKS}_linux_x64.tar.gz" -p "gitleaks_${GITLEAKS}_checksums.txt" --clobber
+	release gitleaks/gitleaks "v$GITLEAKS" "gitleaks_${GITLEAKS}_linux_x64.tar.gz" "gitleaks_${GITLEAKS}_checksums.txt"
 	grep " gitleaks_${GITLEAKS}_linux_x64.tar.gz\$" "gitleaks_${GITLEAKS}_checksums.txt" | sha256sum -c - || fail "gitleaks checksum"
 	echo "$GITLEAKS_SHA256  gitleaks_${GITLEAKS}_linux_x64.tar.gz" | sha256sum -c - || fail "gitleaks is not the pinned artifact"
 	tar -xzf "gitleaks_${GITLEAKS}_linux_x64.tar.gz" -C "$D/bin" gitleaks
 fi
 if ! "$D/bin/osv-scanner" --version 2> /dev/null | grep -q "$OSV"; then
-	gh release download "v$OSV" -R google/osv-scanner -p osv-scanner_linux_amd64 -p osv-scanner_SHA256SUMS --clobber
+	release google/osv-scanner "v$OSV" osv-scanner_linux_amd64 osv-scanner_SHA256SUMS
 	grep ' osv-scanner_linux_amd64$' osv-scanner_SHA256SUMS | sha256sum -c - || fail "osv-scanner checksum"
 	echo "$OSV_SHA256  osv-scanner_linux_amd64" | sha256sum -c - || fail "osv-scanner is not the pinned artifact"
 	install -m755 osv-scanner_linux_amd64 "$D/bin/osv-scanner"
@@ -54,7 +60,7 @@ fi
 if ! "$D/bin/cargo-deny" --version 2> /dev/null | grep -q "$CARGO_DENY"; then
 	# The release binary (a local `cargo install` build is not reproducible, so it could not be hash-pinned).
 	tgz=cargo-deny-$CARGO_DENY-x86_64-unknown-linux-musl.tar.gz
-	gh release download "$CARGO_DENY" -R EmbarkStudios/cargo-deny -p "$tgz" -p "$tgz.sha256" --clobber
+	release EmbarkStudios/cargo-deny "$CARGO_DENY" "$tgz" "$tgz.sha256"
 	[[ "$(cut -c1-64 "$tgz.sha256")" = "$(sha256sum "$tgz" | cut -c1-64)" ]] || fail "cargo-deny checksum"
 	echo "$CARGO_DENY_SHA256  $tgz" | sha256sum -c - || fail "cargo-deny is not the pinned artifact"
 	tar -xzf "$tgz" && install -m755 "cargo-deny-$CARGO_DENY-x86_64-unknown-linux-musl/cargo-deny" "$D/bin/cargo-deny"

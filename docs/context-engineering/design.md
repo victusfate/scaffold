@@ -54,6 +54,14 @@ trust. Both have the same fix: verify by machine where a check is cheap, and spe
   would like the key notes of what changed where for critical parts in PRs". A near-zero green-to-merge time
   is intended, not a gap. The PR body carries `## Critical changes` as a map for the owner, not a gate.
 
+- **D7 — the security scanners install themselves in cloud sessions; one PR.** Owner, 2026-10-28: "I want
+  this to automatically work in cloud envs" and "lets work in the same branch (one PR) / B&C sound good".
+  `setup-security-tools.sh` downloads release assets with `curl` instead of `gh release download` (no
+  GitHub API, same pinned sha256 checks). A cloud-only SessionStart hook runs origin/main's copy in the
+  background. The Semgrep packs stay on `semgrep.dev`: they are bundles built by the registry and pinned by
+  hash, so the environment must allow that host. The setup script is a gate file, so it needs the owner's
+  sign-off and takes effect only after merge.
+
 ## Vocabulary
 
 - **Verified claim:** a fact in a handoff or plan followed by `[verified: <command or file:line>]` that a
