@@ -134,5 +134,7 @@ void test('accept defaults to the main checkout tooling, also from a linked work
   }
   const p = acceptPaths(wt, { rules: '/r', out: '/o.json' }, { SECURITY_TOOLS_DIR: '/t', SECURITY_RULES_CACHE: '/c' });
   assert.deepEqual(p, { rules: '/r', tools: '/t', cache: '/c', out: '/o.json' });
+  assert.equal(acceptPaths(wt, { rules: '/flag' }, { SECURITY_RULES_DIR: '/env' }).rules, '/flag', 'a --rules flag beats the env');
+  assert.equal(acceptPaths(wt, { rules: '/x/rules' }, {}).cache, '/x/rules-cache', 'the cache follows a --rules override');
   rmSync(base, { recursive: true, force: true });
 });
