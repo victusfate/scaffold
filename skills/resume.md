@@ -62,4 +62,4 @@ Counterpart to `/pause`, which produces the handoff this reads.
 2. **Verify before acting.** A handoff reflects the moment it was written; check
    that the files and steps it names still hold before charging ahead.
 3. **Reconstruct, do not interrogate.** Read the artifacts yourself; only ask
-   the user when the handoff is genuinely ambiguous or missing.
+   the user when the handoff is ambiguous or missing.

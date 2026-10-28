@@ -54,4 +54,4 @@ After either path, summarize:
 
 ### Repos without scaffold support
 
-A repo with no `bin/sync-from-scaffold.sh` is treated as uninitialized. The bootstrap path handles it — no manual setup needed before running this skill.
+A repo with no `bin/sync-from-scaffold.sh` is uninitialized; the bootstrap path handles it with no manual setup first.

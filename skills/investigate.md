@@ -45,7 +45,7 @@ pressure, and above all after one fix has already failed.
 - Test it with the smallest possible change, **one variable at a time**.
 - Confirmed → Phase 4. Refuted → new hypothesis from the evidence. Do not stack a
   second change on an unconfirmed first one.
-- If you don't understand something, say so and research it. Don't pretend.
+- If you don't understand something, say so and research it.
 
 ## Phase 4 — Fix
 
@@ -85,7 +85,7 @@ not happened yet.
 - **"Environment."** Possible, but prove it: show the same commit passing in one
   environment and failing in another, and name the difference.
 
-If the investigation truly ends at an external cause, record what you checked,
+If the investigation ends at an external cause, record what you checked,
 add handling (clear error, retry with a limit, timeout), and add logging that will
 catch it next time.
 

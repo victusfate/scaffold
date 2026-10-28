@@ -7,7 +7,6 @@
 > runner does not implement pi/agy subprocess protocols. Never substitute binaries
 > while retaining another client’s flags.
 
-
 Set up or run **voice-chat** — a hands-free, headphones-only voice loop that lets
 the user talk to the coding agent with no keyboard. The engine lives in
 `scripts/voice/` (entry point `voice-loop.ts`); this skill drives its setup and
@@ -26,8 +25,7 @@ push-to-talk). Headphones are assumed so the agent's voice never re-enters the m
 
 ### Step 1 — verify dependencies
 
-Always start here. Run the built-in check, which reports exactly what's missing
-and is platform-aware:
+Always start here. The built-in check is platform-aware and reports what's missing:
 
 ```bash
 node scripts/voice/voice-loop.ts --check
