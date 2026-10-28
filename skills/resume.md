@@ -25,6 +25,9 @@ Counterpart to `/pause`, which produces the handoff this reads.
 
 - Open `.pause/handoff.md`. If it is missing, say so and offer to scan the
   recent git log instead.
+- **Check it is still live.** If the branch it names is already merged into the
+  default branch, or no longer exists, the handoff is stale: say so, do not act on
+  it, and delete it in the next commit.
 - Follow its pointers and open what it names:
   - a `docs/<slug>/` feature folder — read `design.md`, `prd.md`, `plan.md`,
     `tdd-log.md` to locate the current phase or slice;
@@ -38,6 +41,10 @@ Counterpart to `/pause`, which produces the handoff this reads.
   the first next step. This is the proof the handoff loaded correctly.
 - Flag anything stale — a named file that no longer exists, or a step already
   completed.
+- **Re-verify before relying.** Treat the `## State` bullets as claims, not facts:
+  re-run the `[verified: …]` commands that gate the first next step, and treat every
+  `[unverified]` bullet as a hypothesis to test before building on it. A claim that
+  fails its check gets rewritten in the handoff, not worked around.
 
 ### 4 — Continue
 

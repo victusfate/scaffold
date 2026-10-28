@@ -163,6 +163,64 @@ When given a standing directive to work autonomously toward a goal — an explic
   reasonable first pass, stage anything user-facing for review, and keep going.
   Steering *refines* the work; it is not a prerequisite for starting it.
 
+## Context hygiene — validate, compact, curate, prune
+
+A model's attention budget is finite, and quality degrades as the context fills ("context rot").
+An agent also treats its own earlier notes as ground truth. Four failure modes follow, each with
+one countermeasure (after IBM Technology's *Context Engineering for AI Agents: 4 Failure Modes to Avoid*).
+
+- **Poisoning → validate.** One misreading ("the new driver retries on its own") gets written down,
+  and every later step builds on it. Before a conclusion enters a handoff, plan, decision record or
+  memory as fact, check it against the real system: run the test, read the code at `file:line`, call
+  the API. Mark each fact the next session relies on with `[verified: <command or file:line>]`, or
+  `[unverified]` when no check was possible. An `[unverified]` fact is a hypothesis to test, never a
+  premise to act on. This extends Veracity from the user's premises to the agent's own.
+- **Distraction → compact.** A long history becomes the dominant pattern, and the agent repeats or
+  retraces old steps instead of advancing. Signs: the same command or edit twice with no new result,
+  re-reading files already summarized, or several turns with no committed progress. Then `/save`,
+  and continue from the handoff (in a fresh session or subagent when the harness allows) rather
+  than the raw log. Repeated summaries lose detail, so persist detailed state (logs, measurements,
+  decision text) in files and read them back only when a step needs them.
+- **Confusion → curate.** Every loaded tool definition competes for attention, and tool choice gets
+  worse as the list grows. Load tools on demand: deferred tool search, a skill's own references. Give
+  each subagent only the tools its lane needs. Never enable an MCP server, plugin or skill
+  project-wide for a single task. A harness that loads many tools by default is a setting to report
+  to the owner, not to change yourself (see *Harness capabilities*).
+- **Clash → prune.** An early wrong note and its later correction both stay in context, and the model
+  sees two "facts." When a fact changes, rewrite it where it lives: in the handoff, `plan.md`, the
+  decision registry (`supersedes`) or the task's notes. Don't append "Correction:" or "UPDATE:" lines,
+  and don't strike through text. When a session's context already holds both versions, restart from
+  a summary that states only the current one.
+
+`scripts/check-handoff.ts` enforces the parts a script can decide. It rejects a handoff whose
+`## State` bullets lack a verification tag, that keeps correction markers, or that grew past the
+line cap into a log. `/save` and `/pause` run it before committing. `/resume` treats the handoff as
+claims to re-check, not instructions to replay: it re-runs the `[verified: …]` commands that gate its
+first step, and discards a handoff whose branch is already merged.
+
+## Review economics — verify cheaply, point humans at what matters
+
+Coding agents multiply code volume far faster than delivery speeds up (Laurie Voss, *AI Writes the
+Code. So What's Left for Engineers?*). The bottleneck moved from
+writing code to knowing whether to trust it, and a human reads only a few hundred lines an hour.
+So the harness splits the work by who is cheapest at it:
+
+- **Machines check everything decidable:** scanners, lint, types, tests, `/validate`, `/simplify`.
+  A repeated review comment becomes a rule or a check (*Deterministic first*).
+- **Agent review stays line by line.** The `## Security review` and `/code-refiner` read every changed
+  line. Their findings are fixed before a person sees the PR.
+- **Human attention is pointed, not spread.** The review ends with a `### Human review focus`
+  subsection, a short Q&A for the owner. It lists the hunks where a person's judgment changes the
+  merge decision: product intent, durable contracts, data or security blast radius, anything the
+  agent marked `[unverified]`. Each comes with one specific question (`` `path:line` — does X still
+  hold when Y? ``). "None: leaf change, all checks machine-decided" is a valid entry when true.
+- **Encode judgment so it is not re-asked.** When the owner answers a focus question with a rule,
+  record it as a decision, rubric line or eval so the next PR doesn't need the question.
+- **Measure delivery, not output.** Lines written are no signal. `node scripts/delivery-metrics.ts
+  [--days N]` reports merges per week, open-to-merge time, the gap between green CI and merge (time
+  waiting on a person), and how many change requests were followed by a commit. Include it in owner
+  status reports when it moves.
+
 ## Owner status reports (remote owner)
 
 When the owner says they'll be away or checking in intermittently and asks for

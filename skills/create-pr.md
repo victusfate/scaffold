@@ -237,6 +237,13 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 - `<path/of/every/changed/file>` — <what it does from a security point of view, or "no security impact" + why>
 <one `security-ack: <id> — <reason>` line per acknowledged finding, if any>
 
+### Human review focus
+<The agent review above reads every line; this Q&A points the owner at the few hunks where a person's
+judgment changes the merge — product intent, durable contracts, data/security blast radius, anything
+`[unverified]`. One line each, ranked by blast radius:>
+- `<path:line>` — <one specific question the owner answers>
+<or: "None — leaf change; every check is machine-decided." when that is true>
+
 ## Quality Scores
 | File | Quality | Readability | Encapsulation | Clarity |
 |------|---------|-------------|---------------|---------|

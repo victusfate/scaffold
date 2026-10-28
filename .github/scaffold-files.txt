@@ -4,6 +4,10 @@
 .cursor/rules/jev-typesafe.mdc
 AGENTS.md
 scripts/check-agents-detail.ts
+scripts/check-handoff.ts
+scripts/check-handoff.test.ts
+scripts/delivery-metrics.ts
+scripts/delivery-metrics.test.ts
 docs/agents-detail.md
 CLAUDE.md
 CODEOWNERS

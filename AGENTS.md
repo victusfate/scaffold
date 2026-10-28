@@ -76,6 +76,24 @@ hand-write them. Project facts live in the repo, never only in harness-private m
 → [full text](docs/agents-detail.md#knowledge-state-typed-and-evidenced-not-prose) ·
 [`docs/knowledge-architecture.md`](docs/knowledge-architecture.md).
 
+## Context hygiene — validate, compact, curate, prune
+
+The context window is a finite attention budget, and agents treat their own notes as fact. **Validate**:
+nothing enters a handoff, plan or memory as fact until a check confirms it (`[verified: <cmd>]`, else
+`[unverified]`). **Compact**: when turns repeat or stop advancing, `/save` and restart from the handoff, with
+detail in files. **Curate**: load only the tools the step needs, giving each subagent its lane's tools.
+**Prune**: rewrite a superseded fact in place; never leave it beside its correction.
+`scripts/check-handoff.ts` gates the handoff.
+→ [full text](docs/agents-detail.md#context-hygiene--validate-compact-curate-prune).
+
+## Review economics — verify cheaply, point humans at what matters
+
+Plausible code is cheap; trust is not. Machines check everything they can (scanners, `/validate`, tests),
+and agent review stays line by line. Its output then ends with **`### Human review focus`**: the few hunks
+where a person's product or blast-radius judgment changes the merge, each with a specific question. Measure
+delivery, not output: `scripts/delivery-metrics.ts`.
+→ [full text](docs/agents-detail.md#review-economics--verify-cheaply-point-humans-at-what-matters).
+
 ## Owner status reports (remote owner)
 
 When asked, the orchestrator sends one report a day at the owner's time through a confirmed scheduler and

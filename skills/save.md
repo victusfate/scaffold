@@ -48,6 +48,13 @@ prior checkpoints. Keep it terse and act-ready:
   any lane whose push was rejected and still has to land, and the serial-resource
   cursor (e.g. which GPU or queue item is mid-flight).
 - **Pending decisions** — anything awaiting the user.
+- **`## State`** — the facts the next session will rely on, one bullet each, tagged
+  `[verified: <command or file:line>]` or `[unverified]`. A cold reader acts on these
+  as truth, so an unchecked conclusion must say so.
+
+**Rewrite, don't append.** The handoff is current state, not a log: when a fact
+changed, replace it — no "Correction:"/"UPDATE:" lines, no strike-through. Then run
+`node scripts/check-handoff.ts`; fix what it reports before committing.
 
 No secrets, keys, or tokens — this gets pushed.
 
@@ -91,6 +98,8 @@ rate-limit signal), do not burn the remainder:
    in a repo carrying build or forge intermediates.
 4. **One handoff, overwritten.** `.pause/handoff.md` is always current; history
    keeps the rest. It is the same file `/pause` writes and `/resume` reads.
+   Its facts are tagged verified or unverified, and `scripts/check-handoff.ts`
+   passes before it is committed (AGENTS.md, *Context hygiene*).
 5. **Near the limit: refresh, point, then wake or hand off.** Checkpoint, drop
    the memory pointer, and schedule a wakeup past the reset if the client exposes
    a scheduler; otherwise give the `/resume` instruction — do not spend the last
