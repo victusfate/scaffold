@@ -206,7 +206,7 @@ environment, user-writable directories.
       it, and then only quoted as evidence.
 - [ ] Changes to `AGENTS.md`, `skills/`, `.githooks/`, `.github/`, the gate's own
       files, release and deploy scripts get extra scrutiny: they steer agents or run with credentials.
-- [ ] Subagents never gain push, deploy, release or credential access through the change.
+- [ ] Subagents, lanes and external-driver runs never gain push, deploy, release or credential access through the change.
 
 ## Recording
 

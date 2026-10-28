@@ -1,4 +1,3 @@
-
 ## Mode
 
 **Auto-fix** (called from the chain): Apply fixes to `design.md` directly, then continue without pausing.

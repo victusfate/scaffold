@@ -1,4 +1,3 @@
-
 ## Instructions
 
 Generate or refine a [mermaid](https://mermaid.js.org) diagram.

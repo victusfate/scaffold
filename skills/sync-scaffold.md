@@ -1,4 +1,3 @@
-
 ## Instructions
 
 Sync this repo from the upstream scaffold, or bootstrap scaffold support from scratch if it isn't set up yet.

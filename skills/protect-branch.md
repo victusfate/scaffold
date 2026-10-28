@@ -1,4 +1,3 @@
-
 ## Instructions
 
 Open the GitHub rulesets settings for the current repo and present the exact configuration checklist. All items are safe to enable even if already set.

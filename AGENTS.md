@@ -23,12 +23,15 @@ created, and only on explicit cancel or timeout. Ambiguous ownership: leave it a
 
 ## Roles — orchestrator, subagent, active agent
 
-- **Orchestrator:** one per session. Owns the plan, the working branch, integration, pushes, merges and the PR.
+- **Orchestrator:** one per session. Owns the plan, the working branch, integration, pushes, the PR, and merges
+  (only with explicit authorization).
 - **Subagent:** started by the orchestrator for one task, in its own lane. Works only that task, commits
   locally, never pushes, merges or edits outside its lane, and reports evidence (commit, tests run, doubts).
 - **Active agent:** whichever agent is running now. Every rule binds it in its current role; alone in a
   session, it is the orchestrator. A subagent that picks up a task from a skill or the queue follows that
-  skill's subagent steps, never its orchestrator steps.
+  skill's subagent steps, never its orchestrator steps. A run started by an external driver (`agent-loop`) or a
+  scheduled or queue child is a bounded run, not an orchestrator: it commits locally and never pushes, merges
+  or publishes.
 → [terms](docs/agent-authoring-requirements.md#7-writing-guideline-text-agentsmd-skills-their-full-text-docs).
 
 ## Iterative Autonomous Enhancement — a core design principle

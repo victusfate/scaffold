@@ -266,7 +266,7 @@ before piping it in — bulk-seeding is where umbrella tasks sneak in.
 ## Task sizing — atomic tasks, no open-ended umbrellas
 
 A queued task must be **one reviewable slice a single agent can finish and mark
-`done` in one sitting**, not an open-ended program of work. An unattended subagent
+`done` in one sitting**, not an open-ended program of work. An unattended run
 has nobody to tell it "that's enough," so a task that *can't* finish never does: it
 holds its lease, accretes scope, and blocks everything downstream of it.
 
@@ -318,7 +318,7 @@ scope mid-drain.
 
 ## The execution contract — no user input, ever
 
-An unattended subagent **never asks the user a question.** Specify at **enqueue
+The agent executing a task (subagent or orchestrator) **never asks the user a question.** Specify at **enqueue
 time** (interactive, with you present; optionally run a grill for one task), so a
 claimed task is self-contained. During execution:
 

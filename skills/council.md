@@ -1,4 +1,3 @@
-
 ## Purpose
 
 Run a high-stakes decision through a **council of five advisors**, each arguing
