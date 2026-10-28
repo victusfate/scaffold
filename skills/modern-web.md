@@ -14,8 +14,8 @@ speculation rules, Temporal, built-in AI APIs, WebMCP, accessibility, and more.
 
 Training data over-represents old code, so an agent's first instinct for a web
 task is often a heavy JS library or a hand-rolled polyfill where one native
-feature now suffices. This skill closes that gap by pulling the current guide
-into context **before** the code is written.
+feature now suffices. This skill pulls the current guide into context
+**before** the code is written.
 
 Upstream: npm package [`modern-web-guidance`](https://www.npmjs.com/package/modern-web-guidance)
 (Apache-2.0, source: `github.com/GoogleChrome/modern-web-guidance-src`). Scaffold
@@ -48,9 +48,9 @@ build each interaction natively.
 
 ### 0. Plugin first
 
-If the harness has a native plugin, use it — it ships upstream's own
-`modern-web-guidance` skill, which auto-triggers on web tasks and stays current
-with upstream's release cadence.
+If the harness has a native plugin, use it: it ships upstream's own
+`modern-web-guidance` skill, which auto-triggers on web tasks and tracks
+upstream releases.
 
 - **Already active?** If a `modern-web-guidance` skill (or
    `modern-web-guidance:modern-web-guidance`) is in your skill list, invoke it
@@ -106,8 +106,8 @@ npx -y modern-web-guidance@latest retrieve "<id>"            # one guide
 npx -y modern-web-guidance@latest retrieve "<id-a>,<id-b>"   # several
 ```
 
-If the output is truncated, redirect it to a scratch file and read the file —
-never implement from a half-read guide.
+If the output is truncated, redirect it to a scratch file and read the file.
+Never implement from a half-read guide.
 
 ### 3. Implement and verify
 
@@ -150,10 +150,10 @@ The CLI needs Node ≥ 20 and outbound network access to the npm registry.
 
 ## Rules
 
-- Search **before** writing the component, not after — the point is to avoid
-  building the legacy version first.
-- One search per distinct interaction; don't batch unrelated goals into a
-  single query.
+- Search **before** writing the component, so the legacy version is never built
+  first.
+- Run one search per distinct interaction; never batch unrelated goals into one
+  query.
 - Never fabricate a guide's content. If the CLI can't run (no network, denied
   permission), say so and proceed from your own knowledge, flagged as unverified
   against current guidance.
