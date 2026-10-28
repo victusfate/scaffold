@@ -43,10 +43,16 @@ rest). Keep it tight and high-signal:
 - **Next steps** — concrete, with exact commands. The most important section:
   write it so a cold reader acts without guessing.
 - **Open questions** — anything unresolved.
+- **`## State`** — the facts the next session will rely on, one bullet each, tagged
+  `[verified: <command or file:line>]` or `[unverified]`.
 - **How to resume** — point at `/resume`; note `claude -c` is richer on this
   machine.
 
 No secrets, keys, or tokens — this gets pushed.
+
+The handoff is current state, not a history: a fact that changed is rewritten in
+place, never followed by a "Correction:" line. Run `node scripts/check-handoff.ts`
+and fix what it reports before committing.
 
 ### 2 — Commit everything in flight
 
@@ -75,4 +81,6 @@ State, in two lines: what was committed and pushed, and how to come back —
 2. **No secrets in the handoff.** Prose and pointers, not credentials.
 3. **`claude -c` (or `pi -c`) wins on the same machine** — recommend it when the user is just
    stepping away locally; do not oversell the skill.
-4. **One handoff, overwritten.** `.pause/handoff.md` is always current.
+4. **One handoff, overwritten, on the branch only.** `.pause/handoff.md` is always
+   current and is cleared before the branch merges to main. Its facts are
+   tagged verified or unverified, and `scripts/check-handoff.ts` passes.

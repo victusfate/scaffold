@@ -76,6 +76,21 @@ hand-write them. Project facts live in the repo, never only in harness-private m
 → [full text](docs/agents-detail.md#knowledge-state-typed-and-evidenced-not-prose) ·
 [`docs/knowledge-architecture.md`](docs/knowledge-architecture.md).
 
+## Context hygiene — validate, compact, curate, prune
+
+Attention is a finite instrument panel; keep only what matters on it. **Validate** before a conclusion
+enters a handoff, plan or memory (`[verified: <check>]`, else `[unverified]`). **Compact** when turns repeat:
+`/save`, restart from the handoff. **Curate** tools per step and per lane. **Prune**: rewrite a superseded
+fact in place. `scripts/check-handoff.ts` gates the handoff.
+→ [full text](docs/agents-detail.md#context-hygiene--validate-compact-curate-prune).
+
+## Review economics — verify by machine, map the critical changes
+
+Machines check what they can; agent review stays line by line. Every PR body carries **`## Critical changes`**:
+at most five `path:line` notes of what changed where and what depends on it. Measure delivery, not output
+(`scripts/delivery-metrics.ts`).
+→ [full text](docs/agents-detail.md#review-economics--verify-by-machine-map-the-critical-changes).
+
 ## Owner status reports (remote owner)
 
 When asked, the orchestrator sends one report a day at the owner's time through a confirmed scheduler and
@@ -131,7 +146,9 @@ Non-trivial features run `/feature-chain`: **Design** `/grill-with-docs` → `de
 final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of
 the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main.
 **A skipped required check counts as passing on GitHub:** read the actual conclusions, capture the watch
-command's own exit, and make roll-up jobs fail closed (`if: always()` plus a guard).
+command's own exit, and make roll-up jobs fail closed (`if: always()` plus a guard). **Handoffs live only on
+branches:** before merging to main, the orchestrator commits `git rm .pause/handoff.md`, and
+`check-handoff.ts --pre-merge` must pass on the merged head.
 → [full text](docs/agents-detail.md#pr-workflow).
 
 ## Security review before every merge (NON-NEGOTIABLE)

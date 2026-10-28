@@ -222,6 +222,13 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 - <bullet 2>
 - <bullet 3 if needed>
 
+## Critical changes
+<Key notes of what changed where, for the parts with blast radius — agent rules, durable contracts, data,
+security, CI/release, anything `[unverified]`. At most five, ranked by blast radius:>
+- `<path:line>` — <what changed>; <what depends on it>
+<or: "None — leaf change." — only when true, and never when the diff touches `AGENTS.md`, `skills/`,
+`.github/` or the gate's files>
+
 ## Pre-merge gate status
 <from Step 2b `make ci` — the LOCAL pre-merge gate; GitHub CI is instant-unit only>
 **Readiness: READY** &nbsp;(or `DRAFT — <red gate(s)>`, or `UNVERIFIED — no local gate`)
@@ -316,6 +323,19 @@ head, an authorized merge actually completes, and a fresh working branch exists.
 If authority is absent, preserve the ready PR and report that blocker; do not
 start another independent task. Follow `queue advance` in [queue.md](queue.md)
 only after verifying those facts. Subagents never push or merge the root's branch.
+
+### Clear the handoff (before any merge)
+
+Handoffs live only on branches. If the branch carries `.pause/handoff.md`, delete it in the last commit
+before merging to main, so main never holds a handoff a later `/resume` would act on. Move anything still
+worth keeping into the PR body or `design.md` first:
+
+```bash
+[ -f .pause/handoff.md ] && git rm -q .pause/handoff.md && git commit -m "chore: clear handoff before merge" && git push
+node scripts/check-handoff.ts --pre-merge   # must exit 0 on the head you merge
+```
+
+Do this before the security gate below, so the gate judges, and the merge uses, the cleared head.
 
 ### Security gate (before any merge)
 

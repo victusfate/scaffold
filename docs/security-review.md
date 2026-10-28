@@ -37,6 +37,16 @@ Install the pinned tools once per machine with **origin/main's copy** of the set
 tmp=$(mktemp -d) && git show origin/main:scripts/setup-security-tools.sh > "$tmp/setup.sh" && bash "$tmp/setup.sh"; rm -rf "$tmp"
 ```
 
+**Cloud sessions install it automatically.** In a Claude Code cloud session the SessionStart hook
+`.claude/session-start/security-tools.sh` runs that same command in the background and logs to
+`.tooling/security/setup.log`. Downloads use public release URLs and PyPI, not the GitHub API, so a sandbox
+whose proxy scopes the API to the session's repos still works. The environment's network policy must allow
+`github.com` (release assets), `pypi.org`, `registry.npmjs.org`, **`semgrep.dev`** (the rule packs) and
+**`api.osv.dev`** (osv-scanner's vulnerability lookups). Add the last two under the environment's Allowed domains:
+the default cloud environment allows neither. Registry packs change upstream; when one no longer matches its pin,
+the setup fails until `--refresh-rules` re-pins it in a reviewed commit (a gate change, held for the owner). Until setup finishes, the gate fails
+closed.
+
 It installs into the main checkout's untracked `.tooling/security/`: release binaries verified against pinned
 sha256 values, semgrep and zizmor in a venv, Semgrep rule packs checked against the tracked
 `scripts/security-rules.sha256`, and the ESLint stack (`eslint`, `typescript-eslint`, `typescript`,
@@ -151,6 +161,7 @@ security point of view. Rules (the first is a rule, not machine-checked):
 - **Read every changed line**, including tests, scripts, CI, configs and docs that agents will read.
 - Record findings and their resolution; "no security impact" is a valid conclusion for a file, stated
   with the reason.
+- Security-relevant changes also go in the PR body's `## Critical changes` map (AGENTS.md, *Review economics*).
 
 ### Checklist (OWASP Top 10 / CWE Top 25)
 

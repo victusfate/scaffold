@@ -4,6 +4,10 @@
 .cursor/rules/jev-typesafe.mdc
 AGENTS.md
 scripts/check-agents-detail.ts
+scripts/check-handoff.ts
+scripts/check-handoff.test.ts
+scripts/delivery-metrics.ts
+scripts/delivery-metrics.test.ts
 docs/agents-detail.md
 CLAUDE.md
 CODEOWNERS
@@ -16,6 +20,7 @@ docs/skills.md
 .claude/statusline.sh
 .claude/session-start/hook.sh
 .claude/session-start/node.sh
+.claude/session-start/security-tools.sh
 .node-version
 .claude/read-once/hook.sh
 .claude/read-once/compact.sh

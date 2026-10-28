@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -24,8 +24,13 @@ const COMMON = mainCheckout(SRC);
 const TOOLS = process.env.SECURITY_TOOLS_DIR || join(COMMON, '.tooling/security/bin');
 const RULES = process.env.SECURITY_RULES_DIR || join(COMMON, '.tooling/security/rules');
 const ESLINT_STACK = process.env.SECURITY_ESLINT_DIR || join(COMMON, '.tooling/security/eslint');
-const MISSING = existsSync(join(TOOLS, 'gitleaks')) && existsSync(join(ESLINT_STACK, 'node_modules')) ? ''
-  : `security scanners not installed at ${TOOLS} / ${ESLINT_STACK} (run scripts/setup-security-tools.sh)`;
+// Every pinned rule pack too: a cloud sandbox can install the binaries yet be refused the Semgrep registry, and
+// that half-installed toolset is "not installed", not a failing gate.
+const PACKS = readFileSync(join(SRC, 'scripts/security-rules.sha256'), 'utf8').split('\n').filter(Boolean)
+  .map(l => l.trim().split(/\s+/)[1]);
+const MISSING = existsSync(join(TOOLS, 'gitleaks')) && existsSync(join(ESLINT_STACK, 'node_modules'))
+  && PACKS.every(f => existsSync(join(RULES, f))) ? ''
+  : `security scanners not installed at ${TOOLS} / ${ESLINT_STACK} / ${RULES} (run scripts/setup-security-tools.sh)`;
 const REQUIRE = process.env.SECURITY_REQUIRE_TOOLS === '1';
 const SKIP = MISSING && !REQUIRE ? `${MISSING}; skipping the gate end-to-end test` : false;
 const HAVE_CARGO = spawnSync('cargo', ['--version']).status === 0;
