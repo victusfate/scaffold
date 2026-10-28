@@ -15,8 +15,8 @@ Adapted from [petergyang/no-ai-slop](https://github.com/petergyang/no-ai-slop) (
 **Edit (default).** Make the minimum effective edit using the rules below. Return
 the full edited text, then a short **What changed** list.
 
-**Detect.** Used when the user asks to audit, scan, or flag text without rewriting,
-or when another skill asks for findings only. For each hit: name the pattern,
+**Detect.** Use when the user asks to audit, scan, or flag text without rewriting,
+or another skill asks for findings only. For each hit: name the pattern,
 quote the line, give the fix in a few words. Do not rewrite, score the text, or
 guess whether AI wrote it. Pattern names are evidence the reader can check;
 "sounds like AI" is not.
@@ -26,8 +26,8 @@ in place), `/deslop --detect <path>`.
 
 ## Pick the pass by content type
 
-Decide which kind of text this is before editing. When a file mixes both, apply
-each pass to its own sections.
+Decide the kind of text before editing. When a file mixes both, apply each pass
+to its own sections.
 
 | Content | Examples | Pass |
 |---|---|---|
@@ -72,7 +72,7 @@ project:
 - Define jargon the first time, or replace it. Keep a technical term when the
   reader will need it later (a command, a setting name).
 - Short sentences are fine; so is a long one that reads naturally out loud.
-- Keep real enthusiasm, but show it with a concrete detail, not adjectives.
+- Show real enthusiasm with a concrete detail, not adjectives.
 
 ## Editing rules
 
