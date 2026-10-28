@@ -44,7 +44,10 @@ export interface Ctx {
  * credentials, and HOME is a throwaway dir, so no scanner reads the user's dotfiles or credential stores.
  */
 const PASS_THROUGH = ['PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'HTTPS_PROXY', 'https_proxy', 'HTTP_PROXY', 'http_proxy',
-  'NO_PROXY', 'no_proxy', 'SSL_CERT_FILE', 'SSL_CERT_DIR'];
+  'NO_PROXY', 'no_proxy', 'SSL_CERT_FILE', 'SSL_CERT_DIR',
+  // Node's extra trust roots: a sandbox whose egress proxy re-signs TLS (cloud agent sessions) sets it, and npm
+  // cannot reach the registry without it. Operator environment only, never repo content.
+  'NODE_EXTRA_CA_CERTS'];
 
 export function minimalEnv(c: Pick<Ctx, 'work'>, extra: Record<string, string> = {}): NodeJS.ProcessEnv {
   const home = join(c.work, 'home');
