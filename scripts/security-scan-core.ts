@@ -69,6 +69,11 @@ export function git(args: string[], cwd: string): string {
   return r.stdout;
 }
 
+/** The main checkout (the common git dir's worktree): where the untracked `.tooling/` lives, also from a linked worktree. */
+export function mainCheckout(cwd: string): string {
+  return git(['rev-parse', '--path-format=absolute', '--git-common-dir'], cwd).trim().replace(/\/\.git$/, '');
+}
+
 export function lastLine(text: string | null): string {
   return (text ?? '').trim().split('\n').pop() ?? '';
 }

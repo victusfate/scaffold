@@ -28,7 +28,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { GATE_FILES } from './security-gate.ts';
-import { type Ctx, EXIT_CLEAN, EXIT_ERROR, EXIT_FINDINGS, EXIT_HELD, MAX_BUFFER, MSG_MAX, ScanError, addFinding, die, eslintStack, git,
+import { type Ctx, EXIT_CLEAN, EXIT_ERROR, EXIT_FINDINGS, EXIT_HELD, MAX_BUFFER, MSG_MAX, ScanError, addFinding, die, eslintStack, git, mainCheckout,
   headTree, isFile, lastLine, minimalEnv, parseJson, run, statusOf } from './security-scan-core.ts';
 import { scanSast, scanSecrets, scanVulns, scanWorkflows } from './security-scan-tools.ts';
 import { GUARDED_LOCKFILE, OSV_LOCKFILE, holdUnparsedLockfiles, runProjectChecks, scanCrates,
@@ -170,9 +170,7 @@ export function parseArgs(argv: string[]): Args {
 }
 
 /** The main checkout of this repo (a lane worktree shares its .tooling/). */
-export function mainCheckout(cwd: string): string {
-  return git(['rev-parse', '--path-format=absolute', '--git-common-dir'], cwd).trim().replace(/\/\.git$/, '');
-}
+export { mainCheckout };
 
 /** NUL-separated paths of `git diff --name-only`, so names with spaces, quotes or newlines are judged like any other. */
 function diffNames(root: string, mb: string, extra: string[]): string[] {

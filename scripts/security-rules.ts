@@ -26,7 +26,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameS
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { type Ctx, addFinding, die, isFile, lastLine, minimalEnv, run } from './security-scan-core.ts';
+import { type Ctx, addFinding, die, git, isFile, lastLine, mainCheckout, minimalEnv, run } from './security-scan-core.ts';
 
 /** The registry packs the gate runs (https://semgrep.dev/c/p/<pack>). */
 export const PACKS = ['default', 'nodejsscan', 'r2c-security-audit', 'secrets', 'typescript'];
@@ -291,15 +291,25 @@ function checkAcceptedChange(c: Ctx, fresh: Record<string, Rule[]>): void {
   }
 }
 
+/**
+ * Where `accept` reads and writes, from any checkout. The installed tools, packs and rule cache live in the MAIN
+ * checkout's untracked `.tooling/security/` (as the scan resolves them), so a linked worktree finds them too; the
+ * accepted list is written into the checkout being worked in. Flags, then env, then those defaults.
+ */
+export function acceptPaths(cwd: string, flags: { rules?: string; out?: string }, env: NodeJS.ProcessEnv = process.env):
+  { rules: string; tools: string; cache: string; out: string } {
+  const root = git(['rev-parse', '--show-toplevel'], cwd).trim();
+  const tooling = join(mainCheckout(root), '.tooling/security');
+  const rules = flags.rules || env.SECURITY_RULES_DIR || join(tooling, 'rules');
+  return { rules, tools: env.SECURITY_TOOLS_DIR || join(tooling, 'bin'),
+    cache: env.SECURITY_RULES_CACHE || join(dirname(rules), 'rules-cache'), out: flags.out || join(root, ACCEPTED_FILE) };
+}
+
 function main(argv: string[]): number {
   if (argv[0] !== 'accept') { console.error('usage: node scripts/security-rules.ts accept [--rules <dir>] [--out <file>]'); return 2; }
   const opt = (name: string) => { const i = argv.indexOf(name); return i > 0 ? argv[i + 1] : undefined; };
-  const root = process.cwd();
-  const rules = opt('--rules') || process.env.SECURITY_RULES_DIR || join(root, '.tooling/security/rules');
-  const tools = process.env.SECURITY_TOOLS_DIR || join(root, '.tooling/security/bin');
-  const out = opt('--out') || join(root, ACCEPTED_FILE);
+  const { rules, tools, cache, out } = acceptPaths(process.cwd(), { rules: opt('--rules'), out: opt('--out') });
   const work = mkdtempSync(join(tmpdir(), 'security-rules-'));
-  const cache = process.env.SECURITY_RULES_CACHE || join(dirname(rules), 'rules-cache');
   const packs: Record<string, Rule[]> = {};
   try {
     for (const pack of PACKS) { packs[pack] = loadPack(join(tools, 'semgrep'), join(rules, `${pack}.yml`), work); cacheRules(cache, packs[pack]); }
