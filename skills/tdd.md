@@ -1,12 +1,12 @@
 ## Instructions
 
-Execute `./docs/<feature-slug>/plan.md` using TDD — one vertical slice at a time.
+Execute `./docs/<feature-slug>/plan.md` using TDD, one vertical slice at a time.
 
 If `plan.md` doesn't exist yet, create it first: break `prd.md` into vertical slices (each cuts through all layers: data → logic → UI → tests). Confirm granularity once with the user before coding.
 
 ### Philosophy
 
-Tests verify **behavior through public interfaces**, not implementation details. A good test reads like a specification and survives internal refactors. A bad test breaks when you rename an internal function even though behavior hasn't changed.
+Tests verify **behavior through public interfaces**, not implementation details. A good test reads like a specification and survives internal refactors; a bad one breaks when an internal function is renamed though behavior is unchanged.
 
 ### Anti-pattern: horizontal slicing
 
@@ -22,12 +22,10 @@ Tests written in bulk verify imagined behavior and become insensitive to real ch
 ### Workflow per slice
 
 **Before writing any code:**
-- Decide the interface changes and which behaviors to test (prioritize critical
-  paths). Granularity was confirmed once at plan time; surface an interface
-  change to the user only if it departs from `plan.md`.
-- List behaviors to test — not implementation steps
+- Decide the interface changes and which behaviors to test (prioritize critical paths). Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from `plan.md`.
+- List behaviors to test, not implementation steps.
 
-**Tracer bullet:** Write ONE test for ONE behavior → RED → minimal code → GREEN. Proves the path works end-to-end.
+**Tracer bullet:** write ONE test for ONE behavior → RED → minimal code → GREEN. This proves the path works end-to-end.
 
 **Incremental loop:**
 ```
@@ -37,15 +35,13 @@ REFACTOR: Confirm quality scores — only after GREEN, never while RED
 ```
 Rules: one test at a time, only enough code to pass, don't anticipate future tests.
 
-**Unexpected failure:** if a RED test fails for a different reason than the one it
-was written for, or a previously green test breaks, stop the loop and run
-`/investigate` to find the root cause before writing more code.
+**Unexpected failure:** if a RED test fails for a different reason than the one it was written for, or a previously green test breaks, stop the loop and run `/investigate` to find the root cause before writing more code.
 
 **The rubric is the generative voice, not a post-hoc judge.** Before writing GREEN code, load the quality rubric:
 
 @../lib/code-quality-rubric.md
 
-Write code as the thoughtful senior engineer described there. Code that would violate the rubric is never written in the first place — REFACTOR is a confirmation pass, not a correction pass.
+Write code as the thoughtful senior engineer described there. Never write code that would violate the rubric; REFACTOR is a confirmation pass, not a correction pass.
 
 **Per-cycle checklist:**
 - Test describes behavior, not implementation
@@ -66,10 +62,13 @@ Score every file touched in this slice against the four rubric dimensions. Emit 
 Violations: none
 ```
 
-Any score below 10 means GREEN introduced a violation. For violations where the fix is <30 lines: apply in place, re-run tests, re-score. For violations where the fix is >30 lines or requires architectural rethinking: surface to the user with the citation — do not silently patch. Do not commit until all scores are 10/10 or violations are explicitly surfaced.
+Any score below 10 means GREEN introduced a violation.
+- Fix <30 lines: apply in place, re-run tests, re-score.
+- Fix >30 lines or requires architectural rethinking: surface to the user with the citation; do not silently patch.
+- Do not commit until all scores are 10/10 or violations are explicitly surfaced.
 
 **Test-quality self-audit (run at REFACTOR, before committing):**
-- Do any assertions use the default value for the field they verify? Replace with a sentinel (non-default) value — a bug that silently resets to the default will hide behind matching data.
+- Does any assertion use the default value for the field it verifies? Replace it with a sentinel (non-default) value; a bug that silently resets to the default hides behind matching data.
 - For every new flag or optional argument: is each form covered? (absent / default / explicit value / combined with each flag it interacts with)
 - Is there at least one test written from the *caller's* perspective — an end-to-end path against a real empty destination, not the implementer's internal view? If not, flag it for the integration test suite.
 
@@ -97,23 +96,23 @@ Unit and acceptance tests (`tools/<tool>/test`, `scripts/*.test.*`) cover behavi
 tools/<tool>/test-integration   # or scripts/<script>.integration.test.*
 ```
 
-They are not required for every feature, but write one when:
+Not every feature needs one; write one when:
 - The feature crosses a system boundary (writes files a downstream consumer reads, curls a remote, spawns a subprocess)
 - The acceptance test cannot simulate a realistic caller without becoming unwieldy
 - A reviewer or post-merge bug revealed a gap in the acceptance suite
 
 **Convention:**
 - Gate on an env var so CI can run them selectively: `if (!process.env.RUN_INTEGRATION) { console.log('skip — set RUN_INTEGRATION=1'); process.exit(0); }`
-- Use a real empty temp directory as the destination — not the scaffold root
+- Use a real empty temp directory as the destination, not the scaffold root
 - Simulate the caller's full workflow (hoist → read manifest → replay), not individual functions
 - Keep them independent and repeatable (no shared state, no network unless the feature requires it)
 - Report pass/fail in the same format as the acceptance test so output is uniform
 
-Add a `test-integration` entry to `tool.yaml` when one exists. `npm test` runs the tool tests listed in `package.json` — add a new tool's `test` there; integration tests run via `npm run test:integration` (add a new `test-integration` there too) or in a dedicated CI job.
+Add a `test-integration` entry to `tool.yaml` when one exists. `npm test` runs the tool tests listed in `package.json`; add a new tool's `test` there. Integration tests run via `npm run test:integration` (add a new `test-integration` there too) or in a dedicated CI job.
 
 ### When all slices pass
 
-When the full test suite is green, run `/code-refiner` in auto-fix mode. It reviews the diff on two parallel isolated tracks — correctness + test-integrity (`validate`) and structural quality (`simplify`) — merges the findings, applies them in one coherent pass, and re-verifies (correctness clear, all rubric dimensions 10/10). Green tests only prove what the author thought to test and can be weakened during GREEN, which the correctness track catches. Then present a summary and stop for review:
+When the full test suite is green, run `/code-refiner` in auto-fix mode. It reviews the diff on two parallel isolated tracks — correctness + test-integrity (`validate`) and structural quality (`simplify`) — merges the findings, applies them in one coherent pass, and re-verifies (correctness clear, all rubric dimensions 10/10). Green tests prove only what the author thought to test and can be weakened during GREEN; the correctness track catches that. Then present a summary and stop for review:
 
 ```
 ## Feature complete: <feature-slug>

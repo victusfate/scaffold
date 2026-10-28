@@ -3,33 +3,29 @@
 > Codex save: use `$save` for this workflow; `codex resume --last` restores local chat history.
 > Also: for full same-machine history use `claude -c` in Claude Code, `pi -c` under pi, or `agy -c` under agy.
 
-`/save` is the **lightweight, frequent checkpoint** for a long autonomous run —
-a fan-out orchestration, a `/queue` drain, an overnight loop. It refreshes the
-committed handoff, commits whatever has converged, and pushes, so an abrupt
-rate-limit or crash loses **at most one step**.
+`/save` is the **lightweight, frequent checkpoint** for a long autonomous run (a fan-out orchestration, a
+`/queue` drain, an overnight loop). It refreshes the committed handoff, commits what has converged, and
+pushes, so a rate-limit or crash loses **at most one step**.
 
-It writes the same `.pause/handoff.md` that `/resume` reads, so a cold or
-post-reset session picks up with no re-derivation.
+It writes the `.pause/handoff.md` that `/resume` reads, so a cold or post-reset session picks up with no
+re-derivation.
 
 **Three checkpoint skills, one handoff file:**
 
-- **`/save`** — *this skill.* Fire it **often and automatically** — after every
-  lane merge, at each meaningful step, and when nearing the usage limit. Low
-  ceremony, high frequency.
-- **`/pause`** — the **deliberate one-shot handoff** you write when stepping
-  away: richer prose, open questions, the full "where it stands."
-- **`/resume`** — the **reader**. Pulls and continues from whatever `/save` or
-  `/pause` last wrote.
+- **`/save`** — *this skill.* Fire it **often and automatically**: after every lane merge, at each meaningful
+  step, and when nearing the usage limit. Low ceremony, high frequency.
+- **`/pause`** — the **deliberate one-shot handoff** written when stepping away: richer prose, open
+  questions, the full "where it stands."
+- **`/resume`** — the **reader**. Pulls and continues from whatever `/save` or `/pause` last wrote.
 
 ## When it matters
 
-A long run can be cut off mid-stride — a rolling usage-window limit, a crash, a
-dropped connection. Whatever was not **pushed** is invisible to the session that
-picks up. `/save` shrinks that loss to a single step by checkpointing
+A rolling usage-window limit, a crash, or a dropped connection can cut a long run off mid-stride. The session
+that picks up sees only what was **pushed**; `/save` shrinks the loss to one step by checkpointing
 continuously instead of once at the end.
 
-Nothing here assumes a code project — the work in flight may be Markdown, a
-`docs/<slug>/` feature folder, or a decision log, and it is handled the same way.
+Nothing here assumes a code project: handle Markdown, a `docs/<slug>/` feature folder, or a decision log the
+same way.
 
 ## Steps
 
@@ -58,48 +54,44 @@ No secrets, keys, or tokens — this gets pushed.
 
 ### 2 — Commit what converged
 
-- Stage the work that has actually converged **by explicit path**, together with
-  the handoff, and commit: `git commit -m "save: <one-line goal> (checkpoint)"`.
-  In a repo carrying untracked build or forge intermediates, never `git add -A` —
-  name the specific paths so nothing junk rides along.
-- Nothing converged since the last save? Commit just the refreshed handoff.
+- Stage converged work **by explicit path** with the handoff, and commit:
+  `git commit -m "save: <one-line goal> (checkpoint)"`.
+- In a repo carrying untracked build or forge intermediates, never `git add -A`; name the paths so no junk
+  rides along.
+- Nothing converged since the last save? Commit only the refreshed handoff.
 
 ### 3 — Push immediately
 
-- `git push` from the one working branch, after the local preflight. Worktree
-  lanes never push — the orchestrator merges them and is the only pusher
-  (AGENTS.md, *NO PUSH RACE*). A checkpoint that stays local does not survive the
-  machine going away.
-- No upstream? Set one (`git push -u origin <branch>`); without a push, pickup
-  cannot work.
+- `git push` from the one working branch, after the local preflight. Worktree lanes never push; the
+  orchestrator merges them and is the only pusher (AGENTS.md, *NO PUSH RACE*). A local-only checkpoint does
+  not survive the machine going away.
+- No upstream? Set one (`git push -u origin <branch>`); without a push, pickup cannot work.
 
 ### 4 — Near the usage limit: schedule past the reset
 
-When the rolling usage window is **close to its limit** (or on an explicit
-rate-limit signal), do not burn the remainder:
+When the rolling usage window is **close to its limit** (or on an explicit rate-limit signal), do not burn
+the remainder:
 
 1. Run steps 1–3 now so the checkpoint is current and pushed.
-2. **Drop a memory pointer** — a short project-memory note pointing at
-   `.pause/handoff.md` (or the run's dedicated resume doc), so a compacted or
-   cold session finds it with no conversation history.
-3. **Schedule a wakeup for after the window resets if the client exposes a scheduler**, then stop. Without one, checkpoint and give the `$resume` / `/resume` instruction instead; do not promise automatic resumption. Never retry-storm the
-   limit. On wake, hand off to `/resume`.
+2. **Drop a memory pointer**: a short project-memory note pointing at `.pause/handoff.md` (or the run's
+   dedicated resume doc), so a compacted or cold session finds it with no conversation history.
+3. **Schedule a wakeup for after the window resets if the client exposes a scheduler**, then stop.
+   Without one, checkpoint and give the `$resume` / `/resume` instruction instead; do not promise automatic
+   resumption.
+4. Never retry-storm the limit. On wake, hand off to `/resume`.
 
 ## Critical rules
 
-1. **Frequent beats final.** Fire `/save` on every lane merge and at each
-   meaningful step — not once at the end. A checkpoint one step stale survives a
-   rate-limit; a checkpoint written only at shutdown does not.
-2. **Pushed or stranded.** Pickup sees only pushed commits — the orchestrator
-   pushes converged work; lanes commit locally only.
-3. **Explicit paths, no junk.** Stage converged work by path; never `git add -A`
-   in a repo carrying build or forge intermediates.
-4. **One handoff, overwritten, on the branch only.** `.pause/handoff.md` is always
-   current; history keeps the rest. It never reaches main: the orchestrator clears it
-   before merging (`/create-pr`, *Clear the handoff*). It is the same file `/pause` writes and `/resume` reads.
-   Its facts are tagged verified or unverified, and `scripts/check-handoff.ts`
-   passes before it is committed (AGENTS.md, *Context hygiene*).
-5. **Near the limit: refresh, point, then wake or hand off.** Checkpoint, drop
-   the memory pointer, and schedule a wakeup past the reset if the client exposes
-   a scheduler; otherwise give the `/resume` instruction — do not spend the last
-   of the budget racing the wall.
+1. **Frequent beats final.** Fire `/save` on every lane merge and at each meaningful step, not once at the
+   end. A checkpoint one step stale survives a rate-limit; one written only at shutdown does not.
+2. **Pushed or stranded.** Pickup sees only pushed commits: the orchestrator pushes converged work; lanes
+   commit locally only.
+3. **Explicit paths, no junk.** Stage converged work by path; never `git add -A` in a repo carrying build or
+   forge intermediates.
+4. **One handoff, overwritten, on the branch only.** `.pause/handoff.md` is always current; history keeps
+   the rest. It never reaches main: the orchestrator clears it before merging (`/create-pr`, *Clear the
+   handoff*). It is the same file `/pause` writes and `/resume` reads. Its facts are tagged verified or
+   unverified, and `scripts/check-handoff.ts` passes before it is committed (AGENTS.md, *Context hygiene*).
+5. **Near the limit: refresh, point, then wake or hand off.** Checkpoint, drop the memory pointer, and
+   schedule a wakeup past the reset if the client exposes a scheduler; otherwise give the `/resume`
+   instruction. Do not spend the last of the budget racing the wall.

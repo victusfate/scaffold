@@ -20,38 +20,36 @@ State the slug before writing the first file so the user can correct it. Infer i
 
 **Accepting an external document (any format):**
 
-Always treat a pasted or uploaded document as a design doc — regardless of whether it looks like a PRD, spec, or proposal.
+Always treat a pasted or uploaded document as a design doc, even if it looks like a PRD, spec, or proposal.
 
-Rationale: Phase 2 (`to-prd`) adds genuine value even when the input is already a complete PRD. It cross-references the codebase, catches conflicts with existing code, identifies modules already in place, and derives testing decisions the external doc cannot know. The output `prd.md` is always codebase-aware.
+Rationale: Phase 2 (`to-prd`) adds value even when the input is already a complete PRD. It cross-references the codebase, catches conflicts with existing code, identifies modules already in place, and derives testing decisions the external doc cannot know, so `prd.md` is always codebase-aware.
 
-1. Infer the feature slug from the document title. Ask once if it is not obvious.
-2. Write the content to `./docs/<feature-slug>/design.md` verbatim. Reformat into the standard design-doc structure only if it aids legibility — preserve every decision, requirement, and vocabulary term.
-3. Run `/design-review` in auto-fix mode to patch structural gaps.
-4. Commit `docs(<slug>): design Q&A and vocabulary (external)`.
-5. **Grill on ambiguity** — read `design.md` and assess whether any decisions are unresolved, vocabulary is fuzzy, or edge cases are missing. If so, run Phase 1 (grill) targeting only the open questions — do not re-ask settled decisions. If the doc is complete and unambiguous, skip Phase 1 and proceed directly to Phase 2.
-6. Proceed to Phase 2 (PRD synthesis).
+1. Write the content to `./docs/<feature-slug>/design.md` verbatim. Reformat into the standard design-doc structure only if it aids legibility; preserve every decision, requirement, and vocabulary term.
+2. Run `/design-review` in auto-fix mode to patch structural gaps.
+3. Commit `docs(<slug>): design Q&A and vocabulary (external)`.
+4. **Grill on ambiguity.** Read `design.md` for unresolved decisions, fuzzy vocabulary, or missing edge cases. If any, run Phase 1 (grill) on only the open questions; do not re-ask settled decisions. If the doc is complete and unambiguous, skip Phase 1.
+5. Proceed to Phase 2 (PRD synthesis).
 
 ---
 
 ## Phase 1: Design
 
-Run `/grill-with-docs` — it owns the interview, the design-tree resolution, and
-`design.md`. Chain-specific glue only:
+Run `/grill-with-docs`; it owns the interview, the design-tree resolution, and
+`design.md`. Chain-specific glue:
 
-- State the slug before the first file is written so the user can correct it.
 - **Callable units — decide at design time.** If the feature adds a tool,
   script, skill, or bin command, the Q&A MUST resolve which home it belongs in
   (`docs/agent-authoring-requirements.md` §1) and its descriptor contract.
 
-**When `design.md` is committed:** run `/design-review` in auto-fix mode — it
-patches `design.md` and resolves any blockers. Then proceed immediately to
+**When `design.md` is committed:** run `/design-review` in auto-fix mode (it
+patches `design.md` and resolves any blockers), then proceed immediately to
 Phase 2.
 
 ---
 
 ## Phase 2: PRD
 
-Run `/to-prd` — it owns codebase synthesis, the PRD template, and the
+Run `/to-prd`; it owns codebase synthesis, the PRD template, and the
 testing-decisions step (including its user confirmations). Do not re-interview
 design questions; only `to-prd`'s own confirmations apply.
 
@@ -61,14 +59,14 @@ design questions; only `to-prd`'s own confirmations apply.
 
 ## Phase 3: Plan + TDD
 
-Run `/tdd` — it owns plan creation (vertical slices from `prd.md`, with its
+Run `/tdd`; it owns plan creation (vertical slices from `prd.md`, with its
 one-time granularity confirmation), the RED → GREEN → REFACTOR loop, per-slice
 commits, and `tdd-log.md`.
 
 **When all slices are complete and the full test suite passes:** run
 `/code-refiner` in auto-fix mode. It reviews the diff on two isolated,
 parallel tracks — correctness + test-integrity (`validate`) and structural
-quality (`simplify`) — merges the findings, applies them in a single coherent
+quality (`simplify`) — merges the findings, applies them in one coherent
 pass, and re-verifies (correctness clear, all rubric dimensions 10/10). Passing
 tests alone are not enough: they cover only what the author imagined and can be
 weakened during GREEN, which the correctness track catches.
@@ -78,7 +76,7 @@ explicit paths) so the tree is clean, then **run `/qa`** when the feature has a
 user-facing entry point (UI route, API endpoint, CLI command, job). It starts the
 app, drives the changed entry points, fixes in-tier issues with a regression test
 each, and writes `docs/<feature-slug>/qa-report.md`. This is the reachability check from AGENTS.md
-*Veracity*: tests prove units, `/qa` proves the user can get to them. Skip it only
+*Veracity*: tests prove units, `/qa` proves the user can reach them. Skip it only
 when the change has no runtime entry point, and record the reason for Phase 4.
 Then proceed to Phase 4.
 
@@ -86,7 +84,9 @@ Then proceed to Phase 4.
 
 ## Phase 4: Review
 
-Present a summary. For a queued task, return to the queue delivery cycle: create/update its PR, validate locally and on the host, and merge only when explicit session or standing project authorization exists. Without merge authority, preserve the ready PR and gate the next independent task. For an interactive feature without that authority, stop for user review before merging.
+Present a summary.
+- Queued task: return to the queue delivery cycle. Create/update its PR, validate locally and on the host, and merge only when explicit session or standing project authorization exists. Without merge authority, preserve the ready PR and gate the next independent task.
+- Interactive feature without that authority: stop for user review before merging.
 
 ```
 ## Feature complete: <feature-slug>
@@ -115,4 +115,4 @@ Wait here unless existing session or standing project policy already authorizes 
 
 ## Stopping and resuming
 
-If the user says "stop", "pause", or "just answer" — stop the chain immediately. Resume any phase individually: `/grill-with-docs`, `/to-prd`, `/tdd`.
+If the user says "stop", "pause", or "just answer", stop the chain immediately. Resume any phase individually: `/grill-with-docs`, `/to-prd`, `/tdd`.
