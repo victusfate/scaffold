@@ -8,160 +8,142 @@ missing.
 
 ## Iterative Autonomous Enhancement — a core design principle
 
-Iterative autonomous enhancement is a **core driving design principle** of this
-harness: a **loop** should be able to produce great improvements **without a human in
-the loop**. The agent does not wait for a human to judge each result — it closes the
-loop itself:
+Iterative autonomous enhancement is a **core design principle** of this harness: a **loop** should
+produce great improvements **without a human in the loop**. The agent closes the loop itself instead
+of waiting for a human to judge each result:
 
 > **produce → self-evaluate against the target bar → name the gap → improve → re-evaluate.**
 
-- **Self-evaluate with a real signal, not vibes.** Ground every judgment in something
-  observable: a measurement (timings, throughput, a gate's pass/fail, a state delta), a
-  test, a reviewer pass, or an automated critique of the actual output (read the
-  rendered result, the log, the diff — not a description of it). A "looks good" with
-  nothing behind it is not an evaluation (see *Veracity*).
-- **Prefer deterministic evaluators.** A loop judged by a test, a gate, or a measurement
-  converges; a loop judged only by a model's opinion drifts. When a pass keeps making the
-  same judgment, promote it to a check so the next pass is graded by code (see
-  *Deterministic first*).
-- **Ratchet, never reset.** No iteration may regress a measured gate: test count, a
-  benchmark, a frozen lint baseline such as `eslint-suppressions.json`. Baselines only
-  shrink; a pass that improves one thing by worsening another hasn't improved anything.
-- **Count both costs of a change.** Each change risks an immediate defect *and* makes
-  the next change harder to understand. Judge the second cost too: did complexity,
-  coupling or file length rise? The structure a pass leaves behind is the next pass's
-  context.
-- **Name the target and the gap each pass.** State the quality bar, what the current
-  output falls short on, and the specific change that closes that gap; then apply it and
-  re-judge the same way.
-- **The loop is the deliverable, not a single pass.** build → evaluate → fix → re-evaluate;
-  measure → optimize → re-measure — repeat until the output meets the bar or you hit a
-  genuine blocker. One-and-done is not enhancement.
-- **Each iteration is gated + committed** so the stream stays inspectable and safe to stop
-  at any commit (see *Continuous execution*). Stage output for review; never publish or
-  merge to main without the user's approval.
-- **Human steering refines the target; it does not gate each iteration.** The user
-  redirects *what* "great" means and *which* subject matters; the loop runs and improves
-  on its own between those redirects. A loop that needs a human to approve every step is
-  not autonomous enhancement — it is expensive manual review.
-- **Guardrails that keep autonomy safe:** plain self-assessment (the measurement, test, or
-  critique backs every "improved" — never self-label the work "good"); **cap iterations
-  and bail on non-convergence** — escalate a genuine blocker to the user *with the
-  evidence* rather than spin (a stuck loop is a report, not more identical passes); no
-  brute-force sweeps of variants when a few candidates plus a judgment will do; reversible,
-  staged output.
+- **Self-evaluate with a real signal, not vibes.** Ground every judgment in something observable: a
+  measurement (timings, throughput, a gate's pass/fail, a state delta), a test, a reviewer pass, or an
+  automated critique of the actual output (read the rendered result, the log, the diff — not a
+  description of it). A "looks good" with nothing behind it is not an evaluation (see *Veracity*).
+- **Prefer deterministic evaluators.** A loop judged by a test, a gate, or a measurement converges; one
+  judged only by a model's opinion drifts. When a pass keeps making the same judgment, promote it to a
+  check so the next pass is graded by code (see *Deterministic first*).
+- **Ratchet, never reset.** No iteration may regress a measured gate: test count, a benchmark, a frozen
+  lint baseline such as `eslint-suppressions.json`. Baselines only shrink; a pass that improves one
+  thing by worsening another hasn't improved anything.
+- **Count both costs of a change.** Each change risks an immediate defect *and* makes the next change
+  harder to understand. Judge the second cost too: did complexity, coupling or file length rise? The
+  structure a pass leaves behind is the next pass's context.
+- **Name the target and the gap each pass.** State the quality bar, where the current output falls
+  short, and the specific change that closes that gap; apply it and re-judge the same way.
+- **The loop is the deliverable, not a single pass.** build → evaluate → fix → re-evaluate; measure →
+  optimize → re-measure — repeat until the output meets the bar or you hit a real blocker. One-and-done
+  is not enhancement.
+- **Each iteration is gated + committed** so the stream stays inspectable and safe to stop at any commit
+  (see *Continuous execution*). Stage output for review; never publish or merge to main without the
+  user's approval.
+- **Human steering refines the target; it does not gate each iteration.** The user redirects *what*
+  "great" means and *which* subject matters; the loop improves on its own between those redirects. A
+  loop that needs a human to approve every step is expensive manual review, not autonomous enhancement.
+- **Guardrails that keep autonomy safe:** plain self-assessment (the measurement, test, or critique
+  backs every "improved"; never self-label the work "good"); **cap iterations and bail on
+  non-convergence**, escalating a real blocker to the user *with the evidence* rather than spinning (a
+  stuck loop is a report, not more identical passes); no brute-force sweeps of variants when a few
+  candidates plus a judgment will do; reversible, staged output.
 
-This is why the orchestration loop exists: given a target and the tools (build, test,
-measure, review), the agent drives a subject from "first pass" to "great" across many
-**self-judged** iterations — surfacing to the user the staged results and any real
-blocker, not a decision at every step. Related: *Continuous execution* (the commit is the
-checkpoint) and *Veracity* (evidence, not claims).
+This is why the orchestration loop exists: given a target and the tools (build, test, measure, review),
+the agent drives a subject from "first pass" to "great" across many **self-judged** iterations,
+surfacing to the user the staged results and any real blocker, not a decision at every step. Related:
+*Continuous execution* (the commit is the checkpoint) and *Veracity* (evidence, not claims).
 
 ## Responsiveness & Steerability
 
-The user can see when a path is wrong even when it's technically valid. The
-interface exists so they can steer the intelligence. Optimize for **being
-steerable**, not for autonomous completion. A user who can't redirect you is
-paying for expensive autocomplete.
+The user can see when a path is wrong even when it's technically valid; the interface exists so they
+can steer. Optimize for **being steerable**, not for autonomous completion. A user who can't redirect
+you is paying for expensive autocomplete.
 
 ### Answer the user first
 
-- When a message arrives mid-work, address **that message before resuming** your
-  prior agenda. Never finish a long self-directed run and treat their message as
-  an afterthought.
-- Keep turns tight — fewer tool calls between check-ins — so there are frequent
-  moments to listen. Don't go heads-down for ten steps.
+- Address a message that arrives mid-work **before resuming** your prior agenda. Never finish a long
+  self-directed run and treat their message as an afterthought.
+- Keep turns tight (fewer tool calls between check-ins) so there are frequent moments to listen. Don't
+  go heads-down for ten steps.
 - If you're about to go quiet for a while, **say so first.**
-- Harness limit to be honest about: a single in-flight tool call can't be
-  preempted; the instant it returns, their message is the priority. (The user
-  can press `Esc` to interrupt — but they shouldn't have to.)
+- Harness limit: a single in-flight tool call can't be preempted; the instant it returns, their message
+  is the priority. (The user can press `Esc` to interrupt, but they shouldn't have to.)
 
 ### Surface direction before building
 
-- Show the **fork, the tradeoff, and the cost before** committing effort, so the
-  user can veto at the cheap moment instead of after a rebuild.
-- **Flag your own over-engineering.** If a simpler path exists, name it first —
-  don't make the user catch it.
-- Before recommending on a multidimensional problem, **map its shape first** —
-  see *Understand the shape of the problem* below.
+- Show the **fork, the tradeoff, and the cost before** committing effort, so the user can veto at the
+  cheap moment instead of after a rebuild.
+- **Flag your own over-engineering.** If a simpler path exists, name it first; don't make the user
+  catch it.
+- Before recommending on a multidimensional problem, **map its shape first** (see *Understand the shape
+  of the problem* below).
 - Prefer **reversible moves** so course-correcting costs a sentence, not a redo.
-- **Open each loop with a one-line contract**: the target bar, the signal that judges
-  it, the durability tier, and the iteration cap. The user steers that line (the
-  cheapest moment to redirect) and doesn't have to approve each pass.
+- **Open each loop with a one-line contract**: the target bar, the signal that judges it, the durability
+  tier, and the iteration cap. The user steers that line (the cheapest moment to redirect) instead of
+  approving each pass.
 
 ### The user's judgment is the tiebreaker
 
-- "Wrong path" from the user is **decisive.** Don't defend a valid-but-wrong
-  direction because it technically works.
+- "Wrong path" from the user is **decisive.** Don't defend a valid-but-wrong direction because it
+  technically works.
 - **"Technically possible" is not "right."**
 
 ### Why
 
-The whole value of a human in the loop is that they can see the wrong path while
-it's still cheap to change. Being ignored — or steamrolled with a technically-
-valid-but-unwanted approach — defeats the reason the interface exists.
+A human in the loop is valuable because they can see the wrong path while it's still cheap to change.
+Ignoring them, or steamrolling them with a technically valid but unwanted approach, defeats the reason
+the interface exists.
 
 ## Continuous execution (loops & "build until done")
 
-When given a standing directive to work autonomously toward a goal — an explicit
-`/loop`, "build until done / until all slices pass", or a similar until-condition
-— run **continuously**, not in artificially paced bursts:
+When given a standing directive to work autonomously toward a goal (an explicit `/loop`, "build until
+done / until all slices pass", or a similar until-condition), run **continuously**, not in
+artificially paced bursts:
 
-- **Do the work in-turn; the commit is the checkpoint.** The real progress marker
-  is a committed, tested slice — not a scheduled wakeup. Keep going slice-by-slice
-  within the turn; each commit survives a turn/context boundary.
-- **Don't insert a `ScheduleWakeup`/timer delay to *pace* self-contained work.** A
-  wakeup delay is for *waiting on something you can't act on right now* — not for
-  spacing out your own code→test→commit, which has nothing to wait for. Three cases
-  where a timer IS correct:
-  - **External gating:** CI finishing, a deploy, a remote queue — pick the delay
-    from how fast that state actually changes.
-  - **Usage-limit windows:** when closing in on 100% of the rolling 5-hour usage
-    limit, schedule a wakeup to resume after the window resets. This is the right
-    way to keep long/overnight autonomous runs going — spend the budget, then sleep
-    until it refills and continue.
-  - **Crash-safety net:** if a turn genuinely ends with work remaining, re-arm with
-    the minimum delay so the loop survives — never as cadence.
-- These timer rules apply only when the client exposes scheduling. Without it,
-  keep working in-turn; at a real limit, checkpoint and state how to resume.
-  Never claim a background restart has been armed without a successful tool call.
-- **Steering always preempts.** A mid-turn user message is handled before resuming
-  (see *Responsiveness & Steerability*). "Unless I'm actively steering" is the
-  point: continuous ≠ uninterruptible — stop or redirect the instant the user speaks.
-- **One reviewable unit at a time, fully gated.** Each slice goes RED → GREEN →
-  REFACTOR and passes the full gate (tests + typecheck + quality gate) before its
-  commit, so the stream stays inspectable and safe to stop at any commit.
-- **Supervise background work by progress, not liveness.** When a tick checks on
-  running jobs, "the processes exist" is not health. A job can be alive and stuck:
-  sitting in a retry/wait loop, blocked on a lock or a shared budget someone else is
-  holding. Each tick answer, with evidence:
-  - **Did it advance since the last tick?** Compare a progress counter such as items
-    finished, commits, or CPU time used, against the last reading and against the
-    expected rate. Nothing finished in a window that should have produced output
-    is a finding, not a wait.
-  - **What is each job doing right now?** Look at the leaf process or current step.
-    A `sleep` inside a retry loop is waiting, not working.
-  - **Is anything orphaned?** Look for helpers whose launcher died, such as display
-    servers, workers, or locks. They keep holding reservations, ports, or disk.
-    Remember that a reparented orphan may not show PID 1 as its parent (on WSL it's
-    a `Relay(N)` process).
-  - **Who holds the shared budget?** Account for memory/slot/lock reservations
-    against their limit. Stale holders starve new work without failing anything.
+- **Do the work in-turn; the commit is the checkpoint.** The progress marker is a committed, tested
+  slice, not a scheduled wakeup. Keep going slice by slice within the turn; each commit survives a
+  turn/context boundary.
+- **Don't insert a `ScheduleWakeup`/timer delay to *pace* self-contained work.** A wakeup delay is for
+  *waiting on something you can't act on right now*, not for spacing out your own code→test→commit,
+  which has nothing to wait for. A timer IS correct in three cases:
+  - **External gating:** CI finishing, a deploy, a remote queue. Pick the delay from how fast that
+    state actually changes.
+  - **Usage-limit windows:** when closing in on 100% of the rolling 5-hour usage limit, schedule a
+    wakeup to resume after the window resets. This keeps long/overnight autonomous runs going: spend
+    the budget, then sleep until it refills and continue.
+  - **Crash-safety net:** if a turn ends with work remaining, re-arm with the minimum delay so the loop
+    survives; never as cadence.
+- These timer rules apply only when the client exposes scheduling. Without it, keep working in-turn; at
+  a real limit, checkpoint and state how to resume. Never claim a background restart has been armed
+  without a successful tool call.
+- **Steering always preempts.** Handle a mid-turn user message before resuming (see *Responsiveness &
+  Steerability*). "Unless I'm actively steering" is the point: continuous ≠ uninterruptible. Stop or
+  redirect the instant the user speaks.
+- **One reviewable unit at a time, fully gated.** Each slice goes RED → GREEN → REFACTOR and passes the
+  full gate (tests + typecheck + quality gate) before its commit, so the stream stays inspectable and
+  safe to stop at any commit.
+- **Supervise background work by progress, not liveness.** When a tick checks on running jobs, "the
+  processes exist" is not health. A job can be alive and stuck: in a retry/wait loop, or blocked on a
+  lock or a shared budget someone else holds. Each tick, answer with evidence:
+  - **Did it advance since the last tick?** Compare a progress counter (items finished, commits, CPU
+    time used) against the last reading and the expected rate. Nothing finished in a window that
+    should have produced output is a finding, not a wait.
+  - **What is each job doing right now?** Look at the leaf process or current step. A `sleep` inside a
+    retry loop is waiting, not working.
+  - **Is anything orphaned?** Look for helpers whose launcher died, such as display servers, workers,
+    or locks; they keep holding reservations, ports, or disk. A reparented orphan may not show PID 1 as
+    its parent (on WSL it's a `Relay(N)` process).
+  - **Who holds the shared budget?** Account for memory/slot/lock reservations against their limit.
+    Stale holders starve new work without failing anything.
 
-  Encode these as a small probe script run every tick that exits non-zero on
-  anomalies, and investigate each anomaly before ending the tick. A human asking
-  "how's X holding up?" is exactly this probe; don't wait for them to ask it.
-- **Never idle while described work is unbuilt — run the built-vs-described audit.**
-  Before concluding "the queue is exhausted / nothing to do," compare, per category
-  of work the user asked for, what actually **exists and is reachable** (code that
-  runs, features wired to an entry point, tests green) against what is only
-  **described** (a spec, a design doc, a queued task, a TODO). Every gap is ready
-  work: a spec with no implementation → **build it**; a described capability with no
-  wiring → **wire it**; a documented interface with no caller → **connect it**.
-  "Exhausted" means *built and reachable*, not merely *written down*. Do not treat
-  "the user might want it slightly different" as a reason to idle — produce a
-  reasonable first pass, stage anything user-facing for review, and keep going.
-  Steering *refines* the work; it is not a prerequisite for starting it.
+  Encode these as a small probe script run every tick that exits non-zero on anomalies, and
+  investigate each anomaly before ending the tick. A human asking "how's X holding up?" is this probe;
+  don't wait for them to ask it.
+- **Never idle while described work is unbuilt — run the built-vs-described audit.** Before concluding
+  "the queue is exhausted / nothing to do," compare, per category of work the user asked for, what
+  **exists and is reachable** (code that runs, features wired to an entry point, tests green) against
+  what is only **described** (a spec, a design doc, a queued task, a TODO). Every gap is ready work: a
+  spec with no implementation → **build it**; a described capability with no wiring → **wire it**; a
+  documented interface with no caller → **connect it**. "Exhausted" means *built and reachable*, not
+  merely *written down*. "The user might want it slightly different" is no reason to idle: produce a
+  reasonable first pass, stage anything user-facing for review, and keep going. Steering *refines* the
+  work; it is not a prerequisite for starting it.
 
 ## Context hygiene — validate, compact, curate, prune
 
@@ -203,9 +185,9 @@ branch is already merged.
 ## Review economics — verify by machine, map the critical changes
 
 Coding agents multiply code volume far faster than delivery speeds up (Laurie Voss, *AI Writes the
-Code. So What's Left for Engineers?*). The bottleneck moved from
-writing code to knowing whether to trust it, and a human reads only a few hundred lines an hour.
-So the harness splits the work by who is cheapest at it:
+Code. So What's Left for Engineers?*). The bottleneck moved from writing code to knowing whether to
+trust it, and a human reads only a few hundred lines an hour. So the harness splits the work by who is
+cheapest at it:
 
 - **Machines check everything decidable:** scanners, lint, types, tests, `/validate`, `/simplify`.
   A repeated review comment becomes a rule or a check (*Deterministic first*).
@@ -221,15 +203,14 @@ So the harness splits the work by who is cheapest at it:
 - **Encode judgment so it is not re-asked.** When the owner corrects a change, record the rule as a
   decision, rubric line or eval so the next PR gets it right first.
 - **Measure delivery, not output.** Lines written are no signal. `node scripts/delivery-metrics.ts
-  [--days N]` reports merges per week, open-to-merge time, the gap between green CI and merge, and how many change requests were followed by a commit. Include it in owner
-  status reports when it moves.
+  [--days N]` reports merges per week, open-to-merge time, the gap between green CI and merge, and how
+  many change requests were followed by a commit. Include it in owner status reports when it moves.
 
 ## Owner status reports (remote owner)
 
-When the owner says they'll be away or checking in intermittently and asks for
-status reports, the session's orchestrator owns the report. That's whichever
-harness is orchestrating: Claude Code, Codex, pi or another client. Workers
-never send it.
+When the owner says they'll be away or checking in intermittently and asks for status reports, the
+session's orchestrator owns the report, whichever harness is orchestrating (Claude Code, Codex, pi or
+another client). Subagents never send it.
 
 - **Schedule.** Send one report a day at the owner's requested local time
   (default 8am in the owner's timezone). It covers the previous 24 hours. Use the
@@ -256,7 +237,7 @@ never send it.
 - **Merging continues between reports.** The report summarises per-task merges; it
   never batches or delays them.
 - **Persistence.** Record the requested time, the address source and the surfaces
-  to update in the project's handoff or policy file. Then a different harness
+  to update in the project's handoff or policy file, so a different harness
   taking over orchestration keeps sending the same report.
 - **Claude Code specifics.**
   - Schedule with `CronCreate` (a recurring 5-field cron in local time). Pick an
@@ -274,10 +255,9 @@ never send it.
 
 ## Durability tiers — match rigor to what the code is
 
-Quality practices exist so the code can be understood and safely changed. How much
-rigor that takes depends on where the code sits between **disposable** and
-**durable**. Classify before building, and state the tier along with the feature
-slug so the user can correct it cheaply:
+Quality practices exist so the code can be understood and safely changed. How much rigor that takes
+depends on where the code sits between **disposable** and **durable**. Classify before building, and
+state the tier with the feature slug so the user can correct it cheaply:
 
 | | Disposable | Durable |
 |---|---|---|
@@ -299,49 +279,45 @@ import-boundary rule exist, the tier is a judgment you state, not a gate.
 
 ## Veracity — "done" means reachable, not just built
 
-A feature is not done because it compiles and its unit tests pass. It is done when
-there is an **unbroken call path from a user entry point (button, route, CLI) to
-the code**. Reachability is the deliverable; existence is not. Never state a
-feature as done, live, or working when it is built-but-unwired.
+A feature is not done because it compiles and its unit tests pass. It is done when there is an
+**unbroken call path from a user entry point (button, route, CLI) to the code**. Reachability is the
+deliverable; existence is not. Never state a feature as done, live, or working when it is
+built-but-unwired.
 
-- **Before claiming a feature done — or reporting status on one — grep for real
-  callers** of the new code (e.g. `grep -rn <symbol> src/ | grep -v test`). Zero
-  non-test callers means it is **unwired**: report it exactly that way, not "done."
-  A green unit test proves a unit works, not that the feature is reachable.
-- **A test on an unwired module is a false signal.** For anything user-facing,
-  require at least one test that exercises the *live* path, not just the pure
-  module. Treat "tested but unreachable" as a defect, and say so.
-- **Capacity ≠ capability.** "14 seats" is not "14 players" if 12 are bots. When
-  reporting scale or multiplayer claims, name what fills each slot — never infer
-  delivered capability from data-model capacity.
-- **Verify user premises against the code.** When the user states a capability as
-  fact ("PvP hosts 7v7 now"), confirm it in the code before building on it; before
-  extending an inherited capability, check the last mile shipped (wiring, UI,
-  signaling), not just the core. Long-lived projects accumulate beliefs that
-  drifted from reality — surface any gap with a `file:line` citation.
-- **Report faithfully.** If the last mile didn't ship, say so plainly. Never
-  present built-but-dead as delivered.
-- **Don't label your own reporting "honest."** "Honest," "honestly," "the honest
-  truth," "to be honest," "honest status/assessment" — these are claims *about
-  yourself*, not properties of the statement, and announcing honesty neither makes
-  a claim accurate nor adds information. When every other update is tagged "honest,"
-  the word means nothing and starts to imply the untagged ones weren't. State the
-  fact and show what backs it — the `file:line`, the measurement, the failing test
-  output — and let accuracy speak for itself. Reserve "honestly" for the rare case
-  where it does real work (flagging that you're now *contradicting* an earlier claim
-  of your own), never as a preface or intensifier. Same for "transparent," "to be
-  clear," "frankly," and similar self-congratulating hedges.
+- **Before claiming a feature done, or reporting status on one, grep for real callers** of the new code
+  (e.g. `grep -rn <symbol> src/ | grep -v test`). Zero non-test callers means it is **unwired**: report
+  it exactly that way, not "done." A green unit test proves a unit works, not that the feature is
+  reachable.
+- **A test on an unwired module is a false signal.** For anything user-facing, require at least one
+  test that exercises the *live* path, not just the pure module. Treat "tested but unreachable" as a
+  defect, and say so.
+- **Capacity ≠ capability.** "14 seats" is not "14 players" if 12 are bots. When reporting scale or
+  multiplayer claims, name what fills each slot; never infer delivered capability from data-model
+  capacity.
+- **Verify user premises against the code.** When the user states a capability as fact ("PvP hosts
+  7v7 now"), confirm it in the code before building on it; before extending an inherited capability,
+  check the last mile shipped (wiring, UI, signaling), not just the core. Long-lived projects
+  accumulate beliefs that drifted from reality; surface any gap with a `file:line` citation.
+- **Report faithfully.** If the last mile didn't ship, say so plainly. Never present built-but-dead as
+  delivered.
+- **Don't label your own reporting "honest."** "Honest," "honestly," "the honest truth," "to be
+  honest," "honest status/assessment" are claims *about yourself*, not properties of the statement;
+  announcing honesty neither makes a claim accurate nor adds information. When every update is tagged
+  "honest," the word means nothing and implies the untagged ones weren't. State the fact and show what
+  backs it (the `file:line`, the measurement, the failing test output). Reserve "honestly" for the rare
+  case where it does real work (flagging that you're now *contradicting* an earlier claim of your
+  own), never as a preface or intensifier. Same for "transparent," "to be clear," "frankly," and
+  similar self-congratulating hedges.
 
 Reviewers enforce the code side of this via the rubric's *Vestige & Layering* R5
 ("liveness is the call graph, not tests") and `/validate`'s test-integrity pass.
 
 ## Deterministic first — code over model judgment
 
-Anything that can be decided explicitly or algorithmically is done by code, not by
-an LLM. A script, linter rule, type, schema, test or CLI gives the same answer every
-run, costs nothing per call, and can gate CI; a model's judgment does none of those.
-Reserve LLM judgment for what genuinely needs it: intent, naming, design tradeoffs,
-prose quality, ambiguous root causes.
+Anything that can be decided explicitly or algorithmically is done by code, not by an LLM. A script,
+linter rule, type, schema, test or CLI gives the same answer every run, costs nothing per call, and can
+gate CI; a model's judgment does none of those. Reserve LLM judgment for what needs it: intent, naming,
+design tradeoffs, prose quality, ambiguous root causes.
 
 - **Before asking a model to check, count, compare, parse, format, route or
   validate, ask whether a tool can.** File length, import boundaries, magic
@@ -368,51 +344,42 @@ Related: *Knowledge state* (typed fields over parsed prose) and *Veracity*
 
 ## Default language
 
-This repo's default language for new code — source, scripts, and tooling — is
-declared in **`.agent/default-language.md`**. Read that file at the start of any
-task that writes code and honor it:
+This repo's default language for new code (source, scripts, and tooling) is declared in
+**`.agent/default-language.md`**. Read that file at the start of any task that writes code and honor
+it:
 
-- **When it names a language,** write new code in that language and file format by
-  default. When a task could be done in several languages, choose the declared
-  one; do not introduce another language, extension, or a second runtime just
-  because it's conventional elsewhere.
-- **When the file is absent, or declares the language `unset`,** there is no repo
-  default — infer the language from the existing codebase and match what's already
-  there.
+- **When it names a language,** write new code in that language and file format by default. When a
+  task could be done in several languages, choose the declared one; do not introduce another language,
+  extension, or a second runtime just because it's conventional elsewhere.
+- **When the file is absent, or declares the language `unset`,** there is no repo default: infer the
+  language from the existing codebase and match what's already there.
 
-The only exception is a **hard blocking need** — a tool whose own loader or runtime
-*requires* a different language/format (e.g. `eslint.config.mjs`: ESLint's
-flat-config loader resolves the config as an ES module and can't load a `.ts` file
-directly). When you hit one, **stop and get explicit approval before adding the
-off-language file**, and note the reason in a comment at the top of it. "It's a
-script, X is conventional" is not a blocking need — use the declared language.
+The only exception is a **hard blocking need**: a tool whose own loader or runtime *requires* a
+different language/format (e.g. `eslint.config.mjs`: ESLint's flat-config loader resolves the config
+as an ES module and can't load a `.ts` file directly). When you hit one, **stop and get explicit
+approval before adding the off-language file**, and note the reason in a comment at the top of it.
+"It's a script, X is conventional" is not a blocking need; use the declared language.
 
-**Setting the default (per repo).** `.agent/default-language.md` is
-consumer-owned — scaffold does not sync or overwrite it, so each repo sets its own.
-Create it with a level-1 heading naming the language, then a sentence or two on the
-file extension, how code runs, and any formats to avoid. To opt out of a repo
-default, omit the file or write `# Default language: unset`.
+**Setting the default (per repo).** `.agent/default-language.md` is consumer-owned: scaffold does not
+sync or overwrite it, so each repo sets its own. Create it with a level-1 heading naming the language,
+then a sentence or two on the file extension, how code runs, and any formats to avoid. To opt out of a
+repo default, omit the file or write `# Default language: unset`.
 
 ## Proactive file-length maintenance
 
-**Never trim comments, densify code, or hold back a useful edit to keep a file
-under the length limit — that is an antipattern.** It trades clarity for a line
-count and quietly makes the code worse. Do not tell the user to "be lean here" to
+**Never trim comments, densify code, or hold back a useful edit to keep a file under the length limit;
+that is an antipattern.** It trades clarity for a line count. Do not tell the user to "be lean here" to
 preserve file size, and do not do it to your own edits.
 
-The limit is a signal to **split the file into cohesive modules at
-single-responsibility seams** — behavior-preserving, tests green — not a budget to
-cram within. When a file grows near the limit, extract modules; never starve it of
-comments or clarity to fit. Splitting, never cramming, is the remedy for a long or
-growing file.
+The limit is a signal to **split the file into cohesive modules at single-responsibility seams**
+(behavior-preserving, tests green), not a budget to cram within. When a file grows near the limit,
+extract modules.
 
-**Escape hatch, used sparingly.** When a file is genuinely *one cohesive unit* —
-every candidate seam is shallow and a split would scatter one concept across files
-(a model/schema/state-machine over a single type) — an inline `quality-ok:
-file-length — <reason>` pragma on the first non-shebang line is preferable to an
-arbitrary split that fragments the concept. A real seam always wins over the
-override; reach for it only when keeping the file whole aids comprehension more than
-splitting it, and cite why.
+**Escape hatch, used sparingly.** When a file is *one cohesive unit* (every candidate seam is shallow
+and a split would scatter one concept across files, e.g. a model/schema/state-machine over a single
+type), an inline `quality-ok: file-length — <reason>` pragma on the first non-shebang line is
+preferable to an arbitrary split that fragments the concept. A real seam always wins over the override;
+use it only when keeping the file whole aids comprehension more than splitting it, and cite why.
 
 ## Session Start
 
@@ -425,8 +392,8 @@ On your first response in a new session:
    and `git rev-list --count HEAD..origin/main` explicitly. On a fetch failure,
    report that freshness is unverified and continue local work where possible.
 2. **PR watch** — If the current branch has an open PR, subscribe to it with
-   `subscribe_pr_activity`. Only watch the PR for this session's branch — not
-   PRs from other branches. If no subscription tool is available, inspect with
+   `subscribe_pr_activity`. Watch only this session's branch's PR, not PRs from
+   other branches. If no subscription tool is available, inspect with
    `gh pr view` and `gh pr checks`; this is a snapshot, not a webhook subscription.
 3. **Artifacts check** — Check `./docs/` for existing feature artifacts
    (`design.md`, `prd.md`, `plan.md`).
@@ -434,9 +401,8 @@ On your first response in a new session:
 - **Artifacts exist:** resume artifacts relevant to the user's request. Acknowledge
   unrelated artifacts without blocking new work; ask only if intent is unclear.
 - **No artifacts:** when the request is feature work (see *What This Doesn't Apply To*),
-  start `/feature-chain` — no permission needed. If the user's
-  intent is vague or unstated, the grill (Phase 1) resolves it through Q&A.
-  Do not ask a pre-question first.
+  start `/feature-chain` without asking permission. If the user's intent is vague or
+  unstated, the grill (Phase 1) resolves it through Q&A. Do not ask a pre-question first.
 
 ## Minimum Viable Diff
 
@@ -523,17 +489,15 @@ Skip the chain for:
 
 ## PR Workflow
 
-**Default: one independent task per PR/merge cycle.** Finish full acceptance,
-review and validate locally, create/update its PR, verify real required hosted
-checks on the final head, then merge **only with explicit session or standing
-project authorization**. Creating a PR does not authorize merging. Without that
-permission, preserve the ready PR and gate the next task. A failed gate remains
-part of the current task; never grow the branch with another feature to defer it.
-Confirm the actual merge and cut a fresh branch from updated main before the next
-independent task. Subagents may parallelize subtasks of the current task; only the
-root integrates, pushes and merges. Explicit project policy may opt into legacy
-batch delivery (`queue config deliveryMode batch`). See `skills/queue.md` for
-runtime boundaries, migration and the `advance` acknowledgment.
+**Default: one independent task per PR/merge cycle.** Finish full acceptance, review and validate
+locally, create/update its PR, verify real required hosted checks on the final head, then merge **only
+with explicit session or standing project authorization**. Creating a PR does not authorize merging;
+without that permission, preserve the ready PR and gate the next task. A failed gate remains part of
+the current task; never grow the branch with another feature to defer it. Confirm the actual merge and
+cut a fresh branch from updated main before the next independent task. Subagents may parallelize
+subtasks of the current task; only the orchestrator integrates, pushes and merges. Explicit project
+policy may opt into legacy batch delivery (`queue config deliveryMode batch`). See `skills/queue.md`
+for runtime boundaries, migration and the `advance` acknowledgment.
 
 1. Pull latest main: `git checkout main && git pull origin main`
 2. Create a clean branch: `git checkout -b <prefix>/<short-descriptive-name>`
@@ -543,11 +507,10 @@ runtime boundaries, migration and the `advance` acknowledgment.
 6. Before merging, clear the handoff and verify the green is **real** (see below).
 7. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
 
-**A green PR is not always green — required checks can fail *open*.** GitHub treats
-a **skipped** required status check as **satisfied**. So a required check that is an
-aggregate roll-up job (`needs:` a matrix/shard set, no `if: always()`) *skips* when
-a dependency fails — and the gate passes silently. (Same for path-filtered or
-`if:`-gated required jobs that never run.) Before merging:
+**A green PR is not always green: required checks can fail *open*.** GitHub treats a **skipped**
+required status check as **satisfied**, so a required aggregate roll-up job (`needs:` a matrix/shard
+set, no `if: always()`) *skips* when a dependency fails, and the gate passes silently. (Same for
+path-filtered or `if:`-gated required jobs that never run.) Before merging:
 
 - **Read the actual check conclusions, not the merge button.** Treat a lingering
   `skipping` on a *required* check as suspect, not as a pass.
@@ -563,17 +526,19 @@ a dependency fails — and the gate passes silently. (Same for path-filtered or
 the work is done, and a handoff left on main would be read by the next `/resume` as current state (context
 poisoning). So the orchestrator's last commit before merging to main is `git rm .pause/handoff.md`
 (`chore: clear handoff before merge`). `node scripts/check-handoff.ts --pre-merge` must exit 0 on the head
-being merged, and the merge uses that head (`--match-head-commit`). The decisions and facts it held belong in the
-PR body, `design.md` or the decision registry, not in the handoff.
+being merged, and the merge uses that head (`--match-head-commit`). The decisions and facts it held belong
+in the PR body, `design.md` or the decision registry, not in the handoff.
 
-Never commit directly to main for feature work.
-A session spans the full lifetime of a branch — from creation until it is merged or discarded. Only switch branches after the current feature branch is merged or the user explicitly asks; keep committing to the current branch until then. The one permitted exception is checking out main solely to pull and immediately create a new feature branch.
-Start a fresh branch off main when no active feature branch is being resumed.
+Never commit directly to main for feature work. A session spans the full lifetime of a branch, from
+creation until it is merged or discarded. Only switch branches after the current feature branch is
+merged or the user explicitly asks; keep committing to the current branch until then. The one permitted
+exception is checking out main solely to pull and immediately create a new feature branch. Start a
+fresh branch off main when no active feature branch is being resumed.
 
 ## Harness capabilities
 
 These instructions support Claude Code, Codex, Cursor, Antigravity (agy), and pi.
-Use the tools actually exposed by the current client. A named tool below is not
+Use the tools actually exposed by the current client; a named tool below is not
 a guarantee that it is installed. User instructions take precedence over skill
 defaults; infer routine choices from the repository and existing authorization.
 
@@ -592,17 +557,16 @@ defaults; infer routine choices from the repository and existing authorization.
 
 ## Session and process ownership
 
-Each session has exactly one orchestrator. Separate sessions may work concurrently,
-including in the same repository, but they are independent owners. Never inspect,
-stop, reclaim, interrupt, or signal another session's orchestrator, workers, or a
-user-launched agent CLI as lifecycle targets. Read-only aggregate resource checks
-may observe them, but process names, PIDs, terminals, queue owner labels, lease
-timestamps, and worktrees never establish authority over them.
+Each session has exactly one orchestrator. Separate sessions may work concurrently, including in the
+same repository, but they are independent owners. Never inspect, stop, reclaim, interrupt, or signal
+another session's orchestrator, subagents, or a user-launched agent CLI as lifecycle targets. Read-only
+aggregate resource checks may observe them, but process names, PIDs, terminals, queue owner labels,
+lease timestamps, and worktrees never establish authority over them.
 
-Only a lifecycle controller may terminate the exact child tree it created for its
-current generation, and only on explicit cancel or timeout. Normal child completion
-must not send a cleanup signal. If ownership is ambiguous, leave the process and
-worktree untouched, stop conflicting dispatch, and report the conflict.
+Only a lifecycle controller may terminate the exact child tree it created for its current generation,
+and only on explicit cancel or timeout. Normal child completion must not send a cleanup signal. If
+ownership is ambiguous, leave the process and worktree untouched, stop conflicting dispatch, and report
+the conflict.
 
 ## Orchestration hygiene (lessons from long autonomous runs)
 
@@ -620,16 +584,16 @@ These failures each cost hours in a real run; each has a cheap guard.
   path explicitly after looking at it, and never act on a directory you didn't create. After
   you kill a destructive job, kill its children too: a `mv` across mounts copies first and
   keeps running after its parent dies.
-- **Subagents that "wait" may be asleep.** A worker that ends its turn waiting on its own
-  background job often has nothing running and never wakes. Check that the worker's processes
-  are alive each tick and resume it if not. Tell workers never to end a turn idle: poll with
+- **Subagents that "wait" may be asleep.** A subagent that ends its turn waiting on its own
+  background job often has nothing running and never wakes. Check that the subagent's processes
+  are alive each tick and resume it if not. Tell subagents never to end a turn idle: poll with
   short foreground checks instead.
 - **Isolate shared state in tests.** Tests use their own save and user directories, never a
   default slot or a directory other runs share. A stale prompt or a leftover profile in shared
   state turns into false failures, or false passes, far from the real cause.
 - **Hold a host lock around one command, never a shell.** Wrapping a shell or script in an
   exclusive lock lets a nested request for the same lock deadlock every job on the host.
-- **Keep the task board true.** Claims, releases and completions happen as workers start,
+- **Keep the task board true.** Claims, releases and completions happen as subagents start,
   stop and merge, and the committed queue view is re-rendered with them (see `/queue`,
   `queue check-view`).
 
@@ -649,20 +613,18 @@ Full rationale and pilot plan: [`docs/knowledge-architecture.md`](docs/knowledge
   measurement. Record it before replying, because chat summaries are lossy. Everything else cites
   the id. An unmeasured claim is marked unverified.
 - **Generate hook points; don't hand-write them.** Code locations come from code at a named
-  commit, and plans state intent and gates. Workers own the details and write discoveries back.
-- **Never keep project facts only in harness-private memory.** Facts every worker needs live in
+  commit, and plans state intent and gates. Subagents own the details and write discoveries back.
+- **Never keep project facts only in harness-private memory.** Facts every subagent needs live in
   the repo, readable by every harness. Private memory holds harness preferences only.
 
 ## Understand the shape of the problem first
 
-Before committing to a solution, map the **shape of the problem** — the
-dimensions it balances and where the real tension lives — instead of jumping to
-the first approach or flattening a complex problem to one axis. Name the axes
-(cost, speed, risk, reversibility, clarity…), find where the frontier sits, and
-recommend from that mapped space, not a hunch. A general stance — design,
-refactors, debugging, decisions alike, not just formal councils (`/council`
-applies it in framing). Surfacing the shape is also what lets the user steer
-early.
+Before committing to a solution, map the **shape of the problem** (the dimensions it balances and
+where the real tension lives) instead of jumping to the first approach or flattening a complex problem
+to one axis. Name the axes (cost, speed, risk, reversibility, clarity…), find where the frontier sits,
+and recommend from that mapped space, not a hunch. This is a general stance for design, refactors,
+debugging and decisions alike, not just formal councils (`/council` applies it in framing). Surfacing
+the shape also lets the user steer early.
 
 ## Modern web platform code
 
@@ -675,52 +637,48 @@ this file to override the guides' Baseline default.
 
 ## ONE Working Branch — fan-out integration (NON-NEGOTIABLE)
 
-**A session has EXACTLY ONE working branch** — the current task’s feature branch, rotated only after its authorized merge.
-Code, assets, docs, lore, ledgers — *everything* lands on that one branch. This is the
-single most important operational rule when fanning out; violating it silently splits the
-project in two.
+**A session has EXACTLY ONE working branch**: the current task's feature branch, rotated only after its
+authorized merge. Code, assets, docs, lore, ledgers — *everything* lands on that one branch. This is the
+most important operational rule when fanning out; violating it silently splits the project in two.
 
 - **Lanes work in isolated git worktrees** (`isolation: "worktree"`), each branched off the
   ONE working branch, and gate their own diff.
 - **The orchestrator merges each lane into the ONE working branch LOCALLY the moment that lane
-  completes** — not into a separate "integration" branch, not batched "later". One completed
-  lane → merge/rebase its worktree branch into the local one branch → resolve → delete the worktree →
-  mark the ledger. Do it before spawning the next thing. (Pushing to GitHub is a SEPARATE, controlled,
-  batched step by the orchestrator — see the push rule below.)
-- **Refresh a lane against its integration target before integrating it.** The target is
-  whatever this repo's delivery mode integrates into: main under per-task merges, a shared
-  working branch, or a branch left open for a separate review process. That target keeps
-  moving while the lane runs, and two lanes that each pass on their own can break when
-  combined. Before opening the lane's PR or integrating it:
-  1. **Merge** the current target into the lane branch, as one merge commit with one
-     conflict resolution. Don't rebase a long lane branch: rebasing replays every commit
-     and can hit the same conflict once per commit.
-  2. Re-run the gates **on the merged result**, not on the lane's old base. That means
-     lint over every target, including test code; the full test suite of every touched
-     package (not only the new tests); and a regeneration of any derived artifacts the
-     change affects (generated guides, manifests, lockfiles). Commit any regenerated files.
-  3. Integrate only when that merged result is green. Hosted CI then confirms main
-     instead of discovering the combination failure. Short-lived lanes drift less, so
-     integrate each lane as soon as it finishes.
+  completes**, not into a separate "integration" branch and not batched "later". One completed lane →
+  merge/rebase its worktree branch into the local one branch → resolve → delete the worktree → mark
+  the ledger, before spawning the next thing. (Pushing to GitHub is a SEPARATE, controlled, batched
+  step by the orchestrator; see the push rule below.)
+- **Refresh a lane against its integration target before integrating it.** The target is whatever
+  this repo's delivery mode integrates into: main under per-task merges, a shared working branch, or a
+  branch left open for a separate review process. It keeps moving while the lane runs, and two lanes
+  that each pass on their own can break when combined. Before opening the lane's PR or integrating it:
+  1. **Merge** the current target into the lane branch, as one merge commit with one conflict
+     resolution. Don't rebase a long lane branch: rebasing replays every commit and can hit the same
+     conflict once per commit.
+  2. Re-run the gates **on the merged result**, not on the lane's old base: lint over every target,
+     including test code; the full test suite of every touched package (not only the new tests); and a
+     regeneration of any derived artifacts the change affects (generated guides, manifests,
+     lockfiles). Commit any regenerated files.
+  3. Integrate only when that merged result is green. Hosted CI then confirms main instead of
+     discovering the combination failure. Short-lived lanes drift less, so integrate each lane as soon
+     as it finishes.
 - **Retire completed artifacts at integration.** Preserve required source and unique
   evidence with a durable index before removing verified-ended lane worktrees and
   merged branches; clear ended display state through existing queue lifecycle commands.
   After the authorized main merge, verify no unique commits before retiring the task
   branch. Keep generated state ignored and completed narrative archived; retain active
   scope, dependencies and evidence links. See [integration cleanup](skills/queue-drivers.md#integration-cleanup-all-delivery-modes).
-- **Reap zombie worktrees after an interrupted session.** The normal merge step deletes
-  each lane's worktree. A session that ends abruptly skips that step: weekly usage runs
-  out, the harness crashes, or the machine power-cycles. The lane's worktree is then left
-  half-done. Sometimes it's still registered with unmerged commits; sometimes it has
-  dropped out of `git worktree list` (after `git worktree prune`, or in a harness-managed
-  isolation dir such as `.claude/worktrees/agent-*`) while its directory stays on disk with
-  every ignored and untracked build output. In one consumer repo, ten such zombies quietly
-  held 146 GB. On session start or resume, and on each loop tick, list the worktree roots
-  owned by this session and flag each directory with its size and age. Staleness
-  never grants authority over another session; verify ownership and actual worker end
-  before cleanup:
+- **Reap zombie worktrees after an interrupted session.** The normal merge step deletes each lane's
+  worktree. A session that ends abruptly (weekly usage runs out, the harness crashes, the machine
+  power-cycles) skips that step and leaves the lane's worktree half-done: either still registered with
+  unmerged commits, or dropped out of `git worktree list` (after `git worktree prune`, or in a
+  harness-managed isolation dir such as `.claude/worktrees/agent-*`) while its directory stays on disk
+  with every ignored and untracked build output. In one consumer repo, ten such zombies quietly held
+  146 GB. On session start or resume, and on each loop tick, list the worktree roots owned by this
+  session and flag each directory with its size and age. Staleness never grants authority over another
+  session; verify ownership and actual subagent end before cleanup:
   - Registered with unmerged commits: **finish or merge the lane** (don't lose the work).
-  - Registered and clean: remove only after verifying owned worker end and preserving unique evidence.
+  - Registered and clean: remove only after verifying owned subagent end and preserving unique evidence.
   - Unregistered: check for unique, non-reproducible content before deleting, and get the
     user's OK when it isn't clearly reproducible.
 - **The orchestrator commits ALL of its OWN work — ledgers, queue, docs, lore, web, hotfixes —
@@ -731,20 +689,19 @@ project in two.
 - **Self-check every few lanes / whenever you notice you've pushed to a branch name:** *"Is
   more than one branch accumulating commits this session?"* If yes — **STOP and merge them now.**
   A code-on-branch-A / bookkeeping-on-branch-B divergence is a process failure, not a workflow.
-- The one working branch is what the user plays, and what becomes the PR. It must ALWAYS hold
-  both the lane code AND the orchestrator's bookkeeping — never one without the other.
+- The one working branch is what the user plays and what becomes the PR, so it must ALWAYS hold both
+  the lane code AND the orchestrator's bookkeeping.
 
 ### NO PUSH RACE — lanes commit LOCALLY, the orchestrator merges + gates + pushes
 
 **Subagent worktree lanes NEVER `git push` to GitHub.** A lane commits to its OWN worktree branch and
-reports; it does not touch `origin`. Telling a lane to `git push origin HEAD:<branch>` is a bug — it
-creates a **push race** where N lanes pushing rapidly each trigger a full CI run and rapid pushes
-cancel + cold-restart the slow gates, torching CI minutes. There is ONE pusher: the orchestrator.
+reports; it does not touch `origin`. Telling a lane to `git push origin HEAD:<branch>` is a bug: it
+creates a **push race** where N lanes pushing rapidly each trigger a full CI run, and rapid pushes
+cancel and cold-restart the slow gates, burning CI minutes. There is ONE pusher: the orchestrator.
 
 Every time: (1) lane commits locally in its worktree, reports — no push; (2) orchestrator merges the
 lane branch into the LOCAL one working branch, deletes the worktree; (3) orchestrator runs the CI
 gates **LOCALLY as a pre-flight** (a fast local `make ci`/preflight of the same checks CI runs) and
 fixes locally before spending a GitHub run; (4) orchestrator pushes to GitHub in **controlled batches**
 (rebase-retry, never force). GitHub CI is a fast confirmation, not the failure-finder. The
-orchestrator's own commits ride the same batched push. There is no second branch, and there is never a
-push race.
+orchestrator's own commits ride the same batched push, so there is no second branch and no push race.
