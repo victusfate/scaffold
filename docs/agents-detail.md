@@ -200,7 +200,7 @@ to replay: a tag is evidence, never a command to run verbatim (the handoff is br
 re-checks the claims gating its first step with the repo's own checks, and discards a handoff whose
 branch is already merged.
 
-## Review economics — verify cheaply, point humans at what matters
+## Review economics — verify by machine, map the critical changes
 
 Coding agents multiply code volume far faster than delivery speeds up (Laurie Voss, *AI Writes the
 Code. So What's Left for Engineers?*). The bottleneck moved from
@@ -211,18 +211,17 @@ So the harness splits the work by who is cheapest at it:
   A repeated review comment becomes a rule or a check (*Deterministic first*).
 - **Agent review stays line by line.** The `## Security review` and `/code-refiner` read every changed
   line. Their findings are fixed before a person sees the PR.
-- **Human attention is pointed, not spread.** The review ends with a `### Human review focus`
-  subsection, a short Q&A for the owner. It lists the hunks where a person's judgment changes the
-  merge decision: product intent, durable contracts, data or security blast radius, anything the
-  agent marked `[unverified]`. At most three, each with one specific question (`` `path:line` — does
-  X still hold when Y? ``): a dashboard holds only the instruments that matter. "None: leaf change,
-  all checks machine-decided" is valid only when true, and never when the diff touches `AGENTS.md`,
-  `skills/`, `.github/` or the gate's files, which steer agents or hold credentials.
-- **Encode judgment so it is not re-asked.** When the owner answers a focus question with a rule,
-  record it as a decision, rubric line or eval so the next PR doesn't need the question.
+- **Critical changes are mapped, not hidden in the diff.** Every PR body carries a `## Critical changes`
+  section: the key notes of what changed where, for the parts with blast radius (agent rules, durable
+  contracts, data, security, CI and release, anything `[unverified]`). At most five, ranked by blast
+  radius, each as `` `path:line` — what changed; what depends on it ``. A dashboard holds only the
+  instruments that matter, and an owner who skims or merges without reading still knows what moved.
+  "None: leaf change" is valid only when true, and never when the diff touches `AGENTS.md`, `skills/`,
+  `.github/` or the gate's files, which steer agents or hold credentials.
+- **Encode judgment so it is not re-asked.** When the owner corrects a change, record the rule as a
+  decision, rubric line or eval so the next PR gets it right first.
 - **Measure delivery, not output.** Lines written are no signal. `node scripts/delivery-metrics.ts
-  [--days N]` reports merges per week, open-to-merge time, the gap between green CI and merge (time
-  waiting on a person), and how many change requests were followed by a commit. Include it in owner
+  [--days N]` reports merges per week, open-to-merge time, the gap between green CI and merge, and how many change requests were followed by a commit. Include it in owner
   status reports when it moves.
 
 ## Owner status reports (remote owner)

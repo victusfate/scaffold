@@ -151,12 +151,7 @@ security point of view. Rules (the first is a rule, not machine-checked):
 - **Read every changed line**, including tests, scripts, CI, configs and docs that agents will read.
 - Record findings and their resolution; "no security impact" is a valid conclusion for a file, stated
   with the reason.
-- **End with `### Human review focus`** inside the section: a short Q&A for the owner naming the few hunks
-  where a person's judgment changes the merge (product intent, durable contracts, data or security blast
-  radius, anything marked `[unverified]`), at most three, each as `` `path:line` — <specific question> ``,
-  ranked by blast radius. The agent review stays line by line; this list is what a human reads first. "None —
-  leaf change; every check is machine-decided" is valid only when true, and never when the diff touches
-  `AGENTS.md`, `skills/`, `.github/` or the gate's files. (AGENTS.md, *Review economics*.)
+- Security-relevant changes also go in the PR body's `## Critical changes` map (AGENTS.md, *Review economics*).
 
 ### Checklist (OWASP Top 10 / CWE Top 25)
 

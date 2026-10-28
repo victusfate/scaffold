@@ -222,6 +222,13 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 - <bullet 2>
 - <bullet 3 if needed>
 
+## Critical changes
+<Key notes of what changed where, for the parts with blast radius — agent rules, durable contracts, data,
+security, CI/release, anything `[unverified]`. At most five, ranked by blast radius:>
+- `<path:line>` — <what changed>; <what depends on it>
+<or: "None — leaf change." — only when true, and never when the diff touches `AGENTS.md`, `skills/`,
+`.github/` or the gate's files>
+
 ## Pre-merge gate status
 <from Step 2b `make ci` — the LOCAL pre-merge gate; GitHub CI is instant-unit only>
 **Readiness: READY** &nbsp;(or `DRAFT — <red gate(s)>`, or `UNVERIFIED — no local gate`)
@@ -236,14 +243,6 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 ## Security review
 - `<path/of/every/changed/file>` — <what it does from a security point of view, or "no security impact" + why>
 <one `security-ack: <id> — <reason>` line per acknowledged finding, if any>
-
-### Human review focus
-<The agent review above reads every line; this Q&A points the owner at the few hunks where a person's
-judgment changes the merge — product intent, durable contracts, data/security blast radius, anything
-`[unverified]`. At most three, ranked by blast radius:>
-- `<path:line>` — <one specific question the owner answers>
-<or: "None — leaf change; every check is machine-decided." — only when true, and never when the diff
-touches `AGENTS.md`, `skills/`, `.github/` or the gate's files>
 
 ## Quality Scores
 | File | Quality | Readability | Encapsulation | Clarity |

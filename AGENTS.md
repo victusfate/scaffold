@@ -84,12 +84,12 @@ enters a handoff, plan or memory (`[verified: <check>]`, else `[unverified]`). *
 fact in place. `scripts/check-handoff.ts` gates the handoff.
 → [full text](docs/agents-detail.md#context-hygiene--validate-compact-curate-prune).
 
-## Review economics — verify cheaply, point humans at what matters
+## Review economics — verify by machine, map the critical changes
 
-Machines check what they can; agent review stays line by line and ends with **`### Human review focus`**:
-at most three hunks where a person's judgment changes the merge, each with one question. Measure delivery,
-not output (`scripts/delivery-metrics.ts`).
-→ [full text](docs/agents-detail.md#review-economics--verify-cheaply-point-humans-at-what-matters).
+Machines check what they can; agent review stays line by line. Every PR body carries **`## Critical changes`**:
+at most five `path:line` notes of what changed where and what depends on it. Measure delivery, not output
+(`scripts/delivery-metrics.ts`).
+→ [full text](docs/agents-detail.md#review-economics--verify-by-machine-map-the-critical-changes).
 
 ## Owner status reports (remote owner)
 
