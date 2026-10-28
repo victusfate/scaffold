@@ -4,9 +4,9 @@ Code written by AI agents fails in its own ways: plausible-but-wrong logic, hall
 pasted from context, instructions smuggled in through data. Every merge therefore passes a **machine half**
 (pinned third-party scanners) and a **human half** (a line-by-line review against the checklist below).
 
-`scripts/security-gate.ts` checks both and refuses the merge unless both are satisfied. Run **origin/main's
-copy** of it, never the branch's (a branch could edit its own launcher), after the PR body is written and
-before every merge; run it before pushing too, so findings are fixed while they are cheap:
+`scripts/security-gate.ts` checks both and refuses the merge unless both pass. Run **origin/main's copy**, never
+the branch's (a branch could edit its own launcher), after the PR body is written and before every merge. Run it
+before pushing too, so findings are fixed while they are cheap:
 
 ```bash
 git fetch -q origin main
@@ -20,18 +20,18 @@ inside double quotes, where its backticked paths would run as commands.
 The launcher exports the gate, the scanner and their configs (`GATE_FILES` in `scripts/security-gate.ts`: the
 `security-scan*.ts`, `security-eslint.ts` and `security-new-deps.ts` scripts, the `security-eslint-stack/` lockfile,
 `security-rules.sha256`, `security-tools.sha256`, `setup-security-tools.sh`, `security/approved-deps.txt`,
-`security/eslint-tuning.json`, `.gitleaks.toml`, `deny.toml`, `.semgrep/`, `security/checks/`) **from `origin/main`** into a temp dir and runs
-that copy, so a branch cannot weaken its own gate; changes to them take effect only after they merge. If
-`origin/main` has no gate yet (the gate's own first merge into a repo), run the branch's copy once with
+`security/eslint-tuning.json`, `.gitleaks.toml`, `deny.toml`, `.semgrep/`, `security/checks/`) **from `origin/main`**
+into a temp dir and runs that copy, so a branch cannot weaken its own gate; changes to them take effect only after
+they merge. If `origin/main` has no gate yet (the gate's own first merge into a repo), run the branch's copy once with
 `SECURITY_GATE_BOOTSTRAP=1 node scripts/security-gate.ts <pr-body-file>`; it is ignored once main has a gate.
 Exit 0 = may merge; 4 = refused. Merge exactly the commit the gate judged: `gh pr merge --match-head-commit <sha>`
 after checking `gh pr view --json headRefOid` equals that `HEAD` (the `create-pr` skill does both).
 
 ## 1. Machine half — `scripts/security-scan.ts`
 
-Runs inside the gate over the merged diff (`--base origin/main`); run it on demand with
+Runs inside the gate over the merged diff (`--base origin/main`). Run it on demand with
 `node scripts/security-scan.ts [--base <ref>] [--report <file.json>]`.
-Install the pinned tools once per machine with **origin/main's copy** of the setup script (it is a gate file):
+Install the pinned tools once per machine with **origin/main's copy** of the setup script (a gate file):
 
 ```bash
 tmp=$(mktemp -d) && git show origin/main:scripts/setup-security-tools.sh > "$tmp/setup.sh" && bash "$tmp/setup.sh"; rm -rf "$tmp"
@@ -39,13 +39,13 @@ tmp=$(mktemp -d) && git show origin/main:scripts/setup-security-tools.sh > "$tmp
 
 **Cloud sessions install it automatically.** In a Claude Code cloud session the SessionStart hook
 `.claude/session-start/security-tools.sh` runs that same command in the background and logs to
-`.tooling/security/setup.log`. Downloads use public release URLs and PyPI, not the GitHub API, so a sandbox
-whose proxy scopes the API to the session's repos still works. The environment's network policy must allow
+`.tooling/security/setup.log`. Downloads use public release URLs and PyPI, not the GitHub API, so setup works in
+a sandbox whose proxy scopes the API to the session's repos. The environment's network policy must allow
 `github.com` (release assets), `pypi.org`, `registry.npmjs.org`, **`semgrep.dev`** (the rule packs) and
-**`api.osv.dev`** (osv-scanner's vulnerability lookups). Add the last two under the environment's Allowed domains:
-the default cloud environment allows neither. Registry packs change upstream; when one no longer matches its pin,
-the setup fails until `--refresh-rules` re-pins it in a reviewed commit (a gate change, held for the owner). Until setup finishes, the gate fails
-closed.
+**`api.osv.dev`** (osv-scanner's vulnerability lookups). The default cloud environment allows neither of the last
+two: add them under the environment's Allowed domains. Registry packs change upstream; when one no longer matches
+its pin, setup fails until `--refresh-rules` re-pins it in a reviewed commit (a gate change, held for the owner).
+Until setup finishes, the gate fails closed.
 
 It installs into the main checkout's untracked `.tooling/security/`: release binaries verified against pinned
 sha256 values, semgrep and zizmor in a venv, Semgrep rule packs checked against the tracked
@@ -78,8 +78,8 @@ Exit codes: 0 clean, 1 findings, 2 setup/scanner error, 3 held.
 commits, and Semgrep, ESLint, zizmor and cargo-deny read a `git archive` export of HEAD (Semgrep's baseline is
 the same scan of an export of the merge base, matched by rule, file and matched text), made with no
 `.gitattributes` applied, so an uncommitted edit, an untracked file or a branch `export-ignore` cannot change
-what is judged. The scan refuses a HEAD that commits a `node_modules` directory or symlink anywhere. Every scanner and project
-check runs with a minimal environment
+what is judged. The scan refuses a HEAD that commits a `node_modules` directory or symlink anywhere. Every scanner
+and project check runs with a minimal environment
 (`PATH`, locale, temp dir, proxy/CA settings and a throwaway `HOME`; no tokens), and in-repo suppressions are
 disabled: gitleaks ignores `gitleaks:allow` comments and the branch's `.gitleaksignore`, and always uses the
 gate's `.gitleaks.toml` (missing → exit 2); Semgrep runs with `--disable-nosem` and no file-size limit; zizmor
@@ -105,15 +105,15 @@ Held findings need the owner, not just an ack:
 - **New dependency** (`newdep:*`): also a line `<ecosystem>:<name> — <owner's words, date>` in
   `security/approved-deps.txt` **as merged on `origin/main`** (the gate reads it from there, so a branch cannot
   approve its own dependency). Approve in a small PR of its own, merged first.
-- **Gate change** (`gate-change:<path>`), **scan input** (`gate-input:<path>`) or **unparseable lockfile** (`lockfile:<path>`): the ack line itself
-  quotes the owner: `security-ack: <id> — owner sign-off: "<owner words>"` (opening and closing quote).
+- **Gate change** (`gate-change:<path>`), **scan input** (`gate-input:<path>`) or **unparseable lockfile**
+  (`lockfile:<path>`): the ack line itself quotes the owner: `security-ack: <id> — owner sign-off: "<owner words>"` (opening and closing quote).
 
 An ack needs a non-blank reason after ` — `.
 
 ### Extending the gate in your project
 
-Scaffold ships the gate; projects add their own checks and tuning without forking it. All three extension points are gate files
-(read from `origin/main`, changes held for owner sign-off):
+Scaffold ships the gate; projects add their own checks and tuning without forking it. All three extension points
+are gate files (read from `origin/main`, changes held for owner sign-off):
 
 - **`.semgrep/`** — your own Semgrep rules (a directory of rule YAML), loaded alongside the pinned packs when
   present. Use it for framework- or engine-specific patterns (unsafe deserializers, dynamic loaders, your own
@@ -130,7 +130,7 @@ Scaffold ships the gate; projects add their own checks and tuning without forkin
 
 Scaffold sync ships `deny.toml` and `.gitleaks.toml` as starting points. Once you customise one (an allowlist
 entry), add it to `.scaffold-keep` so sync never overwrites it. `security/approved-deps.txt`, `.semgrep/`,
-`security/checks/` and `security/eslint-tuning.json` are never shipped by scaffold, so they are always yours; create
+`security/checks/` and `security/eslint-tuning.json` are never shipped by scaffold, so they are always yours. Create
 `security/approved-deps.txt` (one `<ecosystem>:<name> — <owner words, date>` line per approval) when the owner
 first approves a held dependency.
 
@@ -139,7 +139,7 @@ first approves a held dependency.
 - **An owner sign-off is text, not authentication.** `owner sign-off: "…"` on an ack line, and a line in
   `security/approved-deps.txt`, are checked for their shape only. While agents run with the owner's own
   credentials (git push, `gh`, the PR body), an agent can write those lines and the gate cannot tell. The
-  approvals record a decision and make it reviewable after the fact. They do not stop an agent that ignores the
+  approvals record a decision and make it reviewable after the fact; they do not stop an agent that ignores the
   rules. The real fix is sandboxed agents without the owner's credentials (separate bot accounts that cannot
   edit `main`, protected branches requiring a human approving review, CODEOWNERS on the gate files).
 - **The gate is a check agents run, not a barrier.** It is enforced only as far as the workflow runs it before
@@ -156,8 +156,8 @@ The PR body carries a `## Security review` section that **names every changed fi
 (backticked, exact; the gate checks every path of the merged diff) and, per file, what the change does from a
 security point of view. Rules (the first is a rule, not machine-checked):
 
-- **The reviewer is not the author.** Lane code is reviewed by the orchestrator. Code the orchestrator
-  wrote is reviewed by an independent review agent given only the diff and this checklist.
+- **The reviewer is not the author.** The orchestrator reviews code a subagent wrote in its lane. An independent
+  review subagent, given only the diff and this checklist, reviews code the orchestrator wrote.
 - **Read every changed line**, including tests, scripts, CI, configs and docs that agents will read.
 - Record findings and their resolution; "no security impact" is a valid conclusion for a file, stated
   with the reason.
@@ -206,10 +206,9 @@ environment, user-writable directories.
       it, and then only quoted as evidence.
 - [ ] Changes to `AGENTS.md`, `skills/`, `.githooks/`, `.github/`, the gate's own
       files, release and deploy scripts get extra scrutiny: they steer agents or run with credentials.
-- [ ] Lanes never gain push, deploy, release or credential access through the change.
+- [ ] Subagents, lanes and external-driver runs never gain push, deploy, release or credential access through the change.
 
 ## Recording
 
-Keep audit findings in a private location your project chooses (not linked from public pages: keep the
-security surface obscure). New findings from a review that are not fixed in the same PR get a queue task
-tagged `SECURITY`.
+Keep audit findings in a private location your project chooses, not linked from public pages (keep the
+security surface obscure). A review finding not fixed in the same PR gets a queue task tagged `SECURITY`.

@@ -1,7 +1,5 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
 > Codex resume: use `$resume` for this workflow; `codex resume --last` restores local chat history.
 > Also: `claude -c` (Claude Code session resume) is `pi -c` in pi; for agy, `agy -c`.
 
@@ -64,4 +62,4 @@ Counterpart to `/pause`, which produces the handoff this reads.
 2. **Verify before acting.** A handoff reflects the moment it was written; check
    that the files and steps it names still hold before charging ahead.
 3. **Reconstruct, do not interrogate.** Read the artifacts yourself; only ask
-   the user when the handoff is genuinely ambiguous or missing.
+   the user when the handoff is ambiguous or missing.

@@ -1,21 +1,14 @@
-> **Multi-harness:** This skill works identically in Claude Code, Codex, pi, and agy. All paths
-> and commands are harness-agnostic.
-
 ## Instructions
 
-Generate or refine a [mermaid](https://mermaid.js.org) diagram, keeping the
-`.mmd` text as the single source of truth. Edit the text and re-render — never
-convert to a lossy shape format (excalidraw, draw.io, hand-tuned SVG).
+Generate or refine a [mermaid](https://mermaid.js.org) diagram.
 
-**Canonical rule:** mermaid `.mmd` text is the source; the rendered image is a
-derived artifact. All edits happen in text and re-render.
+**Canonical rule:** mermaid `.mmd` text is the single source of truth; the
+rendered image is a derived artifact. All edits happen in text and re-render.
+Never convert to a lossy shape format (excalidraw, draw.io, hand-tuned SVG).
 
 **Local by default.** Render and view locally; the diagram leaves the machine
 only when the user asks to **publish** (the one explicit remote action). View
-priority: (1) lightweight Node live-preview server that watches the `.mmd`,
-(2) self-hosted mermaid.live editor via Docker (fully offline), (3) render +
-open in the system default viewer, (4) VS Code live preview, (5) publish to the
-public mermaid.live.
+priority is the Step 4 order.
 
 The render and URL logic lives in `scripts/mermaid-render.ts` — call it, do not
 reimplement it.
@@ -40,13 +33,13 @@ what level of detail). Otherwise proceed.
 
 Write the mermaid source to `diagrams/<slug>.mmd` (kebab-case slug). State the
 slug before writing so the user can correct it. **Same slug → overwrite the same
-file** (it is the source of truth, and git holds its history); pick a new slug
-only for a genuinely different diagram. This file is diffable — commit it.
+file** (git holds its history); pick a new slug only for a different diagram.
+Commit it (it is diffable).
 
 ### Step 4 — choose how to view (default: lightweight live preview)
 
-Offer the ways to view, **in this priority order**. Default to Mode A; proceed
-with it unless the user prefers another.
+Offer the ways to view, **in this priority order**. Proceed with Mode A unless
+the user prefers another.
 
 - **(a) Lightweight live preview (Node)** — *default*. A zero-dependency local
   server regenerates the **self-contained** static viewer (inline SVG + pan/zoom,
@@ -66,23 +59,22 @@ with it unless the user prefers another.
 
 #### Mode A — lightweight live preview via the Node watcher (default)
 
-Keeps the `.mmd` the source of truth: edit it in any editor and a browser tab
-reloads on save. On each change the watcher regenerates the **same
-self-contained artifact `--html` produces** (inline SVG + dependency-free touch
-pan/zoom, no CDN) and pushes an SSE reload. Built-ins only (`http` +
-`fs.watchFile` + SSE).
+Edit the `.mmd` in any editor; a browser tab reloads on save. On each change
+the watcher regenerates the **same self-contained artifact `--html` produces**
+(inline SVG + dependency-free touch pan/zoom, no CDN) and pushes an SSE reload.
+Built-ins only (`http` + `fs.watchFile` + SSE).
 
 ```bash
 node scripts/mermaid-watch.ts diagrams/<slug>.mmd [--port 8080] [--portable]
 ```
 
-Then open the printed `http://localhost:<port>`. Run it in the background and
-keep editing the `.mmd` — the tab follows each change. `--portable` renders
-SVG-text labels (see below) so nothing clips.
+Run it in the background, open the printed `http://localhost:<port>`, and keep
+editing the `.mmd`. `--portable` renders SVG-text labels (see Mode F) so nothing
+clips.
 
-- Each save re-renders via `mmdc` (a couple seconds) — the cost of producing the
-  real offline artifact rather than a CDN client render. Fully self-contained: no
-  network after the one-time `mmdc` Chromium fetch.
+- Each save re-renders via `mmdc` (a couple seconds), the cost of producing the
+  real offline artifact rather than a CDN client render. No network after the
+  one-time `mmdc` Chromium fetch.
 - Stop it with Ctrl-C (or kill the backgrounded process).
 
 #### Mode B — local mermaid.live editor via Docker (fully offline)
@@ -113,8 +105,8 @@ identical, so the diagram opens pre-loaded with full live edit + pan + zoom.
    8080 is taken (match the `docker run -p`).
 
 4. **Iterate:** the editor is stateless (edits there do not sync back to the
-   `.mmd`). Keep the `.mmd` as source — on each change, edit it and re-run
-   `--local` for a fresh pre-loaded URL.
+   `.mmd`). On each change, edit the `.mmd` and re-run `--local` for a fresh
+   pre-loaded URL.
 
 #### Mode C — render + open in the system default viewer
 
@@ -177,9 +169,8 @@ Side-by-side editing with live-refresh + zoom. Requires VS Code:
 
 #### Mode E — publish to mermaid.live (only when the user asks)
 
-Emit a `mermaid.live` edit URL. This is the single remote action and it sends
-the diagram text to mermaid.live — flag that before doing it for any
-confidential diagram.
+Emit a `mermaid.live` edit URL. This sends the diagram text to mermaid.live;
+flag that before doing it for any confidential diagram.
 
 ```bash
 node scripts/mermaid-render.ts diagrams/<slug>.mmd --publish            # render + URL
@@ -228,8 +219,7 @@ it inline) or reference the rendered SVG: `![<title>](diagrams/<slug>.svg)`.
 ### Step 6 — iterate in text
 
 The user critiques in words ("split the cache out", "the worker should call the
-queue, not the DB"). Edit the `.mmd` text and re-render. Stay in text. Keep
-turns tight.
+queue, not the DB"). Edit the `.mmd` text and re-render.
 
 ## Output convention
 

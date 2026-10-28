@@ -1,13 +1,9 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 Run the real app, drive the changed entry points the way a user would, then fix
 what breaks: **test → triage → fix with a regression test → re-verify**. This is
-the executable check behind AGENTS.md *Veracity*: a feature is done when a user
-entry point reaches it, and `/qa` proves that by going through the entry point.
-Unit tests and reviewers cannot.
+the executable check behind AGENTS.md *Veracity*: `/qa` proves a user entry point
+reaches the feature by going through it, which unit tests and reviewers cannot.
 
 Adapted from [garrytan/gstack](https://github.com/garrytan/gstack) `qa` (MIT).
 gstack's browse daemon, learnings store, and telemetry are not used; `/qa` drives
@@ -23,7 +19,7 @@ the target with the tooling the repo already has.
 | Focus | changed behavior (diff-aware) | `/qa focus on the import flow` |
 
 **Fix tiers:** quick = critical + high; standard = + medium; exhaustive = + low and
-cosmetic. Issues outside the tier are reported as deferred.
+cosmetic. Report issues outside the tier as deferred.
 
 ## When to skip
 
@@ -44,9 +40,9 @@ has an example app or a CLI that exercises it.
    - **job** — workers, queues, scheduled tasks
    Default is diff-aware: changed behavior plus one adjacent happy path per surface.
 3. **Start the app** the way the repo documents it (README, `package.json`
-   scripts, `Makefile`, or a project skill that launches the app). Run it in the background, wait
-   for readiness by polling (HTTP 200, a log line), never a fixed sleep. Record
-   the start command in the report.
+   scripts, `Makefile`, or a project skill that launches the app). Run it in the
+   background and wait for readiness by polling (HTTP 200, a log line), never a
+   fixed sleep. Record the start command in the report.
 4. **Tooling.** Use what the repo already has: its Playwright/Cypress/e2e runner,
    `curl` or its HTTP test client, the CLI binary. Do not add a dependency for QA.
    If a browser surface is required and the repo has no browser tooling, use a
@@ -56,7 +52,7 @@ has an example app or a CLI that exercises it.
    for real credentials in chat, never point probes at production, and never send
    real emails, payments, or webhooks to third parties.
 
-Evidence (screenshots, response dumps, logs) goes in a scratch directory outside
+Put evidence (screenshots, response dumps, logs) in a scratch directory outside
 the repo, or a gitignored one. Never commit it.
 
 ## Probe
@@ -66,7 +62,7 @@ For each surface, write down the steps, run them, and capture evidence:
 - **browser** — load the page, perform the user action, then take a screenshot of
   the result. Record every console error and failed network request (4xx/5xx),
   and check the obvious states: empty, loading, error, long content, narrow
-  viewport. Read the screenshot. "It rendered" is not a pass when the content is
+  viewport. Read the screenshot; "it rendered" is not a pass when the content is
   wrong.
 - **API** — happy path, invalid input, missing auth, and idempotency for writes.
   Assert status code, response shape, and the persisted state (read it back).
@@ -78,8 +74,8 @@ For each surface, write down the steps, run them, and capture evidence:
 Each issue gets: ID (`QA-001`…), severity (critical / high / medium / low), surface,
 exact repro steps, expected vs actual, and evidence path.
 
-A surface you could not reach (app won't start, auth wall, missing service) is
-**blocked**, with the reason. Blocked is never reported as passed.
+Mark a surface you could not reach (app won't start, auth wall, missing service)
+**blocked**, with the reason. Never report blocked as passed.
 
 ## Triage
 
@@ -116,8 +112,8 @@ If anything regressed, say so first in the report.
 
 ## Report
 
-When run inside `/feature-chain`, write `docs/<feature-slug>/qa-report.md`;
-standalone, print the report in chat (write a file only if asked).
+Inside `/feature-chain`, write `docs/<feature-slug>/qa-report.md`; standalone,
+print the report in chat (write a file only if asked).
 
 ```
 ## QA: <target>  (<tier>, <date>)

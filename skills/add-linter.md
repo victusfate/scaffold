@@ -1,10 +1,7 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 Add linter configs and GitHub Actions workflows for languages detected in the
-current repo. One prompt per language — the user decides which to adopt.
+current repo. One prompt per language; the user decides which to adopt.
 
 ## When invoked
 
@@ -37,10 +34,9 @@ and stop.
 
 ## Step 2 — prompt once per actionable language
 
-For each language with state `none`, `foreign`, or `stale`, ask the user exactly
-once. Ask as a group (one `AskUserQuestion` call) with multi-select, not one-by-one.
-
-Present each language as an option:
+Ask about each language with state `none`, `foreign`, or `stale` exactly once, as
+one group (one `AskUserQuestion` call) with multi-select so the user can confirm
+all, some, or none. Present each language as an option:
 - **state `none`**: "Add [Linter] for [language]? (config + workflow)"
   - description: "Writes [configFile] and .github/workflows/[workflowFile]"
 - **state `foreign`**: "Merge scaffold thresholds into your [language] config?"
@@ -49,8 +45,6 @@ Present each language as an option:
 - **state `stale`**: "Re-merge updated scaffold thresholds for [language]?"
   - description: "Scaffold's template changed since you adopted it; proposes a diff
     that layers the new thresholds onto your current [configFile]"
-
-Allow multi-select so the user can confirm all, some, or none.
 
 If the user confirms none, stop without writing anything.
 
@@ -70,15 +64,15 @@ Use `--scaffold-root` if needed for non-standard paths. The CLI is deterministic
 
 When a config is **adopted** (written fresh, or already current), the CLI also
 adds the linter's npm packages to the repo's `package.json` `devDependencies`
-(idempotently — only names missing from both `dependencies` and
-`devDependencies`; existing versions are never changed), so the starter runs
-locally. A `sidecar` (foreign/stale) does **not** inject deps — the consumer
-hasn't adopted the config yet (add them when you apply the merge in Step 4). If
-there's no `package.json`, the CLI reports the `npm i -D …` one-liner instead of
-creating one. Remind the user to run `npm install` after deps are added.
+so the starter runs locally. This is idempotent: it adds only names missing from
+both `dependencies` and `devDependencies` and never changes existing versions. A
+`sidecar` (foreign/stale) does **not** inject deps, because the consumer hasn't
+adopted the config yet (add them when you apply the merge in Step 4). With no
+`package.json`, the CLI reports the `npm i -D …` one-liner instead of creating
+one. Remind the user to run `npm install` after deps are added.
 
 For the JS/TS variants the CLI also adds `lint` and `lint:fix` scripts to
-`package.json` `scripts` (idempotently — a script name the consumer already
+`package.json` `scripts` (idempotently; a script name the consumer already
 defines is left untouched). The TS `lint:fix` is **`eslint . --fix && tsc
 --noEmit`**: type-aware autofix can rewrite code in ways tsc rejects, so the
 fix is only trusted once the type-checker still passes. Never run a bare
@@ -86,7 +80,7 @@ fix is only trusted once the type-checker still passes. Never run a bare
 
 ## Step 4 — merge step (state `foreign` and `stale` only)
 
-The CLI never edits an existing config; the **merge is yours to perform**. For each
+The CLI never edits an existing config; you perform the merge. For each
 language that produced a sidecar:
 
 1. Read the existing `[configFile]` and the `[configFile].scaffold-new` sidecar.
@@ -103,18 +97,18 @@ language that produced a sidecar:
    CONFLICT no-console: you=off, scaffold=error -> kept off
    ```
 4. On approval: back up the original to `[configFile].bak` (do **not** overwrite an
-   existing `.bak` — if one exists, surface it and ask), write the merged config to
+   existing `.bak`; if one exists, surface it and ask), write the merged config to
    `[configFile]`, and remove the `.scaffold-new` sidecar.
 5. If the user declines: leave the sidecar and original in place; nothing is marked.
 
 ## Step 5 — tune step (offered after every written/merged config)
 
 For each language whose config was written (fresh add) or merged, offer an optional
-tuning pass — this is how the user adapts opinionated defaults without fighting them:
+tuning pass so the user can adapt opinionated defaults without fighting them:
 
 1. Scan the repo's existing code for that language and propose preference-matched
    values (e.g. observed line length, indentation, common complexity ceilings).
-   Phrase as a concrete suggestion, not a blank prompt:
+   Phrase it as a concrete suggestion, not a blank prompt:
    > Your code already uses ~120-col lines. Set `max-len: 120`? Any other tweaks?
 2. The user confirms, overrides in plain language, or declines.
 3. Apply confirmed edits to `[configFile]`, show the diff, write on approval.
@@ -149,21 +143,20 @@ If no, list the written files so the user can stage and commit them manually.
 
 ## Notes
 
-- **Format-only languages** (zig, mojo): no config file, workflow only — there is
+- **Format-only languages** (zig, mojo): no config file, workflow only, so
   nothing to merge or tune. Present as "Add [zig fmt / mojo format] workflow?" and
   skip Steps 4–5 for them.
-- **Shell**: Shellcheck is correctness-only — no rubric thresholds. It still
+- **Shell**: Shellcheck is correctness-only (no rubric thresholds). It still
   participates in merge/tune (preserve the user's directives; tuning
   enables/disables specific checks).
-- **Merge and tune are agent-driven, not tool features.** The CLI only detects,
-  emits, hash-stamps, and writes sidecars (all deterministic); the diff/merge/tune
-  reasoning is performed by whoever runs this skill. No LLM dependency is added to
-  the tools — scaffold stays harness/LLM-agnostic.
+- **Merge and tune are agent-driven, not tool features.** The
+  `tools/linter-setup/run` CLI handles all clobber-safe logic: it only detects,
+  emits, hash-stamps, and writes sidecars (all deterministic). Whoever runs this
+  skill drives the user interaction and the diff/merge/tune reasoning. No LLM
+  dependency is added to the tools; scaffold stays harness/LLM-agnostic.
 - **Backups and sidecars are local artifacts.** Do not commit `[configFile].bak` or
   `[configFile].scaffold-new`; they exist only to make a merge reversible. Remove
   the sidecar after a merge; leave `.bak` until the user is satisfied.
-- The `tools/linter-setup/run` CLI handles all clobber-safe logic; this skill
-  drives the user interaction and the semantic merge/tune layer.
 - If `tools/linter-setup/run` is not available (consumer repo without scaffold
   tools), fall back to reading the language templates directly from
   `lib/linters/<lang>/` and copying them manually.

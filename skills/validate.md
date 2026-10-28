@@ -1,15 +1,11 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 Validate that a change is **correct** — hunt for bugs. Default scope is the current
 branch diff; `--full` scans the entire codebase to catch issues before CI.
 
 Correctness only. Structural quality (reuse, simplification, abstraction,
 readability scoring) belongs to `/simplify`; a full-repo quality survey belongs
-to `/audit`. This skill defers all three to those skills rather than duplicating
-them.
+to `/audit`.
 
 **Args (pass after `/validate`):**
 - `--effort low|medium|high|max` — scope of findings (default: `medium`)
@@ -17,31 +13,26 @@ them.
 - `--comment` — post findings as inline PR review comments via GitHub MCP tools
 - `--fix` — apply findings directly to the working tree
 
-## Client capabilities
-
-Apply the [harness capability rules](../AGENTS.md#harness-capabilities) for
-native subagents, concurrency, review isolation, and referenced-file reads.
-
 ## Execution model
 
 // quality-override: No duplicate implementations — isolation rationale is intentionally repeated across skill files; skill composition system pending
 Run the review as a separate Agent with isolated context. The agent invoking this skill has already internalized the session's work and cannot review it objectively. A fresh subagent has no such priors.
 
-**Phase 1 — gather (main agent):**
+**Phase 1 — gather (invoking agent):**
 
 Without `--full`:
 1. Run `git diff main...HEAD --name-only` to get changed files.
 2. Run `git diff main...HEAD` to capture the full diff.
-3. Spawn a reviewer Agent with the diff text and all review criteria embedded verbatim in the prompt.
+3. Start a reviewer subagent with the diff text and all review criteria embedded verbatim in the prompt.
 
 With `--full`:
 1. Run `git ls-files` to get all tracked source files, excluding generated files, lock files, and fixtures (same exclusions as `/audit`).
 2. Read each file in full.
-3. Spawn a reviewer Agent with all file contents and all review criteria embedded verbatim in the prompt.
+3. Start a reviewer subagent with all file contents and all review criteria embedded verbatim in the prompt.
 
 In both cases: pass the effort level, flags, and scope (`diff` or `full`) so the reviewer knows what it is looking at.
 
-**Phase 2 — review (reviewer Agent, isolated context):**
+**Phase 2 — review (reviewer subagent, isolated context):**
 
 For each file apply:
 
@@ -60,7 +51,7 @@ was:
 - made vacuous or narrowed so it no longer exercises the behavior it named,
 - skipped, `xit`/`it.skip`-ed, or deleted while the code it covered remains.
 Removing test behavior to reach green is a bug. If the covered behavior was
-genuinely deleted, confirm the test's removal matches — otherwise flag it.
+deleted, confirm the test's removal matches — otherwise flag it.
 
 Also flag **tested-but-unreachable**: a new user-facing feature whose only proof
 is an isolated unit test with no live caller. A passing unit test does not make a
@@ -73,7 +64,7 @@ Check each item in `docs/agent-authoring-requirements.md` §6. A missing descrip
 
 At `high`/`max`: expand to lower-confidence correctness findings; tag these `[uncertain]`.
 
-Deduplicate and rank by confidence then severity. Return findings as plain text in the format below — the main agent acts on them.
+Deduplicate and rank by confidence then severity. Return findings as plain text in the format below — the invoking agent acts on them.
 
 **Output format (reviewer returns this):**
 ```
@@ -81,7 +72,7 @@ file.ext:line — [type] description
 ```
 Group by file.
 
-**Phase 3 — act (main agent):**
+**Phase 3 — act (invoking agent):**
 Receive the reviewer's findings, then:
 - Default (no flags): present findings to the user and wait.
 - `--fix`: apply fixes to the working tree; re-run tests if a runner is detectable; summarize what changed.
@@ -99,9 +90,8 @@ Receive the reviewer's findings, then:
 
 ## Rules
 
-- Without `--full`: the reviewer Agent must not read files outside the changed set.
+- Without `--full`: the reviewer subagent must not read files outside the changed set.
 - `--comment` is only valid without `--full` (there is no single PR to comment on when reviewing the whole codebase); warn and skip if both are passed.
-- Test integrity (Pass 2) needs a diff — skip it under `--full`.
 - At `low`/`medium`: omit uncertain findings rather than flagging them.
 - `--fix` applies only what was identified as a finding — no opportunistic extras.
 - Structural quality is out of scope — route it to `/simplify` (apply) or `/audit` (survey).

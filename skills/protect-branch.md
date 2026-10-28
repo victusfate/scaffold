@@ -1,6 +1,3 @@
-> **Multi-harness:** This skill works identically in Claude Code, Codex, pi, and agy. All paths
-> and commands are harness-agnostic.
-
 ## Instructions
 
 Open the GitHub rulesets settings for the current repo and present the exact configuration checklist. All items are safe to enable even if already set.

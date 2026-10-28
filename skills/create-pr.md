@@ -1,16 +1,10 @@
 ## Instructions
 
-> **Multi-harness:** This skill works in Claude Code, Codex, pi, and agy. Cross-references
-> to other scaffold skills use slash-command notation (`/name`). In **Claude Code**
-> and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under Codex (`$name` or `/skills`) and pi, read `.agents/skills/<name>/SKILL.md` instead — the canonical
-> instructions in `skills/<name>.md` are identical.
->
-> **GitHub operations:** Where Claude Code uses `mcp__github__*` tools, other clients can
-> use `gh` CLI commands. The `gh` path works in all harnesses and is the canonical
-> form below.
+> **GitHub operations:** `gh` works in every harness and is the canonical form below; Claude Code may use the
+> equivalent `mcp__github__*` tools.
 
-Create a pull request for the current branch and immediately establish available monitoring. Subscribe when a subscription tool is exposed; otherwise check CI with `gh` and report that webhook monitoring is unavailable.
+Create a pull request for the current branch and immediately set up monitoring: subscribe when a subscription
+tool is exposed; otherwise check CI with `gh` and report that webhook monitoring is unavailable.
 
 ### Step 1 — verify state
 
@@ -20,22 +14,19 @@ git log --oneline main..HEAD
 git diff main...HEAD --stat
 ```
 
-If the branch has uncommitted changes, stop and tell the user to commit or stash first.
-
-If the branch has no commits ahead of main, stop — there is nothing to PR.
+- Uncommitted changes → stop and tell the user to commit or stash first.
+- No commits ahead of main → stop; there is nothing to PR.
 
 ### Step 2 — run integration tests (with auto-correction)
 
-Find all `test-integration` files — both touched by this branch and repo-wide:
+Find all `test-integration` files, both touched by this branch and repo-wide:
 
 ```bash
 git diff main...HEAD --name-only | grep -E '(^|/)test-integration$'
 find tools scripts -name test-integration 2>/dev/null
 ```
 
-If no `test-integration` files exist anywhere, skip this step silently.
-
-For each file found, run it:
+If none exist, skip this step silently. Otherwise run each one:
 
 ```bash
 RUN_INTEGRATION=1 node <path/to/test-integration>
@@ -43,25 +34,19 @@ RUN_INTEGRATION=1 node <path/to/test-integration>
 
 **If all pass:** continue to Step 3.
 
-**If any fail — attempt auto-correction (up to 2 rounds):**
+**If any fail, auto-correct (up to 2 rounds).** Each round:
 
-Each round:
-
-1. **Diagnose** — follow `/investigate` Phases 1–3: read the failing assertions carefully, read the source file(s) they exercise, and identify the root cause (wrong value written, missing branch, incorrect path, etc.) before changing anything.
-
-2. **Scope check** — if the fix requires more than ~30 lines of change across all files, or touches something architecturally significant, stop and report the diagnosis to the user instead of attempting a fix. Do not guess at large changes.
-
-3. **Fix** — apply the targeted change to source. Do not modify the integration test itself unless the test has a genuine bug (wrong expectation, not a real behavior).
-
+1. **Diagnose** — follow `/investigate` Phases 1–3: read the failing assertions and the source file(s) they exercise, and identify the root cause (wrong value written, missing branch, incorrect path, etc.) before changing anything.
+2. **Scope check** — if the fix needs more than ~30 lines across all files, or touches something architecturally significant, stop and report the diagnosis to the user. Do not guess at large changes.
+3. **Fix** — apply the targeted change to source. Modify the integration test only if the test itself has a genuine bug (wrong expectation, not a real behavior).
 4. **Verify no regression** — run the unit acceptance test (`node <tool>/test`) for the same tool. If it fails, revert the fix and stop.
-
 5. **Re-run integration tests** — if they all pass, commit the fix:
    ```
    fix(<scope>): auto-correct before PR — <one-line description of what was wrong>
    ```
    Then continue to Step 3.
 
-6. **If still failing after 2 rounds** — stop. Report:
+6. **Still failing after 2 rounds** — stop and report:
    - Which assertions failed and their actual vs expected values
    - What was tried in each round
    - The current state of the source
@@ -73,11 +58,10 @@ Track auto-fixes applied (scope + one-liner) to include in the PR body.
 
 ### Step 2b — LOCAL pre-merge gate (`make ci`) + readiness tracking
 
-Run the repo's **local pre-merge gate** — the CI-equivalent that validates everything BEFORE any
-GitHub run. Under the two-tier CI model (GitHub Actions = instant unit checks only; the heavy
-integration gates — whatever is too slow or too environment-bound for GitHub, e.g. build/import,
-boot/reachability/render, or end-to-end and full test suites — run **locally**), this local gate is
-the authoritative merge gate. Run it and it must be GREEN before a non-draft PR.
+Run the repo's **local pre-merge gate**, the CI-equivalent that validates everything BEFORE any GitHub run.
+Under the two-tier CI model, GitHub Actions runs instant unit checks only; heavy integration gates (too slow or
+environment-bound for GitHub, e.g. build/import, boot/reachability/render, end-to-end and full test suites) run
+**locally**. This local gate is the authoritative merge gate and must be GREEN before a non-draft PR.
 
 ```bash
 # full local gate: Tier-1 unit + Tier-2 heavy integration. Prefer `make ci`.
@@ -93,10 +77,8 @@ Capture each phase's PASS/FAIL from the output. **Track readiness** for the PR b
   regressions, commit each fix, re-run `make ci`). If still red after 2 rounds, **open the PR as a
   DRAFT** (`gh pr create --draft`) with the failing gates listed in the *Pre-merge gate status*
   section and tell the user exactly which gates are red. **Never open a ready (non-draft) PR while
-  the local gate is red** — GitHub CI is only the instant unit tier, so a red local gate is the only
-  thing standing between the PR and a broken merge.
-- If `NO_LOCAL_GATE`, record that in the status section (readiness = UNVERIFIED) and proceed, but say
-  so plainly.
+  the local gate is red**: GitHub CI is only the instant unit tier.
+- `NO_LOCAL_GATE` → record it in the status section (readiness = UNVERIFIED), proceed, and say so.
 
 Record the per-phase PASS/FAIL table + the readiness verdict (READY / DRAFT-<red gates> / UNVERIFIED)
 for Step 6.
@@ -104,13 +86,13 @@ for Step 6.
 ### Step 2c — security gate (before push, and again before merge)
 
 If the repo has `scripts/security-gate.ts` (the scaffold security gate,
-[`docs/security-review.md`](../docs/security-review.md)), every merge must pass it. Write the PR body
-first (Step 6 template) to a file, including the `## Security review` section that names every changed
-file as `` `path` `` with its line-by-line review (the reviewer is not the author). Then run
-**origin/main's copy** of the gate — never the branch's, which the branch itself could have edited:
+[`docs/security-review.md`](../docs/security-review.md)), every merge must pass it.
 
-Write the body with your file-write tool, or with a **quoted** heredoc (`<<'EOF'`), so backticked paths and
-`$` in the body are never executed or expanded by the shell — never `printf`/`echo` the body inside double quotes:
+1. Write the PR body (Step 6 template) to a file first, including the `## Security review` section that names
+   every changed file as `` `path` `` with its line-by-line review (the reviewer is not the author). Use your
+   file-write tool or a **quoted** heredoc (`<<'EOF'`) so backticked paths and `$` are never executed or
+   expanded by the shell; never `printf`/`echo` the body inside double quotes.
+2. Run **origin/main's copy** of the gate, never the branch's (the branch itself could have edited it):
 
 ```bash
 git fetch -q origin main
@@ -142,10 +124,9 @@ If the repo has no `scripts/security-gate.ts`, skip this step and note "no secur
 
 If the repo has no `package.json`, skip this step silently.
 
-Bump the release version here, on the branch, so the bump commit is pushed under
-your credentials and `verify` runs on it — letting the PR merge cleanly. No CI
-job and no extra token are involved. Tagging stays on merge to main (e.g. in
-`release.yml`); this step only edits `package.json`.
+Bump the release version on the branch, so the bump commit is pushed under your credentials and `verify` runs
+on it, letting the PR merge cleanly. No CI job or extra token is involved. Tagging stays on merge to main (e.g.
+in `release.yml`); this step only edits `package.json`.
 
 1. **Skip if already bumped.** If any commit the branch adds already bumps the
    version, do nothing more in this step:
@@ -163,8 +144,7 @@ job and no extra token are involved. Tagging stays on merge to main (e.g. in
 
 3. **Compute the next version** from the conventional commits the branch adds.
    Prefer `compute-bump.ts`; fall back to `compute-bump.mjs` (mid-migration
-   consumers may have the `.mjs` but not yet the `.ts` replacement); fall back
-   to by-hand if neither is present:
+   consumers may lack the `.ts`), then to by hand:
    ```bash
    BUMP_SCRIPT=""
    [ -f scripts/compute-bump.ts  ] && BUMP_SCRIPT="scripts/compute-bump.ts"
@@ -198,16 +178,16 @@ If the push fails, report the error and stop.
 
 ### Step 5 — quality gate
 
-Run `/simplify` in review mode (standalone invocation) against the changed files. This produces the Quality Scores table.
+Run `/simplify` in review mode (standalone invocation) against the changed files to produce the Quality Scores table.
 
-**All files must score 10/10 on all four dimensions before continuing.** Any score below 10 blocks PR creation — surface the violations and wait for the user to fix them or add `quality-override` annotations.
+**All files must score 10/10 on all four dimensions before continuing.** Any score below 10 blocks PR creation: surface the violations and wait for the user to fix them or add `quality-override` annotations.
 
 Override syntax (model-driven criteria only — mechanical violations must be fixed):
 ```
 quality-override: <file> — <criterion> — <reason>
 ```
 
-Once all scores are 10/10 (or approved overrides cover every remaining violation), save the Quality Scores table — it will be included in the PR body in Step 6.
+Once all scores are 10/10 (or approved overrides cover every remaining violation), save the Quality Scores table for the PR body (Step 6).
 
 ### Step 6 — draft title and body
 
@@ -287,28 +267,24 @@ If auto-corrections were applied in Step 2, append this section:
 
 ### Step 7 — create the PR
 
-Use `gh pr create` to open the PR against the repo's default base branch (usually `main`). Under Claude Code, `mcp__github__create_pull_request` is also available.
+Open the PR with `gh pr create` against the repo's default base branch (usually `main`); Claude Code may use `mcp__github__create_pull_request`.
 
 **Honor the Step-2b readiness verdict:**
-- **READY** (local gate all-green) → open a normal PR. The included *Pre-merge gate status* section is
-  the evidence it's merge-ready before GitHub's instant-unit CI even reports.
+- **READY** (local gate all-green) → open a normal PR. The *Pre-merge gate status* section is the
+  evidence it is merge-ready before GitHub's instant-unit CI reports.
 - **DRAFT — `<red gate>`** (local gate red after auto-correct) → open with `gh pr create --draft` and
   say which gates are red; do not present it as ready.
 - **UNVERIFIED** (no local gate found) → open normally but state readiness is unverified.
 
-This makes the LOCAL pre-merge gate — not GitHub CI — the gate the PR's readiness is tracked against.
-
 ### Step 8 — subscribe immediately
 
-Without pausing or asking, subscribe to PR activity for the PR number just returned.
-Use `subscribe_pr_activity` (including a namespaced equivalent) when exposed by
-the current client. Otherwise run `gh pr checks <pr> --watch` to wait for CI.
-Capture its exit status directly; poll the running command in short intervals so
-steering remains responsive. This watches checks only, not reviews or merge events.
-For those, use `gh pr view <pr> --json state,reviews,comments` when needed.
-Report that no webhook subscription is active.
+**Do not ask whether to monitor.** Without pausing, subscribe to PR activity for the PR number just returned:
 
-**Do not ask whether to monitor. Use the available path immediately.**
+- Use `subscribe_pr_activity` (or a namespaced equivalent) when the client exposes it.
+- Otherwise run `gh pr checks <pr> --watch` to wait for CI. Capture its exit status directly; poll the running
+  command in short intervals so steering stays responsive. This watches checks only; for reviews or merge
+  events use `gh pr view <pr> --json state,reviews,comments` when needed. Report that no webhook subscription
+  is active.
 
 ### Step 9 — report
 
@@ -317,18 +293,17 @@ a CLI check was performed. Never claim a CLI check is a persistent subscription.
 
 ### Per-task handoff
 
-PR creation is not merge authorization. In the default queue flow, the root keeps
-this task current until local and required hosted validation pass on the final
-head, an authorized merge actually completes, and a fresh working branch exists.
-If authority is absent, preserve the ready PR and report that blocker; do not
-start another independent task. Follow `queue advance` in [queue.md](queue.md)
-only after verifying those facts. Subagents never push or merge the root's branch.
+PR creation is not merge authorization. In the default queue flow, the orchestrator keeps this task current until local and required hosted
+validation pass on the final head, an authorized merge actually completes, and a fresh working branch exists.
+If merge authority is absent, preserve the ready PR and report that blocker; do not start another independent
+task. Follow `queue advance` in [queue.md](queue.md) only after verifying those facts. Subagents never push or
+merge the orchestrator's branch.
 
 ### Clear the handoff (before any merge)
 
-Handoffs live only on branches. If the branch carries `.pause/handoff.md`, delete it in the last commit
-before merging to main, so main never holds a handoff a later `/resume` would act on. Move anything still
-worth keeping into the PR body or `design.md` first:
+If the branch carries `.pause/handoff.md`, delete it in the last commit before merging to main, so main never
+holds a handoff a later `/resume` would act on. Move anything still worth keeping into the PR body or
+`design.md` first:
 
 ```bash
 [ -f .pause/handoff.md ] && git rm -q .pause/handoff.md && git commit -m "chore: clear handoff before merge" && git push
@@ -354,11 +329,8 @@ A non-zero gate exit refuses the merge — no exceptions, no `--admin` around it
 
 ### Verifying a real green (before any merge)
 
-If you go on to merge this PR, confirm the green is **real** first — a required
-status check can fail *open*. GitHub treats a **skipped** required check as
-**satisfied**, so a required roll-up job (`needs:` a matrix/shard set with no
-`if: always()`), or any required job gated by a path filter / `if:` that never
-runs, **skips** on failure and the gate passes silently.
+A required roll-up job (`needs:` a matrix/shard set with no `if: always()`), or any required job gated by a
+path filter / `if:` that never runs, **skips** on failure, and GitHub counts the skip as passing.
 
 - **Read the actual check conclusions, not the merge button** (`gh pr checks <pr>`;
   Claude Code: `mcp__github__…get_check_runs`). Treat a lingering `skipping` on a
@@ -368,8 +340,8 @@ runs, **skips** on failure and the gate passes silently.
   failure with exit 0.
 - **Fix at the source** (if you own the CI): make roll-ups fail *closed* with
   `if: ${{ always() }}` + a guard step that exits non-zero unless every dependency
-  succeeded (`needs.*.result != 'success'`). No ruleset change needed — the check
-  was already required, it just needed to fail closed.
+  succeeded (`needs.*.result != 'success'`). No ruleset change is needed; the check
+  is already required.
 
 ### Error handling
 

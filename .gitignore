@@ -25,3 +25,6 @@ diagrams/
 
 # Pinned security scanners (scripts/setup-security-tools.sh) — machine-local, never committed
 .tooling/
+
+# Subagent git worktrees (Claude Code isolation: worktree); local only, never committed.
+.claude/worktrees/

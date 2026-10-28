@@ -1,20 +1,15 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
-A **visible, editable Markdown work queue** that agents drain **autonomously** so
-you can augment a long-running project without babysitting it. You stack up work;
-a loop wakes on an interval (default 6 min) and drains it — **one independent
+A **visible, editable Markdown work queue** that agents drain **autonomously** on a
+long-running project. You stack up work; a loop wakes on an interval (default 6 min) and drains it — **one independent
 task per PR/merge cycle** (parallel agents may implement its subtasks) — running each task either as a quick
 `direct` chore or through the **full feature-chain** (`design → prd → plan → tdd →
 code-refiner`) with **no user input**. The queue's state lives in a SQLite store
 (`.agent/queue/queue.db`, git-ignored) and is rendered after every change to one
 file you can open at any moment: `.agent/queue/queue.md`.
 
-This is the complement to `/feature-chain`: the chain builds *one* feature
-interactively, start to finish; the queue lets you **keep feeding and draining
-many units of work** on an ongoing project, unattended.
+Complement to `/feature-chain`: the chain builds *one* feature interactively; the
+queue **keeps feeding and draining many units of work**, unattended.
 
 The reliable read/mutate layer is `scripts/queue.ts` (pure model in
 `scripts/queue-model.ts`, store in `scripts/queue-db.ts`). Humans may hand-edit
@@ -32,7 +27,7 @@ turn using the CLI below. Stop on idle, operator stop, or a real usage limit;
 checkpoint remaining work and explain that future additions need another
 invocation. Never claim automatic restart without verified scheduler state.
 The native persistent-driver rules below apply only when those tools are exposed.
-Batch worktree lanes within the client’s concurrency limit, or drain serially if
+Batch lanes within the client’s concurrency limit, or drain serially if
 subagents are unavailable.
 
 ## The store and its view
@@ -48,7 +43,7 @@ binary copies can't be merged, which would bring the id collisions back.
 **`queue.md` is the view**, re-rendered after every mutation and committed so the
 queue stays visible in review. Like the store, it and its sidecars (`log.md`,
 `archive.md`, `lanes/`) live in the main checkout, so a lane's worktree never
-rewrites its own copy that would later merge back. It is one Markdown file. **Line order is priority** (top runs first). A checkbox encodes
+rewrites its own copy that would later merge back. **Line order is priority** (top runs first). A checkbox encodes
 status; indented `- key: value` lines carry each task's spec:
 
 ```markdown
@@ -96,14 +91,14 @@ deliveryTask:
   pull, merge, or stash that changes `queue.md` counts too; there `render` is
   usually right, because the store already holds the truth.
 - **Keep the committed view current.** The store is the truth, but people and dashboards read
-  the committed `queue.md`. Claim a task when its worker starts, release it or mark it done when
-  the worker stops or merges, then `render` and commit the view. `queue check-view` exits non-zero
+  the committed `queue.md`. Claim a task when its subagent starts, release it or mark it done when
+  the subagent stops or merges, then `render` and commit the view. `queue check-view` exits non-zero
   when the committed view no longer matches the store; run it after each merge or loop tick.
-- **Commit specs before a worker needs them.** `set <id> accept <path>` warns when the spec file
-  is missing or untracked. Worker lanes branch from the remote main and cannot see files that
+- **Commit specs before a subagent needs them.** `set <id> accept <path>` warns when the spec file
+  is missing or untracked. Lanes branch from the remote main and cannot see files that
   exist only in the main checkout.
 
-Task lines and their fields survive worker writes; **freeform prose does not**.
+Task lines and their fields survive subagent writes; **freeform prose does not**.
 Runtime sidecars `log.md` (audit trail) and `archive.md` sit alongside and are
 git-ignored; `queue.md` itself is committed so the queue is durable and visible.
 **Completed tasks auto-archive**: `done` moves a task straight into `archive.md` and
@@ -156,16 +151,15 @@ render                                 # rewrite queue.md from the store (discar
 
 ## Gating work (dependency gates)
 
-A **gate** is just a task that everything else depends on: while it's unfinished,
+A **gate** is a task that everything else depends on: while it's unfinished,
 `isEligible` blocks every task carrying `deps: <gate-id>`, so nothing else runs. It
 is the mechanical form of a **temporary priority block** — e.g. the 2026
 model-fidelity block, where every non-model task carried `deps: task-591` so only
 the character pipeline could run until the user opened the gate.
 
-`gate` / `ungate` are the **mechanical interface** for this. **Never hand-edit
-`queue.md` deps to apply or lift a block** (critical rule 4) — that is exactly the
-corruption the queue exists to prevent. Applying the block by hand once meant
-text-editing the dep off 72 tasks to lift it; these verbs do it in one call:
+Apply and lift blocks only with `gate` / `ungate`; **never hand-edit `queue.md`
+deps** (critical rule 4). Lifting a hand-applied block once meant text-editing the
+dep off 72 tasks; these verbs do it in one call:
 
 ```bash
 node scripts/queue.ts add "model-fidelity gate" --accept "user opens the gate"
@@ -186,14 +180,14 @@ node scripts/queue.ts ungate task-591          # lift: strip the dep everywhere 
   task `done` so its blocked dependents become eligible. `--keep-gate` leaves the
   gate task's status untouched; `--dry-run` previews. Prints how many were ungated.
 
-Opening a real block (like model-fidelity) is a deliberate call — `ungate` is the
-one command that does it, cleanly and reversibly, instead of a bulk text edit.
+Opening a real block (like model-fidelity) is a deliberate call; `ungate` does it
+cleanly and reversibly.
 
 ## Console (`scripts/queue-console.ts`)
 
 A local web console over the same model layer — view, add, edit, prune,
 drag-reorder, requeue, start/stop, and archive-sweep the queue live from a
-browser, auto-refreshing as workers write the file:
+browser, auto-refreshing as subagents write the file:
 
 ```bash
 node scripts/queue-console.ts [--port 8722]   # → http://localhost:8722  (QUEUE_FILE honored)
@@ -208,7 +202,7 @@ two real servers and asserts ops, locks, and heartbeats never cross.
 
 Zero dependencies, loopback-only, **management surface only**: it exposes no
 done/fail/claim/worktree actions and never executes a task's `validate` (or any
-shell command) — execution stays with workers. Every page action posts a typed
+shell command); execution stays with subagents. Every page action posts a typed
 op that is validated before it touches the file, and the interface guards the
 dependency DAG: deps naming nonexistent tasks, self-deps, cycles, and removing
 a task that unfinished work still depends on are all rejected. Agents get the
@@ -220,18 +214,18 @@ waits for at most one minute and never steals an old lock: a slow live holder
 cannot be distinguished from a crashed one. If it times out, confirm the holder
 is dead before removing `<store>.lock` (`.agent/queue/queue.db.lock` by
 default; it sits beside the store so every worktree contends for the same lock),
-then retry the command. Inspect
-that file first: it records the holder PID and acquisition timestamp.
+then retry the command. Inspect that file first: it records the holder PID and
+acquisition timestamp.
 Validation releases and retakes the lock before it commits; worktree add/remove
 keeps it for the lifecycle so a checkout reference cannot be lost. A slow
 checkout can therefore make another mutation time out rather than interleave.
 
 The page is a kanban board — Queued / Blocked / In Progress / Done / Failed —
 grouped from the same state (drag reorder works inside Queued; status changes
-stay with workers). The header shows the dispatch plan (`continues: … · up
+stay with subagents). The header shows the dispatch plan (`continues: … · up
 next: …`); after reordering or editing deps, hit **Reassign** to recompute it
 from the current order and kick an armed drain awake (it never preempts an
-active lane). Active cards show live lane chips — worker, current step, log
+active lane). Active cards show live lane chips — owner, current step, log
 tail — from heartbeat sidecars (`.agent/queue/lanes/<id>.json`, written via
 `queue lane beat <id> --step "…" --tail "…"`); stale lanes grey out but are
 never reaped by the board. The ■ button on an active card (or `queue lane
@@ -253,7 +247,7 @@ a first-class model field (`- elapsed: 2h15m30s`, exact to the second,
 hand-editable, `set`-able) banked at every session end — done, fail, release,
 operator-done, operator-fail — so retries accumulate across a task's life and
 archive lines carry each task's total after it sweeps out.
-This is not measured compute time or proof that a worker is still running.
+This is not measured compute time or proof that a subagent is still running.
 
 ## Creating a queue from in-memory items
 
@@ -272,7 +266,7 @@ before piping it in — bulk-seeding is where umbrella tasks sneak in.
 ## Task sizing — atomic tasks, no open-ended umbrellas
 
 A queued task must be **one reviewable slice a single agent can finish and mark
-`done` in one sitting** — not an open-ended program of work. An unattended worker
+`done` in one sitting**, not an open-ended program of work. An unattended run
 has nobody to tell it "that's enough," so a task that *can't* finish never does: it
 holds its lease, accretes scope, and blocks everything downstream of it.
 
@@ -300,15 +294,15 @@ holds its lease, accretes scope, and blocks everything downstream of it.
   report the remaining scope, and revise scope only with existing owner authority;
   never narrow acceptance merely to mark the task done.
 
-Sizing happens at **enqueue** time, alongside specification — same reason: the
-worker can't renegotiate scope mid-drain.
+Size at **enqueue** time, alongside specification: the subagent can't renegotiate
+scope mid-drain.
 
 ## Two speeds: `direct` vs `chain`
 
 - **`direct`** (default) — small, self-contained work (bug fixes, chores, config).
-  The worker does it, runs `validate`, and completes. This is the "what the chain
+  The subagent does it, runs `validate`, and completes. This is the "what the chain
   doesn't apply to" tier.
-- **`chain`** — a feature. The worker runs the **feature-chain autonomously**, with
+- **`chain`** — a feature. The subagent runs the **feature-chain autonomously**, with
   **no interactive grill**, into `docs/<slug>/`:
   1. **Design** — if `docs/<slug>/design.md` is missing, *generate it
      non-interactively* from the task's spec (`title` + `accept` + `files` +
@@ -320,28 +314,27 @@ worker can't renegotiate scope mid-drain.
   6. run `validate`, then `done`.
 
   All phase-to-phase confirmations are **auto-accepted** — the queued task is
-  pre-approved, so the worker never pauses for "continue."
+  pre-approved, so the subagent never pauses for "continue."
 
 ## The execution contract — no user input, ever
 
-An unattended worker **never asks the user a question.** Specification happens at
-**enqueue time** (interactive, with you present — optionally by running a grill for
-one task), so by the time a task is claimed it is self-contained. During execution:
+The agent executing a task (subagent or orchestrator) **never asks the user a question.** Specify at **enqueue
+time** (interactive, with you present; optionally run a grill for one task), so a
+claimed task is self-contained. During execution:
 
-- If a task is **underspecified** and the worker hits genuine ambiguity it cannot
-  resolve from the spec + codebase, it **fails the task with a `needs-spec: <what's
-  missing>` note** (`queue fail <id> "needs-spec: ..."`) and reports the blocker (per-task mode retains the delivery gate) — it does
-  **not** guess, and it does **not** block waiting for input.
-- You see the `needs-spec` note in `queue list`; you refine the task and it
-  re-enters the queue. This is how "no user input during a drain" stays true
-  without silently doing the wrong thing.
+- On genuine ambiguity it cannot resolve from the spec + codebase, the subagent
+  **fails the task with a `needs-spec: <what's missing>` note** (`queue fail <id>
+  "needs-spec: ..."`) and reports the blocker (per-task mode retains the delivery
+  gate). It does **not** guess and does **not** block waiting for input.
+- The `needs-spec` note shows in `queue list`; refine the task and it re-enters
+  the queue.
 
 ## Delivery cycle (default: `deliveryMode: per-task`)
 
-The root orchestrator owns the complete cycle:
+The orchestrator owns the complete cycle:
 
 1. Claim one independently useful task. Parallel agents work on **subtasks of this
-   task** in isolated worktrees; they report and commit locally. Only the root
+   task** in isolated worktrees; they report and commit locally. Only the orchestrator
    integrates, pushes, opens/updates the task PR, and merges.
 2. Satisfy full acceptance, review the diff, and run real local validation on the
    integrated branch. `done` records implementation acceptance, **not a merge**.
@@ -352,8 +345,8 @@ The root orchestrator owns the complete cycle:
 4. Merge only with explicit session authorization or standing project policy.
    Creating a PR or draining a queue does **not** grant merge permission. Without
    authority, keep the ready PR, report the missing authorization, and gate the
-   next task. Authorization is resolved with the owner outside the unattended
-   worker; do not treat silence as consent.
+   next task. Resolve authorization with the owner outside the unattended
+   subagent; never treat silence as consent.
 5. Confirm the PR actually merged, update the target base (normally main), and
    create a fresh working branch before starting another task. Update a pinned
    `integrationBranch` to that branch. Then acknowledge the completed cycle:
@@ -364,14 +357,14 @@ claims and console claims. Failures retry the selected task; done/archive,
 stop/start, and process restart do not release it. Exit **7** means delivery is
 pending, not that the queue drained. Keep supervising CI or report a genuine
 blocker; never report the run complete merely because implementation finished.
-`advance` is an audited root acknowledgment: it checks the selected task and
+`advance` is an audited orchestrator acknowledgment: it checks the selected task and
 requires evidence references, but **does not query GitHub, verify the branch,
-validate CI, or infer permission**. The root must verify those facts before calling
+validate CI, or infer permission**. The orchestrator must verify those facts before calling
 it. The queue is operator-editable, not a security boundary against explicit edits.
 
 **Migration and compatibility.** Missing `deliveryMode` defaults to `per-task`
-for new and existing stores. Existing active claims remain intact; do not cancel
-workers or lose unmerged work. If multiple tasks are already active, stop new
+for new and existing stores. Existing active claims remain intact; never cancel
+subagents or lose unmerged work. If multiple tasks are already active, stop new
 starts and reconcile them under their original owner, explicitly using
 `queue config deliveryMode batch` to finish that pre-existing batch if needed.
 Switch back to `per-task` at a clean delivery boundary. `maxParallel` still
@@ -388,7 +381,7 @@ The loop body; one task per wake:
 1. `node scripts/queue.ts tick` —
    - `STOPPED` → do nothing (paused). `IDLE` → nothing eligible; end the turn.
    - `OWNERSHIP CONFLICT` → an active lease expired; stop dispatch and report it.
-     Never infer that its worker died or reclaim it automatically.
+     Never infer that its subagent died or reclaim it automatically.
    - otherwise it marks the current task `active` and prints a `<queue_task>`
      block with its `mode` and spec. That's your one unit.
 2. **Execute** per its mode (`direct` or the `chain` sequence above), honoring the
@@ -407,14 +400,13 @@ batch mode retries drop to the back and independent work can continue.
 
 ### Session isolation during recovery
 
-One session has exactly one orchestrator. Other sessions may work concurrently,
-but their orchestrators, workers, terminals, and user-launched agent CLIs are
-outside this session's ownership. Never inspect them for cleanup or send them a
-signal. In particular, `owner` is a queue label and `startedAt` is a lease clock;
-neither is a PID, session identity, heartbeat, or permission to manage a process.
+AGENTS.md session and process ownership applies; additionally, never inspect
+another session's orchestrator, subagents, terminals or user-launched agent CLIs
+for cleanup. `owner` is a queue label and `startedAt` is a lease clock; neither is a
+PID, session identity, heartbeat, or permission to manage a process.
 
 `tick` and `ready` never reclaim an expired lease: they exit 6 and leave the task active.
-The root orchestrator is the lifecycle controller for native subagents in its own
+The orchestrator is the lifecycle controller for native subagents in its own
 agent tree. For one of those claims it must inspect the native agent registry, not OS
 processes: if the child is running, interrupt that exact child handle and confirm it
 is no longer running; if it is completed, proceed directly. Then run `queue release
@@ -424,7 +416,7 @@ mismatched owner; it does not delete or merge a worktree, which still needs the 
 unique-content audit.
 
 After a harness restart or power outage has erased child handles, an explicit operator
-recovery instruction authorizes the root orchestrator to release the stale queue claim
+recovery instruction authorizes the orchestrator to release the stale queue claim
 with the exact stored owner. This authority applies to the queue record only: never run
 `kill`, `pkill`, `killall`, or `taskkill`, and never infer process ownership from a
 name or PID. Claims belonging to another live/possibly-live session remain fail-closed:
@@ -450,37 +442,34 @@ exit-code handling: delivery pending (7) must never be mistaken for drained (3).
    store. When a command reports a hand-edited `queue.md`, the user edited it on
    purpose: stop dispatch and surface it. Don't `render` over it, since that
    discards their edits. `import` only when the edit is plainly theirs to apply.
-2. **No user input during a drain.** Never ask a question; underspecified → `fail`
-   with a `needs-spec:` note; keep the delivery gate until resolved. Spec at enqueue time, not mid-run.
+2. **No user input during a drain.** Never ask; underspecified → `fail` with a
+   `needs-spec:` note; keep the delivery gate until resolved. Spec at enqueue time.
 3. **Chain tasks run the whole chain autonomously** — generate the design from the
    spec (no grill), auto-accept phase gates, never wait for "continue."
 4. **Mutate only through `scripts/queue.ts`** so ids and format stay intact. Humans
-   may hand-edit the view and `import` it; the worker never edits it by hand.
+   may hand-edit the view and `import` it; subagents never edit it by hand.
 5. **Never blind-merge a worktree.** Merge-back is agent-driven; on conflict,
    reconcile carefully or fail safe (D7). In per-task mode a failure gates the next task.
 6. **Stopped means stopped** — a `tick` does nothing until `queue start`.
-7. **A running queue never silently stalls — but a drained one terminates the
-   loop, and no loop fires on an empty queue.** The invariant is *a driver stays
-   attached while running*, not *the loop runs forever*. With a **signal-polling
-   `Monitor` armed** (do this first — it polls `queue signal` and emits only when work
-   is drainable), an idle/drained tick **terminates the loop** (`ScheduleWakeup
-   stop:true`) — the Monitor re-wakes it only when a later `add` makes work drainable,
-   so an empty queue never wakes it. Only when **no Monitor could be armed** does an
-   idle tick re-arm the `idlePoll` heartbeat instead. A registered `CronCreate` drain
-   is an equivalent standing driver. An operator stop/pause always ends the loop.
+7. **A running queue never silently stalls; a drained one terminates the loop, and
+   no loop fires on an empty queue.** Keep a driver attached while running (see
+   [the stall invariant](queue-drivers.md#running-it-work-driven-not-clock-driven)):
+   arm the signal-polling `Monitor` first; with it armed, an idle tick terminates the
+   loop (`ScheduleWakeup stop:true`); only with no Monitor does an idle tick re-arm
+   `idlePoll`. A registered `CronCreate` drain is an equivalent standing driver. An
+   operator stop/pause always ends the loop.
    When the portable agent-loop is the driver, its child reports `continue` while
-   any active, eligible, or delivery-pending queue work remains and reports `complete` only after the
-   queue is actually drained. It never calls the driver's `stop` command itself;
+   any active, eligible, or delivery-pending queue work remains and `complete` only
+   after the queue is actually drained. It never calls the driver's `stop` command;
    the supervisor owns recurrence lifecycle and terminal outcomes.
-8. **Tasks are atomic.** One reviewable slice, finishable in one sitting, with a
-   checkable `accept`. Never enqueue an "ensure all X"/"cover every Y" umbrella —
-   enumerate it into finite children and make the parent a tracking stub
-   (`deps: <child ids>`). When in doubt, split. Preserve original acceptance; partial work cannot be relabeled complete.
-9. **Completed tasks auto-archive.** A successful `done` moves the task into
-   `archive.md` and out of the live queue, so the queue empties as work finishes — but
-   a `done` task still depended on by unfinished work is kept until that dependent
-   completes (never break the DAG). Terminal `failed` tasks stay visible; sweep them
-   with `archive`.
-10. **Session processes are isolated.** One orchestrator owns each session. Never
-    inspect, stop, reclaim, or signal another session's orchestrator/workers or a
-    user-launched agent CLI. Queue metadata is never process authority.
+8. **Tasks are atomic** ([task sizing](#task-sizing--atomic-tasks-no-open-ended-umbrellas)).
+   One reviewable slice, finishable in one sitting, with a checkable `accept`; never
+   enqueue an "ensure all X"/"cover every Y" umbrella; enumerate it into finite children under a
+   tracking stub (`deps: <child ids>`). When in doubt, split. Preserve original
+   acceptance; partial work cannot be relabeled complete.
+9. **Completed tasks auto-archive** to `archive.md` ([the store and its view](#the-store-and-its-view));
+   a `done` task still depended on by unfinished work stays until that dependent
+   completes (never break the DAG). Sweep terminal `failed` tasks with `archive`.
+10. **Session processes are isolated** ([session isolation during recovery](#session-isolation-during-recovery)).
+    Never inspect, stop, reclaim, or signal another session's orchestrator/subagents
+    or a user-launched agent CLI. Queue metadata is never process authority.

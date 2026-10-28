@@ -35,11 +35,34 @@ FULL=$(curl -fsSL "$NODE_DIST/index.json" 2>/dev/null |
 [ -n "$FULL" ] || { echo "⚠  could not resolve Node $WANT_MAJOR release — staying on Node $HAVE_MAJOR"; exit 0; }
 
 DEST="$HOME/.local/node-$FULL"
-if [ ! -x "$DEST/bin/node" ]; then
-  mkdir -p "$DEST"
-  curl -fsSL "$NODE_DIST/$FULL/node-$FULL-linux-$ARCH.tar.xz" 2>/dev/null |
-    tar -xJ --strip-components=1 -C "$DEST" 2>/dev/null ||
-    { rm -rf "$DEST"; echo "⚠  Node $FULL download failed — staying on Node $HAVE_MAJOR"; exit 0; }
+TARBALL="node-$FULL-linux-$ARCH.tar.xz"
+# Download beside $DEST, check the tarball against the release's SHASUMS256.txt (an integrity check against
+# the same origin, not a signature check), extract, run the binary, then rename into place. The staging dir
+# sits on $DEST's filesystem so the final mv is an atomic rename: an interrupted install never leaves a
+# partial $DEST. An interrupted download once left a truncated node that segfaulted on every call, and a
+# bare "file exists" check kept reusing it.
+install_node() (
+  mkdir -p "$(dirname "$DEST")" || exit 1
+  tmp=$(mktemp -d "$(dirname "$DEST")/.node-tmp.XXXXXX") || exit 1
+  trap 'rm -rf "$tmp"' EXIT
+  curl -fsSL "$NODE_DIST/$FULL/SHASUMS256.txt" -o "$tmp/SHASUMS256.txt" &&
+    curl -fsSL "$NODE_DIST/$FULL/$TARBALL" -o "$tmp/$TARBALL" &&
+    (cd "$tmp" && grep -F "  $TARBALL" SHASUMS256.txt | sha256sum -c --status) &&
+    mkdir "$tmp/node" && tar -xJf "$tmp/$TARBALL" --strip-components=1 -C "$tmp/node" &&
+    "$tmp/node/bin/node" -e 0 &&
+    rm -rf "$DEST" && mv "$tmp/node" "$DEST"
+)
+if ! { ("$DEST/bin/node" -e 0) > /dev/null 2>&1; } 2> /dev/null; then
+  if ! install_node 2>/dev/null; then
+    # A release can appear before its SHASUMS256.txt: fall back to the newest working local install of the major.
+    FALLBACK=""
+    for d in "$HOME"/.local/node-v"$WANT_MAJOR".*; do
+      { ("$d/bin/node" -e 0) > /dev/null 2>&1; } 2> /dev/null && FALLBACK=$d
+    done
+    [ -n "$FALLBACK" ] || { echo "⚠  Node $FULL download or verification failed — staying on Node $HAVE_MAJOR"; exit 0; }
+    echo "⚠  Node $FULL download or verification failed — using ${FALLBACK##*/}"
+    DEST=$FALLBACK FULL=${FALLBACK##*/node-}
+  fi
 fi
 
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then

@@ -1,15 +1,11 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 Review the current diff **and fix it**, in one composite pass: run the
 correctness review (`validate`) and the structural-quality review (`simplify`)
 **in parallel**, merge their findings, then apply every fix in a **single serial
-pass** and re-verify. One command for "review this change fully, then make it
-right and clean."
+pass** and re-verify.
 
-This is a thin orchestrator — it delegates the review criteria to `validate` and
+This is a thin wrapper — it delegates the review criteria to `validate` and
 `simplify` and does not reimplement them. Use it as the feature-chain's post-TDD
 gate, or standalone before a PR. For a full-repo survey (not a diff), use
 `/audit` instead.
@@ -19,11 +15,6 @@ gate, or standalone before a PR. For a full-repo survey (not a diff), use
 - `--fix` — apply the merged fixes (default standalone: review-only, present and wait)
 - `--comment` — post the merged findings as inline PR comments
 
-## Client capabilities
-
-Apply the [harness capability rules](../AGENTS.md#harness-capabilities) for
-native subagents, concurrency, review isolation, and referenced-file reads.
-
 ## Execution model
 
 The two reviews are **read-only**, so they run concurrently with no write
@@ -32,9 +23,9 @@ files at once (the failure mode that would otherwise force worktree isolation).
 
 **Phase 1 — parallel review (two isolated reviewers, find-only):**
 
-Spawn **two reviewer Agents in the same message** so they run concurrently. Each
+Start **two reviewer subagents in the same message** so they run concurrently. Each
 has isolated context (no session priors) and applies its source skill's criteria
-verbatim — neither writes any files:
+verbatim:
 
 1. **Correctness reviewer** — apply Phase 2 of [`skills/validate.md`](validate.md):
    correctness bugs + the test-integrity check (a test weakened to pass is a
@@ -46,7 +37,7 @@ verbatim — neither writes any files:
 
 Pass each the diff (`git diff main...HEAD`) and the changed-file contents.
 
-**Phase 2 — merge (main agent):**
+**Phase 2 — merge (invoking agent):**
 
 Combine the two result sets into one ordered work list:
 - **Dedupe** overlaps — a correctness finding and a structural violation on the
@@ -60,10 +51,10 @@ Combine the two result sets into one ordered work list:
 **Phase 3 — refine (single serial fixer):**
 
 A **single** agent applies the merged work list to the working tree in one
-coherent pass — never two agents writing at once. Then:
+coherent pass. Then:
 1. Re-run the test suite (if a runner is detectable). A test must not be weakened
    to pass — if a fix would require changing a test, surface it instead.
-2. **Re-verify** — spawn a fresh correctness + structural check on the new diff to
+2. **Re-verify** — start a fresh correctness + structural check on the new diff to
    confirm findings resolved and nothing regressed. Gate: structural dimensions
    at 10/10, correctness clear. Loop Phase 3 once if the re-verify surfaces a
    regression; if it still fails, surface the remaining items and stop.

@@ -1,6 +1,3 @@
-> **Multi-harness:** This skill works identically in Claude Code, Codex, pi, and agy. All paths
-> and commands are harness-agnostic.
-
 ## Mode
 
 **Auto-fix** (called from the chain): Apply fixes to `design.md` directly, then continue without pausing.
