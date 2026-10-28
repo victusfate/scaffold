@@ -197,10 +197,10 @@ Models from small local ones to frontier read these files. Every line costs atte
 
 | Term | Means | Not |
 |---|---|---|
-| orchestrator | the one agent per session that plans, integrates, pushes and merges | root |
-| worker | an agent the orchestrator starts to do one task | — |
-| lane | a worker's isolated git worktree off the working branch | — |
-| subagent | a worker started through the harness's own agent tool | — |
+| orchestrator | the one agent per session that owns the plan, the working branch, integration, pushes, merges and the PR | root |
+| subagent | an agent the orchestrator starts for one task in its own lane; it commits locally, never pushes or merges, and reports evidence | worker |
+| active agent | whichever agent is running now; every rule binds it in its current role (alone in a session, it is the orchestrator) | — |
+| lane | a subagent's isolated git worktree off the working branch | — |
 | handoff | `.pause/handoff.md`, the branch-only checkpoint | — |
 | gate | a check that exits non-zero to block a step | — |
 
