@@ -2,10 +2,11 @@
 /** Unit tests for security-rules.ts (trust-but-verify Semgrep packs). Pure: fixture rules, no scanners or network. */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { type Rule, acceptedFrom, cacheRules, canonical, changeId, checkIds, diffPack, fingerprint, heldRules,
+import { type Rule, acceptPaths, acceptedFrom, cacheRules, canonical, changeId, checkIds, diffPack, fingerprint, heldRules,
   ownerHeld, parseAccepted, reviewReport, serializeAccepted } from './security-rules.ts';
 
 const rule = (id: string, pattern: string, extra: Partial<Rule> = {}): Rule =>
@@ -113,4 +114,25 @@ void test('a large weakening is held for the owner; a routine one is agent-revie
   assert.equal(ownerHeld(11, 100), true, 'more than the 10-rule floor');
   assert.equal(ownerHeld(20, 1000), false);
   assert.equal(ownerHeld(21, 1000), true, 'more than 2% of a 1000-rule pack');
+});
+
+void test('accept defaults to the main checkout tooling, also from a linked worktree; flags and env win', () => {
+  const base = realpathSync(mkdtempSync(join(tmpdir(), 'accept-paths-')));
+  const main = join(base, 'main');
+  const wt = join(base, 'wt');
+  const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' });
+  execFileSync('git', ['init', '-q', main]);
+  git(main, '-c', 'user.email=t@t', '-c', 'user.name=t', 'commit', '-q', '--allow-empty', '-m', 'base');
+  git(main, 'worktree', 'add', '-q', wt);
+  const tooling = join(main, '.tooling/security');
+  for (const cwd of [main, wt]) {
+    const p = acceptPaths(cwd, {}, {});
+    assert.equal(p.tools, join(tooling, 'bin'), cwd);
+    assert.equal(p.rules, join(tooling, 'rules'), cwd);
+    assert.equal(p.cache, join(tooling, 'rules-cache'), cwd);
+    assert.equal(p.out, join(cwd, 'security/rules-accepted.json'), 'the list is written where you work');
+  }
+  const p = acceptPaths(wt, { rules: '/r', out: '/o.json' }, { SECURITY_TOOLS_DIR: '/t', SECURITY_RULES_CACHE: '/c' });
+  assert.deepEqual(p, { rules: '/r', tools: '/t', cache: '/c', out: '/o.json' });
+  rmSync(base, { recursive: true, force: true });
 });
