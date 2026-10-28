@@ -1,8 +1,5 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 Root-cause a bug, test failure, CI failure, or unexpected behavior before changing
 code. Guess-and-patch loops cost more than the investigation they skip, and a
 symptom fix leaves the cause in place to fail again somewhere else.

@@ -1,8 +1,5 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 Make user-facing writing sound like a person wrote it, and strip filler from
 engineering docs without losing any of their substance. It also enforces the
 AGENTS.md *Veracity* rule against self-labels like "honest", "to be clear",

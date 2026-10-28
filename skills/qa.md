@@ -1,8 +1,5 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 Run the real app, drive the changed entry points the way a user would, then fix
 what breaks: **test → triage → fix with a regression test → re-verify**. This is
 the executable check behind AGENTS.md *Veracity*: a feature is done when a user

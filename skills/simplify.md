@@ -1,16 +1,8 @@
 ## Philosophy
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 Seek **ambitious structural simplification** — not just the absence of bad patterns. Actively hunt for *code judo moves*: reorganizations that preserve behavior while dramatically reducing complexity. Working code is not enough; push for designs that feel inevitable in hindsight. Missed simplification opportunities are failures, not oversights.
 
 This is the **structural-quality** skill: it scores changed code against the rubric, gates it at 10/10, and — in auto-fix mode — applies the cleanups. Correctness is out of scope (that is `/validate`); a full-repo survey is `/audit`.
-
-## Client capabilities
-
-Apply the [harness capability rules](../AGENTS.md#harness-capabilities) for
-native subagents, concurrency, review isolation, and referenced-file reads.
 
 ## Execution model
 
@@ -46,7 +38,6 @@ The reviewer returns scores + violations in the output format below. The main ag
 
 **Phase 3 — act (main agent):**
 Receive scores and violations from the reviewer, then apply the appropriate mode.
-
 
 @../lib/code-quality-rubric.md
 

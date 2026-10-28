@@ -1,8 +1,5 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 Automate Gmail without the desktop web interface: create labels, tag existing
 mail by sender/domain/subject, set up filters that tag future mail, and query or
 tidy the inbox — all through agent tools, the Gmail API, or scripts.

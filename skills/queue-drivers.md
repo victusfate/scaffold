@@ -5,7 +5,7 @@ to every driver below.
 
 ## Integration cleanup (all delivery modes)
 
-The root cleans up each completed lane at integration, before replacement dispatch:
+The orchestrator cleans up each completed lane at integration, before replacement dispatch:
 
 1. Verify that the session-owned native agent or tracked child actually ended.
    Review and integrate its needed source; preserve unique logs, measurements,
@@ -55,11 +55,11 @@ own git worktree. Two patterns, same primitives:
    remaining original scope. Before returning, it runs `queue lane finish <id>
    --worker <exact-owner> --tail <result-summary>` in the owning queue checkout.
    This records `awaiting-review`; it does not accept the task or release its claim.
-4. The root verifies the owned native handle is terminal, or its tracked CLI child
+4. The orchestrator verifies the owned native handle is terminal, or its tracked CLI child
    exited with a valid result. Native `completed` means execution ended, not scope
    acceptance. Claude, Codex and pi use this same contract; hooks may notify the
    root but never independently merge, publish or reclaim.
-5. The root reviews and integrates passing commits into the one working branch,
+5. The orchestrator reviews and integrates passing commits into the one working branch,
    runs gates, then preserves evidence and removes the worktree while its recorded
    path is available, following [integration cleanup](#integration-cleanup-all-delivery-modes).
    Only then finalize: `done` for full accepted scope; `fail` for a genuine failed
@@ -89,7 +89,7 @@ agent, per this repo's "liveness/veracity" and D7 principles.
 ## Running it: work-driven, not clock-driven
 
 Keep the queue **continuously busy** — a fixed timer is a fallback, not the pacer.
-The root starts the next task only after completing the current delivery cycle.
+The orchestrator starts the next task only after completing the current delivery cycle.
 
 **Drain continuously in-turn.** Don't sleep between tasks — loop until the queue is
 empty:

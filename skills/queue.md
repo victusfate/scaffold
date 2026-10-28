@@ -1,8 +1,5 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 A **visible, editable Markdown work queue** that agents drain **autonomously** so
 you can augment a long-running project without babysitting it. You stack up work;
 a loop wakes on an interval (default 6 min) and drains it — **one independent
@@ -338,10 +335,10 @@ one task), so by the time a task is claimed it is self-contained. During executi
 
 ## Delivery cycle (default: `deliveryMode: per-task`)
 
-The root orchestrator owns the complete cycle:
+The orchestrator owns the complete cycle:
 
 1. Claim one independently useful task. Parallel agents work on **subtasks of this
-   task** in isolated worktrees; they report and commit locally. Only the root
+   task** in isolated worktrees; they report and commit locally. Only the orchestrator
    integrates, pushes, opens/updates the task PR, and merges.
 2. Satisfy full acceptance, review the diff, and run real local validation on the
    integrated branch. `done` records implementation acceptance, **not a merge**.
@@ -366,7 +363,7 @@ pending, not that the queue drained. Keep supervising CI or report a genuine
 blocker; never report the run complete merely because implementation finished.
 `advance` is an audited root acknowledgment: it checks the selected task and
 requires evidence references, but **does not query GitHub, verify the branch,
-validate CI, or infer permission**. The root must verify those facts before calling
+validate CI, or infer permission**. The orchestrator must verify those facts before calling
 it. The queue is operator-editable, not a security boundary against explicit edits.
 
 **Migration and compatibility.** Missing `deliveryMode` defaults to `per-task`
@@ -414,7 +411,7 @@ signal. In particular, `owner` is a queue label and `startedAt` is a lease clock
 neither is a PID, session identity, heartbeat, or permission to manage a process.
 
 `tick` and `ready` never reclaim an expired lease: they exit 6 and leave the task active.
-The root orchestrator is the lifecycle controller for native subagents in its own
+The orchestrator is the lifecycle controller for native subagents in its own
 agent tree. For one of those claims it must inspect the native agent registry, not OS
 processes: if the child is running, interrupt that exact child handle and confirm it
 is no longer running; if it is completed, proceed directly. Then run `queue release
@@ -424,7 +421,7 @@ mismatched owner; it does not delete or merge a worktree, which still needs the 
 unique-content audit.
 
 After a harness restart or power outage has erased child handles, an explicit operator
-recovery instruction authorizes the root orchestrator to release the stale queue claim
+recovery instruction authorizes the orchestrator to release the stale queue claim
 with the exact stored owner. This authority applies to the queue record only: never run
 `kill`, `pkill`, `killall`, or `taskkill`, and never infer process ownership from a
 name or PID. Claims belonging to another live/possibly-live session remain fail-closed:

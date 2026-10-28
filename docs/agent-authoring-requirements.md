@@ -184,3 +184,25 @@ author the per-harness forms by hand.
       (`RESOLVER.md`, `settings.json`, and hooks are canonical — editing them is
       expected.)
 - [ ] `bin/` entrypoints are clobber-safe and run from any CWD.
+
+## 7. Writing guideline text (AGENTS.md, skills, their full-text docs)
+
+Models from small local ones to frontier read these files. Every line costs attention.
+
+- **One rule per line, imperative, no hedging.** Put rationale and history in the full text, not the binding text.
+- **One home per rule.** State a rule once and link to it. Do not restate it in another file.
+- **Budget the always-loaded file.** `AGENTS.md` stays under 16 KB. A skill loads one at a time, so keep it
+  self-contained but free of what `AGENTS.md` already says.
+- **Canonical terms.** Use these words and no synonyms:
+
+| Term | Means | Not |
+|---|---|---|
+| orchestrator | the one agent per session that plans, integrates, pushes and merges | root |
+| worker | an agent the orchestrator starts to do one task | — |
+| lane | a worker's isolated git worktree off the working branch | — |
+| subagent | a worker started through the harness's own agent tool | — |
+| handoff | `.pause/handoff.md`, the branch-only checkpoint | — |
+| gate | a check that exits non-zero to block a step | — |
+
+`scripts/check-guidelines.ts` enforces the parts a script can decide: no paragraph duplicated across these
+files, no non-canonical term from the table, and a size budget per skill.

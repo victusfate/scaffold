@@ -1,8 +1,5 @@
 ## Instructions
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 Execute `./docs/<feature-slug>/plan.md` using TDD — one vertical slice at a time.
 
 If `plan.md` doesn't exist yet, create it first: break `prd.md` into vertical slices (each cuts through all layers: data → logic → UI → tests). Confirm granularity once with the user before coding.

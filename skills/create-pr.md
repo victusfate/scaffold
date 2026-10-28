@@ -1,11 +1,5 @@
 ## Instructions
 
-> **Multi-harness:** This skill works in Claude Code, Codex, pi, and agy. Cross-references
-> to other scaffold skills use slash-command notation (`/name`). In **Claude Code**
-> and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under Codex (`$name` or `/skills`) and pi, read `.agents/skills/<name>/SKILL.md` instead — the canonical
-> instructions in `skills/<name>.md` are identical.
->
 > **GitHub operations:** Where Claude Code uses `mcp__github__*` tools, other clients can
 > use `gh` CLI commands. The `gh` path works in all harnesses and is the canonical
 > form below.
@@ -317,12 +311,12 @@ a CLI check was performed. Never claim a CLI check is a persistent subscription.
 
 ### Per-task handoff
 
-PR creation is not merge authorization. In the default queue flow, the root keeps
+PR creation is not merge authorization. In the default queue flow, the orchestrator keeps
 this task current until local and required hosted validation pass on the final
 head, an authorized merge actually completes, and a fresh working branch exists.
 If authority is absent, preserve the ready PR and report that blocker; do not
 start another independent task. Follow `queue advance` in [queue.md](queue.md)
-only after verifying those facts. Subagents never push or merge the root's branch.
+only after verifying those facts. Subagents never push or merge the orchestrator's branch.
 
 ### Clear the handoff (before any merge)
 

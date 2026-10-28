@@ -1,6 +1,5 @@
-> **Multi-harness:** This skill works identically in Claude Code, Codex, pi, and agy. All paths
-> and commands are harness-agnostic. The pi extension file below is pi-specific; the
-> System 1 / System 2 routing policy applies in every harness.
+> The pi extension file below is pi-specific; the System 1 / System 2 routing policy applies in every
+> harness.
 
 ## Purpose
 
