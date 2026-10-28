@@ -85,8 +85,8 @@ rm -f "$D/eslint/"*.new
 # the served packs against the repo's accepted rule set (scripts/security-rules.ts) and keeps running the accepted
 # version of any rule a new pack removed or weakened until an agent review accepts the change. The pack list must
 # match PACKS in scripts/security-rules.ts. An offline refresh keeps the previous download.
-for pack in default nodejsscan typescript; do
-	if curl -sfL --retry 3 "https://semgrep.dev/c/p/$pack" -o "$D/rules/$pack.yml.tmp" && [[ -s $D/rules/$pack.yml.tmp ]]; then
+for pack in default nodejsscan r2c-security-audit secrets typescript; do
+	if curl -sfL --proto =https --proto-redir =https --max-filesize 50M --retry 3 "https://semgrep.dev/c/p/$pack" -o "$D/rules/$pack.yml.tmp" && [[ -s $D/rules/$pack.yml.tmp ]]; then
 		mv -f "$D/rules/$pack.yml.tmp" "$D/rules/$pack.yml"
 	elif [[ -s $D/rules/$pack.yml ]]; then
 		rm -f "$D/rules/$pack.yml.tmp"

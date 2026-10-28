@@ -18,9 +18,10 @@ import { type Ctx, EXIT_CLEAN, EXIT_FINDINGS, MAX_BUFFER, MSG_MAX, addFinding, d
 const SAST_EXT = /\.(rs|ts|tsx|mts|cts|js|jsx|mjs|cjs|py|sh|go|rb|java|toml|ya?ml|json)$/;
 /** Where a project lists its extra SAST targets (a gate file: read from the gate dir, i.e. origin/main). */
 export const SAST_TARGETS_FILE = 'security/sast-targets.txt';
-/** One target token: a leading `.` makes it an extension (`.gd`), otherwise it is an exact file basename
- *  (`Dockerfile`). Literal characters only — the tokens are compared as strings, never built into a regex. */
-const SAST_TOKEN = /^\.?[A-Za-z0-9][A-Za-z0-9_+-]*(\.[A-Za-z0-9_+-]+)*$/;
+/** Target tokens: a leading `.` makes an extension (`.gd`; one segment, matched against the last suffix), otherwise an
+ *  exact file basename (`Dockerfile`, `Dockerfile.dev`). Literal characters only — compared as strings, never regex. */
+const SAST_EXT_TOKEN = /^\.[A-Za-z0-9][A-Za-z0-9_+-]*$/;   // one extension segment: `.gd`, `.c++` (not `.tar.gz`)
+const SAST_NAME_TOKEN = /^[A-Za-z0-9][A-Za-z0-9_+.-]*$/;
 const ERR_TYPE_MAX = 40;
 
 // 1. Secrets in the commits being merged (values redacted, never printed). The config always comes from the gate
@@ -147,7 +148,7 @@ export function parseSastTargets(text: string): { exts: Set<string>; names: Set<
   text.split('\n').forEach((raw, i) => {
     const line = raw.replace(/#.*/, '').trim();
     if (!line) return;
-    if (!SAST_TOKEN.test(line)) die(`${SAST_TARGETS_FILE}:${i + 1}: "${line.slice(0, MSG_MAX)}" is not an extension (.ext) or a file name`);
+    if (!(line.startsWith('.') ? SAST_EXT_TOKEN : SAST_NAME_TOKEN).test(line)) die(`${SAST_TARGETS_FILE}:${i + 1}: "${line.slice(0, MSG_MAX)}" is not an extension (.ext) or a file name`);
     if (line.startsWith('.')) exts.add(line.toLowerCase());
     else names.add(line);
   });

@@ -42,13 +42,14 @@ void test('a dotfile is not mistaken for an extension', () => {
 });
 
 void test('a malformed line fails closed, naming the line', () => {
-  for (const bad of ['*.gd', '.(gd|py)', '../x', 'a b', '.', 'src/x.gd', '.gd$', '\\.gd']) {
+  for (const bad of ['*.gd', '.(gd|py)', '../x', 'a b', '.', 'src/x.gd', '.gd$', '\\.gd', '.tar.gz']) {
     assert.throws(() => parseSastTargets(`.ok\n${bad}\n`), new RegExp(`${SAST_TARGETS_FILE.replace('.', '\\.')}:2`), bad);
   }
 });
 
 void test('tokens are literal, never regex', () => {
-  const { exts, names } = parseSastTargets('.c++\nMake-file\n.tar.gz\n');
-  assert.deepEqual([...exts], ['.c++', '.tar.gz']);
-  assert.deepEqual([...names], ['Make-file']);
+  const { exts, names } = parseSastTargets('.c++\nMake-file\nDockerfile.dev\n');
+  assert.deepEqual([...exts], ['.c++']);
+  assert.deepEqual([...names], ['Make-file', 'Dockerfile.dev']);
+  assert.ok(sastTargets(cfgDir('Dockerfile.dev\n'))('svc/Dockerfile.dev'), 'a dotted file name matches exactly');
 });

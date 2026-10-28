@@ -58,7 +58,8 @@ Python dependencies (and semgrep's Python layer) are version-resolved, not hash-
 
 ### Rule packs: trust, but verify
 
-Every repo runs the **latest** registry packs (`p/default`, `p/nodejsscan`, `p/typescript`): setup downloads them,
+Every repo runs the **latest** registry packs (`p/default`, `p/secrets`, `p/r2c-security-audit`, `p/typescript`,
+`p/nodejsscan`; `PACKS` in `scripts/security-rules.ts`): setup downloads them over HTTPS only,
 and each scan refreshes any pack older than `SECURITY_RULES_MAX_AGE_HOURS` (default 24). Packs are not hash-pinned —
 the registry publishes no versions, so a pin only breaks installs and gets re-pinned unread. Instead the repo tracks
 the rule set it last **accepted** in `security/rules-accepted.json` (per rule: a hash of its matching logic, a hash of
@@ -80,13 +81,17 @@ the whole rule, its severity; read from `origin/main`), and `scripts/security-ru
     the same PR. The scan checks the rewritten list matches the packs served now exactly
     (`rules-accepted-stale:` is held otherwise).
   - **Major or suspicious:** do not ack; escalate to the owner. The accepted versions keep running meanwhile.
+  - **Large:** more than max(10 rules, 2% of the pack) weakened at once is a HOLD — only the owner's quoted sign-off
+    on the ack line clears it, whatever the agent concluded.
+- Deleting `security/rules-accepted.json` once `origin/main` has one is held for the owner
+  (`rules-accepted-deleted`): without a baseline the next weakening would pass unflagged.
 - A repo without `security/rules-accepted.json` treats every rule as new; create it with `accept` in its first
   gate PR. The file is consumer-owned: scaffold never ships it.
 
 | Check | Tool | Fails on (finding id) |
 |---|---|---|
 | Secrets in the merged commits | gitleaks (`.gitleaks.toml`) | any credential pattern, values redacted (`secret:<fingerprint>`) |
-| Static analysis of changed files | Semgrep: pinned registry packs (`default`, `secrets`, `r2c-security-audit`, `typescript`, `nodejsscan`) + the repo's `.semgrep/` rules | ERROR/WARNING findings introduced by this diff (`sast:<rule>@<file>:<line>`); a file it could not parse (`sast-error:<type>@<file>`) |
+| Static analysis of changed files | Semgrep: the latest registry packs, diffed against the accepted rule set (`default`, `secrets`, `r2c-security-audit`, `typescript`, `nodejsscan`) + the repo's `.semgrep/` rules | ERROR/WARNING findings introduced by this diff (`sast:<rule>@<file>:<line>`); a file it could not parse (`sast-error:<type>@<file>`) |
 | Known-vulnerable dependencies | osv-scanner | a vulnerable package/version the diff adds (`vuln:<id>:<pkg>@<version>`) |
 | Rust crate sources | cargo-deny (`deny.toml`, `--frozen`) on an isolated copy of HEAD | any non-crates.io source or ban, lockfile drift (`cargo-deny:<code>`) |
 | JS/TS security lint, changed lines only | ESLint via `scripts/security-eslint.ts` and the pinned stack: eslint-plugin-security, eslint-plugin-no-unsanitized, typescript-eslint type-aware rules | an error on a line this diff added or changed, or a file it cannot parse (`eslint:<rule>@<file>:<line>`) |

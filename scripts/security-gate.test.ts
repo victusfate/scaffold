@@ -364,5 +364,9 @@ void test('security gate end-to-end', { skip: SKIP }, async t => {
     g('add', '--', 'security/rules-accepted.json');
     g('commit', '-qm', 'stale accept');
     assert.match(gate(body, env).out, /HOLD rules-accepted-stale:/);
+    // Deleting the accepted list (which would drop the baseline for the next weakening) is held for the owner.
+    g('rm', '-q', '--', 'security/rules-accepted.json');
+    g('commit', '-qm', 'drop the accepted list');
+    assert.match(gate(body, env).out, /HOLD rules-accepted-deleted/);
   });
 });

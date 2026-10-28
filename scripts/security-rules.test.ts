@@ -6,7 +6,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { type Rule, acceptedFrom, cacheRules, canonical, changeId, checkIds, diffPack, fingerprint, heldRules,
-  parseAccepted, reviewReport, serializeAccepted } from './security-rules.ts';
+  ownerHeld, parseAccepted, reviewReport, serializeAccepted } from './security-rules.ts';
 
 const rule = (id: string, pattern: string, extra: Partial<Rule> = {}): Rule =>
   ({ id, languages: ['python'], pattern, message: `m ${id}`, severity: 'ERROR', metadata: { cwe: ['CWE-78'] }, ...extra });
@@ -97,4 +97,20 @@ void test('the review report marks registry text as untrusted data and shows bef
   assert.match(text, /## removed: c/);
   assert.doesNotMatch(text, /IGNORE PREVIOUS/, 'messages are not part of the logic shown to reviewers');
   rmSync(cache, { recursive: true, force: true });
+});
+
+void test('rule ids that name Object prototype members are plain ids', () => {
+  const odd = [rule('constructor', 'x(...)'), rule('__proto__', 'y(...)'), rule('toString', 'z(...)')];
+  const acc = acceptedFrom({ p: odd }).packs.p;
+  assert.deepEqual(diffPack(acc, odd), { added: [], cosmetic: [], weakened: [] });
+  assert.deepEqual(diffPack({}, odd).added.sort(), ['__proto__', 'constructor', 'toString']);
+  assert.deepEqual(diffPack(acc, []).weakened.map(w => w.id), ['__proto__', 'constructor', 'toString']);
+});
+
+void test('a large weakening is held for the owner; a routine one is agent-reviewable', () => {
+  assert.equal(ownerHeld(3, 1000), false);
+  assert.equal(ownerHeld(10, 100), false);
+  assert.equal(ownerHeld(11, 100), true, 'more than the 10-rule floor');
+  assert.equal(ownerHeld(20, 1000), false);
+  assert.equal(ownerHeld(21, 1000), true, 'more than 2% of a 1000-rule pack');
 });
