@@ -63,7 +63,7 @@ and fix what it reports before committing.
 ### 3 — Push
 
 - `git push` to the upstream so the handoff is reachable elsewhere.
-- No upstream? Say so plainly and offer to set one
+- No upstream? Say so and offer to set one
   (`git push -u origin <branch>`) — without a push, cross-device resume cannot
   work.
 

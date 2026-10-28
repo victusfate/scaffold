@@ -90,7 +90,7 @@ Run `/tdd` from `prd.md`. Each vertical slice should correspond to one cohesive 
 
 ### Phase 5: PR
 
-Run `/create-pr`. The PR body should include the findings summary and list which finding IDs were addressed.
+Run `/create-pr`. The PR body includes the findings summary and lists which finding IDs were addressed.
 
 ---
 

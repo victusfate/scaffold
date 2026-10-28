@@ -20,15 +20,15 @@ Score any scope of source files against the four rubric dimensions and report th
 // quality-override: No duplicate implementations — isolation rationale is intentionally repeated across skill files; skill composition system pending
 Run the audit as a separate Agent with isolated context. The agent invoking this skill may have authored the code under review and cannot score it objectively. A fresh subagent has no such priors.
 
-**Phase 1 — gather (main agent):**
+**Phase 1 — gather (invoking agent):**
 1. Resolve scope: collect target files from the path argument or `git ls-files`, excluding generated files, lock files, and fixtures.
-2. Spawn a reviewer Agent (via the Agent tool) with the file list and all rubric criteria embedded verbatim in the prompt. The reviewer reads the files itself and scores them independently.
+2. Start a reviewer subagent (via the harness's agent tool) with the file list and all rubric criteria embedded verbatim in the prompt. The reviewer reads the files itself and scores them independently.
 
-**Phase 2 — score (reviewer Agent, isolated context):**
+**Phase 2 — score (reviewer subagent, isolated context):**
 
 For each file, apply all four rubric dimensions. Produce the per-file score table and violation list exactly as defined in the rubric's Score Report Format. Every deduction requires a `filename:line` citation. Honor `quality-override` pragmas on the preceding line per the rubric's inline override rules — non-mechanical violations with a valid reason are suppressed and reported as accepted overrides.
 
-Sort files by their lowest single-dimension score (ascending), then by total violation count. Files with all 10/10 scores appear last. Return the ranked report to the main agent.
+Sort files by their lowest single-dimension score (ascending), then by total violation count. Files with all 10/10 scores appear last. Return the ranked report to the invoking agent.
 
 **Report format (reviewer returns this):**
 
@@ -51,5 +51,5 @@ Sort files by their lowest single-dimension score (ascending), then by total vio
 - path/to/worst.js:102 [Quality/major] dead branch — condition can never be false
 ```
 
-**Phase 3 — act (main agent):**
-Present the report to the user. If `--fix` was passed, apply fixes for violations ≤30 lines, then re-score by spawning a second reviewer Agent and re-emit the report showing before/after scores.
+**Phase 3 — act (invoking agent):**
+Present the report to the user. If `--fix` was passed, apply fixes for violations ≤30 lines, then re-score by starting a second reviewer subagent and re-emit the report showing before/after scores.

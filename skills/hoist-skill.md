@@ -18,7 +18,7 @@ Collect from what the user said (or ask once if missing):
 - **Ref** — optional scaffold ref to stamp in the manifest (`--ref <tag|commit>`, default `main`). Use when the consumer pins to a specific release.
 - **No-record** — pass `--no-record` only if the user explicitly asks to skip manifest registration.
 
-If any required arg is missing, ask for it once. Do not proceed until you have `names` and `into`.
+Do not proceed until you have `names` and `into`.
 
 ### Step 2 — optionally list available capabilities
 
@@ -28,7 +28,7 @@ If the user is unsure what to export or asks to see options:
 node tools/hoist-skill/run --list
 ```
 
-Present the capability names and purposes in a readable list. Then ask which ones they want.
+List the capability names and purposes, then ask which ones they want.
 
 ### Step 3 — run the export
 
@@ -42,7 +42,7 @@ node tools/hoist-skill/run \
   [--no-record]
 ```
 
-After a successful emit the tool automatically writes (or updates) `<destination>/.sync/hoisted` — a tab-separated manifest recording each `(name, harness, ref)` triple. This is what lets consumers refresh hoisted skills on the next sync without re-typing the names list.
+After a successful emit the tool automatically writes (or updates) `<destination>/.sync/hoisted` — a tab-separated manifest recording each `(name, harness, ref)` triple, so consumers refresh hoisted skills on the next sync without re-typing the names list.
 
 ### Step 4 — report results
 
