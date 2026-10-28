@@ -240,9 +240,10 @@ Read all commits ahead of main (`git log main..HEAD`) and the diff stat. Draft:
 ### Human review focus
 <The agent review above reads every line; this Q&A points the owner at the few hunks where a person's
 judgment changes the merge — product intent, durable contracts, data/security blast radius, anything
-`[unverified]`. One line each, ranked by blast radius:>
+`[unverified]`. At most three, ranked by blast radius:>
 - `<path:line>` — <one specific question the owner answers>
-<or: "None — leaf change; every check is machine-decided." when that is true>
+<or: "None — leaf change; every check is machine-decided." — only when true, and never when the diff
+touches `AGENTS.md`, `skills/`, `.github/` or the gate's files>
 
 ## Quality Scores
 | File | Quality | Readability | Encapsulation | Clarity |

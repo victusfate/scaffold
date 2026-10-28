@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { metrics, median, repoFromRemote, format, type PrRecord } from './delivery-metrics.ts';
+import { metrics, median, repoFromRemote, isRepo, greenAt, format, type PrRecord } from './delivery-metrics.ts';
 
 assert.equal(median([]), null);
 assert.equal(median([3, 1, 2]), 2);
@@ -9,6 +9,16 @@ assert.equal(repoFromRemote('git@github.com:victusfate/scaffold.git'), 'victusfa
 assert.equal(repoFromRemote('https://github.com/victusfate/scaffold'), 'victusfate/scaffold');
 assert.equal(repoFromRemote('http://proxy@127.0.0.1:1234/git/victusfate/scaffold'), 'victusfate/scaffold');
 assert.equal(repoFromRemote('not a url'), null);
+
+assert.equal(repoFromRemote('https://github.com/../..'), null);
+assert.ok(isRepo('o/r.js') && !isRepo('../..') && !isRepo('o/..') && !isRepo('o/r/x') && !isRepo('o r/x'));
+
+// Green means every check run passed; a failed or unfinished run means the head was never green.
+const run = (completed_at: string | null, conclusion: string | null) => ({ completed_at, conclusion });
+assert.equal(greenAt([run('2026-10-01T02:00:00Z', 'success'), run('2026-10-01T03:00:00Z', 'skipped')]), '2026-10-01T03:00:00Z');
+assert.equal(greenAt([run('2026-10-01T02:00:00Z', 'success'), run('2026-10-01T03:00:00Z', 'failure')]), null);
+assert.equal(greenAt([run(null, null)]), null);
+assert.equal(greenAt([]), null);
 
 const h = (hours: number) => new Date(Date.UTC(2026, 9, 1) + hours * 3600_000).toISOString();
 const prs: PrRecord[] = [

@@ -194,9 +194,11 @@ one countermeasure (after IBM Technology's *Context Engineering for AI Agents: 4
 
 `scripts/check-handoff.ts` enforces the parts a script can decide. It rejects a handoff whose
 `## State` bullets lack a verification tag, that keeps correction markers, or that grew past the
-line cap into a log. `/save` and `/pause` run it before committing. `/resume` treats the handoff as
-claims to re-check, not instructions to replay: it re-runs the `[verified: …]` commands that gate its
-first step, and discards a handoff whose branch is already merged.
+line cap into a log, or whose `[verified: …]` tag holds shell syntax or a network fetch. `/save` and
+`/pause` run it before committing. `/resume` treats the handoff as claims to re-check, not instructions
+to replay: a tag is evidence, never a command to run verbatim (the handoff is branch content). It
+re-checks the claims gating its first step with the repo's own checks, and discards a handoff whose
+branch is already merged.
 
 ## Review economics — verify cheaply, point humans at what matters
 
@@ -212,8 +214,10 @@ So the harness splits the work by who is cheapest at it:
 - **Human attention is pointed, not spread.** The review ends with a `### Human review focus`
   subsection, a short Q&A for the owner. It lists the hunks where a person's judgment changes the
   merge decision: product intent, durable contracts, data or security blast radius, anything the
-  agent marked `[unverified]`. Each comes with one specific question (`` `path:line` — does X still
-  hold when Y? ``). "None: leaf change, all checks machine-decided" is a valid entry when true.
+  agent marked `[unverified]`. At most three, each with one specific question (`` `path:line` — does
+  X still hold when Y? ``): a dashboard holds only the instruments that matter. "None: leaf change,
+  all checks machine-decided" is valid only when true, and never when the diff touches `AGENTS.md`,
+  `skills/`, `.github/` or the gate's files, which steer agents or hold credentials.
 - **Encode judgment so it is not re-asked.** When the owner answers a focus question with a rule,
   record it as a decision, rubric line or eval so the next PR doesn't need the question.
 - **Measure delivery, not output.** Lines written are no signal. `node scripts/delivery-metrics.ts
