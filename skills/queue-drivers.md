@@ -60,10 +60,12 @@ same primitives:
    acceptance. Claude, Codex and pi use this same contract; hooks may notify the
    orchestrator but never independently merge, publish or reclaim.
 5. The orchestrator reviews and integrates passing commits into the one working branch,
-   runs gates, then follows [integration cleanup](#integration-cleanup-all-delivery-modes)
-   (finalize with `release <id> --worker <exact-owner>` for partial work).
+   runs gates, then preserves evidence and removes the worktree per
+   [integration cleanup](#integration-cleanup-all-delivery-modes). Only then finalize: `done` for full
+   accepted scope, `fail` for a genuine failed attempt, `release <id> --worker <exact-owner>` for partial
+   work. These transitions clear ended heartbeat and stop metadata after commit.
 6. Record preserved evidence and branch/worktree disposition before replacement
-   dispatch. At every dispatch/wake, reconcile completed owned handles first; an
+   dispatch. Never force-delete unpreserved content. At every dispatch/wake, reconcile completed owned handles first; an
    unprocessed terminal result is pending work, not an idle subagent.
 
 Record task ID, exact queue owner, creating session, harness, native handle or

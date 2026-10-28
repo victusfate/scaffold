@@ -21,6 +21,16 @@ labels and worktrees never grant authority. Only a lifecycle controller may term
 created, and only on explicit cancel or timeout. Ambiguous ownership: leave it alone and report.
 → [full text](docs/agents-detail.md#session-and-process-ownership).
 
+## Roles — orchestrator, subagent, active agent
+
+- **Orchestrator:** one per session. Owns the plan, the working branch, integration, pushes, merges and the PR.
+- **Subagent:** started by the orchestrator for one task, in its own lane. Works only that task, commits
+  locally, never pushes, merges or edits outside its lane, and reports evidence (commit, tests run, doubts).
+- **Active agent:** whichever agent is running now. Every rule binds it in its current role; alone in a
+  session, it is the orchestrator. A subagent that picks up a task from a skill or the queue follows that
+  skill's subagent steps, never its orchestrator steps.
+→ [terms](docs/agent-authoring-requirements.md#7-writing-guideline-text-agentsmd-skills-their-full-text-docs).
+
 ## Iterative Autonomous Enhancement — a core design principle
 
 **produce → self-evaluate against the target bar (real signal) → name the gap → improve → re-evaluate.**
@@ -78,7 +88,7 @@ hand-write them. Project facts live in the repo, never only in harness-private m
 
 ## Context hygiene — validate, compact, curate, prune
 
-Attention is finite: keep only what matters in context. **Validate** before a conclusion
+Attention is a finite instrument panel; keep only what matters on it. **Validate** before a conclusion
 enters a handoff, plan or memory (`[verified: <check>]`, else `[unverified]`). **Compact** when turns repeat:
 `/save`, restart from the handoff. **Curate** tools per step and per lane. **Prune**: rewrite a superseded
 fact in place. `scripts/check-handoff.ts` gates the handoff.
