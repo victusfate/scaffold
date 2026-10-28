@@ -3,9 +3,8 @@
 
 Run a high-stakes decision through a **council of five advisors**, each arguing
 from a fundamentally different lens, then a peer-review round, then a chairman
-synthesis. The value is not a single answer — it is seeing **where the advisors
-agree, where they clash, and what to actually do**, instead of one flattened
-opinion that hides the tradeoffs.
+synthesis. The value is seeing **where the advisors agree, where they clash, and
+what to do**, instead of one flattened opinion that hides the tradeoffs.
 
 ## When to use / when NOT to use
 
@@ -16,30 +15,30 @@ this", "pressure-test this", "stress-test this", "debate this", or a real
 "should I X or Y" with stakes.
 
 **Do NOT use it for** factual lookups, simple yes/no questions, creative
-generation, summarization, or low-stakes advice — a council is wasted ceremony
-there. If the question has a correct answer, just answer it.
+generation, summarization, or low-stakes advice; a council is wasted ceremony
+there. If the question has a correct answer, answer it.
 
 ## Execution model
 
-The advisors are **isolated subagents** run in parallel — independent context so
-each leans fully into its lens without anchoring on the others. Use the current client’s subagent tools and batch advisors within its concurrency
-limit. If isolated subagents are unavailable, disclose that the council cannot
-run independently; provide a clearly labeled single-agent analysis. Advisors inherit
-the session's model; diversity comes from persona, not vendor.
+The advisors are **isolated subagents** run in parallel, so each leans fully into
+its lens without anchoring on the others. Use the current client's subagent tools
+and batch advisors within its concurrency limit. If isolated subagents are
+unavailable, disclose that the council cannot run independently and provide a
+clearly labeled single-agent analysis. Advisors inherit the session's model;
+diversity comes from persona, not vendor.
 
 **Phase 1 — Frame (main agent).**
 Turn the user's question into a neutral, self-contained brief. Scan the workspace
 for grounding context (`CLAUDE.md`/`AGENTS.md`, `docs/**`, relevant source) and
 fold in what makes the analysis specific rather than generic. State the decision,
 the options on the table, the constraints, and what "success" means. Keep it
-even-handed — do not tip the advisors toward an answer.
+even-handed; do not tip the advisors toward an answer.
 
 **Map the shape of the trade space.** Before the advisors weigh in, name the
-dimensions the decision actually balances (cost vs speed vs risk vs reversibility
-vs …), where the real tension lives, and roughly where the frontier sits — which
-options are Pareto-dominated and which are genuine tradeoffs. Include this in the
-brief so the council reasons about the real multidimensional space, not a flat
-pro/con list. Complex balance work goes wrong when it's flattened to one axis.
+dimensions the decision balances (cost vs speed vs risk vs reversibility vs …),
+where the real tension lives, and roughly where the frontier sits: which options
+are Pareto-dominated and which are genuine tradeoffs. Include this in the brief so
+the council reasons about the multidimensional space, not a flat pro/con list.
 
 **Phase 2 — Advisors (5 isolated subagents, parallel).**
 Spawn all five **in a single message** so they run concurrently. Each receives
@@ -57,13 +56,12 @@ review judges the argument, not the persona). Give every advisor all five and as
 **~200 words each.** Run concurrently.
 
 **Phase 4 — Chairman synthesis (main agent).**
-Consolidate everything into a verdict in the exact structure below. Do not average
-the advisors — weigh them. Name real disagreement rather than papering it into
+Consolidate everything into a verdict in the exact structure below. Weigh the
+advisors; do not average them. Name real disagreement rather than papering it into
 false consensus.
 
 **Phase 5 — Present in chat.**
-Render the chairman synthesis as scannable markdown. No HTML files, no artifacts —
-this is a decision aid, delivered inline.
+Render the chairman synthesis as scannable markdown inline. No HTML files, no artifacts.
 
 ## The five advisors
 
@@ -75,27 +73,25 @@ this is a decision aid, delivered inline.
 | **The Outsider** | Brings zero domain context. Catches what experts have stopped seeing; names what's confusing. |
 | **The Executor** | Cares only about implementation. "What do you actually do Monday morning?" |
 
-The lenses are built to collide — Contrarian vs Expansionist (downside vs
-upside), First-Principles vs Executor (rethink vs ship). That tension is the
-point; do not sand it down.
+The lenses are built to collide: Contrarian vs Expansionist (downside vs
+upside), First-Principles vs Executor (rethink vs ship). Do not sand that tension down.
 
 ## Jev-accelerated mode (optional)
 
-When a judgment endpoint is reachable — `jev_evaluate` in pi, or an
-`OPENROUTER_API_KEY` shell one-liner on any harness (see the `jev-typesafe`
-skill) — Phases 3 and 4 get faster *and* better calibrated. The rule: **Jev
+When a judgment endpoint is reachable (`jev_evaluate` in pi, or an
+`OPENROUTER_API_KEY` shell one-liner on any harness; see the `jev-typesafe`
+skill), Phases 3 and 4 get faster *and* better calibrated. The rule: **Jev
 judges, never authors.** Advisor essays always stay generative and isolated;
-everything that is a judgment *about* the responses collapses into 1–2 batched
-calls. Fall back to the generative rounds below whenever no key or endpoint is
-reachable — the council works everywhere, Jev is strictly an accelerator.
+every judgment *about* the responses collapses into 1–2 batched calls. Fall back
+to the generative rounds whenever no key or endpoint is reachable; Jev is only an
+accelerator.
 
 - **Phase 3 via one batched call (~300 ms, ~$0.0001):** anonymize the five
   responses A–E (randomized, so reviewers judge argument, not persona), send
   them as state, and ask the comparative judgments as typed questions: `choice`
   (strongest response), `choice` (biggest blind spot), `noul` (did all five
   collectively miss something), plus majority-consensus `noul` questions for
-  each convergent claim the chairman intends to lean on. Probabilities instead
-  of one more generative opinion.
+  each convergent claim the chairman intends to lean on.
 - **Phase 4 stress-test before presenting:** send the drafted synthesis back as
   one batched call — *does the recommendation survive the advisors' strongest
   objections? does any raised concern go unaddressed?* — plus a final go/no-go
@@ -124,8 +120,8 @@ reachable — the council works everywhere, Jev is strictly an accelerator.
 
 ## Rules
 
-- Phases 2 and 3 are read-only analysis — the council never modifies files.
-- Advisors run concurrently within the client’s available slots; batch when fewer than five slots are available. Keep every advisor isolated.
-- Anonymize before peer review — reviewers must not know which persona wrote what.
+- Phases 2 and 3 are read-only analysis; the council never modifies files.
+- Run advisors concurrently within the client's available slots; batch when fewer than five slots are available. Keep every advisor isolated.
+- Anonymize before peer review; reviewers must not know which persona wrote what.
 - The chairman commits to a recommendation; "it depends" is not a verdict.
-- If the question is factual or low-stakes, skip the council and just answer.
+- If the question is factual or low-stakes, skip the council and answer.

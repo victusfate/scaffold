@@ -13,7 +13,7 @@ propagated upstream to `scaffold` so every downstream repo inherits it.
 ## Hard rules
 
 - **One skill per run.** If the session covered several reusable workflows, pick
-  the most valuable and say so — don't bundle.
+  the most valuable and say so; don't bundle.
 - **Slug is canonical.** kebab-case, drop articles, ≤30 chars. State it before
   writing the first file so the user can correct it. The slug is the directory
   name AND the RESOLVER `Skill` cell AND the `^\/<slug>` regex anchor.
@@ -30,12 +30,12 @@ propagated upstream to `scaffold` so every downstream repo inherits it.
 
 ### Phase 0 — Context Reconstruction
 
-Rebuild what actually happened without asking the user to re-explain:
+Rebuild what happened without asking the user to re-explain:
 
-- Recent conversation history — what was the user trying to achieve, what worked.
-- Project manifests — `package.json`, `Cargo.toml`, `pyproject.toml`, etc. — for
+- Recent conversation history: what the user was trying to achieve, what worked.
+- Project manifests (`package.json`, `Cargo.toml`, `pyproject.toml`, etc.) for
   language, scripts, and test runner.
-- `git diff --stat` (and `git log --oneline -20`) — which files changed and the
+- `git diff --stat` (and `git log --oneline -20`) for which files changed and the
   shape of the work.
 
 Produce a one-paragraph reconstruction and confirm it in a single line before
@@ -43,7 +43,7 @@ interviewing.
 
 ### Phase 1 — Structured Interview (4 rounds, one question at a time)
 
-Swift loop — recommend an answer with each question so the user can just confirm:
+Recommend an answer with each question so the user can confirm it:
 
 1. **Intent** — what should invoking this skill accomplish? (becomes `description`)
 2. **Inputs** — what does it need to start? (args, files, preconditions)
@@ -107,10 +107,9 @@ Codex uses the shared `.agents/skills` wrapper above and reads `AGENTS.md`
 directly. Antigravity also reads the repository instructions; no Codex-only copy of
 the skill body is needed.
 
-Keep `description:` trigger-rich (it's how non-Claude harnesses decide to activate
-the skill) and **identical across all four wrapper forms** — the validator's
-parity phase rejects drift. Factor shared routines into `lib/` rather than
-repeating them.
+Keep `description:` trigger-rich (non-Claude harnesses use it to decide activation)
+and **identical across all four wrapper forms**; the validator's parity phase
+rejects drift. Factor shared routines into `lib/` rather than repeating them.
 
 ### Phase 3 — Review, Save, and PR to scaffold
 
@@ -118,9 +117,8 @@ repeating them.
    (unique `^\/<slug>` anchor, path pointing to `skills/<slug>.md`). Verify all
    harness forms from Phase 2 exist, including the shared Codex/pi/agy wrapper.
    Append all new file paths to `.github/scaffold-files.txt`.
-2. **Tests** — the skill must survive `node scripts/check-resolvable.ts`. Add a
-   focused test for any logic the skill ships in a script.
-3. **Validate** — `node scripts/check-resolvable.ts`. Fix every error.
+2. **Tests** — add a focused test for any logic the skill ships in a script.
+3. **Validate** — the skill must pass `node scripts/check-resolvable.ts`. Fix every error.
 4. **PR to scaffold** — new skills belong upstream so all repos inherit them:
    ```
    git fetch scaffold main
@@ -129,8 +127,8 @@ repeating them.
    git push -u scaffold skillify/<slug>
    ```
    Then open a PR against `victusfate/scaffold` titled `feat(skill): <slug>`,
-   body summarizing intent and pipeline. Do not merge — leave it for review.
-   (If the `scaffold` remote isn't configured, run `bin/sync-from-scaffold.sh`
-   once first; it adds the remote.)
+   body summarizing intent and pipeline. Do not merge; leave it for review.
+   If the `scaffold` remote isn't configured, run `bin/sync-from-scaffold.sh`
+   once first; it adds the remote.
 5. **Summarize** — slug, what it does, files written, validator result, PR link.
    Stop for the user to review.

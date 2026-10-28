@@ -47,7 +47,7 @@ cd ~/.pi/agent/extensions && npx -y tsx -e \
 
 Start a **new pi session** (tools register at startup). There is no enable gate:
 the tool is active whenever a key resolves, and without a key the first call
-throws a loud `configuration` error naming both key paths — it cannot fail
+throws a loud `configuration` error naming both key paths, so it cannot fail
 silently. `/typesafe login` and `/typesafe enable` apply only to the TypeSafe
 backend; this tool needs neither.
 
@@ -77,20 +77,17 @@ Expected: answers with probabilities (e.g. `urgent: P(yes) = 0.99`), ~300–400 
 
 ## The extension file
 
-`~/.pi/agent/extensions/jev-openrouter.ts` — copy it byte-identical from
+Copy `~/.pi/agent/extensions/jev-openrouter.ts` byte-identical from
 [`docs/jev-openrouter-setup.md`](../docs/jev-openrouter-setup.md), the single
-source for the extension.
-
-Read and follow the complete setup runbook in
-[`docs/jev-openrouter-setup.md`](../docs/jev-openrouter-setup.md), which
-contains the full extension source, request shape, question-writing guidance,
-and troubleshooting table.
+source for the extension. Read and follow that setup runbook; it contains the
+full extension source, request shape, question-writing guidance, and
+troubleshooting table.
 
 ## Using it in a session
 
-Jev-first routing by decision class, with the exceptions named explicitly (no
-routing-percentage belongs in agent-facing text — it invites Goodharting; the
-ratio is an output of the workload, not a control knob):
+Route Jev-first by decision class, with the exceptions named explicitly. Put no
+routing percentage in agent-facing text: it invites Goodharting, and the ratio is
+an output of the workload, not a control knob.
 
 - **Jev by default:** test/build triage (`state: { stderr, exit_code }`; one
   `choice` (environmental / syntax / regression) + one `noul` (safe to retry)),
@@ -100,16 +97,15 @@ ratio is an output of the workload, not a control knob):
   incoming messages.
 - **System 2, named as the exception:** multi-step debugging, architecture and
   code synthesis, anything requiring running code or synthesizing text not in
-  the state, and entangled judgments (split them into separate questions first —
+  the state, and entangled judgments (split them into separate questions first;
   entanglement is a question-writing bug, not a routing one).
 
-**Hydrate state before asking.** Low confidence almost always means thin state,
-not a hard question — and a call on thin state costs the round trip *and* the
-reasoning anyway. Before calling, check the state contains the artifacts the
-questions reference (the actual stderr, the actual diff, the actual candidates).
-On confidence < 0.70: enrich the state and re-ask **once**; if it stays low,
-escalate to reasoning **with the judgment and its probabilities attached** —
-the signal is not wasted.
+**Hydrate state before asking.** Low confidence almost always means thin state, not a
+hard question, and a call on thin state costs the round trip *and* the reasoning
+anyway. Before calling, check the state contains the artifacts the questions
+reference (the actual stderr, the actual diff, the actual candidates). On
+confidence < 0.70: enrich the state and re-ask **once**; if it stays low,
+escalate to reasoning **with the judgment and its probabilities attached**.
 
 **Batch the turn, not the thought.** 1–32 questions run in parallel in one
 request, so a whole turn's pending micro-decisions fit a single end-of-turn
@@ -134,13 +130,14 @@ whole state):
 }
 ```
 
-Question-writing rules: ask what the state *says* (not what you would conclude);
-describe Score levels as checkable situations, not degrees; include a no-match
-option in Choice questions; one judgment per question; multiple items → one
-named state field per item (`reports.r1`), one question per item per dimension.
-Report answers as the model's judgments with their probabilities — never as your
-own conclusions, and never as authorization to act (confidence is distribution
-concentration, not permission).
+Question-writing rules:
+- Ask what the state *says*, not what you would conclude.
+- Describe Score levels as checkable situations, not degrees.
+- Include a no-match option in Choice questions.
+- One judgment per question.
+- Multiple items → one named state field per item (`reports.r1`), one question per item per dimension.
+- Report answers as the model's judgments with their probabilities, never as your own conclusions, and never
+  as authorization to act (confidence is distribution concentration, not permission).
 
 ## Limits
 
