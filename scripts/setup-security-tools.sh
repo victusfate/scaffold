@@ -11,12 +11,12 @@
 # Supply-chain rules for the scanners themselves: exact versions, each release at least two weeks old when pinned;
 # release checksums AND our pinned sha256 verified for downloads; PyPI tools pinned in an isolated venv; the ESLint
 # stack installed with `npm ci --ignore-scripts` from the gate's own lockfile (scripts/security-eslint-stack/);
-# Semgrep registry rule packs verified against the tracked scripts/security-rules.sha256. The gate files it reads
-# (rule checksums, ESLint stack lockfile) come from origin/main, never the working tree. Every scan re-hashes each
+# the latest Semgrep registry rule packs (verified per scan by scripts/security-rules.ts). The gate files it reads
+# (tool checksums, ESLint stack lockfile) come from origin/main, never the working tree. Every scan re-hashes each
 # installed binary and the ESLint stack against scripts/security-tools.sha256, so a later swap fails the scan.
 # Known gap: the PyPI tools' (semgrep, zizmor) transitive Python dependencies are version-resolved by pip, not
 # hash-pinned (the scan pins zizmor's binary and semgrep's native semgrep-core, not semgrep's Python layer).
-# Usage: setup-security-tools.sh [--refresh-rules]
+# Usage: setup-security-tools.sh   (re-run any time to refresh the rule packs to the latest)
 set -euo pipefail
 GITLEAKS=8.30.1 OSV=2.7.0 SEMGREP=1.180.0 ZIZMOR=1.30.1 CARGO_DENY=0.20.2
 # Pinned at vetting time and verified against the release checksum files: the release's own checksums only
@@ -81,21 +81,18 @@ if ! cmp -s "$D/eslint/package-lock.json.new" "$D/eslint/package-lock.json" || [
 	(cd "$D/eslint" && rm -rf node_modules && npm ci --ignore-scripts --no-audit --no-fund) || fail "ESLint stack install failed"
 fi
 rm -f "$D/eslint/"*.new
-# Semgrep registry rule packs: the expected sha256 of each is TRACKED (scripts/security-rules.sha256), so a
-# changed pack is a reviewed repo change, never a silent download. --refresh-rules re-downloads and rewrites
-# the main checkout's copy of that file (commit it after reviewing the rule diff; the gate holds it for sign-off).
-SUMS=$D/rules.sha256
-gate_file scripts/security-rules.sha256 > "$SUMS"
-for pack in default secrets r2c-security-audit typescript nodejsscan; do
-	if [[ ${1:-} = --refresh-rules || ! -f $D/rules/$pack.yml ]]; then
-		curl -sfL "https://semgrep.dev/c/p/$pack" -o "$D/rules/$pack.yml.tmp" || fail "download of semgrep pack $pack failed"
+# Semgrep registry rule packs: always the LATEST (trust, but verify). Nothing is hash-pinned here; every scan diffs
+# the served packs against the repo's accepted rule set (scripts/security-rules.ts) and keeps running the accepted
+# version of any rule a new pack removed or weakened until an agent review accepts the change. The pack list must
+# match PACKS in scripts/security-rules.ts. An offline refresh keeps the previous download.
+for pack in default nodejsscan r2c-security-audit secrets typescript; do
+	if curl -sfL --proto =https --proto-redir =https --max-filesize 50M --retry 3 "https://semgrep.dev/c/p/$pack" -o "$D/rules/$pack.yml.tmp" && [[ -s $D/rules/$pack.yml.tmp ]]; then
 		mv -f "$D/rules/$pack.yml.tmp" "$D/rules/$pack.yml"
+	elif [[ -s $D/rules/$pack.yml ]]; then
+		rm -f "$D/rules/$pack.yml.tmp"
+		echo "setup-security-tools: could not refresh semgrep pack $pack; keeping the previous download" >&2
+	else
+		fail "download of semgrep pack $pack failed"
 	fi
 done
-if [[ ${1:-} = --refresh-rules ]]; then
-	(cd "$D/rules" && sha256sum ./default.yml ./nodejsscan.yml ./r2c-security-audit.yml ./secrets.yml ./typescript.yml) > "$COMMON/scripts/security-rules.sha256"
-	echo "setup-security-tools: rewrote $COMMON/scripts/security-rules.sha256 — review and commit it"
-else
-	(cd "$D/rules" && sha256sum -c --quiet "$SUMS") || fail "semgrep rule packs differ from scripts/security-rules.sha256; review, then --refresh-rules"
-fi
 echo "setup-security-tools: gitleaks $GITLEAKS, osv-scanner $OSV, semgrep $SEMGREP, zizmor $ZIZMOR, cargo-deny $CARGO_DENY and the ESLint stack ready in $D"

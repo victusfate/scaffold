@@ -11,13 +11,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { GATE_FILES } from './security-gate.ts';
 import { mainCheckout } from './security-scan.ts';
+import { PACKS as RULE_PACKS } from './security-rules.ts';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..');
 const COMMON = mainCheckout(SRC);
@@ -26,8 +27,7 @@ const RULES = process.env.SECURITY_RULES_DIR || join(COMMON, '.tooling/security/
 const ESLINT_STACK = process.env.SECURITY_ESLINT_DIR || join(COMMON, '.tooling/security/eslint');
 // Every pinned rule pack too: a cloud sandbox can install the binaries yet be refused the Semgrep registry, and
 // that half-installed toolset is "not installed", not a failing gate.
-const PACKS = readFileSync(join(SRC, 'scripts/security-rules.sha256'), 'utf8').split('\n').filter(Boolean)
-  .map(l => l.trim().split(/\s+/)[1]);
+const PACKS = RULE_PACKS.map(p => `${p}.yml`);
 const MISSING = existsSync(join(TOOLS, 'gitleaks')) && existsSync(join(ESLINT_STACK, 'node_modules'))
   && PACKS.every(f => existsSync(join(RULES, f))) ? ''
   : `security scanners not installed at ${TOOLS} / ${ESLINT_STACK} / ${RULES} (run scripts/setup-security-tools.sh)`;
@@ -37,6 +37,15 @@ const HAVE_CARGO = spawnSync('cargo', ['--version']).status === 0;
 
 const T = mkdtempSync(join(tmpdir(), 'security-gate-test-'));
 const REPO = join(T, 'repo');
+// The installed packs as they are (no registry refresh mid-test) and a rule cache private to this run.
+const RULES_ENV = { SECURITY_TOOLS_DIR: TOOLS, SECURITY_RULES_CACHE: join(T, 'rules-cache'), SECURITY_RULES_MAX_AGE_HOURS: '1000000' };
+
+/** Writes security/rules-accepted.json from the packs in `rules` (what `security-rules.ts accept` does for a repo). */
+function acceptRules(rules: string): void {
+  const r = spawnSync(process.execPath, [join(REPO, 'scripts/security-rules.ts'), 'accept', '--rules', rules], { cwd: REPO,
+    encoding: 'utf8', env: { ...process.env, ...RULES_ENV } });
+  assert.equal(r.status, 0, r.stderr);
+}
 
 function sh(cmd: string, args: string[], cwd = REPO): string {
   const r = spawnSync(cmd, args, { cwd, encoding: 'utf8' });
@@ -61,7 +70,7 @@ function gate(body: string, env: NodeJS.ProcessEnv = {}): { ok: boolean; out: st
   mkdirSync(dirname(launcher), { recursive: true });
   writeFileSync(launcher, g('show', 'origin/main:scripts/security-gate.ts'));
   const r = spawnSync(process.execPath, [launcher, file], { cwd: REPO, encoding: 'utf8',
-    env: { ...process.env, SECURITY_TOOLS_DIR: TOOLS, SECURITY_RULES_DIR: RULES, SECURITY_ESLINT_DIR: ESLINT_STACK, ...env } });
+    env: { ...process.env, ...RULES_ENV, SECURITY_RULES_DIR: RULES, SECURITY_ESLINT_DIR: ESLINT_STACK, ...env } });
   return { ok: r.status === 0, out: `${r.stdout}${r.stderr}` };
 }
 
@@ -89,6 +98,7 @@ function setup(): void {
     skipLibCheck: true }, include: ['*.ts'] }));
   writeFileSync(join(REPO, 'lib.ts'), LIB_LINE_1);
   writeFileSync(join(REPO, 'README.md'), 'base\n');
+  acceptRules(RULES);
   g('add', '-A');
   g('commit', '-qm', 'base');
   pushMain();
@@ -286,5 +296,77 @@ void test('security gate end-to-end', { skip: SKIP }, async t => {
     assert.ok(!r.ok);
     assert.match(r.out, /FINDING eslint:no-eval@lib\.ts:2/);
     assert.doesNotMatch(r.out, /eslint:[^ ]+@lib\.ts:1\b/);
+  });
+
+  await t.test('security/sast-targets.txt on origin/main adds a project language to the SAST pass', () => {
+    // A project rule for a language no pinned pack covers (generic mode), as a consumer would add for its engine.
+    g('checkout', '-q', 'feature');
+    g('reset', '-q', '--hard', 'origin/main');
+    commit('.semgrep/project.yml', 'rules:\n  - id: project-danger-call\n    languages: [generic]\n    severity: ERROR\n'
+      + '    message: project danger call\n    pattern: zz_project_danger_call(...)\n', 'project rule');
+    pushMain();
+    const finding = /FINDING sast:project-danger-call@page\.tpl:1/;
+    fresh();
+    commit('page.tpl', 'zz_project_danger_call(input)\n', 'tpl');
+    assert.doesNotMatch(gate(review('src.py', 'page.tpl')).out, finding, 'an unlisted extension is not a SAST target');
+    g('checkout', '-q', 'feature');
+    g('reset', '-q', '--hard', 'origin/main');
+    commit('security/sast-targets.txt', '# project languages\n.tpl\n', 'targets');
+    pushMain();
+    fresh();
+    commit('page.tpl', 'zz_project_danger_call(input)\n', 'tpl');
+    const r = gate(review('src.py', 'page.tpl'));
+    assert.ok(!r.ok);
+    assert.match(r.out, finding);
+    // The branch cannot shrink or poison the list it is judged by: a malformed branch copy is a held gate change,
+    // and the scan still reads origin/main's list.
+    commit('security/sast-targets.txt', '*\n', 'bad list');
+    const held = gate(review('src.py', 'page.tpl', 'security/sast-targets.txt'));
+    assert.match(held.out, /HOLD gate-change:security\/sast-targets\.txt/);
+    assert.match(held.out, finding);
+  });
+
+  await t.test('a weakened rule pack is flagged, its accepted rules keep running, and accepting it needs the ack', () => {
+    // Fixture packs: the accepted state has rules a and b; the registry then serves a pack without b.
+    const pack = (ids: string[]) => `rules:\n${ids.map(id => `  - id: zz-rule-${id}\n    languages: [python]\n    severity: ERROR\n`
+      + `    message: zz ${id}\n    pattern: zz_danger_${id}(...)\n`).join('')}`;
+    const served = (ids: string[]) => {
+      const dir = mkdtempSync(join(T, 'packs-'));
+      for (const p of RULE_PACKS) writeFileSync(join(dir, `${p}.yml`), p === 'default' ? pack(ids) : 'rules: []\n');
+      return dir;
+    };
+    const before = served(['a', 'b']);
+    const after = served(['a']);
+    g('checkout', '-q', 'feature');
+    g('reset', '-q', '--hard', 'origin/main');
+    acceptRules(before);
+    g('add', '--', 'security/rules-accepted.json');
+    g('commit', '-qm', 'accept fixture packs');
+    pushMain();
+    fresh();
+    commit('app2.py', 'zz_danger_b(1)\n', 'uses the removed rule');
+    const env = { SECURITY_RULES_DIR: after };
+    const r = gate(review('src.py', 'app2.py'), env);
+    assert.ok(!r.ok);
+    const id = /FINDING (rules-change:default@[0-9a-f]{12})/.exec(r.out)?.[1];
+    assert.ok(id, r.out);
+    assert.match(r.out, /FINDING sast:zz-rule-b@app2\.py:1/, 'the removed rule still runs until the change is accepted');
+    // Accepting the served packs, with the reviewed change acked, merges; the same accept without the ack does not.
+    acceptRules(after);
+    g('add', '--', 'security/rules-accepted.json');
+    g('commit', '-qm', 'accept the reviewed packs');
+    const body = `${review('src.py', 'app2.py', 'security/rules-accepted.json')}security-ack: sast:zz-rule-b@app2.py:1 — fixture\n`;
+    assert.ok(!gate(body, env).ok, 'accepting a weakening without the review ack refuses');
+    const ok = gate(`${body}security-ack: ${id} — agent review: fixture rule removed, benign\n`, env);
+    assert.ok(ok.ok, ok.out);
+    // An accepted list that does not match the served packs is held (one that never was served: a, b and c).
+    acceptRules(served(['a', 'b', 'c']));
+    g('add', '--', 'security/rules-accepted.json');
+    g('commit', '-qm', 'stale accept');
+    assert.match(gate(body, env).out, /HOLD rules-accepted-stale:/);
+    // Deleting the accepted list (which would drop the baseline for the next weakening) is held for the owner.
+    g('rm', '-q', '--', 'security/rules-accepted.json');
+    g('commit', '-qm', 'drop the accepted list');
+    assert.match(gate(body, env).out, /HOLD rules-accepted-deleted/);
   });
 });

@@ -33,9 +33,12 @@ import type { Finding } from './security-scan-core.ts';
  *  security-scan.ts holds a change to any of them for the owner's sign-off (`gate-change:<path>`). */
 export const GATE_FILES = ['scripts/security-gate.ts', 'scripts/security-scan.ts', 'scripts/security-scan-core.ts',
   'scripts/security-scan-tools.ts', 'scripts/security-scan-deps.ts', 'scripts/security-eslint.ts',
-  'scripts/security-eslint-stack', 'scripts/security-new-deps.ts', 'scripts/security-rules.sha256',
+  'scripts/security-eslint-stack', 'scripts/security-new-deps.ts', 'scripts/security-rules.ts',
   'scripts/security-tools.sha256', 'scripts/setup-security-tools.sh', 'security/approved-deps.txt',
-  'security/eslint-tuning.json', '.gitleaks.toml', 'deny.toml', '.semgrep', 'security/checks'];
+  'security/eslint-tuning.json', 'security/sast-targets.txt', '.gitleaks.toml', 'deny.toml', '.semgrep', 'security/checks'];
+/** Gate STATE exported from origin/main beside GATE_FILES but verified by the scan rather than held for the owner:
+ *  the accepted Semgrep rule set (security-rules.ts checks a change to it accepts exactly the packs served now). */
+export const GATE_STATE_FILES = ['security/rules-accepted.json'];
 export const EXIT_REFUSE = 4;
 const SCAN_OK = [0, 1, 3];   // security-scan.ts: clean, findings, held — anything else is a scanner error
 const SELF = 'scripts/security-gate.ts';
@@ -158,7 +161,7 @@ function gateRef(): string {
 }
 
 function exportGate(ref: string, dir: string): void {
-  const listed = git(['ls-tree', '-r', '-z', '--name-only', ref, '--', ...GATE_FILES]);
+  const listed = git(['ls-tree', '-r', '-z', '--name-only', ref, '--', ...GATE_FILES, ...GATE_STATE_FILES]);
   if (!listed.ok) refuse(`cannot list the gate files on ${ref}`);
   const tar = join(dir, 'gate.tar');
   if (!git(['archive', '--format=tar', '-o', tar, ref, '--', ...listed.out.split('\0').filter(Boolean)]).ok) {
