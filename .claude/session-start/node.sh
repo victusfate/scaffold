@@ -35,11 +35,25 @@ FULL=$(curl -fsSL "$NODE_DIST/index.json" 2>/dev/null |
 [ -n "$FULL" ] || { echo "⚠  could not resolve Node $WANT_MAJOR release — staying on Node $HAVE_MAJOR"; exit 0; }
 
 DEST="$HOME/.local/node-$FULL"
-if [ ! -x "$DEST/bin/node" ]; then
-  mkdir -p "$DEST"
-  curl -fsSL "$NODE_DIST/$FULL/node-$FULL-linux-$ARCH.tar.xz" 2>/dev/null |
-    tar -xJ --strip-components=1 -C "$DEST" 2>/dev/null ||
-    { rm -rf "$DEST"; echo "⚠  Node $FULL download failed — staying on Node $HAVE_MAJOR"; exit 0; }
+TARBALL="node-$FULL-linux-$ARCH.tar.xz"
+# Download to a temp dir, check the release's SHA-256, extract, and run the binary before moving it into
+# place. An interrupted download once left a truncated node that segfaulted on every call, and a bare
+# "file exists" check kept reusing it.
+install_node() {
+  local tmp rc
+  tmp=$(mktemp -d) || return 1
+  curl -fsSL "$NODE_DIST/$FULL/SHASUMS256.txt" -o "$tmp/SHASUMS256.txt" &&
+    curl -fsSL "$NODE_DIST/$FULL/$TARBALL" -o "$tmp/$TARBALL" &&
+    (cd "$tmp" && grep " $TARBALL\$" SHASUMS256.txt | sha256sum -c --status) &&
+    mkdir "$tmp/node" && tar -xJf "$tmp/$TARBALL" --strip-components=1 -C "$tmp/node" &&
+    "$tmp/node/bin/node" -e 0 &&
+    rm -rf "$DEST" && mkdir -p "$(dirname "$DEST")" && mv "$tmp/node" "$DEST"
+  rc=$?
+  rm -rf "$tmp"
+  return $rc
+}
+if ! { ("$DEST/bin/node" -e 0) > /dev/null 2>&1; } 2> /dev/null; then
+  install_node 2>/dev/null || { echo "⚠  Node $FULL download or verification failed — staying on Node $HAVE_MAJOR"; exit 0; }
 fi
 
 if [ -n "${CLAUDE_ENV_FILE:-}" ]; then
