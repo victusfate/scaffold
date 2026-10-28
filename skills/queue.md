@@ -1,8 +1,5 @@
 ## Purpose
 
-> **Multi-harness:** This skill references other scaffold skills using slash-command notation (`/name`). In **Claude Code** and **agy**, slash commands auto-expand from their skill/workflow directories.
-> Under **Codex** (`$name` or `/skills`) and **pi**, read and follow `.agents/skills/<name>/SKILL.md` instead. The canonical instructions in `skills/<name>.md` are identical for all harnesses.
-
 A **visible, editable Markdown work queue** that agents drain **autonomously** on a
 long-running project. You stack up work; a loop wakes on an interval (default 6 min) and drains it — **one independent
 task per PR/merge cycle** (parallel agents may implement its subtasks) — running each task either as a quick
