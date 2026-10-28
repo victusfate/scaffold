@@ -40,6 +40,9 @@ scripts/security-scan-core.ts
 scripts/security-scan-tools.ts
 scripts/security-scan-deps.ts
 scripts/security-eslint.ts
+scripts/security-eslint-stack/package.json
+scripts/security-eslint-stack/package-lock.json
+scripts/security-tools.sha256
 scripts/security-new-deps.ts
 scripts/security-new-deps.test.ts
 scripts/security-rules.sha256
@@ -47,7 +50,6 @@ scripts/setup-security-tools.sh
 docs/security-review.md
 deny.toml
 .gitleaks.toml
-security/approved-deps.txt
 scripts/mermaid-render.ts
 scripts/mermaid-render.test.ts
 scripts/mermaid-viewer.template.html

@@ -27,7 +27,7 @@ const MAX_LOCKFILE_BYTES = 256 << 20;
 const EXIT_HELD = 3;
 const EXIT_ERROR = 2;
 
-export interface Dep { ecosystem: 'crates' | 'npm'; name: string; source: string }
+export interface Dep { ecosystem: 'crates' | 'npm'; name: string; source: string; version?: string }
 
 /** Registry packages a Cargo.lock names: crates.io entries plus any other remote source (held later). */
 export function cargoDeps(text: string): Dep[] {
@@ -35,8 +35,9 @@ export function cargoDeps(text: string): Dep[] {
   for (const block of text.replace(/\r\n?/g, '\n').split(/^\s*\[\[\s*package\s*\]\]\s*$/m).slice(1)) {
     const name = /^\s*name\s*=\s*"([^"]+)"/m.exec(block)?.[1];
     const source = /^\s*source\s*=\s*"([^"]+)"/m.exec(block)?.[1];
+    const version = /^\s*version\s*=\s*"([^"]+)"/m.exec(block)?.[1];
     if (!name) throw new Error('Cargo.lock [[package]] without a name: refusing to guess');
-    if (source) out.push({ ecosystem: 'crates', name, source });   // no source = workspace/path
+    if (source) out.push({ ecosystem: 'crates', name, source, version });   // no source = workspace/path
   }
   return out;
 }
@@ -58,24 +59,62 @@ function depsOf(file: string, text: string): Dep[] {
   return file.endsWith('package-lock.json') ? npmDeps(text) : [];
 }
 
-/** Names present at HEAD but not at base, per ecosystem (a version bump of a known name is not "new"). */
+/**
+ * Where a package comes from, version aside: the crates.io index / npm registry, or the exact other source.
+ * A known name that switches origin (registry → git, tarball URL or another host) is judged as new.
+ */
+export function origin(d: Dep): string {
+  if (d.ecosystem === 'crates') return d.source.split('#')[0];
+  return npmResolvedName(d.source) === d.name ? 'npm-registry' : d.source.replace(/#.*$/, '');
+}
+
+/** Name+origin pairs present at HEAD but not at base, per ecosystem (a version bump of a known one is not "new"). */
 export function newDeps(head: Dep[], base: Dep[]): Dep[] {
-  const known = new Set(base.map(d => `${d.ecosystem}:${d.name}`));
+  const key = (d: Dep) => `${d.ecosystem}:${d.name}\0${origin(d)}`;
+  const known = new Set(base.map(key));
   const seen = new Set<string>();
   return head.filter(d => {
-    const k = `${d.ecosystem}:${d.name}`;
+    const k = key(d);
     if (known.has(k) || seen.has(k)) return false;
     seen.add(k);
     return true;
   });
 }
 
+const HTTP_TOO_MANY = 429;
+const RETRIES = 6;
+const BACKOFF_MS = 2_000;
+const MAX_WAIT_MS = 60_000;
+const sleep = (ms: number) => new Promise(done => setTimeout(done, ms));
+
+const MS_PER_SECOND = 1_000;
+
+/** One GET, or null when it timed out / the connection failed (retried by `json`). */
+async function get(url: string): Promise<Response | null> {
+  try {
+    return await fetch(url, { headers: { 'User-Agent': 'scaffold-security-new-deps (security gate)' },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  } catch { return null; }
+}
+
+/** GET a registry JSON document; null on 404. Rate limits (429), timeouts and dropped connections are retried
+ *  with backoff a bounded number of times, then fail closed. */
 async function json<T>(url: string): Promise<T | null> {
-  const r = await fetch(url, { headers: { 'User-Agent': 'scaffold-security-new-deps (security gate)' },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
-  if (r.status === HTTP_NOT_FOUND) return null;
-  if (!r.ok) throw new Error(`${url}: HTTP ${r.status}`);
-  return await r.json() as T;
+  for (let attempt = 0; ; attempt++) {
+    const r = await get(url);
+    if (r?.status === HTTP_NOT_FOUND) return null;
+    if (retryable(r) && attempt < RETRIES) { await sleep(waitMs(r, attempt)); continue; }
+    if (!r?.ok) throw new Error(`${url}: ${r ? `HTTP ${r.status}` : 'no response after retries'}`);
+    return await r.json() as T;
+  }
+}
+
+const retryable = (r: Response | null) => !r || r.status === HTTP_TOO_MANY;
+
+/** The server's Retry-After when it sent one, else exponential backoff; capped. */
+function waitMs(r: Response | null, attempt: number): number {
+  const after = Number(r?.headers.get('retry-after')) * MS_PER_SECOND;
+  return Math.min(after > 0 ? after : BACKOFF_MS * 2 ** attempt, MAX_WAIT_MS);
 }
 
 /** npm's naming rule (lowercase, url-safe, optional @scope/); anything else cannot be vouched for. */

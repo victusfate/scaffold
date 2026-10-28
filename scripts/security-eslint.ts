@@ -3,12 +3,14 @@
  * security-eslint.ts — the security ESLint config, and a runner the security scan uses on changed JS/TS files
  * (docs/security-review.md). Part of the gate: exported from origin/main with the rest of GATE_FILES.
  *
- *   node scripts/security-eslint.ts [--tuning <file.json>] -- <file...>
+ *   node scripts/security-eslint.ts --stack <dir> [--tuning <file.json>] -- <file...>
  *
- * Run from the repo root. ESLint, typescript-eslint, eslint-plugin-security and eslint-plugin-no-unsanitized are
- * loaded from THAT repo's installed node_modules (devDependencies; `npm ci`), not from this file's location, so
- * the gate's exported copy works. The config is built in code and handed to the ESLint API (no config file is
- * looked up, so a branch's eslint.config.* is never loaded), with inline `eslint-disable` comments ignored.
+ * Run from the tree to lint (the scan passes its export of HEAD). ESLint, typescript-eslint, typescript,
+ * eslint-plugin-security and eslint-plugin-no-unsanitized are loaded ONLY from <dir>/node_modules: the pinned
+ * stack scripts/setup-security-tools.sh installs (`npm ci --ignore-scripts` from the gate's
+ * scripts/security-eslint-stack lockfile) and the scan hash-verifies — never from the repo under judgment.
+ * The config is built in code and handed to the ESLint API (no config file is looked up, so a branch's
+ * eslint.config.* is never loaded), with inline `eslint-disable` comments ignored.
  * Prints JSON [{file, line, rule, msg}] for every error-severity message (fatal parse errors as rule "parse").
  * Exit 0 ran (with or without findings), 2 ESLint or a plugin missing / crashed.
  *
@@ -61,22 +63,26 @@ export function securityConfig(p: Plugins, root: string, tuning: Tuning = {}): o
   ];
 }
 
-/** Imports a package installed in `root`'s node_modules. */
-async function fromRepo<T>(root: string, name: string): Promise<T> {
-  const req = createRequire(join(root, 'package.json'));
-  return await import(pathToFileURL(req.resolve(name)).href) as T;
+/** Imports a package from the pinned stack (resolution starts at <stack>/package.json, never the linted tree). */
+async function fromStack<T>(stack: string, name: string): Promise<T> {
+  const req = createRequire(join(stack, 'package.json'));
+  const resolved = req.resolve(name);
+  if (!resolved.startsWith(`${join(stack, 'node_modules')}/`)) throw new Error(`${name} resolved outside the stack: ${resolved}`);
+  return await import(pathToFileURL(resolved).href) as T;
 }
 
 interface LintMessage { ruleId: string | null; line?: number; severity: number; message: string; fatal?: boolean }
 interface ESLintCtor { new (o: object): { lintFiles(files: string[]): Promise<{ filePath: string; messages: LintMessage[] }[]> } }
 
-async function lint(root: string, files: string[], tuning: Tuning): Promise<{ file: string; line: number; rule: string; msg: string }[]> {
-  const { ESLint } = await fromRepo<{ ESLint: ESLintCtor }>(root, 'eslint');
+interface LintRun { root: string; stack: string; files: string[]; tuning: Tuning }
+
+async function lint({ root, stack, files, tuning }: LintRun): Promise<{ file: string; line: number; rule: string; msg: string }[]> {
+  const { ESLint } = await fromStack<{ ESLint: ESLintCtor }>(stack, 'eslint');
   const unwrap = (m: { default?: unknown }) => m.default ?? m;
   const plugins: Plugins = {
-    security: unwrap(await fromRepo(root, 'eslint-plugin-security')),
-    noUnsanitized: unwrap(await fromRepo(root, 'eslint-plugin-no-unsanitized')),
-    tseslint: unwrap(await fromRepo(root, 'typescript-eslint')) as Plugins['tseslint'],
+    security: unwrap(await fromStack(stack, 'eslint-plugin-security')),
+    noUnsanitized: unwrap(await fromStack(stack, 'eslint-plugin-no-unsanitized')),
+    tseslint: unwrap(await fromStack(stack, 'typescript-eslint')) as Plugins['tseslint'],
   };
   const eslint = new ESLint({ cwd: root, overrideConfigFile: true, overrideConfig: securityConfig(plugins, root, tuning),
     allowInlineConfig: false, warnIgnored: false, errorOnUnmatchedPattern: false });
@@ -90,10 +96,12 @@ async function main(argv: string[]): Promise<void> {
   const sep = argv.indexOf('--');
   const opts = sep < 0 ? argv : argv.slice(0, sep);
   const files = sep < 0 ? [] : argv.slice(sep + 1);
-  const ti = opts.indexOf('--tuning');
-  const tuningFile = ti >= 0 ? opts[ti + 1] : '';
+  const opt = (name: string) => { const i = opts.indexOf(name); return i >= 0 ? opts[i + 1] ?? '' : ''; };
+  const stack = opt('--stack');
+  if (!stack) throw new Error('usage: security-eslint.ts --stack <dir> [--tuning <file.json>] -- <file...>');
+  const tuningFile = opt('--tuning');
   const tuning = tuningFile && existsSync(tuningFile) ? JSON.parse(readFileSync(tuningFile, 'utf8')) as Tuning : {};
-  console.log(JSON.stringify(files.length ? await lint(process.cwd(), files, tuning) : []));
+  console.log(JSON.stringify(files.length ? await lint({ root: process.cwd(), stack, files, tuning }) : []));
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) {

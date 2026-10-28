@@ -76,3 +76,7 @@ scripts/queue-delivery.test.ts
 eslint-suppressions.json
 package-lock.json
 scripts/check-agents-detail.test.ts
+
+# The scaffold repo's own dependency approvals (security gate). Consumers keep their own approvals:
+# security/approved-deps.txt is never shipped (docs/security-review.md).
+security/approved-deps.txt

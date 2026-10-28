@@ -18,9 +18,9 @@ Write the PR body to that file with a file-write tool or a quoted heredoc (`<<'E
 inside double quotes, where its backticked paths would run as commands.
 
 The launcher exports the gate, the scanner and their configs (`GATE_FILES` in `scripts/security-gate.ts`: the
-`security-scan*.ts`, `security-eslint.ts` and `security-new-deps.ts` scripts, `security-rules.sha256`,
-`security/approved-deps.txt`, `security/eslint-tuning.json`, `.gitleaks.toml`, `deny.toml`, `.semgrep/`,
-`security/checks/`) **from `origin/main`** into a temp dir and runs
+`security-scan*.ts`, `security-eslint.ts` and `security-new-deps.ts` scripts, the `security-eslint-stack/` lockfile,
+`security-rules.sha256`, `security-tools.sha256`, `setup-security-tools.sh`, `security/approved-deps.txt`,
+`security/eslint-tuning.json`, `.gitleaks.toml`, `deny.toml`, `.semgrep/`, `security/checks/`) **from `origin/main`** into a temp dir and runs
 that copy, so a branch cannot weaken its own gate; changes to them take effect only after they merge. If
 `origin/main` has no gate yet (the gate's own first merge into a repo), run the branch's copy once with
 `SECURITY_GATE_BOOTSTRAP=1 node scripts/security-gate.ts <pr-body-file>`; it is ignored once main has a gate.
@@ -31,11 +31,22 @@ after checking `gh pr view --json headRefOid` equals that `HEAD` (the `create-pr
 
 Runs inside the gate over the merged diff (`--base origin/main`); run it on demand with
 `node scripts/security-scan.ts [--base <ref>] [--report <file.json>]`.
-Install the pinned tools once per machine: `scripts/setup-security-tools.sh` (into the main checkout's
-untracked `.tooling/security/`; binary sha256 pinned in the script, Semgrep rule-pack sha256 tracked in
-`scripts/security-rules.sha256` and verified on every scan; known gap: the PyPI tools' (semgrep, zizmor)
-transitive dependencies are version-resolved, not hash-pinned). `SECURITY_TOOLS_DIR` / `SECURITY_RULES_DIR`
-point the scan at tools installed elsewhere.
+Install the pinned tools once per machine with **origin/main's copy** of the setup script (it is a gate file):
+
+```bash
+tmp=$(mktemp -d) && git show origin/main:scripts/setup-security-tools.sh > "$tmp/setup.sh" && bash "$tmp/setup.sh"; rm -rf "$tmp"
+```
+
+It installs into the main checkout's untracked `.tooling/security/`: release binaries verified against pinned
+sha256 values, semgrep and zizmor in a venv, Semgrep rule packs checked against the tracked
+`scripts/security-rules.sha256`, and the ESLint stack (`eslint`, `typescript-eslint`, `typescript`,
+`eslint-plugin-security`, `eslint-plugin-no-unsanitized`) installed with `npm ci --ignore-scripts` from the gate's
+`scripts/security-eslint-stack/package-lock.json` into `.tooling/security/eslint`. **Every scan re-hashes** each
+scanner binary (semgrep: its native `semgrep-core`) and the ESLint stack's tree against
+`scripts/security-tools.sha256`, so a binary swapped after install fails the scan. Updating a tool version means
+updating the script's pins and that file together, in a gate-change PR. Known gap: the PyPI tools' transitive
+Python dependencies (and semgrep's Python layer) are version-resolved, not hash-pinned. `SECURITY_TOOLS_DIR`,
+`SECURITY_RULES_DIR` and `SECURITY_ESLINT_DIR` point the scan at tools installed elsewhere.
 
 | Check | Tool | Fails on (finding id) |
 |---|---|---|
@@ -43,24 +54,33 @@ point the scan at tools installed elsewhere.
 | Static analysis of changed files | Semgrep: pinned registry packs (`default`, `secrets`, `r2c-security-audit`, `typescript`, `nodejsscan`) + the repo's `.semgrep/` rules | ERROR/WARNING findings introduced by this diff (`sast:<rule>@<file>:<line>`); a file it could not parse (`sast-error:<type>@<file>`) |
 | Known-vulnerable dependencies | osv-scanner | a vulnerable package/version the diff adds (`vuln:<id>:<pkg>@<version>`) |
 | Rust crate sources | cargo-deny (`deny.toml`, `--frozen`) on an isolated copy of HEAD | any non-crates.io source or ban, lockfile drift (`cargo-deny:<code>`) |
-| JS/TS security lint, changed lines only | ESLint via `scripts/security-eslint.ts`: eslint-plugin-security, eslint-plugin-no-unsanitized, typescript-eslint type-aware rules | an error on a line this diff added or changed, or a file it cannot parse (`eslint:<rule>@<file>:<line>`) |
+| JS/TS security lint, changed lines only | ESLint via `scripts/security-eslint.ts` and the pinned stack: eslint-plugin-security, eslint-plugin-no-unsanitized, typescript-eslint type-aware rules | an error on a line this diff added or changed, or a file it cannot parse (`eslint:<rule>@<file>:<line>`) |
 | GitHub Actions | zizmor | medium+ workflow issues when workflows change (`actions:<rule>@<file>:<line>`) |
 | New dependency names | `scripts/security-new-deps.ts` | a new crate/npm name that does not exist, is < 90 days old, or has little adoption → **held for the owner** (`newdep:<eco>:<name>`, exit 3) |
 | Gate and approval files | the scan itself | any change to a `GATE_FILES` path or a `.semgrepignore` / `.gitleaksignore`, deletions and renames included → **held for the owner** (`gate-change:<path>`, exit 3) |
+| Scan inputs | the scan itself | any change to a `package.json`, `package-lock.json`, `tsconfig.json` or `.gitattributes` (they steer the ESLint pass and the exports) → **held for the owner** (`gate-input:<path>`, exit 3) |
 | Lockfiles the dependency guard cannot read | the scan itself | any change to `yarn.lock`, `pnpm-lock.yaml`, `bun.lock[b]`, `uv.lock`, `Pipfile.lock`, `Gemfile.lock`, `poetry.lock`, `go.sum`, `requirements*.txt` → **held for the owner** (`lockfile:<path>`, exit 3) |
 | Project checks | `security/checks/*` | whatever the project's own checks report (`check:<file>:<id>`) |
 
 Exit codes: 0 clean, 1 findings, 2 setup/scanner error, 3 held.
 
-**The branch cannot switch the scanners off.** Every scanner and project check runs with a minimal environment
+**The branch cannot switch the scanners off.** Scanners judge committed content only: gitleaks reads the merged
+commits, and Semgrep, ESLint, zizmor and cargo-deny read a `git archive` export of HEAD (Semgrep's baseline is
+the same scan of an export of the merge base, matched by rule, file and matched text), made with no
+`.gitattributes` applied, so an uncommitted edit, an untracked file or a branch `export-ignore` cannot change
+what is judged. The scan refuses a HEAD that commits anything under `node_modules/`. Every scanner and project
+check runs with a minimal environment
 (`PATH`, locale, temp dir, proxy/CA settings and a throwaway `HOME`; no tokens), and in-repo suppressions are
 disabled: gitleaks ignores `gitleaks:allow` comments and the branch's `.gitleaksignore`, and always uses the
 gate's `.gitleaks.toml` (missing → exit 2); Semgrep runs with `--disable-nosem` and no file-size limit; zizmor
-runs with `--no-config --no-ignores`; ESLint ignores `eslint-disable` comments and never loads the branch's
-`eslint.config.*`. cargo-deny runs `cargo metadata`, which would honour the branch's `.cargo/config.toml`
+runs with `--no-config --no-ignores`; every `.semgrepignore` is removed from the exports; ESLint ignores
+`eslint-disable` comments, never loads the branch's `eslint.config.*`, and imports nothing from the repo (the
+repo's installed `node_modules` is linked into the export only so TypeScript can read type declarations). cargo-deny runs `cargo metadata`, which would honour the branch's `.cargo/config.toml`
 (`rustc-wrapper`, credential providers, source replacement) and `rust-toolchain` files, so it judges a `git archive`
-copy of HEAD with those removed, an isolated `CARGO_HOME` holding a copy of the crates.io index and crate cache,
-no wrapper, offline and locked. A cargo-deny crash (it could not resolve the graph) fails the scan (exit 2); only a
+copy of HEAD with those removed, an isolated `CARGO_HOME` holding a copy of the crates.io index (tens of MB) and
+only the crate archives the lockfiles pin, no wrapper, offline and locked. It runs once per touched workspace root
+(the nearest directory above a changed `Cargo.toml`/`Cargo.lock` holding both files); a manifest with no lockfile
+above it is skipped. A cargo-deny crash (it could not resolve the graph) fails the scan (exit 2); only a
 policy diagnostic is an acknowledgeable finding. Known limitation: a git-sourced crate cannot be resolved
 offline, so it fails the scan rather than being judged. A missing tool, a scanner error or an invalid
 report fails closed (exit 2, no merge). A finding is either **fixed**, or acknowledged in the PR body on its own
@@ -72,7 +92,7 @@ Held findings need the owner, not just an ack:
 - **New dependency** (`newdep:*`): also a line `<ecosystem>:<name> — <owner's words, date>` in
   `security/approved-deps.txt` **as merged on `origin/main`** (the gate reads it from there, so a branch cannot
   approve its own dependency). Approve in a small PR of its own, merged first.
-- **Gate change** (`gate-change:<path>`) or **unparseable lockfile** (`lockfile:<path>`): the ack line itself
+- **Gate change** (`gate-change:<path>`), **scan input** (`gate-input:<path>`) or **unparseable lockfile** (`lockfile:<path>`): the ack line itself
   quotes the owner: `security-ack: <id> — owner sign-off: "<owner words>"` (opening and closing quote).
 
 An ack needs a non-blank reason after ` — `.
@@ -91,15 +111,15 @@ Scaffold ships the gate; projects add their own checks and tuning without forkin
   `check:<file>:<id>` and acknowledged like any other; a non-zero exit or invalid output fails the scan closed.
 - **`security/eslint-tuning.json`** — tune the security ESLint pass: `{ "rules": { "<rule>": "off" | "error" },
   "ignores": ["<glob>"] }`, applied last (e.g. `"security/detect-possible-timing-attacks": "off"`, or
-  `"security/detect-non-literal-fs-filename": "error"` to turn on a rule left off for noise). The pass needs the
-  repo's devDependencies installed (`npm ci`): `eslint`, `typescript-eslint`, `eslint-plugin-security`,
-  `eslint-plugin-no-unsanitized`; without them a change to a JS/TS file fails the scan closed. Type-aware rules
+  `"security/detect-non-literal-fs-filename": "error"` to turn on a rule left off for noise). Without the pinned
+  ESLint stack a change to a JS/TS file fails the scan closed. Type-aware rules
   need the file in a `tsconfig.json` project; a file outside one is reported as `eslint:parse@<file>:<line>`.
 
-Scaffold sync ships `deny.toml`, `.gitleaks.toml` and `security/approved-deps.txt` as starting points. Once you
-customise one (an allowlist entry, an approval), add it to `.scaffold-keep` so sync never overwrites it.
-`.semgrep/`, `security/checks/` and `security/eslint-tuning.json` are never shipped by scaffold, so they are
-always yours.
+Scaffold sync ships `deny.toml` and `.gitleaks.toml` as starting points. Once you customise one (an allowlist
+entry), add it to `.scaffold-keep` so sync never overwrites it. `security/approved-deps.txt`, `.semgrep/`,
+`security/checks/` and `security/eslint-tuning.json` are never shipped by scaffold, so they are always yours; create
+`security/approved-deps.txt` (one `<ecosystem>:<name> — <owner words, date>` line per approval) when the owner
+first approves a held dependency.
 
 ### What the gate cannot prove
 
@@ -111,9 +131,9 @@ always yours.
   edit `main`, protected branches requiring a human approving review, CODEOWNERS on the gate files).
 - **The gate is a check agents run, not a barrier.** It is enforced only as far as the workflow runs it before
   merging (the `create-pr` skill does). A server-side required check or branch protection is what enforces it.
-- **The ESLint pass loads plugins from the repo's `node_modules`**, which was installed from the branch's own
-  lockfile. Installing a malicious lockfile already runs its code (`npm install` scripts), so the pass adds no new
-  exposure, but it is not isolated the way the pinned scanners are.
+- **The ESLint pass runs JavaScript** (ESLint, the plugins, TypeScript) in-process with the operator's rights. It
+  loads only the pinned stack (installed from the gate's lockfile without install scripts, tree-hash verified every
+  scan) and never imports from the repo, but TypeScript does read the repo's installed type declarations.
 - **PyPI dependencies of semgrep and zizmor** are version-resolved, not hash-pinned (see setup).
 
 ## 2. Human half — the line-by-line review

@@ -2,6 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { cargoDeps, npmDeps, newDeps, judge } from './security-new-deps.ts';
+import type { Dep } from './security-new-deps.ts';
 
 const CARGO = `version = 4
 
@@ -57,4 +58,19 @@ void test('cargo: CRLF and loose spacing still parse; a nameless package refuses
 void test('cargo: a source that only starts with the crates.io index URL is held', async () => {
 	const why = await judge({ ecosystem: 'crates', name: 'serde', source: 'registry+https://github.com/rust-lang/crates.io-index.evil.example' });
 	assert.match(why, /non-crates\.io source/);
+});
+
+void test('npm: a known name whose resolved origin changes (registry -> git) is new and held', async () => {
+	const reg: Dep = { ecosystem: 'npm', name: 'left-pad', source: 'https://registry.npmjs.org/left-pad/-/left-pad-1.3.0.tgz' };
+	const bump: Dep = { ...reg, source: 'https://registry.npmjs.org/left-pad/-/left-pad-1.3.1.tgz' };
+	const git: Dep = { ...reg, source: 'git+https://github.com/evil/left-pad.git#abc' };
+	assert.deepEqual(newDeps([bump], [reg]), [], 'a version bump from the same registry is not new');
+	assert.deepEqual(newDeps([git], [reg]), [git]);
+	assert.match(await judge(git), /name\/package mismatch/);
+});
+
+void test('cargo: a known crate that moves from crates.io to git is new', () => {
+	const base: Dep = { ecosystem: 'crates', name: 'serde', source: 'registry+https://github.com/rust-lang/crates.io-index' };
+	const moved: Dep = { ...base, source: 'git+https://example.com/serde#abc' };
+	assert.deepEqual(newDeps([moved], [base]), [moved]);
 });

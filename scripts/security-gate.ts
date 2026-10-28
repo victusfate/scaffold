@@ -33,7 +33,8 @@ import type { Finding } from './security-scan-core.ts';
  *  security-scan.ts holds a change to any of them for the owner's sign-off (`gate-change:<path>`). */
 export const GATE_FILES = ['scripts/security-gate.ts', 'scripts/security-scan.ts', 'scripts/security-scan-core.ts',
   'scripts/security-scan-tools.ts', 'scripts/security-scan-deps.ts', 'scripts/security-eslint.ts',
-  'scripts/security-new-deps.ts', 'scripts/security-rules.sha256', 'security/approved-deps.txt',
+  'scripts/security-eslint-stack', 'scripts/security-new-deps.ts', 'scripts/security-rules.sha256',
+  'scripts/security-tools.sha256', 'scripts/setup-security-tools.sh', 'security/approved-deps.txt',
   'security/eslint-tuning.json', '.gitleaks.toml', 'deny.toml', '.semgrep', 'security/checks'];
 export const EXIT_REFUSE = 4;
 const SCAN_OK = [0, 1, 3];   // security-scan.ts: clean, findings, held — anything else is a scanner error
@@ -75,7 +76,7 @@ export function depApproved(approvals: string, dep: string): boolean {
 }
 
 /** Holds released by the owner's quoted sign-off on the ack line (rather than by approved-deps.txt). */
-const SIGN_OFF_HOLDS = ['gate-change:', 'lockfile:'];
+const SIGN_OFF_HOLDS = ['gate-change:', 'gate-input:', 'lockfile:'];
 
 /** The text of the `## Security review` section (up to the next `## ` heading). */
 export function reviewSection(body: string): string {

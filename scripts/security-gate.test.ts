@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -23,7 +23,9 @@ const SRC = join(dirname(fileURLToPath(import.meta.url)), '..');
 const COMMON = mainCheckout(SRC);
 const TOOLS = process.env.SECURITY_TOOLS_DIR || join(COMMON, '.tooling/security/bin');
 const RULES = process.env.SECURITY_RULES_DIR || join(COMMON, '.tooling/security/rules');
-const MISSING = existsSync(join(TOOLS, 'gitleaks')) ? '' : `security scanners not installed at ${TOOLS} (run scripts/setup-security-tools.sh)`;
+const ESLINT_STACK = process.env.SECURITY_ESLINT_DIR || join(COMMON, '.tooling/security/eslint');
+const MISSING = existsSync(join(TOOLS, 'gitleaks')) && existsSync(join(ESLINT_STACK, 'node_modules')) ? ''
+  : `security scanners not installed at ${TOOLS} / ${ESLINT_STACK} (run scripts/setup-security-tools.sh)`;
 const REQUIRE = process.env.SECURITY_REQUIRE_TOOLS === '1';
 const SKIP = MISSING && !REQUIRE ? `${MISSING}; skipping the gate end-to-end test` : false;
 const HAVE_CARGO = spawnSync('cargo', ['--version']).status === 0;
@@ -54,7 +56,7 @@ function gate(body: string, env: NodeJS.ProcessEnv = {}): { ok: boolean; out: st
   mkdirSync(dirname(launcher), { recursive: true });
   writeFileSync(launcher, g('show', 'origin/main:scripts/security-gate.ts'));
   const r = spawnSync(process.execPath, [launcher, file], { cwd: REPO, encoding: 'utf8',
-    env: { ...process.env, SECURITY_TOOLS_DIR: TOOLS, SECURITY_RULES_DIR: RULES, ...env } });
+    env: { ...process.env, SECURITY_TOOLS_DIR: TOOLS, SECURITY_RULES_DIR: RULES, SECURITY_ESLINT_DIR: ESLINT_STACK, ...env } });
   return { ok: r.status === 0, out: `${r.stdout}${r.stderr}` };
 }
 
@@ -77,9 +79,10 @@ function setup(): void {
   g('config', 'user.name', 't');
   g('config', 'commit.gpgsign', 'false');
   for (const f of GATE_FILES.filter(p => existsSync(join(SRC, p)))) cpSync(join(SRC, f), join(REPO, f), { recursive: true });
-  symlinkSync(join(SRC, 'node_modules'), join(REPO, 'node_modules'));   // the security ESLint plugins
-  writeFileSync(join(REPO, '.gitignore'), 'node_modules\n');
   writeFileSync(join(REPO, 'package.json'), '{ "type": "module" }\n');
+  writeFileSync(join(REPO, 'tsconfig.json'), JSON.stringify({ compilerOptions: { strict: true, module: 'NodeNext', noEmit: true,
+    skipLibCheck: true }, include: ['*.ts'] }));
+  writeFileSync(join(REPO, 'lib.ts'), LIB_LINE_1);
   writeFileSync(join(REPO, 'README.md'), 'base\n');
   g('add', '-A');
   g('commit', '-qm', 'base');
@@ -96,7 +99,9 @@ const LEAK_REVIEW = review('src.py', 'leak.txt');
 const DEP = 'serde-jsonx-fast-helper-zz';
 const NPM_LOCK = JSON.stringify({ name: 'x', lockfileVersion: 3, packages: { '': { name: 'x' },
   [`node_modules/${DEP}`]: { version: '0.1.0', resolved: `https://registry.npmjs.org/${DEP}/-/${DEP}-0.1.0.tgz` } } }, null, 2);
-const DEP_BODY = `${review('src.py', 'package-lock.json')}security-ack: newdep:npm:${DEP} — reviewed\n`;
+const DEP_BODY = `${review('src.py', 'package-lock.json')}security-ack: newdep:npm:${DEP} — reviewed\n`
+  + signedAck('gate-input:package-lock.json');
+const LIB_LINE_1 = 'export function a(s: string): unknown { return eval(s); }\n';
 const PREAPPROVE = `${review('src.py', 'security/approved-deps.txt')}security-ack: gate-change:security/approved-deps.txt — `;
 
 void test('security gate end-to-end', { skip: SKIP }, async t => {
@@ -224,5 +229,47 @@ void test('security gate end-to-end', { skip: SKIP }, async t => {
     assert.match(r.out, /HOLD lockfile:yarn\.lock/);
     const signed = gate(`${body}owner sign-off: "yarn.lock reviewed" (test)\n`);
     assert.ok(signed.ok, signed.out);
+  });
+  await t.test('a committed node_modules shim is refused and never imported', () => {
+    fresh();
+    const marker = join(T, 'SHIM_RAN');
+    commit('node_modules/eslint/package.json', '{ "name": "eslint", "main": "index.js" }\n', 'shim manifest');
+    commit('node_modules/eslint/index.js', `require('fs').writeFileSync(${JSON.stringify(marker)}, '');\n`, 'shim');
+    commit('b.ts', 'export const b = 1;\n', 'ts change');
+    const r = gate(review('src.py', 'node_modules/eslint/package.json', 'node_modules/eslint/index.js', 'b.ts'));
+    assert.ok(!r.ok);
+    assert.match(r.out, /commits files under node_modules/);
+    assert.ok(!existsSync(marker), 'the committed shim ran');
+  });
+
+  await t.test('an uncommitted edit cannot hide a committed finding', () => {
+    fresh();
+    commit('app.py', 'import subprocess, sys\nsubprocess.call(sys.argv[1], shell=True)\n', 'shell');
+    writeFileSync(join(REPO, 'app.py'), 'x = 2\n');   // working tree only
+    const r = gate(review('src.py', 'app.py'));
+    g('checkout', '--', 'app.py');
+    assert.ok(!r.ok);
+    assert.match(r.out, /FINDING sast:\S+@app\.py:2/);
+  });
+
+  await t.test('a tampered scanner binary fails the scan', () => {
+    fresh();
+    const bad = join(T, 'bad-tools');
+    mkdirSync(bad, { recursive: true });
+    for (const f of readdirSync(TOOLS).filter(n => n !== 'gitleaks')) symlinkSync(join(TOOLS, f), join(bad, f));
+    writeFileSync(join(bad, 'gitleaks'), `#!/bin/sh\nexec ${JSON.stringify(join(TOOLS, 'gitleaks'))} "$@"\n`);
+    chmodSync(join(bad, 'gitleaks'), 0o755);
+    const r = gate(GOOD, { SECURITY_TOOLS_DIR: bad });
+    assert.ok(!r.ok);
+    assert.match(r.out, /gitleaks does not match its pinned sha256/);
+  });
+
+  await t.test('the ESLint pass reports a changed line with eval() and not an unchanged one', () => {
+    fresh();
+    commit('lib.ts', `${LIB_LINE_1}export function b(s: string): unknown { return eval(s); }\n`, 'second eval');
+    const r = gate(review('src.py', 'lib.ts'));
+    assert.ok(!r.ok);
+    assert.match(r.out, /FINDING eslint:no-eval@lib\.ts:2/);
+    assert.doesNotMatch(r.out, /eslint:[^ ]+@lib\.ts:1\b/);
   });
 });

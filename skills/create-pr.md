@@ -125,11 +125,13 @@ gate=$(mktemp -d) && git show origin/main:scripts/security-gate.ts > "$gate/secu
 - **Exit 0** → continue. Record "security gate: pass" in the *Pre-merge gate status* table.
 - **Findings** → fix each one, or acknowledge a reviewed false positive on its own line in the body:
   `security-ack: <finding id> — <why it is safe>` (exact id). Re-run until it passes.
-- **Held** (`newdep:*`, `gate-change:*`, `lockfile:*`) → only the owner can release it: a dependency needs an
+- **Held** (`newdep:*`, `gate-change:*`, `gate-input:*`, `lockfile:*`) → only the owner can release it: a dependency needs an
   `<eco>:<name> — <owner words>` line in `security/approved-deps.txt` merged on `origin/main` first; a gate
-  change or an unparseable lockfile needs `owner sign-off: "<owner words>"` on its ack line. Ask the owner;
+  change, a scan input or an unparseable lockfile needs `owner sign-off: "<owner words>"` on its ack line. Ask the owner;
   never write their approval (the gate cannot tell who wrote it — see "What the gate cannot prove").
-- **Exit 2 / scanners missing** → run `scripts/setup-security-tools.sh`; the gate fails closed without them.
+- **Exit 2 / scanners missing** → install them with origin/main's copy of the setup script (a gate file):
+  `git show origin/main:scripts/setup-security-tools.sh > "$gate/setup.sh" && bash "$gate/setup.sh"`. The gate
+  fails closed without them, and when a binary no longer matches its pinned hash.
 - `origin/main` has no gate yet (this PR adds it) → run the branch's copy once with
   `SECURITY_GATE_BOOTSTRAP=1 node scripts/security-gate.ts "$body"`.
 

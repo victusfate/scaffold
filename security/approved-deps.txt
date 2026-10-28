@@ -1,5 +1,5 @@
 # Owner-approved new dependencies (security gate, docs/security-review.md). The new-dependency
 # guard holds any newly added crate/npm name it cannot vouch for; a held name merges only when listed here AS
 # MERGED ON origin/main (the gate reads this file from origin/main, so a branch cannot approve its own dependency).
-# Consumer-owned: list it in .scaffold-keep so scaffold sync never overwrites your approvals.
+# Repo-owned: scaffold never ships this file, so sync never touches your approvals.
 # Format: <ecosystem>:<name> — <owner's words and date>
