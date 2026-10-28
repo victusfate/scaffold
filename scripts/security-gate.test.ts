@@ -242,6 +242,16 @@ void test('security gate end-to-end', { skip: SKIP }, async t => {
     assert.ok(!existsSync(marker), 'the committed shim ran');
   });
 
+  await t.test('a committed node_modules symlink is refused', () => {
+    fresh();
+    symlinkSync(T, join(REPO, 'node_modules'));
+    g('add', '--', 'node_modules');
+    g('commit', '-qm', 'link node_modules');
+    const r = gate(review('src.py', 'node_modules'));
+    assert.ok(!r.ok);
+    assert.match(r.out, /commits files under node_modules \(node_modules\)/);
+  });
+
   await t.test('an uncommitted edit cannot hide a committed finding', () => {
     fresh();
     commit('app.py', 'import subprocess, sys\nsubprocess.call(sys.argv[1], shell=True)\n', 'shell');

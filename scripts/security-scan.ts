@@ -21,12 +21,14 @@
  * <main checkout>/.tooling/security/eslint). Scanners read committed content only (git history, or a `git archive`
  * export of HEAD and the merge base). Scanner modules: security-scan-{core,tools,deps}.ts.
  */
-import { existsSync, mkdtempSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { GATE_FILES } from './security-gate.ts';
-import { type Ctx, EXIT_CLEAN, EXIT_ERROR, EXIT_FINDINGS, EXIT_HELD, MSG_MAX, ScanError, addFinding, die, eslintStack, git,
+import { type Ctx, EXIT_CLEAN, EXIT_ERROR, EXIT_FINDINGS, EXIT_HELD, MAX_BUFFER, MSG_MAX, ScanError, addFinding, die, eslintStack, git,
   headTree, isFile, lastLine, minimalEnv, parseJson, run, statusOf } from './security-scan-core.ts';
 import { scanSast, scanSecrets, scanVulns, scanWorkflows } from './security-scan-tools.ts';
 import { GUARDED_LOCKFILE, OSV_LOCKFILE, holdUnparsedLockfiles, runProjectChecks, scanCrates,
@@ -40,7 +42,7 @@ const LINTED = /\.(js|jsx|mjs|cjs|ts|tsx|mts|cts)$/;
 /** Scanner suppression files (removed from the exports the scanners read; a change is still held). */
 const SUPPRESSION_FILES = ['.semgrepignore', '.gitleaksignore'];
 /** Files that steer the scan itself (ESLint type information, which files an export contains), anywhere in the tree. */
-const GATE_INPUTS = ['package.json', 'package-lock.json', 'tsconfig.json', '.gitattributes'];
+const GATE_INPUTS = /^(package\.json|package-lock\.json|tsconfig.*\.json|jsconfig\.json|\.gitattributes)$/;
 
 const named = (p: string, names: string[]) => names.some(f => p === f || p.endsWith(`/${f}`));
 
@@ -56,15 +58,15 @@ function checkGateChanges(c: Ctx): void {
     addFinding(c, { id: `gate-change:${p}`, tool: 'gate', at: p,
       msg: "changes the security gate or its approvals — needs the owner's sign-off", hold: true });
   }
-  for (const p of c.touched.filter(f => !isGatePath(f) && named(f, GATE_INPUTS))) {
+  for (const p of c.touched.filter(f => !isGatePath(f) && GATE_INPUTS.test(basename(f)))) {
     addFinding(c, { id: `gate-input:${p}`, tool: 'gate', at: p,
       msg: "steers the security scan (dependencies, TypeScript project or git attributes) — needs the owner's sign-off", hold: true });
   }
 }
 
-/** The scan refuses a HEAD that commits node_modules: nothing under one may shadow the pinned tools. */
+/** The scan refuses a HEAD that commits node_modules (a directory or a symlink): nothing may shadow the pinned tools. */
 function refuseCommittedNodeModules(c: Ctx): void {
-  const hit = git(['ls-tree', '-r', '-z', '--name-only', 'HEAD'], c.root).split('\0').find(p => /(^|\/)node_modules\//.test(p));
+  const hit = git(['ls-tree', '-r', '-z', '--name-only', 'HEAD'], c.root).split('\0').find(p => /(^|\/)node_modules(\/|$)/.test(p));
   if (hit) die(`HEAD commits files under node_modules (${hit}); remove them — the scan refuses to run`);
 }
 
@@ -81,18 +83,39 @@ export function addedLines(diff: string): Set<number> {
 
 // 7. ESLint security rules on changed JS/TS files of the HEAD export, with the pinned stack — new findings only: a
 //    message counts when it is on a line this diff added or changed (or the file could not be parsed at all). The
-//    repo's installed node_modules is linked into the export for TypeScript type declarations only (read as .d.ts
+//    export gets its own node_modules for TypeScript type declarations only (read as .d.ts data; nothing is imported
 //    data; nothing is imported from it).
 interface LintMessage { file: string; line: number; rule: string; msg: string }
 
-/** Runs the gate's ESLint runner in the export with the pinned stack, the repo's types linked in for the run. */
+/**
+ * Type declarations for the HEAD export: `npm ci --ignore-scripts` of HEAD's COMMITTED root package.json and
+ * package-lock.json into a cache keyed by the lockfile's hash (next to the ESLint stack). Never the worktree's
+ * installed node_modules, so an uncommitted .d.ts edit cannot change the types. No committed lockfile: no types.
+ */
+function typesFor(c: Ctx): string {
+  const lock = spawnSync('git', ['show', 'HEAD:package-lock.json'], { cwd: c.root, maxBuffer: MAX_BUFFER });
+  const manifest = spawnSync('git', ['show', 'HEAD:package.json'], { cwd: c.root, maxBuffer: MAX_BUFFER });
+  if (lock.status !== 0 || manifest.status !== 0) return '';
+  const dir = join(dirname(c.eslintStack), 'types', createHash('sha256').update(lock.stdout).digest('hex'));
+  if (existsSync(join(dir, 'node_modules'))) return join(dir, 'node_modules');
+  const staging = mkdtempSync(join(c.work, 'types-'));
+  writeFileSync(join(staging, 'package.json'), manifest.stdout);
+  writeFileSync(join(staging, 'package-lock.json'), lock.stdout);
+  const r = run('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: staging, env: minimalEnv(c) });
+  if (r.status !== 0) die(`cannot install HEAD's committed packages for type information: ${lastLine(r.stderr)}`);
+  mkdirSync(dirname(dir), { recursive: true });
+  cpSync(staging, dir, { recursive: true });   // copied whole only after a complete install
+  return join(dir, 'node_modules');
+}
+
+/** Runs the gate's ESLint runner in the export with the pinned stack and HEAD's committed type declarations. */
 function runEslint(c: Ctx, tree: string, files: string[]): LintMessage[] {
   const stack = eslintStack(c);
   const runner = join(c.cfg, 'scripts/security-eslint.ts');
   if (!isFile(runner)) die(`no security-eslint.ts in ${c.cfg}; failing closed`);
   const typesLink = join(tree, 'node_modules');
-  const linked = existsSync(join(c.root, 'node_modules')) && !existsSync(typesLink);
-  if (linked) symlinkSync(join(c.root, 'node_modules'), typesLink);
+  const types = typesFor(c);
+  if (types) symlinkSync(types, typesLink);
   try {
     const r = run(process.execPath, [runner, '--stack', stack, '--tuning', join(c.cfg, 'security/eslint-tuning.json'), '--', ...files],
       { cwd: tree, env: minimalEnv(c) });
@@ -100,7 +123,7 @@ function runEslint(c: Ctx, tree: string, files: string[]): LintMessage[] {
     const out = parseJson(r.stdout, 'security ESLint');
     return Array.isArray(out) ? out as LintMessage[] : die('security ESLint wrote no JSON array');
   } finally {
-    if (linked) unlinkSync(typesLink);   // later steps edit the export recursively: never through this link
+    if (types) unlinkSync(typesLink);   // later steps edit the export recursively: never through this link
   }
 }
 

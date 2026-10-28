@@ -58,7 +58,7 @@ Python dependencies (and semgrep's Python layer) are version-resolved, not hash-
 | GitHub Actions | zizmor | medium+ workflow issues when workflows change (`actions:<rule>@<file>:<line>`) |
 | New dependency names | `scripts/security-new-deps.ts` | a new crate/npm name that does not exist, is < 90 days old, or has little adoption → **held for the owner** (`newdep:<eco>:<name>`, exit 3) |
 | Gate and approval files | the scan itself | any change to a `GATE_FILES` path or a `.semgrepignore` / `.gitleaksignore`, deletions and renames included → **held for the owner** (`gate-change:<path>`, exit 3) |
-| Scan inputs | the scan itself | any change to a `package.json`, `package-lock.json`, `tsconfig.json` or `.gitattributes` (they steer the ESLint pass and the exports) → **held for the owner** (`gate-input:<path>`, exit 3) |
+| Scan inputs | the scan itself | any change to a `package.json`, `package-lock.json`, `tsconfig*.json`, `jsconfig.json` or `.gitattributes` (they steer the ESLint pass and the exports) → **held for the owner** (`gate-input:<path>`, exit 3) |
 | Lockfiles the dependency guard cannot read | the scan itself | any change to `yarn.lock`, `pnpm-lock.yaml`, `bun.lock[b]`, `uv.lock`, `Pipfile.lock`, `Gemfile.lock`, `poetry.lock`, `go.sum`, `requirements*.txt` → **held for the owner** (`lockfile:<path>`, exit 3) |
 | Project checks | `security/checks/*` | whatever the project's own checks report (`check:<file>:<id>`) |
 
@@ -68,14 +68,17 @@ Exit codes: 0 clean, 1 findings, 2 setup/scanner error, 3 held.
 commits, and Semgrep, ESLint, zizmor and cargo-deny read a `git archive` export of HEAD (Semgrep's baseline is
 the same scan of an export of the merge base, matched by rule, file and matched text), made with no
 `.gitattributes` applied, so an uncommitted edit, an untracked file or a branch `export-ignore` cannot change
-what is judged. The scan refuses a HEAD that commits anything under `node_modules/`. Every scanner and project
+what is judged. The scan refuses a HEAD that commits a `node_modules` directory or symlink anywhere. Every scanner and project
 check runs with a minimal environment
 (`PATH`, locale, temp dir, proxy/CA settings and a throwaway `HOME`; no tokens), and in-repo suppressions are
 disabled: gitleaks ignores `gitleaks:allow` comments and the branch's `.gitleaksignore`, and always uses the
 gate's `.gitleaks.toml` (missing → exit 2); Semgrep runs with `--disable-nosem` and no file-size limit; zizmor
 runs with `--no-config --no-ignores`; every `.semgrepignore` is removed from the exports; ESLint ignores
-`eslint-disable` comments, never loads the branch's `eslint.config.*`, and imports nothing from the repo (the
-repo's installed `node_modules` is linked into the export only so TypeScript can read type declarations). cargo-deny runs `cargo metadata`, which would honour the branch's `.cargo/config.toml`
+`eslint-disable` comments, never loads the branch's `eslint.config.*`, and imports nothing from the repo. For
+type information the export gets HEAD's **committed** root `package.json` + `package-lock.json` installed with
+`npm ci --ignore-scripts` (cached under `.tooling/security/types/<lockfile sha256>`), never the worktree's
+`node_modules`, so an uncommitted `.d.ts` edit cannot change the types; without a committed root lockfile the
+pass runs without dependency types. cargo-deny runs `cargo metadata`, which would honour the branch's `.cargo/config.toml`
 (`rustc-wrapper`, credential providers, source replacement) and `rust-toolchain` files, so it judges a `git archive`
 copy of HEAD with those removed, an isolated `CARGO_HOME` holding a copy of the crates.io index (tens of MB) and
 only the crate archives the lockfiles pin, no wrapper, offline and locked. It runs once per touched workspace root
@@ -133,7 +136,8 @@ first approves a held dependency.
   merging (the `create-pr` skill does). A server-side required check or branch protection is what enforces it.
 - **The ESLint pass runs JavaScript** (ESLint, the plugins, TypeScript) in-process with the operator's rights. It
   loads only the pinned stack (installed from the gate's lockfile without install scripts, tree-hash verified every
-  scan) and never imports from the repo, but TypeScript does read the repo's installed type declarations.
+  scan) and never imports from the repo; TypeScript reads type declarations from HEAD's committed lockfile,
+  installed without scripts.
 - **PyPI dependencies of semgrep and zizmor** are version-resolved, not hash-pinned (see setup).
 
 ## 2. Human half — the line-by-line review
