@@ -9,10 +9,18 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { type Ctx, EXIT_CLEAN, EXIT_FINDINGS, MAX_BUFFER, MSG_MAX, addFinding, checksums, die, exportTree, git, headTree,
-  isFile, lastLine, minimalEnv, need, neutraliseSemgrepIgnore, parseJson, run, sha256File } from './security-scan-core.ts';
+import { packConfigs } from './security-rules.ts';
+import { type Ctx, EXIT_CLEAN, EXIT_FINDINGS, MAX_BUFFER, MSG_MAX, addFinding, die, exportTree, git, headTree,
+  isFile, lastLine, minimalEnv, need, neutraliseSemgrepIgnore, parseJson, run } from './security-scan-core.ts';
 
+/** Built-in SAST targets: the languages the pinned Semgrep packs cover. A project ADDS to these (never removes) with
+ *  security/sast-targets.txt — see parseSastTargets. */
 const SAST_EXT = /\.(rs|ts|tsx|mts|cts|js|jsx|mjs|cjs|py|sh|go|rb|java|toml|ya?ml|json)$/;
+/** Where a project lists its extra SAST targets (a gate file: read from the gate dir, i.e. origin/main). */
+export const SAST_TARGETS_FILE = 'security/sast-targets.txt';
+/** One target token: a leading `.` makes it an extension (`.gd`), otherwise it is an exact file basename
+ *  (`Dockerfile`). Literal characters only — the tokens are compared as strings, never built into a regex. */
+const SAST_TOKEN = /^\.?[A-Za-z0-9][A-Za-z0-9_+-]*(\.[A-Za-z0-9_+-]+)*$/;
 const ERR_TYPE_MAX = 40;
 
 // 1. Secrets in the commits being merged (values redacted, never printed). The config always comes from the gate
@@ -36,23 +44,9 @@ export function scanSecrets(c: Ctx): void {
   }
 }
 
-/** `<sha256>  ./<pack>` lines of the tracked checksum file. */
-export function rulePacks(sums: string): { hash: string; name: string }[] {
-  return [...checksums(sums)].map(([name, hash]) => ({ hash, name }));
-}
-
-// Exactly the rule packs the TRACKED checksum file lists, verified every scan (an extra or changed pack is not used).
-function semgrepConfigs(c: Ctx): string[] {
-  const sumsFile = join(c.cfg, 'scripts/security-rules.sha256');
-  if (!existsSync(sumsFile)) die(`no scripts/security-rules.sha256 in ${c.cfg}; failing closed`);
-  const packs = rulePacks(readFileSync(sumsFile, 'utf8'));
-  if (!packs.length) die('no pinned semgrep rule packs listed; failing closed');
-  const configs: string[] = [];
-  for (const { hash, name } of packs) {
-    const file = join(c.rules, name);
-    if (!isFile(file) || sha256File(file) !== hash) die(`semgrep rule packs in ${c.rules} differ from the tracked checksums; failing closed`);
-    configs.push('--config', file);
-  }
+// The latest registry packs, diffed against the repo's accepted rule set (security-rules.ts: trust, but verify).
+function semgrepConfigs(c: Ctx, semgrep: string): string[] {
+  const configs = packConfigs(c, semgrep);
   const repoRules = join(c.cfg, '.semgrep');
   if (existsSync(repoRules)) configs.push('--config', repoRules);
   return configs;
@@ -130,16 +124,47 @@ function reportSemgrep(c: Ctx, results: SemgrepResult[], errors: SemgrepOut['err
 //    --disable-nosem: a `nosemgrep` comment cannot hide a finding; --max-target-bytes=0: no size skip; every
 //    .semgrepignore is removed from the exports (an empty one at the root means "ignore nothing").
 export function scanSast(c: Ctx): void {
-  need(c, 'semgrep');
-  const configs = semgrepConfigs(c);
+  const configs = semgrepConfigs(c, need(c, 'semgrep'));
   const head = headTree(c);
-  const targets = c.changed.filter(p => SAST_EXT.test(p) && isFile(join(head, p)));
+  const isTarget = sastTargets(c.cfg);
+  const targets = c.changed.filter(p => isTarget(p) && isFile(join(head, p)));
   if (!targets.length) return;
   const headOut = semgrepIn(c, head, configs, targets);
   const atBase = git(['ls-tree', '-r', '-z', '--name-only', c.mb, '--', ...targets], c.root).split('\0').filter(Boolean);
   const baseTree = atBase.length ? exportTree(c, c.mb, join(c.work, 'base-tree'), atBase) : '';
   const base = baseTree ? { tree: baseTree, out: semgrepIn(c, baseTree, configs, atBase) } : null;
   reportSemgrep(c, newResults({ tree: head, out: headOut }, base), headOut.errors);
+}
+
+/**
+ * Parses security/sast-targets.txt: one target per line, `#` starts a comment, blank lines are ignored. `.ext` adds
+ * an extension, a bare name adds an exact basename (for extensionless files such as `Dockerfile`). Throws on any
+ * malformed line, so a bad list fails the scan closed instead of silently scanning less.
+ */
+export function parseSastTargets(text: string): { exts: Set<string>; names: Set<string> } {
+  const exts = new Set<string>();
+  const names = new Set<string>();
+  text.split('\n').forEach((raw, i) => {
+    const line = raw.replace(/#.*/, '').trim();
+    if (!line) return;
+    if (!SAST_TOKEN.test(line)) die(`${SAST_TARGETS_FILE}:${i + 1}: "${line.slice(0, MSG_MAX)}" is not an extension (.ext) or a file name`);
+    if (line.startsWith('.')) exts.add(line.toLowerCase());
+    else names.add(line);
+  });
+  return { exts, names };
+}
+
+/** The SAST target test for a repo-relative path: the built-in languages plus the project's additions, if any. */
+export function sastTargets(cfgDir: string): (p: string) => boolean {
+  const file = join(cfgDir, SAST_TARGETS_FILE);
+  const extra = existsSync(file) ? parseSastTargets(readFileSync(file, 'utf8')) : { exts: new Set<string>(), names: new Set<string>() };
+  return p => {
+    if (SAST_EXT.test(p)) return true;
+    const base = p.slice(p.lastIndexOf('/') + 1);
+    if (extra.names.has(base)) return true;
+    const dot = base.lastIndexOf('.');
+    return dot > 0 && extra.exts.has(base.slice(dot).toLowerCase());
+  };
 }
 
 interface OsvOut { results: { packages?: { package: { name: string; version: string }; vulnerabilities?: { id: string }[] }[] }[] }

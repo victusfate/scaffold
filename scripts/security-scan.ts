@@ -15,8 +15,8 @@
  *
  * Tools (pinned installs from scripts/setup-security-tools.sh in $SECURITY_TOOLS_DIR, default
  * <main checkout>/.tooling/security/bin): gitleaks, semgrep, osv-scanner, cargo-deny, zizmor. Semgrep rule packs
- * come from $SECURITY_RULES_DIR (default <main checkout>/.tooling/security/rules) and must match the tracked
- * scripts/security-rules.sha256 on every scan; every binary must match scripts/security-tools.sha256. ESLint security
+ * come from $SECURITY_RULES_DIR (default <main checkout>/.tooling/security/rules): the latest registry packs, diffed
+ * every scan against the repo's accepted rule set (security-rules.ts); every binary must match scripts/security-tools.sha256. ESLint security
  * rules (scripts/security-eslint.ts) run on changed JS/TS files with the pinned stack in $SECURITY_ESLINT_DIR (default
  * <main checkout>/.tooling/security/eslint). Scanners read committed content only (git history, or a `git archive`
  * export of HEAD and the merge base). Scanner modules: security-scan-{core,tools,deps}.ts.

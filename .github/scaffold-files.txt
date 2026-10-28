@@ -52,7 +52,9 @@ scripts/security-eslint-stack/package-lock.json
 scripts/security-tools.sha256
 scripts/security-new-deps.ts
 scripts/security-new-deps.test.ts
-scripts/security-rules.sha256
+scripts/security-rules.ts
+scripts/security-rules.test.ts
+scripts/security-scan-tools.test.ts
 scripts/setup-security-tools.sh
 docs/security-review.md
 deny.toml
