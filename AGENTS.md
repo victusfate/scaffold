@@ -160,6 +160,7 @@ Non-trivial features run `/feature-chain`: **Design** `/grill-with-docs` → `de
 **One independent task per PR/merge cycle.** Validate locally, open the PR, verify real required checks on the
 final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of
 the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main.
+**Merge by squash:** one commit per PR on main, titled with the PR title; never rewrite or force-push main.
 **A skipped required check counts as passing on GitHub:** read the actual conclusions, capture the watch
 command's own exit, and make roll-up jobs fail closed (`if: always()` plus a guard). **Handoffs live only on
 branches:** before merging to main, the orchestrator commits `git rm .pause/handoff.md`, and

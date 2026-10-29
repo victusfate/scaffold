@@ -26,7 +26,8 @@ The orchestrator cleans up each completed lane at integration, before replacemen
 4. After the authorized main merge and fresh-branch checkout, verify the task
    branch has no unique commits before retiring it. With squash/rebase merges,
    inspect commit differences and resulting content; ancestry does not prove
-   preservation. Preserve anything unique before any deliberate deletion.
+   preservation, and `git branch --merged` never lists a squash-merged branch, so
+   start from the PR's `MERGED` state. Preserve anything unique before any deliberate deletion.
    Record the disposition and durable evidence links in the task handoff/index.
 
 Keep generated local stores, heartbeat/status files and disposable outputs ignored.
