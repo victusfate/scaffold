@@ -596,6 +596,19 @@ These failures each cost hours in a real run; each has a cheap guard.
 - **Keep the task board true.** Claims, releases and completions happen as subagents start,
   stop and merge, and the committed queue view is re-rendered with them (see `/queue`,
   `queue check-view`).
+- **Never park a worker branch.** Keep at most one branch (and worktree) per active subagent, plus
+  main. Every branch a subagent worked on ends, in the same tick the subagent stops, in exactly one
+  of three ways:
+  1. **Complete:** merge it, then delete the branch and worktree once the commit is in main.
+  2. **Partial but sound:** merge the gated progress and record in the task what remains. The task
+     stays open.
+  3. **Not mergeable yet:** send another subagent at the same branch to finish it.
+  Marking a task "held" and leaving its branch, or saving a "WIP" commit for later, is not a
+  resolution. Parked branches accumulate until nobody knows which work is live, which is stale and
+  which still needs a decision. Preempting a subagent for a higher priority means merging its sound
+  progress or making it that slot's next job, not leaving its branch behind. Deleting a branch that
+  holds unmerged commits needs the owner's OK. Count branches each tick: more than active subagents
+  plus main is a defect to fix before dispatching new work.
 
 ## Knowledge state: typed and evidenced, not prose
 

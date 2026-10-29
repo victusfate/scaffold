@@ -78,6 +78,8 @@ work is unbuilt: "exhausted" means built and reachable.
 - Subagents that "wait" may be asleep: check their processes each tick; subagents never end a turn idle.
 - Tests use isolated save/user dirs; hold a host lock around one command, never a shell.
 - Keep the task board true as subagents start, stop and merge.
+- Never park a worker branch: at most one branch per active subagent plus main. When a subagent stops, resolve its
+  branch the same tick: merge it (done), merge sound progress and note what remains, or send another subagent.
 → [full text](docs/agents-detail.md#orchestration-hygiene-lessons-from-long-autonomous-runs).
 
 ## Knowledge state: typed and evidenced, not prose
