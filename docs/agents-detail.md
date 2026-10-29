@@ -507,6 +507,18 @@ for runtime boundaries, migration and the `advance` acknowledgment.
 6. Before merging, clear the handoff and verify the green is **real** (see below).
 7. On a `<github-webhook-activity>` merge event: run `git checkout main && git pull origin main` automatically, then confirm main is up to date.
 
+**Merge by squash.** Every PR merges to main as a single squash commit: `gh pr merge <n> --squash`
+(with `--match-head-commit <sha>`, see the handoff rule below). Main then reads as one commit per task; the step commits
+(TDD red/green/refactor, per-artifact docs, lane merges) stay in the PR on the forge, where review
+happened. The squash commit's title is the PR title, and its body keeps the PR's attribution trailers.
+Make it the repo's only option once, so nobody merges another way by accident:
+`gh repo edit --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false`.
+Never rewrite or force-push main to squash older history. Recorded commit IDs (task evidence, release
+names, rollback references, PR links) and every existing clone, worktree and branch depend on it; use
+`git log --first-parent main` for a one-line-per-merge view instead. A squash-merged branch is never an
+ancestor of main, so `git branch --merged` cannot tell you it landed: decide by the PR's `MERGED` state
+and a content check (see `skills/queue-drivers.md`) before deleting it.
+
 **A green PR is not always green: required checks can fail *open*.** GitHub treats a **skipped**
 required status check as **satisfied**, so a required aggregate roll-up job (`needs:` a matrix/shard
 set, no `if: always()`) *skips* when a dependency fails, and the gate passes silently. (Same for
