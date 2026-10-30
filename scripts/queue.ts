@@ -32,7 +32,8 @@
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
 //   node scripts/queue.ts lane beat|finish|list|clear|stop|go <id>  # worker handoffs + heartbeats
 //
-// add/set flags: --mode chain --slug <s> --deps a,b --files a,b --validate "<cmd>"
+// add/set flags: --mode chain --slug <s> --deps a,b --files a,b --tags a,b --validate "<cmd>"
+//   node scripts/queue.ts list --tag <t>             # only tasks carrying tag <t>
 //   --accept "<criteria>" --top --worker <name>
 
 import { readFileSync } from 'node:fs';
@@ -50,9 +51,10 @@ import {
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask,
   holdTask, unclaimTask, parkTask,
-  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
+  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone,
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   deliveryAllows, selectDelivery,
+  showTask, taskBlock,
   type Queue, type Task,
 } from './queue-model.ts';
 import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
@@ -86,24 +88,6 @@ function runValidate(task: Task): { ok: boolean; tail: string } {
       || (e as { stdout?: string }).stdout || (e as Error).message);
     return { ok: false, tail: out.trim().split('\n').slice(-3).join(' | ') };
   }
-}
-
-// ---------------------------------------------------------------- rendering
-
-function showTask(t: Task): string {
-  const rows = taskFields(t, true).map(([k, v]) => `  ${k}: ${v}`);
-  return [`${t.id} [${t.status}] — ${t.title}`, ...rows].join('\n');
-}
-
-function taskBlock(t: Task): string {
-  const spec = [
-    t.mode === 'chain' ? 'mode: chain (design→prd→plan→tdd→refine, autonomous, no questions)' : 'mode: direct',
-    t.slug ? `slug: docs/${t.slug}/` : '',
-    t.accept ? `accept: ${t.accept}` : '',
-    t.files.length ? `files: ${t.files.join(', ')}` : '',
-    t.validate ? `validate: ${t.validate}` : '',
-  ].filter(Boolean).join('\n');
-  return `<queue_task id="${t.id}">\n${t.title}\n${spec}\n</queue_task>`;
 }
 
 // ---------------------------------------------------------------- commands
@@ -321,7 +305,12 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
   const needId = (): boolean => Boolean(id && q.tasks.some(t => t.id === id));
 
   switch (cmd) {
-    case 'list': case 'status': console.log(renderModel(q)); return 0;
+    case 'list': case 'status': {
+      const tag = f.flags.get('tag');
+      if (tag === '') { console.error('queue: list --tag needs a tag name'); return 2; }
+      console.log(renderModel(tag ? { ...q, tasks: q.tasks.filter(t => t.tags.includes(tag)) } : q));
+      return 0;
+    }
     case 'show':
       if (!needId()) { console.error('show: unknown task id'); return 1; }
       console.log(showTask(q.tasks.find(t => t.id === id)!)); return 0;

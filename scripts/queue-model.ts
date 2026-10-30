@@ -53,6 +53,8 @@ export interface Task {
   slug: string | null;
   dependsOn: string[];
   files: string[];
+  /** Free-form labels for grouping and filtering (`group:speed`, `owner-report`); `list --tag` filters on them. */
+  tags: string[];
   validate: string | null;
   accept: string | null;
   note: string | null;
@@ -64,7 +66,7 @@ export interface Task {
 }
 
 /** Fields user-facing queue editors may change. */
-export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'held', 'elapsed', 'slug', 'deps', 'files', 'validate', 'accept', 'note'] as const;
+export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'held', 'elapsed', 'slug', 'deps', 'files', 'tags', 'validate', 'accept', 'note'] as const;
 
 export interface QueueConfig {
   status: 'running' | 'stopped';
@@ -140,7 +142,7 @@ function markOf(t: Task): string {
 export function newTask(id: string, title: string): Task {
   return {
     id, title, status: 'pending', mode: 'direct', held: false, elapsedSecs: 0,
-    slug: null, dependsOn: [], files: [],
+    slug: null, dependsOn: [], files: [], tags: [],
     validate: null, accept: null, note: null, failures: 0, owner: null, branch: null,
     worktree: null, startedAt: null,
   };
@@ -243,6 +245,7 @@ export function fieldPatch(key: string, val: string): Partial<Task> {
     case 'slug': return { slug: v || null };
     case 'deps': case 'dependsOn': return { dependsOn: splitList(v) };
     case 'files': return { files: splitList(v) };
+    case 'tags': return { tags: splitList(v) };
     case 'validate': return { validate: v || null };
     case 'accept': return { accept: v || null };
     case 'note': return { note: v || null };
@@ -341,6 +344,7 @@ export function taskFields(t: Task, alwaysMode = false): Array<[string, string]>
   push('slug', t.slug ?? '');
   push('deps', t.dependsOn.join(', '));
   push('files', t.files.join(', '));
+  push('tags', t.tags.join(', '));
   push('validate', t.validate ?? '');
   push('accept', t.accept ?? '');
   push('failures', t.failures ? String(t.failures) : '');
@@ -627,6 +631,7 @@ export function render(q: Queue): string {
       t.dependsOn.length ? `deps:${t.dependsOn.join('+')}` : '',
       t.failures ? `retries:${t.failures}` : '',
       t.owner ? `@${t.owner}` : '',
+      ...t.tags.map(tag => `#${tag}`),
     ].filter(Boolean).join(' ');
     return `  ${i + 1}. ${BADGE[t.status]} ${t.id}  ${t.title}${tags ? `   [${tags}]` : ''}`;
   });
@@ -808,4 +813,22 @@ export function drainSignal(q: Queue): string | null {
   if (q.tasks.some(t => t.status === 'active')) return null;
   const ready = q.tasks.filter(t => isEligible(t, q)).length;
   return ready ? `${DRAIN_MARKER} ${ready} pending` : null;
+}
+
+/** `queue show`: every set field of one task, one per line. */
+export function showTask(t: Task): string {
+  const rows = taskFields(t, true).map(([k, v]) => `  ${k}: ${v}`);
+  return [`${t.id} [${t.status}] — ${t.title}`, ...rows].join('\n');
+}
+
+/** The prompt block a worker receives for a task (tick/claim). */
+export function taskBlock(t: Task): string {
+  const spec = [
+    t.mode === 'chain' ? 'mode: chain (design→prd→plan→tdd→refine, autonomous, no questions)' : 'mode: direct',
+    t.slug ? `slug: docs/${t.slug}/` : '',
+    t.accept ? `accept: ${t.accept}` : '',
+    t.files.length ? `files: ${t.files.join(', ')}` : '',
+    t.validate ? `validate: ${t.validate}` : '',
+  ].filter(Boolean).join('\n');
+  return `<queue_task id="${t.id}">\n${t.title}\n${spec}\n</queue_task>`;
 }

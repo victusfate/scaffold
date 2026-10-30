@@ -68,6 +68,7 @@ scripts/queue-model.ts
 scripts/queue-io.ts
 scripts/queue-db.ts
 scripts/queue-db.test.ts
+scripts/queue-tags.test.ts
 scripts/queue-worktrees.ts
 scripts/queue-gates.ts
 scripts/queue-delivery.ts
