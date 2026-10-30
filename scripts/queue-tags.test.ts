@@ -29,6 +29,7 @@ try {
   assert.match(speed, /Speed up the test gate/);
   assert.doesNotMatch(speed, /Camera flips/);
   assert.match(run('list').stdout, /#owner-report/);
+  assert.equal(run('list', '--tag').status, 2, 'a bare --tag is an error, not the full list');
 
   // Clearing tags removes them.
   assert.equal(run('set', 'task-002', 'tags', '').status, 0);

@@ -324,6 +324,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
   switch (cmd) {
     case 'list': case 'status': {
       const tag = f.flags.get('tag');
+      if (tag === '') { console.error('queue: list --tag needs a tag name'); return 2; }
       console.log(renderModel(tag ? { ...q, tasks: q.tasks.filter(t => t.tags.includes(tag)) } : q));
       return 0;
     }
