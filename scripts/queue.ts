@@ -32,7 +32,8 @@
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
 //   node scripts/queue.ts lane beat|finish|list|clear|stop|go <id>  # worker handoffs + heartbeats
 //
-// add/set flags: --mode chain --slug <s> --deps a,b --files a,b --validate "<cmd>"
+// add/set flags: --mode chain --slug <s> --deps a,b --files a,b --tags a,b --validate "<cmd>"
+//   node scripts/queue.ts list --tag <t>             # only tasks carrying tag <t>
 //   --accept "<criteria>" --top --worker <name>
 
 import { readFileSync } from 'node:fs';
@@ -321,7 +322,11 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
   const needId = (): boolean => Boolean(id && q.tasks.some(t => t.id === id));
 
   switch (cmd) {
-    case 'list': case 'status': console.log(renderModel(q)); return 0;
+    case 'list': case 'status': {
+      const tag = f.flags.get('tag');
+      console.log(renderModel(tag ? { ...q, tasks: q.tasks.filter(t => t.tags.includes(tag)) } : q));
+      return 0;
+    }
     case 'show':
       if (!needId()) { console.error('show: unknown task id'); return 1; }
       console.log(showTask(q.tasks.find(t => t.id === id)!)); return 0;

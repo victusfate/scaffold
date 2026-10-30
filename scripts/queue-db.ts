@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   slug         TEXT,
   depends_on   TEXT NOT NULL,
   files        TEXT NOT NULL,
+  tags         TEXT NOT NULL DEFAULT '[]',
   validate     TEXT,
   accept       TEXT,
   note         TEXT,
@@ -95,6 +96,7 @@ export function withStore<T>(path: string, fn: (db: DatabaseSync, fresh: boolean
     }
     try {
       db.exec(SCHEMA);
+      migrateTags(db);
       const fresh = getMeta(db, 'initialized') === null;
       if (fresh) setMeta(db, 'initialized', new Date().toISOString());
       out = fn(db, fresh, effect => effects.push(effect));
@@ -137,13 +139,20 @@ export function storedNextId(db: DatabaseSync): number {
   return Math.max(1, Number(getMeta(db, 'nextId')) || 1);
 }
 
+/** Stores created before tags existed gain the column with every task untagged; CREATE TABLE IF NOT EXISTS won't add it. */
+function migrateTags(db: DatabaseSync): void {
+  const cols = db.prepare('PRAGMA table_info(tasks)').all() as Array<{ name: string }>;
+  if (!cols.some(c => c.name === 'tags')) db.exec("ALTER TABLE tasks ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'");
+}
+
 function rowToTask(r: Row): Task {
   const text = (v: Row[string]): string | null => (v === null ? null : String(v));
   return {
     id: String(r.id), title: String(r.title), status: r.status as Task['status'],
     mode: r.mode as Task['mode'], held: r.held === 1, elapsedSecs: Number(r.elapsed_secs),
     slug: text(r.slug), dependsOn: JSON.parse(String(r.depends_on)) as string[],
-    files: JSON.parse(String(r.files)) as string[], validate: text(r.validate),
+    files: JSON.parse(String(r.files)) as string[], tags: JSON.parse(String(r.tags ?? '[]')) as string[],
+    validate: text(r.validate),
     accept: text(r.accept), note: text(r.note), failures: Number(r.failures),
     owner: text(r.owner), branch: text(r.branch), worktree: text(r.worktree),
     startedAt: text(r.started_at),
@@ -193,11 +202,11 @@ export function writeStore(db: DatabaseSync, q: Queue): Queue {
   const { tasks, nextId } = assignIds({ config: { ...q.config, nextId: counter }, tasks: q.tasks });
   db.exec('DELETE FROM tasks');
   const insert = db.prepare(`INSERT INTO tasks (id, position, title, status, mode, held,
-    elapsed_secs, slug, depends_on, files, validate, accept, note, failures, owner, branch,
-    worktree, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    elapsed_secs, slug, depends_on, files, tags, validate, accept, note, failures, owner, branch,
+    worktree, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   tasks.forEach((t, i) => insert.run(
     t.id, i, t.title, t.status, t.mode, t.held ? 1 : 0, Math.round(t.elapsedSecs), t.slug,
-    JSON.stringify(t.dependsOn), JSON.stringify(t.files), t.validate, t.accept, t.note,
+    JSON.stringify(t.dependsOn), JSON.stringify(t.files), JSON.stringify(t.tags ?? []), t.validate, t.accept, t.note,
     t.failures, t.owner, t.branch, t.worktree, t.startedAt,
   ));
   const config: Partial<QueueConfig> = { ...q.config };

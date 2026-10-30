@@ -36,7 +36,7 @@ import {
 
 export interface TaskPatch {
   title?: string; mode?: string; held?: string; elapsed?: string; slug?: string; deps?: string;
-  files?: string; validate?: string; accept?: string; note?: string;
+  files?: string; tags?: string; validate?: string; accept?: string; note?: string;
 }
 
 const CONFIG_KEYS = [...NUMERIC_CONFIG_KEYS, ...TEXT_CONFIG_KEYS];
