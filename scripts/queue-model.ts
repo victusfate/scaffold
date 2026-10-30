@@ -814,3 +814,21 @@ export function drainSignal(q: Queue): string | null {
   const ready = q.tasks.filter(t => isEligible(t, q)).length;
   return ready ? `${DRAIN_MARKER} ${ready} pending` : null;
 }
+
+/** `queue show`: every set field of one task, one per line. */
+export function showTask(t: Task): string {
+  const rows = taskFields(t, true).map(([k, v]) => `  ${k}: ${v}`);
+  return [`${t.id} [${t.status}] — ${t.title}`, ...rows].join('\n');
+}
+
+/** The prompt block a worker receives for a task (tick/claim). */
+export function taskBlock(t: Task): string {
+  const spec = [
+    t.mode === 'chain' ? 'mode: chain (design→prd→plan→tdd→refine, autonomous, no questions)' : 'mode: direct',
+    t.slug ? `slug: docs/${t.slug}/` : '',
+    t.accept ? `accept: ${t.accept}` : '',
+    t.files.length ? `files: ${t.files.join(', ')}` : '',
+    t.validate ? `validate: ${t.validate}` : '',
+  ].filter(Boolean).join('\n');
+  return `<queue_task id="${t.id}">\n${t.title}\n${spec}\n</queue_task>`;
+}

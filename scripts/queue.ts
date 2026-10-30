@@ -51,9 +51,10 @@ import {
   addTask, addMany, setField, moveToTop, moveTask, removeTask, setConfig,
   beginTask, markDone, recordFailure, staleLeases, pauseUntil, resumeIfDue, requeueTask,
   holdTask, unclaimTask, parkTask,
-  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone, taskFields,
+  nextActionable, readyTasks, deadlocked, drainSignal, archivableDone,
   sweepFinished, NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
   deliveryAllows, selectDelivery,
+  showTask, taskBlock,
   type Queue, type Task,
 } from './queue-model.ts';
 import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
@@ -87,24 +88,6 @@ function runValidate(task: Task): { ok: boolean; tail: string } {
       || (e as { stdout?: string }).stdout || (e as Error).message);
     return { ok: false, tail: out.trim().split('\n').slice(-3).join(' | ') };
   }
-}
-
-// ---------------------------------------------------------------- rendering
-
-function showTask(t: Task): string {
-  const rows = taskFields(t, true).map(([k, v]) => `  ${k}: ${v}`);
-  return [`${t.id} [${t.status}] — ${t.title}`, ...rows].join('\n');
-}
-
-function taskBlock(t: Task): string {
-  const spec = [
-    t.mode === 'chain' ? 'mode: chain (design→prd→plan→tdd→refine, autonomous, no questions)' : 'mode: direct',
-    t.slug ? `slug: docs/${t.slug}/` : '',
-    t.accept ? `accept: ${t.accept}` : '',
-    t.files.length ? `files: ${t.files.join(', ')}` : '',
-    t.validate ? `validate: ${t.validate}` : '',
-  ].filter(Boolean).join('\n');
-  return `<queue_task id="${t.id}">\n${t.title}\n${spec}\n</queue_task>`;
 }
 
 // ---------------------------------------------------------------- commands
