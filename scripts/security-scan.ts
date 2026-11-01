@@ -21,6 +21,7 @@
  * <main checkout>/.tooling/security/eslint). Scanners read committed content only (git history, or a `git archive`
  * export of HEAD and the merge base). Scanner modules: security-scan-{core,tools,deps}.ts.
  */
+import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { cpSync, existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
@@ -29,7 +30,7 @@ import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { GATE_FILES } from './security-gate.ts';
 import { type Ctx, EXIT_CLEAN, EXIT_ERROR, EXIT_FINDINGS, EXIT_HELD, MAX_BUFFER, MSG_MAX, ScanError, addFinding, die, eslintStack, git, mainCheckout,
-  headTree, isFile, lastLine, minimalEnv, parseJson, run, statusOf } from './security-scan-core.ts';
+  parallelStages, headTree, isFile, lastLine, minimalEnv, parseJson, run, statusOf } from './security-scan-core.ts';
 import { scanSast, scanSecrets, scanVulns, scanWorkflows } from './security-scan-tools.ts';
 import { GUARDED_LOCKFILE, OSV_LOCKFILE, holdUnparsedLockfiles, runProjectChecks, scanCrates,
   scanNewDeps } from './security-scan-deps.ts';
@@ -38,6 +39,7 @@ export { EXIT_CLEAN, EXIT_ERROR, EXIT_FINDINGS, EXIT_HELD };
 
 const CARGO_MANIFEST = /(^|\/)Cargo\.(toml|lock)$/;
 const WORKFLOW = /^\.github\/(workflows|actions)\//;
+const MS_PER_SECOND = 1000;
 const LINTED = /\.(js|jsx|mjs|cjs|ts|tsx|mts|cts)$/;
 /** Scanner suppression files (removed from the exports the scanners read; a change is still held). */
 const SUPPRESSION_FILES = ['.semgrepignore', '.gitleaksignore'];
@@ -128,8 +130,10 @@ function runEslint(c: Ctx, tree: string, files: string[]): LintMessage[] {
 }
 
 function scanEslint(c: Ctx): void {
+  const candidates = c.changed.filter(p => LINTED.test(p));
+  if (!candidates.length) return;
   const tree = headTree(c);
-  const files = c.changed.filter(p => LINTED.test(p) && isFile(join(tree, p)));
+  const files = candidates.filter(p => isFile(join(tree, p)));
   if (!files.length) return;
   const added = new Map<string, Set<number>>();
   for (const m of runEslint(c, tree, files)) {
@@ -140,20 +144,67 @@ function scanEslint(c: Ctx): void {
   }
 }
 
-function scanAll(c: Ctx): void {
+/** Separate exports keep Semgrep suppression removal, ESLint links and cargo sanitisation isolated. */
+const STAGES: Record<string, (c: Ctx) => void> = {
+  gitleaks: scanSecrets,
+  semgrep: scanSast,
+  osv: c => { const locks = c.changed.filter(p => OSV_LOCKFILE.test(p)); if (locks.length) scanVulns(c, locks); },
+  zizmor: c => { if (c.changed.some(p => WORKFLOW.test(p))) scanWorkflows(c); },
+  'new-deps': c => { const locks = c.changed.filter(p => GUARDED_LOCKFILE.test(p)); if (locks.length) scanNewDeps(c, locks); },
+  eslint: scanEslint,
+  'project-checks': runProjectChecks,
+  'cargo-deny': c => { if (c.changed.some(p => CARGO_MANIFEST.test(p))) scanCrates(c); },
+};
+interface StageResult { name: string; started_at: string; ended_at: string; seconds: number; findings: Ctx['findings'] }
+function validStageResult(message: unknown, name: string): message is StageResult {
+  if (typeof message !== 'object' || message === null) return false;
+  const result = message as Partial<StageResult>;
+  return result.name === name && typeof result.started_at === 'string' && typeof result.ended_at === 'string'
+    && typeof result.seconds === 'number' && Number.isFinite(result.seconds) && Array.isArray(result.findings);
+}
+function stageWorker(c: Ctx, name: string): Promise<StageResult> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(new URL(import.meta.url), { workerData: { securityScanStage: true, c, name } });
+    let result: StageResult | undefined;
+    let error: Error | undefined;
+    worker.on('message', (message: unknown) => {
+      if (validStageResult(message, name)) result = message;
+      else error = new ScanError('invalid or partial worker result');
+    });
+    worker.on('error', (caught: unknown) => { error = caught instanceof Error ? caught : new Error(String(caught)); });
+    worker.on('exit', code => {
+      if (error) reject(new ScanError(`scanner stage ${name}: ${error.message}`));
+      else if (code !== 0 || !result) reject(new ScanError(`scanner stage ${name} failed (exit ${code})`));
+      else resolve(result);
+    });
+  });
+}
+async function scanAll(c: Ctx): Promise<StageResult[]> {
   refuseCommittedNodeModules(c);
   checkGateChanges(c);
-  scanSecrets(c);
-  scanSast(c);
-  const osvLocks = c.changed.filter(p => OSV_LOCKFILE.test(p));
-  if (osvLocks.length) scanVulns(c, osvLocks);
   holdUnparsedLockfiles(c);
-  if (c.changed.some(p => WORKFLOW.test(p))) scanWorkflows(c);
-  const guarded = c.changed.filter(p => GUARDED_LOCKFILE.test(p));
-  if (guarded.length) scanNewDeps(c, guarded);
-  scanEslint(c);
-  runProjectChecks(c);
-  if (c.changed.some(p => CARGO_MANIFEST.test(p))) scanCrates(c);   // last: it strips cargo config from the export
+  const results = await parallelStages(Object.keys(STAGES).map(name => () => {
+    const work = join(c.work, name);
+    mkdirSync(work);
+    return stageWorker({ ...c, work, findings: [], verified: new Set<string>(), headTree: undefined,
+      // Semgrep already reads only changed targets. Other scanners retain their full export contracts.
+      headPaths: name === 'semgrep' ? c.changed : undefined }, name);
+  }));
+  for (const result of results) {
+    c.findings.push(...result.findings);
+    console.log(`security-stage: ${JSON.stringify({ name: result.name, started_at: result.started_at,
+      ended_at: result.ended_at, seconds: result.seconds, exit: statusOf(result.findings) })}`);
+  }
+  return results;
+}
+
+function runWorker(): void {
+  const { c, name } = workerData as { c: Ctx; name: string };
+  const started = performance.now();
+  const started_at = new Date().toISOString();
+  STAGES[name](c);
+  parentPort?.postMessage({ name, started_at, ended_at: new Date().toISOString(),
+    seconds: (performance.now() - started) / MS_PER_SECOND, findings: c.findings });
 }
 
 interface Args { base: string; report: string; cfg: string }
@@ -200,20 +251,20 @@ const VERDICT: Record<number, string> = {
   [EXIT_HELD]: 'HOLD: new dependencies, gate changes or unparsed lockfiles need an owner decision (docs/security-review.md)',
 };
 
-function scan(a: Args, work: string): number {
+async function scan(a: Args, work: string): Promise<number> {
   const c = context(a, work);
   console.log(`security-scan: ${c.touched.length} changed file(s) since ${c.mb.slice(0, 9)}; gate config from ${c.cfg}`);
-  if (c.touched.length) scanAll(c);
+  const stages = c.touched.length ? await scanAll(c) : [];
   const status = statusOf(c.findings);
-  if (a.report) writeFileSync(a.report, JSON.stringify({ status, findings: c.findings }, null, 2));
+  if (a.report) writeFileSync(a.report, JSON.stringify({ status, findings: c.findings, stages }, null, 2));
   console.log(`security-scan: ${VERDICT[status]}`);
   return status;
 }
 
-function main(): number {
+async function main(): Promise<number> {
   const work = mkdtempSync(join(tmpdir(), 'security-scan-'));
   try {
-    return scan(parseArgs(process.argv.slice(2)), work);
+    return await scan(parseArgs(process.argv.slice(2)), work);
   } catch (e) {
     console.error(`security-scan: ${e instanceof ScanError ? e.message : String(e)}`);
     return EXIT_ERROR;
@@ -222,4 +273,5 @@ function main(): number {
   }
 }
 
-if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) process.exitCode = main();
+if (!isMainThread && (workerData as { securityScanStage?: boolean } | undefined)?.securityScanStage === true) runWorker();
+else if (process.argv[1] && fileURLToPath(import.meta.url) === realpathSync(process.argv[1])) process.exitCode = await main();

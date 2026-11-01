@@ -104,6 +104,20 @@ the whole rule, its severity; read from `origin/main`), and `scripts/security-ru
 
 Exit codes: 0 clean, 1 findings, 2 setup/scanner error, 3 held.
 
+Independent scanner stages run in parallel, with at most three workers at a time. Each stage has its own
+working directory and committed-tree export, so Semgrep suppression removal, ESLint links and Cargo
+sanitisation cannot interfere. Semgrep exports only changed target files; other stages retain their existing
+export scope. Exported filenames are literal Git pathspecs, including names containing glob or pathspec syntax.
+The gate checks the human review before launching scanners; origin/main's exported gate remains authoritative.
+
+A failed stage does not stop the remaining stages from running. The runner waits for every stage to finish,
+then reports **every failed scanner's error**, with its stage name, before rejecting with exit 2. Thrown errors,
+worker crashes (including out-of-memory termination), nonzero worker exits and exits without a result all
+fail closed. A partial result followed by a failed exit cannot pass. Scanner timeouts and invalid reports
+remain errors; no accepted scan report is written when a stage fails. Successful runs include stage timings
+in the JSON report and `security-stage:` log lines. Findings, holds and acknowledgement rules are unchanged.
+
+
 **The branch cannot switch the scanners off.** Scanners judge committed content only: gitleaks reads the merged
 commits, and Semgrep, ESLint, zizmor and cargo-deny read a `git archive` export of HEAD (Semgrep's baseline is
 the same scan of an export of the merge base, matched by rule, file and matched text), made with no
