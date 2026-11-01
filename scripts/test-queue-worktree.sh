@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Integration test for `queue worktree` git operations against a throwaway repo.
 set -euo pipefail
+# Drive the queue as a human at the terminal: clear the agent markers queue-task-origin.ts checks.
+unset CLAUDECODE CODEX_THREAD_ID CODEX_SANDBOX CODEX_CI GEMINI_CLI LANE_RUN_ID SCAFFOLD_AGENT
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TMP="$(mktemp -d)"
@@ -15,7 +17,7 @@ cd "$TMP"
 git init -q
 git config user.email t@t.t; git config user.name t
 mkdir scripts
-cp "$HERE/queue.ts" "$HERE/queue-cli-args.ts" "$HERE/queue-model.ts" "$HERE/queue-io.ts" "$HERE/queue-db.ts" "$HERE/queue-worktrees.ts" "$HERE/queue-gates.ts" "$HERE/queue-delivery.ts" "$HERE/queue-lanes.ts" scripts/
+cp "$HERE/queue.ts" "$HERE/queue-cli-args.ts" "$HERE/queue-model.ts" "$HERE/queue-io.ts" "$HERE/queue-db.ts" "$HERE/queue-worktrees.ts" "$HERE/queue-gates.ts" "$HERE/queue-delivery.ts" "$HERE/queue-lanes.ts" "$HERE/queue-task-origin.ts" scripts/
 echo "seed" > file.txt
 git add -A; git commit -qm init
 # shellcheck disable=SC2034  # used inside the single-quoted predicates eval'd by check()

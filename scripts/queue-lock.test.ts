@@ -6,6 +6,7 @@ import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseQueue } from './queue-model.ts';
 import { fileURLToPath } from 'node:url';
+import { humanEnv } from './queue-task-origin.ts';
 
 const SELF = fileURLToPath(import.meta.url);
 const CLI = fileURLToPath(new URL('./queue.ts', import.meta.url));
@@ -39,7 +40,7 @@ function waitFor(marker: string): void {
 function spawnCli(file: string, args: string[], script = CLI): Promise<number> {
   return new Promise(resolve => {
     const child = spawn(process.execPath, [script, ...args], {
-      env: { ...process.env, QUEUE_FILE: file }, stdio: ['ignore', 'ignore', 'inherit'],
+      env: { ...humanEnv(), QUEUE_FILE: file }, stdio: ['ignore', 'ignore', 'inherit'],
     });
     child.on('error', () => resolve(1));
     child.on('exit', code => resolve(code ?? 1));
@@ -48,7 +49,7 @@ function spawnCli(file: string, args: string[], script = CLI): Promise<number> {
 
 function run(file: string, ...args: string[]): number {
   return spawnSync(process.execPath, [CLI, ...args], {
-    env: { ...process.env, QUEUE_FILE: file }, stdio: 'ignore',
+    env: { ...humanEnv(), QUEUE_FILE: file }, stdio: 'ignore',
   }).status ?? 1;
 }
 

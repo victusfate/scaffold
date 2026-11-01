@@ -9,12 +9,13 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { parseQueue } from './queue-model.ts';
+import { humanEnv } from './queue-task-origin.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'queue-tags-'));
 const file = join(dir, 'queue.md');
 const cli = fileURLToPath(new URL('./queue.ts', import.meta.url));
 const run = (...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
-  env: { ...process.env, QUEUE_FILE: file }, encoding: 'utf8',
+  env: { ...humanEnv(), QUEUE_FILE: file }, encoding: 'utf8',
 });
 try {
   // add --tags and set <id> tags both persist, and the view mirrors them.

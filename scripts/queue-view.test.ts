@@ -8,12 +8,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync, execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { humanEnv } from './queue-task-origin.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'queue-view-'));
 const file = join(dir, '.agent', 'queue', 'queue.md');
 const cli = fileURLToPath(new URL('./queue.ts', import.meta.url));
 const run = (...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
-  cwd: dir, env: { ...process.env, QUEUE_FILE: file }, encoding: 'utf8',
+  cwd: dir, env: { ...humanEnv(), QUEUE_FILE: file }, encoding: 'utf8',
 });
 const git = (...args: string[]) => execFileSync('git', ['-C', dir, ...args], { stdio: 'ignore' });
 try {

@@ -5,7 +5,7 @@ export interface Parsed { positionals: string[]; flags: Map<string, string>; boo
 
 const VALUE_FLAGS = new Set([
   ...EDITABLE_TASK_FIELDS, 'worker', 'until', 'minutes', 'only',
-  'pr', 'branch', 'step', 'model', 'tail', 'state', 'resume', 'tag',
+  'pr', 'branch', 'step', 'model', 'tail', 'state', 'resume', 'tag', 'parent', 'requested',
 ]);
 
 export function parse(rest: string[]): Parsed {

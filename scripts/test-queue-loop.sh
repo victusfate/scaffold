@@ -2,6 +2,8 @@
 # Tests for the loop-driver signals: tick/ready exit codes + the enqueue kick hint.
 # Exit codes: 0 dispatched · 3 idle · 4 paused · 5 stopped.
 set -uo pipefail
+# Drive the queue as a human at the terminal: clear the agent markers queue-task-origin.ts checks.
+unset CLAUDECODE CODEX_THREAD_ID CODEX_SANDBOX CODEX_CI GEMINI_CLI LANE_RUN_ID SCAFFOLD_AGENT
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TMP="$(mktemp -d)"

@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { humanEnv } from './queue-task-origin.ts';
 
 let passed = 0, failed = 0;
 function assert(label: string, cond: boolean, detail = ''): void {
@@ -30,7 +31,7 @@ interface ConsoleProc { proc: ChildProcess; port: number; file: string }
 function startConsole(file: string): Promise<ConsoleProc> {
   return new Promise((resolve, reject) => {
     const proc = spawn(process.execPath, [CONSOLE, '--port', '0'], {
-      env: { ...process.env, QUEUE_FILE: file },
+      env: { ...humanEnv(), QUEUE_FILE: file },
       stdio: ['ignore', 'pipe', 'inherit'],
     });
     let out = '';
@@ -53,7 +54,7 @@ const post = (c: ConsoleProc, body: unknown): Promise<Response> => fetch(api(c, 
 });
 const laneBeat = (c: ConsoleProc, id: string, step: string): void => {
   const r = spawnSync(process.execPath, [CLI, 'lane', 'beat', id, '--worker', 'isolation-probe', '--step', step], {
-    env: { ...process.env, QUEUE_FILE: c.file }, encoding: 'utf8',
+    env: { ...humanEnv(), QUEUE_FILE: c.file }, encoding: 'utf8',
   });
   assert(`lane beat ${id} accepted on its own console`, r.status === 0, r.stderr.slice(0, 200));
 };

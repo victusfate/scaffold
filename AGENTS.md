@@ -87,7 +87,9 @@ work is unbuilt: "exhausted" means built and reachable.
 Lifecycle state (branch, plan, PR, evidence, decisions) lives in the queue CLI's typed fields, never as prose
 markers. **Done requires evidence** (PR, test ids, commit, scope), which goes stale when covered files change.
 Record each owner decision when made, with an id and the owner's words. Generate code hook points, don't
-hand-write them. Project facts live in the repo, never only in harness-private memory.
+hand-write them. Project facts live in the repo, never only in harness-private memory. **Tasks are
+human-owned:** an agent adds a task only as a child (`--parent <id>`) or with the human's own words
+(`--requested`); the queue CLI refuses a bare agent add.
 → [full text](docs/agents-detail.md#knowledge-state-typed-and-evidenced-not-prose) ·
 [`docs/knowledge-architecture.md`](docs/knowledge-architecture.md).
 

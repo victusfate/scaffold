@@ -7,12 +7,13 @@ import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { parseQueue } from './queue-model.ts';
+import { humanEnv } from './queue-task-origin.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'queue-edit-'));
 const file = join(dir, 'queue.md');
 const cli = fileURLToPath(new URL('./queue.ts', import.meta.url));
 const run = (...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
-  env: { ...process.env, QUEUE_FILE: file }, encoding: 'utf8',
+  env: { ...humanEnv(), QUEUE_FILE: file }, encoding: 'utf8',
 });
 try {
   assert.equal(run('add', 'Old instructions').status, 0);

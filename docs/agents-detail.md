@@ -637,6 +637,14 @@ Full rationale and pilot plan: [`docs/knowledge-architecture.md`](docs/knowledge
   owner's words, scope, status and supersession, plus a code reference or a reproducible
   measurement. Record it before replying, because chat summaries are lossy. Everything else cites
   the id. An unmeasured claim is marked unverified.
+- **Tasks are human-owned.** Top-level tasks come from a human. Work an agent finds while working
+  (review follow-ups, bugs hit while shipping, report clusters) attaches to the task it came from as
+  a child (`queue add "<title>" --parent <task-id>`) or a note on that task. An agent adds a new
+  top-level task only for a human's explicit request, quoting their words
+  (`--requested "<their words>"`); with no parent and no request it asks the human first. The queue
+  CLI enforces this in agent sessions (`scripts/queue-task-origin.ts`) and records the origin as a
+  `parent:<id>` or `requested-by:human` tag. The quote is unauthenticated text, so only quote real
+  words, as with owner sign-offs.
 - **Generate hook points; don't hand-write them.** Code locations come from code at a named
   commit, and plans state intent and gates. Subagents own the details and write discoveries back.
 - **Never keep project facts only in harness-private memory.** Facts every subagent needs live in
