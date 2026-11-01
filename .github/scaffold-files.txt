@@ -42,6 +42,7 @@ scripts/compute-bump.ts
 scripts/compute-bump.test.ts
 scripts/security-gate.ts
 scripts/security-gate.test.ts
+scripts/security-gate-precheck.test.ts
 scripts/security-scan.ts
 scripts/security-scan-core.ts
 scripts/security-scan-tools.ts
