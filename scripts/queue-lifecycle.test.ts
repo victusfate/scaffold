@@ -6,12 +6,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { humanEnv } from './queue-task-origin.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'queue-lifecycle-'));
 const file = join(dir, 'queue.md');
 const cli = fileURLToPath(new URL('./queue.ts', import.meta.url));
 const run = (...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
-  env: { ...process.env, QUEUE_FILE: file }, encoding: 'utf8', timeout: 10_000,
+  env: { ...humanEnv(), QUEUE_FILE: file }, encoding: 'utf8', timeout: 10_000,
 });
 const ok = (...args: string[]) => {
   const result = run(...args);

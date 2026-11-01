@@ -58,6 +58,7 @@ import {
   type Queue, type Task,
 } from './queue-model.ts';
 import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
+import { taskOrigin, withOrigin } from './queue-task-origin.ts';
 import { cmdLane } from './queue-lanes.ts';
 import { cmdAdvance } from './queue-delivery.ts';
 import { cmdWorktree } from './queue-worktrees.ts';
@@ -317,8 +318,10 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
 
     case 'add': {
       const title = f.positionals.join(' ').trim();
-      if (!title) { console.error('usage: queue add "<title>" [flags]'); return 1; }
-      q = addTask(q, title, { top: f.bools.has('top'), ...taskOverrides(f) });
+      if (!title) { console.error('usage: queue add "<title>" [--parent <id> | --requested "<human words>"] [flags]'); return 1; }
+      const origin = taskOrigin(q, f);
+      if (!origin.ok) { console.error(origin.error); return 2; }
+      q = addTask(q, title, { top: f.bools.has('top'), ...withOrigin(taskOverrides(f), origin.patch) });
       save(q); log(`add ${title}`);
       const t = q.tasks[f.bools.has('top') ? 0 : q.tasks.length - 1];
       console.log(`added ${t.id}${t.mode === 'chain' ? ' (chain)' : ''} — ${title}${drainKick(q)}`); return 0;
@@ -327,7 +330,10 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       const raw = f.positionals.length ? f.positionals : stdinItems ?? [];
       const items = raw.map(cleanItem).filter(Boolean);
       if (!items.length) { console.error('add-many: no items (pass args or pipe lines on stdin)'); return 1; }
-      q = addMany(q, items, { top: f.bools.has('top') });
+      const origin = taskOrigin(q, f);
+      if (!origin.ok) { console.error(origin.error.replace('queue add', 'queue add-many')); return 2; }
+      const { tags, note } = withOrigin(taskOverrides(f), origin.patch);
+      q = addMany(q, items, { top: f.bools.has('top'), ...(tags && { tags }), ...(note && { note }) });
       save(q); log(`add-many ${items.length}`);
       console.log(`added ${items.length} task(s); ${q.tasks.length} total${drainKick(q)}`); return 0;
     }

@@ -419,11 +419,12 @@ export function addTask(q: Queue, title: string, opts: { top?: boolean } & Parti
 }
 
 /** Bulk-add plain-title tasks — the "create a queue from in-memory items" path. */
-export function addMany(q: Queue, titles: string[], opts: { top?: boolean } = {}): Queue {
+export function addMany(q: Queue, titles: string[], opts: { top?: boolean } & Partial<Task> = {}): Queue {
+  const { top, ...over } = opts;
   let n = nextIdNum(q);
-  const fresh = titles.map(s => s.trim()).filter(Boolean).map(title => newTask(fmtId(n++), title));
+  const fresh = titles.map(s => s.trim()).filter(Boolean).map(title => ({ ...newTask(fmtId(n++), title), ...over }));
   const config = { ...q.config, nextId: n };
-  return { config, tasks: opts.top ? [...fresh, ...q.tasks] : [...q.tasks, ...fresh] };
+  return { config, tasks: top ? [...fresh, ...q.tasks] : [...q.tasks, ...fresh] };
 }
 
 export function setTaskStatus(q: Queue, id: string, status: TaskStatus): Queue {

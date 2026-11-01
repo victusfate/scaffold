@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import { load, save, dbFile } from './queue-io.ts';
 import { addTask, removeTask, parseQueue, newTask } from './queue-model.ts';
 import { withStore, setMeta, getMeta } from './queue-db.ts';
+import { humanEnv } from './queue-task-origin.ts';
 
 const dir = mkdtempSync(join(tmpdir(), 'queue-db-'));
 const file = join(dir, 'queue.md');
@@ -82,7 +83,7 @@ const cli = fileURLToPath(new URL('./queue.ts', import.meta.url));
 const migrateDir = mkdtempSync(join(tmpdir(), 'queue-db-migrate-'));
 const view = join(migrateDir, 'queue.md');
 const run = (...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
-  env: { ...process.env, QUEUE_FILE: view }, encoding: 'utf8',
+  env: { ...humanEnv(), QUEUE_FILE: view }, encoding: 'utf8',
 });
 try {
   writeFileSync(view, [
@@ -134,7 +135,7 @@ const store = join(guardDir, 'shared.db');
 const viewA = join(guardDir, 'a', 'queue.md');
 const viewB = join(guardDir, 'b', 'queue.md');
 const runIn = (viewFile: string, ...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
-  env: { ...process.env, QUEUE_FILE: viewFile, QUEUE_DB: store }, encoding: 'utf8',
+  env: { ...humanEnv(), QUEUE_FILE: viewFile, QUEUE_DB: store }, encoding: 'utf8',
 });
 try {
   assert.equal(runIn(viewA, 'add', 'from A').status, 0);
@@ -171,7 +172,7 @@ try {
 const staleDir = mkdtempSync(join(tmpdir(), 'queue-db-stale-'));
 const sv = join(staleDir, 'queue.md');
 const rs = (...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
-  env: { ...process.env, QUEUE_FILE: sv }, encoding: 'utf8',
+  env: { ...humanEnv(), QUEUE_FILE: sv }, encoding: 'utf8',
 });
 try {
   rs('add', 'A'); rs('add', 'B');

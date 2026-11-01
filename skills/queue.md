@@ -122,7 +122,8 @@ points at its first holder and is flagged with `!`; check each flagged dep.
 ```
 list | show <id>                       # overview | one task's full spec
 add "<title>" [flags]                  # append a task (flags below); --top to prepend
-add-many                               # seed many tasks from stdin, one per line
+                                       #   agents: add --parent <id> or --requested "<human words>" (tasks are human-owned)
+add-many                               # seed many tasks from stdin, one per line (same origin flags)
 set <id> <field> <value>               # edit a field (mode/slug/deps/files/validate/accept)
 next | ready                           # serial pick | fan-out candidate set (under the cap)
 tick                                    # serial loop entry: ownership check → begin → print task
@@ -256,9 +257,14 @@ bullets/checkboxes are stripped) — to build or extend the queue in one call:
 
 ```bash
 printf 'Write the README\nAdd unit tests\nWire the CI\n' | node scripts/queue.ts add-many
+# from an agent session, name where the work came from:
+printf 'Write the README\nAdd unit tests\n' | node scripts/queue.ts add-many --requested "<the human's words>"
 ```
 
-`add-many` **appends** (never clobbers) and also takes positional args.
+`add-many` **appends** (never clobbers) and also takes positional args. Tasks are
+human-owned: in an agent session `add` and `add-many` need `--parent <task-id>` (a child of
+the task the work came from) or `--requested "<the human's own words>"`; a bare agent add
+exits 2.
 
 Each line becomes its own task, so split the list to the atomic grain below
 before piping it in — bulk-seeding is where umbrella tasks sneak in.

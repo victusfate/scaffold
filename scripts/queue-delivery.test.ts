@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { parseQueue, beginTask, markDone, recordFailure, readyTasks, nextActionable,
   removeTask, serializeQueue, setConfig } from './queue-model.ts';
 import { applyOp } from './queue-console.ts';
+import { humanEnv } from './queue-task-origin.ts';
 
 const now = new Date().toISOString();
 const initial = parseQueue('- [ ] task-001 — First\n- [ ] task-002 — Second\n');
@@ -33,7 +34,7 @@ assert.equal(readyTasks(setConfig(initial, { deliveryMode: 'batch', maxParallel:
 const dir = mkdtempSync(join(tmpdir(), 'queue-delivery-'));
 const cli = fileURLToPath(new URL('./queue.ts', import.meta.url));
 const run = (...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
-  env: { ...process.env, QUEUE_FILE: join(dir, 'queue.md') }, encoding: 'utf8', timeout: 10_000,
+  env: { ...humanEnv(), QUEUE_FILE: join(dir, 'queue.md') }, encoding: 'utf8', timeout: 10_000,
 });
 const ok = (...args: string[]) => {
   const r = run(...args); assert.equal(r.status, 0, r.stdout + r.stderr); return r.stdout;
