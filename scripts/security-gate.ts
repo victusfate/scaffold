@@ -20,7 +20,13 @@
  *      `owner sign-off: "<owner words>"`; a held `newdep:<eco>:<name>` is listed as `<eco>:<name> — <owner words>`
  *      in security/approved-deps.txt AS MERGED ON origin/main.
  *   2. human half: a `## Security review` section names every changed file as `path` (backticked, exact).
- * Exit 0 = may merge; 4 = refuse (every failure path fails closed).
+ * Exit 0 = may merge; 4 = refuse (every failure path fails closed). A refusal lists EVERY problem it found
+ * (all uncovered files, all unacknowledged findings, all unsigned holds), so one fix round clears them.
+ *
+ * Fast feedback before the slow steps (neither replaces the gate above, which still runs unchanged at merge):
+ *   --draft                print a `## Security review` skeleton naming every changed file (paste, then review).
+ *   --precheck <pr-body>   the human half only, from this checkout: section present, every changed file named,
+ *                          every `security-ack:` line well-formed. Seconds, no scanners — run it before preflight.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
@@ -45,6 +51,14 @@ const SELF = 'scripts/security-gate.ts';
 const MAX_BUFFER = 1 << 30;
 
 class Refusal extends Error {}
+/** Problems gathered in one pass; `settle` refuses once with all of them. */
+let problems: string[] = [];
+function note(msg: string): void { problems.push(msg); }
+function settle(): void {
+  if (!problems.length) return;
+  const all = problems; problems = [];
+  refuse(all.length === 1 ? all[0] : `${all.length} problems:\n  - ${all.join('\n  - ')}`);
+}
 function refuse(msg: string): never { throw new Refusal(msg); }
 
 function git(args: string[]): { ok: boolean; out: string } {
@@ -97,11 +111,11 @@ export function uncovered(section: string, changed: string[]): string[] {
 }
 
 function judgeFinding(f: Finding, body: string, gateDir: string): void {
-  if (!ackLine(body, f.id)) refuse(`finding ${f.id} is neither fixed nor acknowledged ('security-ack: ${f.id} — <reason>' on its own line)`);
+  if (!ackLine(body, f.id)) { note(`finding ${f.id} is neither fixed nor acknowledged ('security-ack: ${f.id} — <reason>' on its own line)`); return; }
   if (!f.hold) return;
   if (SIGN_OFF_HOLDS.some(h => f.id.startsWith(h))) {
     // Gate/approval files or an unvettable lockfile changed: the ack line itself must quote the owner's sign-off.
-    if (!ownerSignedOff(body, f.id)) refuse(`${f.id} is held; its ack line needs 'owner sign-off: "<owner quote>"'`);
+    if (!ownerSignedOff(body, f.id)) note(`${f.id} is held; its ack line needs 'owner sign-off: "<owner quote>"'`);
     return;
   }
   // A held new dependency merges only when the OWNER approved it in security/approved-deps.txt as merged on
@@ -109,7 +123,7 @@ function judgeFinding(f: Finding, body: string, gateDir: string): void {
   const dep = f.id.replace(/^newdep:/, '');
   const file = join(gateDir, 'security/approved-deps.txt');
   if (!existsSync(file) || !depApproved(readFileSync(file, 'utf8'), dep)) {
-    refuse(`held dependency ${dep} is not owner-approved in security/approved-deps.txt on origin/main`);
+    note(`held dependency ${dep} is not owner-approved in security/approved-deps.txt on origin/main`);
   }
 }
 
@@ -133,22 +147,54 @@ function machineHalf(gateDir: string, body: string): number {
 }
 
 // 2. Human half: a `## Security review` section naming every changed file as `path` (backticked, exact).
-function humanHalf(body: string): void {
-  const section = reviewSection(body);
-  if (!section.trim()) refuse("the PR body has no '## Security review' section");
+function changedFiles(): string[] {
   const mb = git(['merge-base', 'origin/main', 'HEAD']);
   if (!mb.ok) refuse('no merge base with origin/main');
   const diff = git(['-c', 'core.quotePath=false', 'diff', '-z', '--name-only', '--no-renames', mb.out.trim(), 'HEAD']);
   if (!diff.ok) refuse('cannot list the changed files');
-  const missing = uncovered(section, diff.out.split('\0').filter(Boolean));
-  if (missing.length) refuse(`the security review does not cover \`${missing[0]}\``);
+  return diff.out.split('\0').filter(Boolean);
+}
+
+function humanHalf(body: string): void {
+  const section = reviewSection(body);
+  if (!section.trim()) refuse("the PR body has no '## Security review' section");
+  for (const f of uncovered(section, changedFiles())) note(`the security review does not cover \`${f}\``);
+}
+
+/** `security-ack:` lines that the gate would not accept as an acknowledgement (no ` — <reason>`). */
+export function malformedAcks(body: string): string[] {
+  return lines(body).filter(l => l.startsWith('security-ack:') && !/^security-ack: \S+ — .*\S/.test(l));
+}
+
+/** --precheck: the human half from this checkout plus ack-line shape, all problems at once. No scanners. */
+function precheck(bodyFile: string): void {
+  const body = existsSync(bodyFile) ? readFileSync(bodyFile, 'utf8') : '';
+  if (!body) refuse(`PR body ${bodyFile} is missing or empty`);
+  humanHalf(body);
+  for (const l of malformedAcks(body)) note(`malformed ack line (needs 'security-ack: <id> — <reason>'): ${l}`);
+  settle();
+  console.log('security gate precheck: passed (review covers every changed file; ack lines well-formed). The full gate still runs at merge.');
+}
+
+/** --draft: a `## Security review` skeleton naming every changed file, for the reviewer to complete. */
+function draft(): void {
+  console.log(['## Security review', '- **Review:** <independent reviewer, rounds, verdict>', '', 'Files:',
+    ...changedFiles().map(f => `- \`${f}\`: <reviewed line by line by …>`)].join('\n'));
 }
 
 function judge(gateDir: string, bodyFile: string): void {
   const body = existsSync(bodyFile) ? readFileSync(bodyFile, 'utf8') : '';
   if (!body) refuse(`PR body ${bodyFile} is missing or empty`);
   humanHalf(body);
-  const scan = machineHalf(gateDir, body);
+  let scan: number;
+  try {
+    scan = machineHalf(gateDir, body);
+  } catch (e) {
+    // A scanner failure still refuses; keep the review problems already found in the same message.
+    if (e instanceof Refusal && problems.length) { note(e.message); settle(); }
+    throw e;
+  }
+  settle();
   console.log(`security gate: passed (scan exit ${scan}, review covers every changed file)`);
 }
 
@@ -188,8 +234,10 @@ function launch(bodyFile: string): number {
 function main(argv: string[]): number {
   try {
     if (argv[0] === '--gate-dir' && argv.length === 3) judge(argv[1], argv[2]);
+    else if (argv[0] === '--precheck' && argv.length === 2) precheck(argv[1]);
+    else if (argv[0] === '--draft' && argv.length === 1) draft();
     else if (argv.length === 1) return launch(argv[0]);
-    else refuse('usage: node scripts/security-gate.ts <pr-body-file>');
+    else refuse('usage: node scripts/security-gate.ts <pr-body-file> | --precheck <pr-body-file> | --draft');
     return 0;
   } catch (e) {
     console.log(`security gate: ${e instanceof Refusal ? e.message : String(e)}`);

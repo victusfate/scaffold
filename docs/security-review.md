@@ -14,6 +14,23 @@ tmp=$(mktemp -d) && git show origin/main:scripts/security-gate.ts > "$tmp/securi
   && node "$tmp/security-gate.ts" <pr-body-file>; echo "gate exit=$?"; rm -rf "$tmp"
 ```
 
+### Fast feedback: find and fix problems before the slow steps
+
+Order the work cheapest-first so a refusal costs seconds, not a full preflight:
+
+1. **Author (each worker, before handing work back):** run the machine half on your own diff —
+   `node scripts/security-scan.ts --base origin/main` — and fix every finding (or write its reasoned
+   `security-ack:` line) before reporting done. Findings are cheapest to patch where the code was written.
+2. **Integrator, before any preflight or push:** `node scripts/security-gate.ts --draft` prints a
+   `## Security review` skeleton naming every changed file; the independent reviewer completes it. Then
+   `node scripts/security-gate.ts --precheck <pr-body-file>` checks the human half and every ack line's shape in
+   seconds, with no scanners, and lists **every** problem at once.
+3. **Merge:** the full gate (origin/main's copy, above) still runs unchanged on the final head. A refusal lists
+   every problem it found in one pass (all uncovered files, unacknowledged findings and unsigned holds), so one fix
+   round clears them.
+
+Neither fast step replaces the gate; they only move its cheap checks earlier.
+
 Write the PR body to that file with a file-write tool or a quoted heredoc (`<<'EOF'`); never `printf`/`echo` it
 inside double quotes, where its backticked paths would run as commands.
 
