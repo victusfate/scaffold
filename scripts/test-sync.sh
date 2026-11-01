@@ -265,6 +265,46 @@ check "file NOT deleted"        test -f "$C/old.mjs"
 check "Would remove in output"  test -n "$(echo "$out" | grep 'Would remove')"
 check "SHA unchanged"           test "$(cat "$C/.github/scaffold-sync-sha")" = "$sha_before"
 
+# ── AGENTS.local.md: compose + verify ───────────────────────────────────────
+
+echo "L1. AGENTS.local.md present → AGENTS.md = scaffold text + local block"
+S="$WORK/sl1"; C="$WORK/cl1"
+make_scaffold "$S" "AGENTS.md"
+make_consumer "$C"
+printf 'project rule one\nproject rule two\n' > "$C/AGENTS.local.md"
+out=""; rc=0; sync_into out "$C" "$S" || rc=$?
+check "exit 0"                         test "$rc" -eq 0
+check "starts with scaffold text"      test "$(head -1 "$C/AGENTS.md")" = "scaffold:AGENTS.md"
+check "carries the local rules"        grep -q "project rule two" "$C/AGENTS.md"
+check "begin marker once"              test "$(grep -c 'BEGIN AGENTS.local.md' "$C/AGENTS.md")" -eq 1
+check "verify-local passes"            bash -c "cd '$C' && bash '$SYNC' --verify-local"
+(cd "$C" && git add -A && git commit -q -m "sync")
+
+echo "L2. Re-sync is idempotent; scaffold update recomposes"
+out=""; rc=0; sync_into out "$C" "$S" || rc=$?
+check "no change on re-sync"           test -z "$(cd "$C" && git status --porcelain AGENTS.md)"
+(cd "$S" && echo "scaffold:AGENTS.md v2" > AGENTS.md && git commit -qam "v2")
+out=""; rc=0; sync_into out "$C" "$S" || rc=$?
+check "upstream part updated"          grep -q "scaffold:AGENTS.md v2" "$C/AGENTS.md"
+check "local block kept"               grep -q "project rule one" "$C/AGENTS.md"
+check "no conflict reported"           test -z "$(echo "$out" | grep Conflicts)"
+(cd "$C" && git add -A && git commit -q -m "sync v2")
+
+echo "L3. verify-local catches a hand-edited block or a stale re-sync"
+sed -i 's/project rule one/hand edit/' "$C/AGENTS.md"
+check "hand-edited block fails"        bash -c "! (cd '$C' && bash '$SYNC' --verify-local)"
+(cd "$C" && git checkout -q AGENTS.md)
+echo "project rule three" >> "$C/AGENTS.local.md"
+check "stale block fails"              bash -c "! (cd '$C' && bash '$SYNC' --verify-local)"
+
+echo "L4. No AGENTS.local.md → AGENTS.md syncs exactly as before"
+S="$WORK/sl4"; C="$WORK/cl4"
+make_scaffold "$S" "AGENTS.md"
+make_consumer "$C"
+out=""; rc=0; sync_into out "$C" "$S" || rc=$?
+check "plain scaffold AGENTS.md"       test "$(cat "$C/AGENTS.md")" = "scaffold:AGENTS.md"
+check "verify-local is a no-op"        bash -c "cd '$C' && bash '$SYNC' --verify-local"
+
 # ── summary ────────────────────────────────────────────────────────────────
 
 echo ""
