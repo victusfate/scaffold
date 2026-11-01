@@ -49,6 +49,13 @@ try {
   // add-many follows the same rule and stamps every new task.
   assert.equal(run(agent, 'add-many', 'one', 'two', '--parent', 'task-001').status, 0);
   assert.deepEqual(tasks().slice(3).map(t => t.tags), [['parent:task-001'], ['parent:task-001']]);
+  // Both origins are kept when given together; add-many keeps its own --tags and --note too.
+  assert.equal(run(agent, 'add', 'Cryo hall dressing', '--parent', 'task-001', '--requested', 'add them back').status, 0);
+  assert.deepEqual(tasks()[5].tags, ['parent:task-001', 'requested-by:human']);
+  assert.match(tasks()[5].note ?? '', /Child of task-001\. Requested by a human: "add them back"/);
+  assert.equal(run(agent, 'add-many', 'three', '--parent', 'task-001', '--tags', 'audio', '--note', 'from review').status, 0);
+  assert.deepEqual(tasks()[6].tags, ['parent:task-001', 'audio']);
+  assert.match(tasks()[6].note ?? '', /Child of task-001\. from review/);
   console.log('PASS queue-task-origin: agents add tasks only as children or with a human request; humans add freely');
 } finally {
   rmSync(dir, { recursive: true, force: true });

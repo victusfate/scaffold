@@ -72,6 +72,7 @@ scripts/queue-io.ts
 scripts/queue-db.ts
 scripts/queue-db.test.ts
 scripts/queue-tags.test.ts
+scripts/queue-task-origin.test.ts
 scripts/queue-worktrees.ts
 scripts/queue-gates.ts
 scripts/queue-delivery.ts
@@ -79,6 +80,7 @@ scripts/queue-edit.test.ts
 scripts/queue-view.test.ts
 scripts/queue-lock.test.ts
 scripts/queue-cli-args.ts
+scripts/queue-task-origin.ts
 scripts/sse-watch.ts
 scripts/queue.ts
 scripts/agent-loop.ts

@@ -2,11 +2,12 @@
 // child of an existing task (`--parent <id>`) or carrying the human's own request (`--requested
 // "<their words>"`). This is a guardrail against agents growing the backlog with their own ideas,
 // not authentication: the quote is unauthenticated text, so an agent must only ever quote real words.
+// The queue console (queue-console.ts) is the human's own UI, so its add is exempt; agents never drive it.
 import type { Parsed } from './queue-cli-args.ts';
 import type { Queue, Task } from './queue-model.ts';
 
 /** Environment markers set by agent harnesses (Claude Code, Codex, Gemini) or by scaffold lane launchers. */
-export const AGENT_ENV_MARKERS = ['CLAUDECODE', 'CODEX_THREAD_ID', 'CODEX_SANDBOX', 'CODEX_CI', 'GEMINI_CLI', 'LANE_RUN_ID', 'SCAFFOLD_AGENT'] as const;
+export const AGENT_ENV_MARKERS = ['CLAUDECODE', 'CODEX_THREAD_ID', 'CODEX_SANDBOX', 'CODEX_CI', 'GEMINI_CLI', 'AI_AGENT', 'LANE_RUN_ID', 'SCAFFOLD_AGENT'] as const;
 
 export function isAgentSession(env: NodeJS.ProcessEnv = process.env): boolean {
   return AGENT_ENV_MARKERS.some(key => Boolean(env[key]));
@@ -23,14 +24,20 @@ export function taskOrigin(q: Queue, f: Parsed, env: NodeJS.ProcessEnv = process
   const parent = flagValue(f, 'parent');
   const requested = flagValue(f, 'requested');
   if (parent && !q.tasks.some(t => t.id === parent)) return { ok: false, error: `queue add: --parent ${parent} is not a task in this queue` };
-  if (parent) return { ok: true, patch: { tags: [`parent:${parent}`], note: `Child of ${parent}.` } };
-  if (requested) return { ok: true, patch: { tags: ['requested-by:human'], note: `Requested by a human: "${requested}"` } };
-  return isAgentSession(env) ? { ok: false, error: AGENT_ADD_REFUSAL } : { ok: true, patch: {} };
+  if (!parent && !requested) return isAgentSession(env) ? { ok: false, error: AGENT_ADD_REFUSAL } : { ok: true, patch: {} };
+  return { ok: true, patch: originPatch(parent, requested) };
 }
 
 const AGENT_ADD_REFUSAL = 'queue add: tasks are human-owned. From an agent session, attach the work to the task it came from '
   + 'with --parent <task-id>, or pass --requested "<the human\'s own words>" when a human asked for it. '
   + 'Review follow-ups and bugs found while working belong to their parent task; ask the human before adding new top-level work.';
+
+/** Tags and note recording where a task came from; both origins are kept when both are given. */
+function originPatch(parent: string, requested: string): Partial<Task> {
+  const tags = [...(parent ? [`parent:${parent}`] : []), ...(requested ? ['requested-by:human'] : [])];
+  const note = [parent && `Child of ${parent}.`, requested && `Requested by a human: "${requested}"`].filter(Boolean).join(' ');
+  return { tags, note };
+}
 
 function flagValue(f: Parsed, key: string): string {
   return f.flags.get(key)?.trim() ?? '';

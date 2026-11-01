@@ -77,7 +77,7 @@ export async function execute(config: Config, dir: string, run = 1, sessionOverr
   const argv = runArgv(config, run, sessionOverride);
   const child = spawn(argv[0], argv.slice(1), {
     cwd: config.cwd, stdio: ['ignore', fd, fd], detached: process.platform !== 'win32', windowsHide: true,
-    env: { ...process.env, SCAFFOLD_AGENT_LOOP_RESULT: resultPath },
+    env: { ...process.env, SCAFFOLD_AGENT: '1', SCAFFOLD_AGENT_LOOP_RESULT: resultPath },
   });
   let done = false;
   let outcome = '';

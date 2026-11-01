@@ -332,7 +332,8 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       if (!items.length) { console.error('add-many: no items (pass args or pipe lines on stdin)'); return 1; }
       const origin = taskOrigin(q, f);
       if (!origin.ok) { console.error(origin.error.replace('queue add', 'queue add-many')); return 2; }
-      q = addMany(q, items, { top: f.bools.has('top'), ...origin.patch });
+      const { tags, note } = withOrigin(taskOverrides(f), origin.patch);
+      q = addMany(q, items, { top: f.bools.has('top'), ...(tags && { tags }), ...(note && { note }) });
       save(q); log(`add-many ${items.length}`);
       console.log(`added ${items.length} task(s); ${q.tasks.length} total${drainKick(q)}`); return 0;
     }

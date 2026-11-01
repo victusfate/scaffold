@@ -2,7 +2,7 @@
 # Integration test for `queue worktree` git operations against a throwaway repo.
 set -euo pipefail
 # Drive the queue as a human at the terminal: clear the agent markers queue-task-origin.ts checks.
-unset CLAUDECODE CODEX_THREAD_ID CODEX_SANDBOX CODEX_CI GEMINI_CLI LANE_RUN_ID SCAFFOLD_AGENT
+unset CLAUDECODE CODEX_THREAD_ID CODEX_SANDBOX CODEX_CI GEMINI_CLI AI_AGENT LANE_RUN_ID SCAFFOLD_AGENT
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 TMP="$(mktemp -d)"
