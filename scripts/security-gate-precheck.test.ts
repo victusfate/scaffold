@@ -73,7 +73,7 @@ try {
   });
 
   void test('malformedAcks accepts only the gate-recognised ack shape', () => {
-    assert.deepEqual(malformedAcks('security-ack: id — reason\nsecurity-ack: id reason\nnot an ack'), ['security-ack: id reason']);
+    assert.deepEqual(malformedAcks('security-ack: id — reason\nsecurity-ack: id —   spaced reason\nsecurity-ack: id reason\nnot an ack'), ['security-ack: id reason']);
   });
 } finally {
   void test('cleanup', () => rmSync(T, { recursive: true, force: true }));

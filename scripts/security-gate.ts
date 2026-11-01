@@ -163,7 +163,7 @@ function humanHalf(body: string): void {
 
 /** `security-ack:` lines that the gate would not accept as an acknowledgement (no ` — <reason>`). */
 export function malformedAcks(body: string): string[] {
-  return lines(body).filter(l => l.startsWith('security-ack:') && !/^security-ack: \S+ — \S/.test(l));
+  return lines(body).filter(l => l.startsWith('security-ack:') && !/^security-ack: \S+ — .*\S/.test(l));
 }
 
 /** --precheck: the human half from this checkout plus ack-line shape, all problems at once. No scanners. */
@@ -186,7 +186,14 @@ function judge(gateDir: string, bodyFile: string): void {
   const body = existsSync(bodyFile) ? readFileSync(bodyFile, 'utf8') : '';
   if (!body) refuse(`PR body ${bodyFile} is missing or empty`);
   humanHalf(body);
-  const scan = machineHalf(gateDir, body);
+  let scan: number;
+  try {
+    scan = machineHalf(gateDir, body);
+  } catch (e) {
+    // A scanner failure still refuses; keep the review problems already found in the same message.
+    if (e instanceof Refusal && problems.length) { note(e.message); settle(); }
+    throw e;
+  }
   settle();
   console.log(`security gate: passed (scan exit ${scan}, review covers every changed file)`);
 }
