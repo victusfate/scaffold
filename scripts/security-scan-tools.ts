@@ -126,9 +126,11 @@ function reportSemgrep(c: Ctx, results: SemgrepResult[], errors: SemgrepOut['err
 //    .semgrepignore is removed from the exports (an empty one at the root means "ignore nothing").
 export function scanSast(c: Ctx): void {
   const configs = semgrepConfigs(c, need(c, 'semgrep'));
-  const head = headTree(c);
   const isTarget = sastTargets(c.cfg);
-  const targets = c.changed.filter(p => isTarget(p) && isFile(join(head, p)));
+  c.headPaths = c.changed.filter(isTarget);
+  if (!c.headPaths.length) return;
+  const head = headTree(c);
+  const targets = c.headPaths.filter(p => isFile(join(head, p)));
   if (!targets.length) return;
   const headOut = semgrepIn(c, head, configs, targets);
   const atBase = git(['ls-tree', '-r', '-z', '--name-only', c.mb, '--', ...targets], c.root).split('\0').filter(Boolean);

@@ -147,8 +147,8 @@ function humanHalf(body: string): void {
 function judge(gateDir: string, bodyFile: string): void {
   const body = existsSync(bodyFile) ? readFileSync(bodyFile, 'utf8') : '';
   if (!body) refuse(`PR body ${bodyFile} is missing or empty`);
-  const scan = machineHalf(gateDir, body);
   humanHalf(body);
+  const scan = machineHalf(gateDir, body);
   console.log(`security gate: passed (scan exit ${scan}, review covers every changed file)`);
 }
 

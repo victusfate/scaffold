@@ -37,6 +37,8 @@ export interface Ctx {
   verified: Set<string>;
   /** The committed HEAD tree, exported once (scanners never read the working tree). */
   headTree?: string;
+  /** Restricted export for scanners whose existing contract reads changed files only. */
+  headPaths?: string[];
 }
 
 /**
@@ -57,9 +59,9 @@ export function minimalEnv(c: Pick<Ctx, 'work'>, extra: Record<string, string> =
   return { ...env, ...extra };
 }
 
-export interface RunOpts { cwd: string; env: NodeJS.ProcessEnv }
+export interface RunOpts { cwd: string; env: NodeJS.ProcessEnv; timeout?: number }
 export function run(cmd: string, args: string[], opts: RunOpts): SpawnSyncReturns<string> {
-  return spawnSync(cmd, args, { cwd: opts.cwd, env: opts.env, encoding: 'utf8', maxBuffer: MAX_BUFFER });
+  return spawnSync(cmd, args, { cwd: opts.cwd, env: opts.env, timeout: opts.timeout, encoding: 'utf8', maxBuffer: MAX_BUFFER });
 }
 
 /** git with the caller's environment (it reads only the repo under judgment, never runs its code). */
@@ -175,7 +177,7 @@ export function eslintStack(c: Pick<Ctx, 'eslintStack' | 'cfg' | 'verified'>): s
 export function exportTree(c: Pick<Ctx, 'root' | 'work'>, ref: string, dir: string, paths: string[] = []): string {
   mkdirSync(dir, { recursive: true });
   const tar = join(c.work, `${dir.split('/').pop()}.tar`);
-  const r = spawnSync('git', [`--attr-source=${EMPTY_TREE}`, 'archive', '--format=tar', '-o', tar, ref,
+  const r = spawnSync('git', ['--literal-pathspecs', `--attr-source=${EMPTY_TREE}`, 'archive', '--format=tar', '-o', tar, ref,
     ...(paths.length ? ['--', ...paths] : [])], { cwd: c.root, encoding: 'utf8' });
   if (r.status !== 0) die(`cannot export ${ref}: ${lastLine(r.stderr)}`);
   if (spawnSync('tar', ['-xf', tar, '-C', dir]).status !== 0) die(`cannot unpack the ${ref} export`);
@@ -185,7 +187,7 @@ export function exportTree(c: Pick<Ctx, 'root' | 'work'>, ref: string, dir: stri
 
 /** The committed HEAD tree, exported once per scan. */
 export function headTree(c: Ctx): string {
-  c.headTree ??= exportTree(c, 'HEAD', join(c.work, 'head-tree'));
+  c.headTree ??= exportTree(c, 'HEAD', join(c.work, 'head-tree'), c.headPaths);
   return c.headTree;
 }
 
@@ -195,4 +197,20 @@ export function neutraliseSemgrepIgnore(dir: string): void {
     rmSync(join(dir, rel), { force: true });
   }
   writeFileSync(join(dir, '.semgrepignore'), '');
+}
+
+/** Bounded independent jobs; drain every started job before the caller removes its temporary files. */
+export async function parallelStages<T>(jobs: (() => Promise<T>)[], limit = 3): Promise<T[]> {
+  if (!Number.isInteger(limit) || limit < 1) throw new Error('invalid scanner concurrency');
+  const results = new Array<T>(jobs.length);
+  const errors: unknown[] = [];
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, jobs.length) }, async () => {
+    while (next < jobs.length) {
+      const index = next++;
+      try { results[index] = await jobs[index](); } catch (error) { errors.push(error); }
+    }
+  }));
+  if (errors.length) throw new AggregateError(errors, errors.map(e => e instanceof Error ? e.message : String(e)).join('\n'));
+  return results;
 }
