@@ -205,7 +205,9 @@ sync_file "$SELF"
 
 # ── Compose AGENTS.md = scaffold's AGENTS.md + the AGENTS.local.md block ─────
 if [ -f "$LOCAL_AGENTS" ] && git cat-file -e "scaffold/main:AGENTS.md" 2>/dev/null; then
-  if [ -f AGENTS.md ] && { ! git diff --quiet -- AGENTS.md || ! git diff --cached --quiet -- AGENTS.md; }; then
+  if in_keep_list AGENTS.md; then
+    kept+=("AGENTS.md")   # .scaffold-keep wins: never compose over a kept AGENTS.md
+  elif [ -f AGENTS.md ] && { ! git diff --quiet -- AGENTS.md || ! git diff --cached --quiet -- AGENTS.md; }; then
     skipped+=("AGENTS.md")
   else
     composed=$(mktemp)

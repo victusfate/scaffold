@@ -305,6 +305,15 @@ out=""; rc=0; sync_into out "$C" "$S" || rc=$?
 check "plain scaffold AGENTS.md"       test "$(cat "$C/AGENTS.md")" = "scaffold:AGENTS.md"
 check "verify-local is a no-op"        bash -c "cd '$C' && bash '$SYNC' --verify-local"
 
+echo "L5. .scaffold-keep on AGENTS.md wins over AGENTS.local.md"
+S="$WORK/sl5"; C="$WORK/cl5"
+make_scaffold "$S" "AGENTS.md"
+make_consumer "$C"
+echo "my own agents" > "$C/AGENTS.md"; echo "AGENTS.md" > "$C/.scaffold-keep"; echo "local" > "$C/AGENTS.local.md"
+(cd "$C" && git add -A && git commit -q -m "own")
+out=""; rc=0; sync_into out "$C" "$S" || rc=$?
+check "kept AGENTS.md untouched"       test "$(cat "$C/AGENTS.md")" = "my own agents"
+
 # ── summary ────────────────────────────────────────────────────────────────
 
 echo ""
