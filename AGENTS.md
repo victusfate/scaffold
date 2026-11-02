@@ -80,14 +80,18 @@ work is unbuilt: "exhausted" means built and reachable.
 - Keep the task board true as subagents start, stop and merge.
 - Never park a worker branch: at most one branch per active subagent plus main. When a subagent stops, resolve its
   branch the same tick: merge it (done), merge sound progress and note what remains, or send another subagent.
+- Wait on and stop processes by recorded PID or a done-marker, never `pgrep -f` name matches (they match your own
+  shell and any agent whose prompt names the script). Time budgets measure work, not lock waits. A cached result's
+  key excludes what the checked step itself produces.
 → [full text](docs/agents-detail.md#orchestration-hygiene-lessons-from-long-autonomous-runs).
 
 ## Knowledge state: typed and evidenced, not prose
 
 Lifecycle state (branch, plan, PR, evidence, decisions) lives in the queue CLI's typed fields, never as prose
 markers. **Done requires evidence** (PR, test ids, commit, scope), which goes stale when covered files change.
-Record each owner decision when made, with an id and the owner's words. Generate code hook points, don't
-hand-write them. Project facts live in the repo, never only in harness-private memory. **Tasks are
+Record each owner decision when made, with an id and the owner's words, no broader than those words; promote
+a standing directive into the binding rules (with a check where possible), not only a plan doc. Generate code
+hook points, don't hand-write them. Project facts live in the repo, never only in harness-private memory. **Tasks are
 human-owned:** an agent adds a task only as a child (`--parent <id>`) or with the human's own words
 (`--requested`); the queue CLI refuses a bare agent add.
 → [full text](docs/agents-detail.md#knowledge-state-typed-and-evidenced-not-prose) ·
