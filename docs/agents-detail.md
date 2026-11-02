@@ -621,6 +621,21 @@ These failures each cost hours in a real run; each has a cheap guard.
   progress or making it that slot's next job, not leaving its branch behind. Deleting a branch that
   holds unmerged commits needs the owner's OK. Count branches each tick: more than active subagents
   plus main is a defect to fix before dispatching new work.
+- **Wait on and stop processes by recorded identity, never by name match.** `pgrep -f '<script>'`
+  matches the shell running the check (its own command line contains the pattern, even a bracketed
+  one when the same line names the script elsewhere) and every agent whose prompt mentions that
+  script. One waiter blocked for two hours because a worker's prompt named the release script it was
+  waiting on; a stop command killed its own shell. Record `$!` when you start background work and wait
+  with `kill -0 <pid>`, or poll a log line or done-marker the job writes. Stop processes by recorded
+  PID, in a separate command from any relaunch.
+- **Time budgets measure work, not waiting.** A check with a wall-clock limit that also waits for a
+  shared lock fails whenever other work holds the lock, though the check itself fits. Admit first,
+  then start the work timer; give the wait its own cap and a named failure cause (for example
+  `HOST-WAIT`), never a bare timeout exit.
+- **A cached result's key excludes what the checked step produces.** If a check rebuilds or touches
+  an input it also hashes (a compiled library, tool timestamps, a moving base ref), every passing run
+  refuses its own receipt. Pin inputs before the run, record outputs as witnesses, and print the
+  differing key lines on any refusal.
 
 ## Knowledge state: typed and evidenced, not prose
 
@@ -636,7 +651,12 @@ Full rationale and pilot plan: [`docs/knowledge-architecture.md`](docs/knowledge
 - **Record decisions when they are made.** Each owner decision gets one home with an id, the
   owner's words, scope, status and supersession, plus a code reference or a reproducible
   measurement. Record it before replying, because chat summaries are lossy. Everything else cites
-  the id. An unmeasured claim is marked unverified.
+  the id. An unmeasured claim is marked unverified. Record the decision no broader than the owner's
+  words: "no heavy LLM integration" does not mean "remove the editor". When unsure of the scope, ask.
+- **Promote standing directives into binding rules.** A directive recorded only in a plan or design
+  doc drifts: agents read the binding rules at session start, not every plan. When an owner states a
+  standing rule ("X is the source of truth"), add it to the binding rule file and, where it can be
+  checked, a check that fails when new work violates it.
 - **Tasks are human-owned.** Top-level tasks come from a human. Work an agent finds while working
   (review follow-ups, bugs hit while shipping, report clusters) attaches to the task it came from as
   a child (`queue add "<title>" --parent <task-id>`) or a note on that task. An agent adds a new
