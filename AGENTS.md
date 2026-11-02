@@ -80,7 +80,7 @@ work is unbuilt: "exhausted" means built and reachable.
 - Keep the task board true as subagents start, stop and merge.
 - Never park a worker branch: at most one branch per active subagent plus main. When a subagent stops, resolve its
   branch the same tick: merge it (done), merge sound progress and note what remains, or send another subagent.
-- Wait on and stop processes by recorded PID or a done-marker, never `pgrep -f` name matches (they match your own
+- Wait on and stop processes by recorded PID or a done-marker, never `pgrep -f` name matches (they can match your own
   shell and any agent whose prompt names the script). Time budgets measure work, not lock waits. A cached result's
   key excludes what the checked step itself produces.
 → [full text](docs/agents-detail.md#orchestration-hygiene-lessons-from-long-autonomous-runs).
