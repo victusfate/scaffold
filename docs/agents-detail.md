@@ -205,6 +205,14 @@ cheapest at it:
 - **Measure delivery, not output.** Lines written are no signal. `node scripts/delivery-metrics.ts
   [--days N]` reports merges per week, open-to-merge time, the gap between green CI and merge, and how
   many change requests were followed by a commit. Include it in owner status reports when it moves.
+- **Verify once per commit.** The reviewer's verified run writes a receipt keyed to the exact tree identity:
+  `HEAD`, the tree, the index, staged and unstaged diffs, hashes of untracked inputs, the base, the plan,
+  hashes of the gate scripts, and the resolved tool binaries. The merge step reuses a matching receipt
+  instead of re-running the same checks. Any mismatch, or a missing or corrupt receipt, fails closed: the
+  merge step re-runs in full.
+- **Scope review by risk.** Full suites are for changes that touch shared core: public API, save or codec
+  formats, networking, workspace build inputs. Any other change runs the affected-delta checks plus the
+  task's own gates.
 
 ## Owner status reports (remote owner)
 
@@ -533,6 +541,12 @@ path-filtered or `if:`-gated required jobs that never run.) Before merging:
   the job to run, plus a guard step that exits non-zero unless every dependency
   succeeded (`needs.*.result != 'success'`).
 
+**A local receipt is a second fail-open trap.** A receipt from a local verified run may let hosted CI skip a
+check only where the local run's scope covers the hosted job's scope (the same packages, modules or files).
+When the hosted selector picks a wider set (a gate-definition change, a data file inside a package, a
+toolchain or lint-config change), hosted CI runs that check in full. A skip that the local run did not earn
+passes silently, exactly like a skipped required check.
+
 **Handoffs live only on branches.** `.pause/handoff.md` is the checkpoint for work in flight: `/save` and
 `/pause` push it on the working branch, and lane merges into that branch keep it. Once the branch merges,
 the work is done, and a handoff left on main would be read by the next `/resume` as current state (context
@@ -636,6 +650,15 @@ These failures each cost hours in a real run; each has a cheap guard.
   an input it also hashes (a compiled library, tool timestamps, a moving base ref), every passing run
   refuses its own receipt. Pin inputs before the run, record outputs as witnesses, and print the
   differing key lines on any refusal.
+- **A warm-up runs the exact invocation of the check it warms.** A pre-build step that compiles or lints
+  ahead of a timed window only helps when its fingerprint (arguments, flags such as `-D warnings`, environment)
+  equals the check's. A different fingerprint wastes the warm-up and recompiles inside the timed window.
+  Measured: a lint warm-up run without the flag, then the check with it, re-linted (~110 s) every run; with
+  identical flags the check took 0.1 s.
+- **Pausing workers never freezes an interactive or GUI process they launched.** Pause or resume the agent's own
+  processes, never an application window the user can see: a frozen window left on a user's screen for minutes was the trigger. A stage
+  that times out kills the payload's whole session, not just a process group: GNU `timeout` puts its child in
+  its own group, so a group kill misses it and the orphan keeps holding locks.
 
 ## Knowledge state: typed and evidenced, not prose
 
