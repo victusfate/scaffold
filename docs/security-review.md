@@ -225,6 +225,9 @@ security point of view. Rules (the first is a rule, not machine-checked):
 
 - **The reviewer is not the author.** The orchestrator reviews code a subagent wrote in its lane. An independent
   review subagent, given only the diff and this checklist, reviews code the orchestrator wrote.
+- **List a renamed file under both its old and new path.** The gate checks `git diff --no-renames`, where a
+  rename is a deletion plus an addition, so each side is a changed path. The refusal says "renamed from/to —
+  list both paths".
 - **Read every changed line**, including tests, scripts, CI, configs and docs that agents will read.
 - Record findings and their resolution; "no security impact" is a valid conclusion for a file, stated
   with the reason.

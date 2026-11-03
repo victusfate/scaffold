@@ -110,6 +110,25 @@ export function uncovered(section: string, changed: string[]): string[] {
   return changed.filter(f => !section.includes(`\`${f}\``));
 }
 
+/** old -> new paths of renames in `git diff -z --name-status -M` output (`R<score>\0old\0new\0`, `C` copies too). */
+export function renamePairs(nameStatusZ: string): Map<string, string> {
+  const t = nameStatusZ.split('\0');
+  const pairs = new Map<string, string>();
+  for (let i = 0; i < t.length; i++) {
+    if (/^[RC]\d*$/.test(t[i]!) && t[i + 1] && t[i + 2]) { pairs.set(t[i + 1]!, t[i + 2]!); i += 2; }
+    else if (/^[A-Z]\d*$/.test(t[i]!)) i += 1;
+  }
+  return pairs;
+}
+
+/** The refusal text for one uncovered path; a rename's two sides are both changed paths and both must be listed. */
+export function uncoveredNote(f: string, renames: Map<string, string>): string {
+  const to = renames.get(f);
+  const from = [...renames].find(([, n]) => n === f)?.[0];
+  const hint = to ? ` (renamed to \`${to}\` — list both paths)` : from ? ` (renamed from \`${from}\` — list both paths)` : '';
+  return `the security review does not cover \`${f}\`${hint}`;
+}
+
 function judgeFinding(f: Finding, body: string, gateDir: string): void {
   if (!ackLine(body, f.id)) { note(`finding ${f.id} is neither fixed nor acknowledged ('security-ack: ${f.id} — <reason>' on its own line)`); return; }
   if (!f.hold) return;
@@ -158,7 +177,10 @@ function changedFiles(): string[] {
 function humanHalf(body: string): void {
   const section = reviewSection(body);
   if (!section.trim()) refuse("the PR body has no '## Security review' section");
-  for (const f of uncovered(section, changedFiles())) note(`the security review does not cover \`${f}\``);
+  const mb = git(['merge-base', 'origin/main', 'HEAD']);
+  const ns = git(['-c', 'core.quotePath=false', 'diff', '-z', '--name-status', '-M', mb.out.trim(), 'HEAD']);
+  const renames = renamePairs(ns.ok ? ns.out : '');
+  for (const f of uncovered(section, changedFiles())) note(uncoveredNote(f, renames));
 }
 
 /** `security-ack:` lines that the gate would not accept as an acknowledgement (no ` — <reason>`). */

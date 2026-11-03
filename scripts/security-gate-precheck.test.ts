@@ -9,7 +9,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { malformedAcks } from './security-gate.ts';
+import { malformedAcks, renamePairs, uncoveredNote } from './security-gate.ts';
 
 const GATE = join(dirname(fileURLToPath(import.meta.url)), 'security-gate.ts');
 const T = mkdtempSync(join(tmpdir(), 'security-gate-precheck-'));
@@ -78,3 +78,11 @@ try {
 } finally {
   void test('cleanup', () => rmSync(T, { recursive: true, force: true }));
 }
+
+void test('an uncovered rename names both sides and says to list both paths', () => {
+  const r = renamePairs('M\0a.ts\0R100\0old/x.ts\0new/x.ts\0A\0b.ts\0');
+  assert.deepEqual([...r], [['old/x.ts', 'new/x.ts']]);
+  assert.match(uncoveredNote('old/x.ts', r), /renamed to `new\/x\.ts` — list both paths/);
+  assert.match(uncoveredNote('new/x.ts', r), /renamed from `old\/x\.ts` — list both paths/);
+  assert.equal(uncoveredNote('a.ts', r), 'the security review does not cover `a.ts`');
+});
