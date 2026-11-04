@@ -329,6 +329,10 @@ Declare concrete forbidden dependency rules in `.agent/boundaries.json`; run
 uses the TypeScript compiler and fails closed on invalid rules or unresolved
 configured edges. Other stacks need their own adapters. Consumer policy remains
 consumer-owned. Use small reasoned exceptions, not blanket exclusions.
+Match compiler settings to the execution path: native Node preserves runtime
+imports, while a compiler-emitted build may explicitly erase type-only bindings.
+The check keeps unknown runtime edges conservative; its executable resolver and
+regression fixtures define the supported syntax and settings.
 
 Generate maps and walkthroughs from source and actual runs. Bind snapshots to
 content hashes and reverify them after changes. Mind Meld's `verify` command
