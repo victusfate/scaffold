@@ -55,8 +55,8 @@ function compilerOptions(compiler: typeof ts, root: string): ts.CompilerOptions 
   if (read.error) throw new Error(`boundaries: invalid tsconfig.json: ${compiler.flattenDiagnosticMessageText(read.error.messageText, ' ')}`);
   const parsed = compiler.parseJsonConfigFileContent(read.config, compiler.sys, root);
   // An empty project is valid for this scan; all other config errors block resolution.
-  const noInputs = 18003;
-  const errors = parsed.errors.filter(d => d.code !== noInputs);
+  const NO_INPUTS = 18003;
+  const errors = parsed.errors.filter(d => d.code !== NO_INPUTS);
   if (errors.length) throw new Error(`boundaries: invalid tsconfig.json: ${errors.map(d => compiler.flattenDiagnosticMessageText(d.messageText, ' ')).join('; ')}`);
   return { ...defaults, ...parsed.options };
 }

@@ -11,6 +11,7 @@ import { sourceHash } from './mind-meld-schema.ts';
 export const MELD_IMAGE = 'node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94';
 export const MELD_LIMIT_MS = 10_000;
 const MAX_OUTPUT = 1_000_000;
+const MILLISECONDS_PER_SECOND = 1000;
 
 /** Only a local daemon can mount local code. Never inherit an external Docker context. */
 export function dockerArgs(): string[] { return ['--host=unix:///var/run/docker.sock']; }
@@ -25,7 +26,7 @@ export function sandboxArgs(source: string, name: string, args: string[], timeou
     '--env=HOME=/work', '--env=HTTP_PROXY=', '--env=HTTPS_PROXY=', '--env=ALL_PROXY=',
     '--env=NO_PROXY=', '--env=no_proxy=', '--env=http_proxy=', '--env=https_proxy=', '--env=all_proxy=',
     '--mount', `type=bind,src=${file},dst=/app/example.ts,readonly`,
-    MELD_IMAGE, 'timeout', '-s', 'KILL', String(Math.ceil(timeoutMs / 1000)), 'node', '/app/example.ts', ...args];
+    MELD_IMAGE, 'timeout', '-s', 'KILL', String(Math.ceil(timeoutMs / MILLISECONDS_PER_SECOND)), 'node', '/app/example.ts', ...args];
 }
 
 function dockerEnvironment(): NodeJS.ProcessEnv {

@@ -14,6 +14,8 @@ import { renderViewer } from './mind-meld-viewer.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const EXAMPLE = 'scripts/mind-meld-example.ts';
+const DEFAULT_INPUTS = { hp: 10, damage: 3 };
+const LETHAL_INPUTS = { hp: 10, damage: 30 };
 const IMPLEMENTATION = ['mind-meld.ts', 'mind-meld-schema.ts', 'mind-meld-sandbox.ts', 'mind-meld-example.ts', 'mind-meld-viewer.ts'];
 const cache = new Map<string, MeldRun>();
 interface Inputs { hp: number; damage: number }
@@ -115,10 +117,10 @@ function fileCommand(command: string, arg: string | undefined, other: string | u
 }
 function createBundle(command: string, arg: string | undefined): MeldBundle {
   const bundle = index();
-  if (command === 'flow') bundle.runs.push(run_flow('combat', JSON.parse(arg ?? '{"hp":10,"damage":3}')));
-  else if (command === 'piece') bundle.runs.push(run_piece('damage', JSON.parse(arg ?? '{"hp":10,"damage":3}'), { save: 'memory' }));
+  if (command === 'flow') bundle.runs.push(run_flow('combat', JSON.parse(arg ?? JSON.stringify(DEFAULT_INPUTS))));
+  else if (command === 'piece') bundle.runs.push(run_piece('damage', JSON.parse(arg ?? JSON.stringify(DEFAULT_INPUTS)), { save: 'memory' }));
   else if (command === 'demo' && !arg) {
-    bundle.runs.push(run_flow('combat', { hp: 10, damage: 3 }), run_flow('combat', { hp: 10, damage: 30 }), run_piece('damage', { hp: 10, damage: 3 }, { save: 'memory' }));
+    bundle.runs.push(run_flow('combat', DEFAULT_INPUTS), run_flow('combat', LETHAL_INPUTS), run_piece('damage', DEFAULT_INPUTS, { save: 'memory' }));
   } else if (command !== 'index' || arg) throw new Error('usage: mind-meld.ts index|flow|piece|demo|diff|view|verify');
   return bundle;
 }

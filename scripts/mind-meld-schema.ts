@@ -1,5 +1,9 @@
 // Versioned, offline Mind Meld exchange format. No source path is ever fetched by the viewer.
 import { createHash } from 'node:crypto';
+const MAX_TEXT_LENGTH = 1_000_000;
+const MAX_ARRAY_LENGTH = 10_000;
+const MAX_SOURCE_COUNT = 1000;
+const MAX_SOURCE_BYTES = 10_000_000;
 export interface MeldNode { id: string; file: string; line: number; endLine: number; layer: string }
 export interface MeldEvent { id: string; node: string; parent: string | null; durationMs: number; input: string; output: string; changes: { key: string; before: string; after: string }[] }
 export interface MeldEdge { from: string; to: string; file: string; line: number; kind: 'call' }
@@ -11,10 +15,10 @@ function record(value: unknown): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 function text(value: unknown): asserts value is string {
-  if (typeof value !== 'string' || value.length > 1_000_000) throw new Error('expected bounded string');
+  if (typeof value !== 'string' || value.length > MAX_TEXT_LENGTH) throw new Error('expected bounded string');
 }
 function array(value: unknown): unknown[] {
-  if (!Array.isArray(value) || value.length > 10_000) throw new Error('expected bounded array');
+  if (!Array.isArray(value) || value.length > MAX_ARRAY_LENGTH) throw new Error('expected bounded array');
   return value as unknown[];
 }
 function positive(value: unknown): asserts value is number {
@@ -74,10 +78,10 @@ function validateEdges(value: unknown, nodes: Set<string>, sources: Record<strin
   }
 }
 function validateSources(sources: Record<string, unknown>): void {
-  if (Object.keys(sources).length > 1000) throw new Error('too many sources');
+  if (Object.keys(sources).length > MAX_SOURCE_COUNT) throw new Error('too many sources');
   let bytes = 0;
   for (const source of Object.values(sources)) { text(source); bytes += Buffer.byteLength(source); }
-  if (bytes > 10_000_000) throw new Error('sources too large');
+  if (bytes > MAX_SOURCE_BYTES) throw new Error('sources too large');
 }
 export function validateBundle(value: unknown): asserts value is MeldBundle {
   const b = record(value);

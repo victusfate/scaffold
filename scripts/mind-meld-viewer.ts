@@ -6,6 +6,18 @@ import { validateBundle, type MeldBundle, type MeldEvent, type MeldNode } from '
 
 /** Kept self-contained because this function becomes the standalone browser payload. */
 function viewer(bundle: MeldBundle): void {
+  const RUN_HASH_LENGTH = 10;
+  const GRAPH_LEFT = 20;
+  const GRAPH_TOP = 30;
+  const GRAPH_COLUMN_STEP = 240;
+  const GRAPH_ROW_STEP = 80;
+  const GRAPH_MIN_HEIGHT = 150;
+  const GRAPH_MIN_WIDTH = 480;
+  const GRAPH_NODE_WIDTH = 170;
+  const GRAPH_NODE_HEIGHT = 40;
+  const GRAPH_CORNER_RADIUS = 6;
+  const GRAPH_LABEL_INSET = 12;
+  const GRAPH_LABEL_BASELINE = 26;
   const element = (tag: string, text = '') => {
     const node = document.createElement(tag); node.textContent = text; return node;
   };
@@ -63,10 +75,11 @@ function viewer(bundle: MeldBundle): void {
     const layers = [...new Set(bundle.nodes.map(n => n.layer))].sort((a, b) => a === 'entry' ? -1 : b === 'entry' ? 1 : a.localeCompare(b));
     const positions = new Map(bundle.nodes.map(node => {
       const peers = bundle.nodes.filter(n => n.layer === node.layer);
-      return [node.id, { x: 20 + layers.indexOf(node.layer) * 240, y: 30 + peers.findIndex(n => n.id === node.id) * 80 }];
+      return [node.id, { x: GRAPH_LEFT + layers.indexOf(node.layer) * GRAPH_COLUMN_STEP,
+        y: GRAPH_TOP + peers.findIndex(n => n.id === node.id) * GRAPH_ROW_STEP }];
     }));
-    const height = Math.max(150, bundle.nodes.length * 80);
-    svg.setAttribute('viewBox', `0 0 ${Math.max(480, layers.length * 240)} ${height}`);
+    const height = Math.max(GRAPH_MIN_HEIGHT, bundle.nodes.length * GRAPH_ROW_STEP);
+    svg.setAttribute('viewBox', `0 0 ${Math.max(GRAPH_MIN_WIDTH, layers.length * GRAPH_COLUMN_STEP)} ${height}`);
     svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', 'Static dependency graph; call-site details and interactive nodes follow below');
     const defs = document.createElementNS(ns, 'defs');
     const marker = document.createElementNS(ns, 'marker');
@@ -76,16 +89,16 @@ function viewer(bundle: MeldBundle): void {
     for (const edge of bundle.edges) {
       const from = positions.get(edge.from)!; const to = positions.get(edge.to)!;
       const line = document.createElementNS(ns, 'path');
-      line.setAttribute('d', `M ${from.x + 170} ${from.y + 20} L ${to.x} ${to.y + 20}`);
+      line.setAttribute('d', `M ${from.x + GRAPH_NODE_WIDTH} ${from.y + GRAPH_NODE_HEIGHT / 2} L ${to.x} ${to.y + GRAPH_NODE_HEIGHT / 2}`);
       line.setAttribute('marker-end', 'url(#call-arrow)'); line.setAttribute('stroke', '#287f85'); line.setAttribute('fill', 'none'); line.setAttribute('stroke-width', '2');
       svg.append(line);
     }
     for (const node of bundle.nodes) {
       const at = positions.get(node.id)!;
       const box = document.createElementNS(ns, 'rect');
-      for (const [key, value] of Object.entries({ x: at.x, y: at.y, width: 170, height: 40, rx: 6 })) box.setAttribute(key, String(value));
+      for (const [key, value] of Object.entries({ x: at.x, y: at.y, width: GRAPH_NODE_WIDTH, height: GRAPH_NODE_HEIGHT, rx: GRAPH_CORNER_RADIUS })) box.setAttribute(key, String(value));
       box.setAttribute('fill', '#dcebea'); svg.append(box);
-      const label = document.createElementNS(ns, 'text'); label.setAttribute('x', String(at.x + 12)); label.setAttribute('y', String(at.y + 26));
+      const label = document.createElementNS(ns, 'text'); label.setAttribute('x', String(at.x + GRAPH_LABEL_INSET)); label.setAttribute('y', String(at.y + GRAPH_LABEL_BASELINE));
       label.textContent = node.id; svg.append(label);
     }
     document.getElementById('diagram')!.append(svg);
@@ -104,7 +117,7 @@ function viewer(bundle: MeldBundle): void {
     document.getElementById('static-edges')!.append(element('li', `${edge.from} → ${edge.to} (static call at ${edge.file}:${edge.line})`));
   }
   bundle.runs.forEach((run, at) => {
-    const option = element('option', `${run.mode}: ${run.entry} · ${run.key.slice(0, 10)}`) as HTMLOptionElement;
+    const option = element('option', `${run.mode}: ${run.entry} · ${run.key.slice(0, RUN_HASH_LENGTH)}`) as HTMLOptionElement;
     option.value = String(at); runChoice.append(option);
   });
   runChoice.addEventListener('change', () => { runIndex = Number(runChoice.value); eventIndex = 0; showRun(); });
