@@ -359,3 +359,5 @@ lib/linters/ts/.prettierrc.json
 lib/linters/ts/.prettierignore
 lib/linters/js/.prettierrc.json
 lib/linters/js/.prettierignore
+.pi/skills/mind-meld/SKILL.md
+tools/linter-setup/strict-defaults.test.ts
