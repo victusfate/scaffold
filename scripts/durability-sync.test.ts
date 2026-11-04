@@ -51,7 +51,7 @@ try {
   writeFileSync(join(consumer, '.scaffold-keep'), 'bin/ensure-plugins.sh\n');
   git(consumer, 'add', '--', '.agent/boundaries.json', '.scaffold-keep', 'core/state.ts');
   git(consumer, 'commit', '-qm', 'Consumer-owned policy');
-  const synced = spawnSync('bash', [join(ROOT, 'bin/sync-from-scaffold.sh')], {
+  const synced = spawnSync('bash', [join(ROOT, 'bin/bootstrap.sh'), '--run'], {
     cwd: consumer, env: { ...process.env, SCAFFOLD_URL: upstream }, encoding: 'utf8',
   });
   assert.equal(synced.status, 0, synced.stdout + synced.stderr);

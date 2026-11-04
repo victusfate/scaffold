@@ -19,6 +19,9 @@ try {
   const refs = ['src/schema.ts', 'test/save-compat.test.ts'];
   assert.deepEqual(fieldPatch('contracts', refs.join(', ')), { contracts: refs });
   assert.deepEqual(contractPaths([...refs, refs[0]]), refs);
+  for (const bad of [['schema/a,b.ts'], [' schema/spaced.ts ']]) {
+    assert.throws(() => contractPaths(bad), /contracts/, 'reject pointers Markdown cannot round-trip');
+  }
   for (const bad of [undefined, 'schema.ts', [true], ['../outside.ts'], ['/etc/passwd'], ['C:/file.ts'], ['a\\b.ts'], ['a\nb.ts']]) {
     assert.throws(() => contractPaths(bad), /contracts/);
   }

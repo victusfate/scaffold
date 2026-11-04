@@ -186,9 +186,9 @@ export function splitList(v: string): string[] {
 
 /** Validate repository-relative contract file pointers at every storage and wire boundary. */
 export function contractPaths(value: unknown): string[] {
-  if (!Array.isArray(value) || !value.every((p: unknown) => typeof p === 'string' && p.trim().length > 0
-    && !/^[/\\]|^[A-Za-z]:|[\\\0\r\n]/.test(p) && !p.split('/').includes('..'))) {
-    throw new Error('contracts: expected a list of repository-relative file paths without traversal');
+  if (!Array.isArray(value) || !value.every((p: unknown) => typeof p === 'string' && p.length > 0 && p === p.trim()
+    && !/^[/\\]|^[A-Za-z]:|[\\,\0\r\n]/.test(p) && !p.split('/').includes('..'))) {
+    throw new Error('contracts: expected repository-relative paths without traversal, commas or outer whitespace');
   }
   return [...new Set(value as string[])];
 }
