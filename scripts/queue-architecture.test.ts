@@ -8,7 +8,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { humanEnv } from './queue-task-origin.ts';
-import { newTask, fieldPatch, parseQueue, serializeQueue, taskBlock, addTask, architectureGuidance } from './queue-model.ts';
+import { newTask, fieldPatch, parseQueue, serializeQueue, addTask, architectureGuidance } from './queue-model.ts';
 import { taskOverrides, parse } from './queue-cli-args.ts';
 import { withStore, writeStore, readStore } from './queue-db.ts';
 import { applyOp, consoleState, startServer } from './queue-console.ts';
@@ -24,10 +24,6 @@ try {
     const q = addTask(parseQueue(''), 'architecture choice', taskOverrides(parse(['--architecture', mode])));
     assert.deepEqual(fieldPatch('architecture', mode), { architecture: mode });
     assert.equal(parseQueue(serializeQueue(q)).tasks[0].architecture, mode);
-    const block = taskBlock(q.tasks[0]);
-    assert.match(block, new RegExp(`architecture: ${mode}`));
-    assert.match(block, /validation, security and compatibility checks remain mandatory/);
-    assert.match(block, /release authority is unchanged/);
     const file = join(dir, `${mode}.db`);
     withStore(file, db => writeStore(db, q));
     assert.equal(withStore(file, readStore).tasks[0].architecture, mode);
@@ -38,10 +34,21 @@ try {
     assert.ok(!('error' in op));
     assert.equal(op.queue.tasks[0].architecture, mode);
     assert.equal(cli('add', `task ${mode}`, '--architecture', mode).status, 0);
+    // The CLI is the stable rendering interface; consumers may split model and prompt modules.
+    const id = 'task-001';
+    assert.equal(cli('set', id, 'architecture', mode).status, 0);
+    const claim = cli('claim', id, '--worker', 'architecture-test');
+    assert.equal(claim.status, 0, claim.stderr);
+    assert.match(claim.stdout, new RegExp(`architecture: ${mode}`));
+    assert.ok(claim.stdout.includes(architectureGuidance(mode)));
+    assert.match(claim.stdout, /validation, security and compatibility checks remain mandatory/);
+    assert.match(claim.stdout, /release authority is unchanged/);
+    assert.equal(cli('release', id, '--worker', 'architecture-test').status, 0);
   }
-  assert.match(taskBlock({ ...newTask('task-001', 'builder'), architecture: 'builder-led' }), /Follow the builder's supplied architecture/);
-  assert.match(taskBlock({ ...newTask('task-001', 'collaborative'), architecture: 'collaborative' }), /Propose architectural tradeoffs/);
-  assert.match(taskBlock({ ...newTask('task-001', 'model'), architecture: 'model-led' }), /Own architectural investigation, decisions and checks/);
+  assert.equal(cli('set', 'task-001', 'architecture', 'builder-led').status, 0);
+  assert.match(architectureGuidance('builder-led'), /Follow the builder's supplied architecture/);
+  assert.match(architectureGuidance('collaborative'), /Propose architectural tradeoffs/);
+  assert.match(architectureGuidance('model-led'), /Own architectural investigation, decisions and checks/);
   assert.throws(() => fieldPatch('architecture', 'invented'), /architecture/);
   assert.throws(() => parseQueue('- [ ] bad\n  - architecture: invented'), /architecture/);
   assert.ok('error' in applyOp(parseQueue('- [ ] task-001 — existing'), { op: 'set', id: 'task-001', fields: { architecture: 'invented' } }));
