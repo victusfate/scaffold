@@ -126,7 +126,7 @@ function scanSource(ctx: ScanContext, path: string): string[] {
   const source = ctx.compiler.createSourceFile(real, readFileSync(real, 'utf8'), ctx.compiler.ScriptTarget.Latest, true);
   const diagnostics = (source as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] }).parseDiagnostics;
   if (diagnostics.length) return [`${localPath(ctx.root, real)}: syntax error prevents import analysis`];
-  return importEdges(ctx.compiler, source).flatMap(edge => scanEdge(ctx, real, edge));
+  return importEdges(ctx.compiler, source, ctx.options.verbatimModuleSyntax === true).flatMap(edge => scanEdge(ctx, real, edge));
 }
 
 function scanConfigured(ctx: ScanContext, path: string): string[] {

@@ -37,14 +37,29 @@ function overridden(compiler: typeof ts, source: ts.SourceFile, node: ts.Node, l
   });
 }
 
-function typeOnly(compiler: typeof ts, node: ts.Node): boolean {
-  if (compiler.isImportTypeNode(node)) return true;
-  if (compiler.isImportDeclaration(node)) return node.importClause?.isTypeOnly === true;
-  if (compiler.isExportDeclaration(node) || compiler.isImportEqualsDeclaration(node)) return node.isTypeOnly;
-  return false;
+function allNamedTypes(node: ts.NamedImports | ts.NamedExports): boolean {
+  return node.elements.length > 0 && node.elements.every(element => element.isTypeOnly);
 }
 
-export function importEdges(compiler: typeof ts, source: ts.SourceFile): ImportEdge[] {
+function elidedImport(compiler: typeof ts, node: ts.ImportDeclaration): boolean {
+  const clause = node.importClause;
+  if (!clause || clause.name || !clause.namedBindings) return false;
+  return compiler.isNamedImports(clause.namedBindings) && allNamedTypes(clause.namedBindings);
+}
+
+function elidedExport(compiler: typeof ts, node: ts.ExportDeclaration): boolean {
+  return node.exportClause !== undefined && compiler.isNamedExports(node.exportClause) && allNamedTypes(node.exportClause);
+}
+
+function typeOnly(compiler: typeof ts, node: ts.Node, verbatim: boolean): boolean {
+  if (compiler.isImportTypeNode(node)) return true;
+  if (compiler.isImportDeclaration(node)) return node.importClause?.isTypeOnly === true || (!verbatim && elidedImport(compiler, node));
+  if (compiler.isExportDeclaration(node)) return node.isTypeOnly
+    || (!verbatim && elidedExport(compiler, node));
+  return compiler.isImportEqualsDeclaration(node) && node.isTypeOnly;
+}
+
+export function importEdges(compiler: typeof ts, source: ts.SourceFile, verbatimModuleSyntax = false): ImportEdge[] {
   const edges: ImportEdge[] = [];
   const visit = (node: ts.Node): void => {
     const found = argumentOf(compiler, node);
@@ -52,7 +67,7 @@ export function importEdges(compiler: typeof ts, source: ts.SourceFile): ImportE
       const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line;
       edges.push({
         specifier: found.argument && compiler.isStringLiteralLike(found.argument) ? found.argument.text : null,
-        typeOnly: source.isDeclarationFile || typeOnly(compiler, node),
+        typeOnly: source.isDeclarationFile || typeOnly(compiler, node, verbatimModuleSyntax),
         line: line + 1, overridden: overridden(compiler, source, node, line),
       });
     }

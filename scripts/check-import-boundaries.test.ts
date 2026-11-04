@@ -66,6 +66,21 @@ try {
   put('types-only.d.ts', 'export interface Value { amount: number }');
   put('core/main.ts', 'import type { Value } from "../types-only.js"; export type Result = Value;');
   assert.deepEqual(await checkImportBoundaries(root), [], 'an explicit type-only import needs no runtime implementation');
+  for (const source of ['import { type Value } from "../types-only.js";', 'export { type Value } from "../types-only.js";']) {
+    put('core/main.ts', source);
+    assert.deepEqual(await checkImportBoundaries(root), [], 'aggregate named types erase under default TypeScript import elision');
+    put('tsconfig.json', JSON.stringify({ compilerOptions: { verbatimModuleSyntax: true } }));
+    assert.match((await checkImportBoundaries(root)).join('\n'), /runtime.*unavailable/, 'verbatim named types preserve an empty runtime module edge');
+    put('tsconfig.json', JSON.stringify({ compilerOptions: {} }));
+  }
+  for (const source of [
+    'import {} from "../types-only.js";', 'import "../types-only.js";',
+    'import Default, { type Value } from "../types-only.js"; console.log(Default);',
+    'import { type Value, value } from "../types-only.js"; console.log(value);',
+  ]) {
+    put('core/main.ts', source);
+    assert.match((await checkImportBoundaries(root)).join('\n'), /runtime.*unavailable/, 'empty, default and mixed imports retain runtime requirements');
+  }
   put('core/main.ts', 'import { Value } from "../types-only.js"; console.log(Value);');
   assert.match((await checkImportBoundaries(root)).join('\n'), /runtime.*unavailable/, 'a value import with declarations only fails closed');
   put('tsconfig.json', JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@bridge': ['runtime-bridge.js'] } } }));
