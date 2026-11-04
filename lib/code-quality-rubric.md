@@ -158,6 +158,40 @@ module importing UI experiments; plugin callbacks with no discoverable registrat
 and persistence spread across handlers. Fix ownership or dependency direction at
 its source rather than adding narration over the ambiguity.
 
+## 6. Design Validity
+
+Review whether the change solves the right problem before rewarding its file
+scores. Apply the same cited minor (−1), major (−2), critical (−4) deductions to
+each criterion below. Cite artifact lines for intent and assumptions, code or
+trace lines for behavior, and the relevant comparison when evidence contradicts
+the design. Tests passing is implementation evidence, not proof of customer value.
+
+| Criterion | A score of 10 means | Deduction examples |
+|---|---|---|
+| Intent and outcome validity | The owner problem, desired observable outcome, constraints, and success evidence are explicit; unknown outcome evidence stays unknown. | major: merge count substitutes for usefulness; critical: the implementation contradicts the owner's actual need despite green tests. |
+| Assumption testing and learning | Consequential assumptions have a disconfirming probe and an observed result or an explicit unknown; contradictory evidence revises the design and plan. | minor: a low-risk assumption has no probe; major: a durable decision rests on an untested premise presented as fact; critical: a failed premise is ignored to keep the pipeline moving. |
+| Architectural understanding | A reviewer can explain state ownership, dependency direction, constraints, and failure consequences; alternatives are explored in proportion to uncertainty and reversibility. | major: an agent's plausible boundary is accepted without checking real callers; major: a hard-to-reverse design has no comparison or rationale. A routine formatter change needs no speculative alternatives. |
+| Diagnosability and repairability | A maintainer can reproduce a failure, follow its source/state path, and verify a repair without relying on the generating prompt. | minor: reproduction omits a required input; major: only a polished narration exists, without source or execution evidence; critical: persisted failures cannot be diagnosed or safely recovered. |
+
+Report `Intent`, `Learning`, `Understanding`, and `Repairability` beside system
+scores. Missing production outcome data is an explicit unknown, not a fabricated
+success or an automatic demand for production access. Judge whether the proposed
+check is appropriate for the stage and tier; inspect the real result when available.
+
+For example, an implementation can score 10 in every file dimension and still
+lose four Intent points at `docs/search/design.md:14` and `src/search.ts:81` if it
+optimizes automatic query submission when the owner needed an editable preview.
+An observed Mind Meld tour can explain the mismatch and reproduce the failure;
+its existence alone does not establish that the new behavior helps users.
+
+This framing follows Rob West's
+[design-engineering argument](https://robwest.info/articles/the-agentic-software-factory-is-the-wrong-metaphor)
+(19 September 2026). Agents can investigate, challenge, implement, and compare
+candidate designs. Owner intent, domain tradeoffs, and release authority stay
+explicit. Repeatable delivery automation remains valuable; it is one part of the
+design feedback loop. The owner-supplied Joe Maddalone video summary motivates
+the maintainability/understanding concern; no transcript was independently verified.
+
 ## Common Failure Patterns
 
 | Pattern | Dimension | Severity | Fix |

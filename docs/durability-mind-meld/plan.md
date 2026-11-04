@@ -11,10 +11,12 @@ tier: durable
   and piece example, run diff, and an offline source/graph/trace viewer.
 - [ ] Integrate: scored system rubric, durability guidance, consumer sync manifest,
   feature artifacts, and new test commands.
+- [ ] Design feedback (#166): scored intent/learning/understanding/repairability,
+  canonical outcome and hypothesis prompts, truthful metrics scope, and rubric checks.
 - [ ] Validate: full suites, CLI/live viewer QA, independent correctness and
   structural/security review, final origin/main security gate, hosted checks.
 - [ ] Deliver: one PR from feat/durability-mind-meld, squash merge its validated
-  head, verify main contains it, close both issues referencing branch and PR.
+  head, verify main contains it, close all three issues referencing branch and PR.
 
 Use the issue acceptance criteria as slice boundaries. Keep each lane isolated;
 merge the current working branch into each lane before integration. Record actual

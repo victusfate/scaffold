@@ -14,6 +14,17 @@ of waiting for a human to judge each result:
 
 > **produce → self-evaluate against the target bar → name the gap → improve → re-evaluate.**
 
+Code is a candidate design, and requirements contain testable assumptions.
+When a probe contradicts a premise, revise the source decision, acceptance
+criteria, and unfinished plan; do not optimize the pipeline around a mistaken
+specification. Agents participate in investigation and design as well as execution.
+Keep owner intent and consequential tradeoffs explicit. Review product outcomes,
+risk reduction, and learning separately from operational flow and gate cost.
+Missing outcome evidence remains unknown. Use the rubric's Design Validity section
+and the design/PRD templates to record this evidence without creating a new approval
+between every phase. Repeatable builds, checks, provisioning, and delivery still
+benefit from automation.
+
 - **Self-evaluate with a real signal, not vibes.** Ground every judgment in something observable: a
   measurement (timings, throughput, a gate's pass/fail, a state delta), a test, a reviewer pass, or an
   automated critique of the actual output (read the rendered result, the log, the diff — not a

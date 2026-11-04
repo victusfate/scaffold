@@ -5,9 +5,27 @@ tier: durable
 
 ## Owner specification
 
-Resolve [#164](https://github.com/victusfate/scaffold/issues/164) and
-[#165](https://github.com/victusfate/scaffold/issues/165) together, validate one PR,
-then merge it and close both issues with a reference to its branch.
+Resolve [#164](https://github.com/victusfate/scaffold/issues/164),
+[#165](https://github.com/victusfate/scaffold/issues/165), and the owner's added
+[#166](https://github.com/victusfate/scaffold/issues/166) together, validate one PR,
+then merge it and close the issues with a reference to its branch.
+
+## Outcome
+
+The owner wants a codebase people can understand and repair, with useful
+automation and a rubric that rejects a well-tested implementation of the wrong
+problem. Observe tier enforcement, actual execution traces, attributable gate
+costs, and visible design feedback. Customer impact beyond these probes remains
+unknown until a consumer uses the changes.
+
+## Assumptions
+
+| Assumption | Disconfirming probe | Evidence / unknown | Revision if wrong |
+|---|---|---|---|
+| Existing queue surfaces can carry tiers | CLI/store migration round trip | pending validation | repair all storage paths before delivery |
+| A reference execution sandbox is available | run flow, piece, denial and timeout probes | pending validation | fail closed; do not claim a live execution |
+| Gate cost can be attributed without guessing | record retry and explicit review through CLI | pending validation | retain unknown rather than infer outcomes |
+| Current workflow can expose learning without extra ceremony | independent review of canonical templates and rubric | pending review | remove redundant prompts, retain outcome/probe evidence |
 
 ## Decisions
 
@@ -28,9 +46,12 @@ then merge it and close both issues with a reference to its branch.
   static structure and narration never manufacture runtime edges.
 - Child repositories own their index and execution adapters. Voidhorizon's five tours
   are its first consumer milestone, not code scaffold can implement in this repository.
-- The reference runner executes reviewed example code with explicit permission limits,
-  temporary state, a scrubbed environment, and a timeout. Arbitrary child code requires
-  an OS sandbox with no network and a read-only checkout; fail closed if unavailable.
+- The reference runner executes reviewed example code inside a container with no
+  network, read-only source/root, isolated temporary state, and resource/time limits.
+  Child adapters must enforce equivalent OS isolation; fail closed if unavailable.
+- Extend design-validity scoring and canonical templates with owner outcomes,
+  disconfirming probes, proportional alternatives, understanding, and repairability.
+  The delivery report labels its operational scope and does not infer customer value.
 
 ## Vocabulary
 

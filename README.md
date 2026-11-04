@@ -16,6 +16,7 @@ gh repo clone victusfate/my-new-project
 
 ## Philosophy
 
+- **Design through evidence** — agents investigate assumptions, compare approaches when needed, and revise code and specifications as they learn. Owners supply intent and consequential tradeoffs. Builds, checks, and delivery automate repeatable work; merge throughput alone does not measure product success. See the rubric's [Design Validity criteria](lib/code-quality-rubric.md#6-design-validity).
 - **Single source of truth** — `AGENTS.md` holds all agent instructions. `CLAUDE.md` imports it; `GEMINI.md` references it; `.cursor/rules/agents.mdc` points to it. No duplication.
 - **Careful before fast** — features start with a structured design Q&A (`grill-with-docs`) that locks in vocabulary and decisions before any code is written.
 - **Automatic flow** — once the Q&A is done, the rest runs on its own (PRD → TDD → review gate), with no handoffs for you to manage.

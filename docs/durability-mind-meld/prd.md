@@ -15,6 +15,15 @@ Make durability typed and enforce dependency boundaries. Show timed gate attempt
 and their reviewed outcomes. Supply a Mind Meld skill and a working offline
 example that connects structure, execution, source, and state changes.
 
+## Outcome and Evidence
+
+Issue #166 adds an evidence-driven design mental model, cited weighted design
+validity, and workflow prompts to revise assumptions. Flow/gate metrics remain
+operational measurements. Tests and QA can establish the requested behaviors;
+consumer/customer value is unknown until observed, and must not be inferred from
+merge count or CI success. Contradictory probes revise this design and unfinished
+slices rather than force the original specification through a green pipeline.
+
 ## User Stories
 
 1. An owner can add, edit, import, persist, and inspect a task's tier without losing it.
@@ -27,6 +36,8 @@ example that connects structure, execution, source, and state changes.
    and inspect observed values and source spans offline.
 7. A child repository can implement stack-specific adapters against a documented
    schema, sandbox policy, cache key, and narration contract.
+8. An owner can see which assumptions were tested, what remains unknown, and why
+   a design changed, without losing useful delivery automation.
 
 ## Implementation Decisions
 
