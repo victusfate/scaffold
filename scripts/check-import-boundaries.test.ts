@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Boundary gate acceptance fixtures: source syntax, aliases, fail-closed inputs and scoped overrides.
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -70,13 +70,34 @@ try {
   assert.match((await checkImportBoundaries(root)).join('\n'), /runtime.*unavailable/, 'an omitted runtime policy conservatively preserves empty imports');
   rmSync(join(root, 'tsconfig.json'));
   assert.match((await checkImportBoundaries(root)).join('\n'), /runtime.*unavailable/, 'without tsconfig native runtime policy is conservative');
-  put('tsconfig.json', JSON.stringify({ compilerOptions: { verbatimModuleSyntax: false } }));
+  put('tsconfig.json', JSON.stringify({ compilerOptions: { noEmit: false, verbatimModuleSyntax: false } }));
+  // Prove the distinction by running native source and compiler-emitted code.
+  const marker = join(root, 'native-side-effect.txt');
+  put('experiment/runtime.js', `import {writeFileSync} from "node:fs"; writeFileSync(${JSON.stringify(marker)}, "executed"); export const value = 1;`);
+  put('native-bridge.js', 'export * from "./experiment/runtime.js";');
+  put('native-bridge.d.ts', 'export interface Value { amount: number }');
+  const nativeSource = 'import { type Value } from "../native-bridge.js";';
+  put('core/main.ts', nativeSource);
+  put('tsconfig.json', JSON.stringify({ compilerOptions: { noEmit: true, verbatimModuleSyntax: false } }));
+  assert.match((await checkImportBoundaries(root)).join('\n'), /forbidden/, 'noEmit source keeps runtime edges even when verbatim is false');
+  execFileSync(process.execPath, [join(root, 'core/main.ts')], { cwd: root });
+  assert.equal(readFileSync(marker, 'utf8'), 'executed', 'native Node executes the forbidden side effect behind aggregate type syntax');
+  rmSync(marker);
+  const compiler = (await import('typescript')).default;
+  const emitted = compiler.transpileModule(nativeSource, { compilerOptions: {
+    module: compiler.ModuleKind.ESNext, noEmit: false, verbatimModuleSyntax: false,
+  } }).outputText;
+  put('core/compiled.js', emitted);
+  put('tsconfig.json', JSON.stringify({ compilerOptions: { noEmit: false, verbatimModuleSyntax: false } }));
+  assert.deepEqual(await checkImportBoundaries(root), [], 'explicit emitted execution safely elides aggregate types');
+  execFileSync(process.execPath, [join(root, 'core/compiled.js')], { cwd: root });
+  assert.ok(!existsSync(marker), 'actual compiler-emitted execution has no import side effect');
   for (const source of ['import { type Value } from "../types-only.js";', 'export { type Value } from "../types-only.js";']) {
     put('core/main.ts', source);
     assert.deepEqual(await checkImportBoundaries(root), [], 'aggregate named types erase under default TypeScript import elision');
     put('tsconfig.json', JSON.stringify({ compilerOptions: { verbatimModuleSyntax: true } }));
     assert.match((await checkImportBoundaries(root)).join('\n'), /runtime.*unavailable/, 'verbatim named types preserve an empty runtime module edge');
-    put('tsconfig.json', JSON.stringify({ compilerOptions: { verbatimModuleSyntax: false } }));
+    put('tsconfig.json', JSON.stringify({ compilerOptions: { noEmit: false, verbatimModuleSyntax: false } }));
   }
   for (const source of [
     'import {} from "../types-only.js";', 'import "../types-only.js";',

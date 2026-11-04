@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Enforce explicit source import rules. Usage: node scripts/check-import-boundaries.ts [--root DIR].
 // .agent/boundaries.json opts a repo in; malformed config, syntax and unresolved/computed edges fail closed.
-// Default to native/verbatim runtime edges; only explicit tsconfig verbatimModuleSyntax:false enables type-specifier elision.
+// Default to native runtime edges. Elide aggregate type specifiers only with explicit noEmit:false + verbatimModuleSyntax:false.
+// A noEmit project executes source and keeps empty runtime edges, matching Node native type stripping.
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { builtinModules } from 'node:module';
@@ -48,7 +49,7 @@ function configAt(root: string): Boundaries | null {
 
 function compilerOptions(compiler: typeof ts, root: string): ts.CompilerOptions {
   const path = join(root, 'tsconfig.json');
-  const defaults = { verbatimModuleSyntax: true, allowJs: true, resolveJsonModule: true, moduleResolution: compiler.ModuleResolutionKind.NodeNext };
+  const defaults = { noEmit: true, verbatimModuleSyntax: true, allowJs: true, resolveJsonModule: true, moduleResolution: compiler.ModuleResolutionKind.NodeNext };
   if (!existsSync(path)) return defaults;
   const read = compiler.readConfigFile(path, file => compiler.sys.readFile(file));
   if (read.error) throw new Error(`boundaries: invalid tsconfig.json: ${compiler.flattenDiagnosticMessageText(read.error.messageText, ' ')}`);
@@ -134,7 +135,7 @@ function scanSource(ctx: ScanContext, path: string): string[] {
   const source = ctx.compiler.createSourceFile(real, readFileSync(real, 'utf8'), ctx.compiler.ScriptTarget.Latest, true);
   const diagnostics = (source as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] }).parseDiagnostics;
   if (diagnostics.length) return [`${localPath(ctx.root, real)}: syntax error prevents import analysis`];
-  return importEdges(ctx.compiler, source, ctx.options.verbatimModuleSyntax === true).flatMap(edge => scanEdge(ctx, real, edge));
+  return importEdges(ctx.compiler, source, ctx.options.noEmit !== false || ctx.options.verbatimModuleSyntax !== false).flatMap(edge => scanEdge(ctx, real, edge));
 }
 
 function scanConfigured(ctx: ScanContext, path: string): string[] {
