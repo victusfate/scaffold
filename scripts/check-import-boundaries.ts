@@ -101,8 +101,8 @@ function scanConfigured(ctx: ScanContext, path: string): string[] {
 
 function scanFile(ctx: ScanContext, file: string): string[] {
   const path = join(ctx.root, file);
-  if (!existsSync(path)) return [`${file}: missing tracked file`];
   if (!matches(file, ctx.rule.from)) return [];
+  if (!existsSync(path)) return [`${file}: missing tracked file`];
   if (forbidden(ctx, realpathSync(path))) return [`${file}: source symlink targets forbidden source`];
   return scanConfigured(ctx, path);
 }
@@ -119,6 +119,8 @@ export async function checkImportBoundaries(root: string): Promise<string[]> {
   }).split('\0').filter(Boolean);
   return config.rules.flatMap(rule => {
     const ctx: ScanContext = { root, rule, compiler, options, seen: new Set() };
+    const missing = rule.from.filter(glob => !files.some(file => matchesGlob(file, glob)));
+    if (missing.length) return [`boundaries: from globs match no source: ${missing.join(', ')} (${rule.reason})`];
     return files.flatMap(file => scanFile(ctx, file)).map(finding => `${finding} (${rule.reason})`);
   });
 }

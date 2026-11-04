@@ -24,8 +24,10 @@ function argumentOf(compiler: typeof ts, node: ts.Node): { argument: ts.Node | u
 }
 
 function overridden(compiler: typeof ts, source: ts.SourceFile, node: ts.Node, line: number): boolean {
+  let statement = node;
+  while (statement.parent && !compiler.isStatement(statement)) statement = statement.parent;
   const comments = [
-    ...(compiler.getLeadingCommentRanges(source.text, node.getFullStart()) ?? []),
+    ...(compiler.getLeadingCommentRanges(source.text, statement.getFullStart()) ?? []),
     ...(compiler.getTrailingCommentRanges(source.text, node.end) ?? []),
   ];
   return comments.some(comment => {

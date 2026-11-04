@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { checkImportBoundaries } from './check-import-boundaries.ts';
-const root = mkdtempSync(join(tmpdir(), 'tiers-'));
+const root = mkdtempSync(join(tmpdir(), 'boundaries-'));
 const put = (file: string, value: string) => { mkdirSync(join(root, file, '..'), { recursive: true }); writeFileSync(join(root, file), value); };
 try {
   execFileSync('git', ['init', '-q', root]);
@@ -25,6 +25,8 @@ try {
   assert.match((await checkImportBoundaries(root)).join('\n'), /forbidden/);
   put('core/main.ts', 'import(/* real edge */ "../experiment/leaf.ts");');
   assert.match((await checkImportBoundaries(root)).join('\n'), /forbidden/);
+  put('core/main.ts', '// quality-ok: import-boundary — controlled runtime entry point\nconst target = import(somePath);');
+  assert.deepEqual(await checkImportBoundaries(root), []);
   put('core/main.ts', 'const target = "../experiment/leaf.ts"; import(target);');
   assert.match((await checkImportBoundaries(root)).join('\n'), /computed/);
   put('core/main.ts', 'const leaf = require("../experiment/leaf.ts");');
@@ -52,5 +54,7 @@ try {
   await assert.rejects(checkImportBoundaries(root), /JSON/);
   put('.agent/boundaries.json', JSON.stringify({ version: 1, rules: [{ from: ['../outside/**'], deny: ['experiment/**'], reason: 'invalid glob' }] }));
   await assert.rejects(checkImportBoundaries(root), /glob/);
+  put('.agent/boundaries.json', JSON.stringify({ version: 1, rules: [{ from: ['gone/**'], deny: ['experiment/**'], reason: 'missing configured root' }] }));
+  assert.match((await checkImportBoundaries(root)).join('\n'), /match no source/);
   console.log('import boundaries: passed');
 } finally { rmSync(root, { recursive: true, force: true }); }
