@@ -83,7 +83,7 @@ Mechanical criteria can never be overridden by either form — the code must be
 fixed. A malformed pragma (unknown criterion, blank reason, or missing separator)
 is itself a `[Clarity/minor]` violation.
 
-## Durability and codebase learning
+## Understanding and safe modification
 
 Prioritize understanding and modification, saved data and compatibility, then
 useful architectural boundaries. Keep current facts in executable types,
@@ -101,6 +101,8 @@ Use [`/mind-meld`](skills/mind-meld.md) to build a repository-owned learning IDE
 The reference adapter runs a small combat flow and isolated damage step, records
 values and mutations, compares runs, and renders an offline graph/trace/source
 viewer. Each child repository supplies adapters for its own stack.
+Bundles carry source hashes; `verify` detects stale evidence against a checkout.
+The offline viewer identifies its snapshot rather than claiming live freshness.
 
 Time gate attempts and report their cost with `scripts/delivery-metrics.ts`.
 Failures count as false positives only after an explicit review with evidence;

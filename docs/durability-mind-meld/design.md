@@ -1,4 +1,4 @@
-# Durability and Mind Meld
+# Executable understanding and safe modification
 
 ## Owner specification
 
@@ -14,6 +14,12 @@ automation and a rubric that rejects a well-tested implementation of the wrong
 problem. Observe executable contract preservation, actual execution traces, attributable gate
 costs, and visible design feedback. Customer impact beyond these probes remains
 unknown until a consumer uses the changes.
+
+Priorities: understanding/modification first, saved data/compatibility second,
+architectural boundaries third. Keep implemented facts in executable code and
+checks; keep this document to owner intent and consequential tradeoffs. A binary
+durable/disposable classifier was rejected during owner review and is not part
+of this design.
 
 ## Assumptions
 
