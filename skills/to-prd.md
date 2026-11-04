@@ -26,6 +26,12 @@ The problem from the user's perspective.
 ## Solution
 The solution from the user's perspective.
 
+## Outcome and Evidence
+- Desired observable improvement and its owner-defined constraints
+- Consequential assumptions, disconfirming probes, and observed or unknown evidence
+- What evidence would require revising the design or acceptance criteria
+- Product/risk outcome evidence, separately from delivery speed and passing tests
+
 ## User Stories
 Numbered list covering the full surface area including edge cases:
 1. As a <actor>, I want <feature>, so that <benefit>.
@@ -41,6 +47,7 @@ Numbered list covering the full surface area including edge cases:
 - What makes a good test here
 - Which modules will be tested
 - Prior art in the codebase
+- A reproduction or trace that lets a maintainer diagnose and verify a repair
 
 ## Out of Scope
 What this PRD explicitly does not cover.

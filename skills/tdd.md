@@ -24,6 +24,10 @@ Tests written in bulk verify imagined behavior and become insensitive to real ch
 **Before writing any code:**
 - Decide the interface changes and which behaviors to test (prioritize critical paths). Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from `plan.md`.
 - List behaviors to test, not implementation steps.
+- Name the assumption and intended outcome this slice tests; use the design's
+  evidence, or mark it unknown. If a probe contradicts intent, revise design/PRD
+  and unfinished slices before implementing more of that premise. A green test of
+  the wrong acceptance criterion does not close the gap.
 
 **Tracer bullet:** write ONE test for ONE behavior → RED → minimal code → GREEN. This proves the path works end-to-end.
 
