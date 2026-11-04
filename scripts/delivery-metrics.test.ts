@@ -42,6 +42,8 @@ assert.deepEqual(m.unaddressed, [2]);
 
 const out = format(m, 'o/r');
 assert.match(out, /o\/r: 3 merged PRs/);
+assert.match(out, /Operational flow signals.*do not establish customer success/);
+assert.match(out, /Outcome\/risk\/learning evidence: not measured here/);
 assert.match(out, /green CI → merge: median 6\.0h/);
 assert.match(out, /1 of 2 followed by a commit/);
 assert.match(out, /#2/);

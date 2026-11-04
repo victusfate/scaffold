@@ -18,6 +18,17 @@ function stampMarker(content: string, marker: string, hash: string): string {
   return content.replace(marker, `${marker} sha256:${hash}`);
 }
 
+function alternateFormatter(targetRepo: string): boolean {
+  const names = ['.prettierrc', '.prettierrc.json5', '.prettierrc.yml', '.prettierrc.yaml', '.prettierrc.toml',
+    '.prettierrc.js', '.prettierrc.ts', '.prettierrc.mjs', '.prettierrc.mts', '.prettierrc.cjs', '.prettierrc.cts',
+    'prettier.config.js', 'prettier.config.ts', 'prettier.config.mjs', 'prettier.config.mts', 'prettier.config.cjs', 'prettier.config.cts'];
+  if (names.some(name => existsSync(join(targetRepo, name)))) return true;
+  const pkg = join(targetRepo, 'package.json');
+  if (!existsSync(pkg)) return false;
+  try { return Object.hasOwn(JSON.parse(readFileSync(pkg, 'utf8')) as object, 'prettier'); }
+  catch { return true; } // Preserve an unparsable consumer manifest for manual repair.
+}
+
 export function emit(language: Language, targetRepo: string, srcRoot: string): EmitResult {
   const entry = registry[language];
   if (!entry) throw new Error(`Unknown language: ${language}`);
@@ -52,6 +63,12 @@ export function emit(language: Language, targetRepo: string, srcRoot: string): E
         copyFileSync(srcPath, to);
       }
     };
+
+    if (src === '.prettierrc.json' && !existsSync(destPath) && alternateFormatter(targetRepo)) {
+      write(`${destPath}.scaffold-new`);
+      sidecars.push(dest);
+      continue;
+    }
 
     if (existsSync(destPath)) {
       const existing = readFileSync(destPath, 'utf8');

@@ -1,6 +1,11 @@
 ## Instructions
 
-Interview the user relentlessly about every aspect of the plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one at a time.
+Resolve the problem, constraints and consequential choices at the builder's chosen
+architectural contribution depth (see `docs/agents-detail.md#architectural-contribution`).
+Investigate code and propose answers before asking. In model-led work, perform the
+architectural analysis and design rather than requiring the builder to specify it.
+Ask about unresolved intent or material product/risk tradeoffs; do not repeat
+settled decisions or invent an interview for a clear, already authorized task.
 
 **Ask one question at a time.** Wait for feedback before continuing. Provide your recommended answer with each question.
 
@@ -22,6 +27,22 @@ When a term or decision is resolved, write it to `./docs/<feature-slug>/design.m
 
 ```markdown
 # Design: <Feature Name>
+
+## Outcome
+- Owner problem and desired observable change:
+- Constraints and failure consequences:
+- Outcome evidence: unknown until observed; name the intended check.
+- Architectural contribution: link the task mode or record the builder's direction.
+
+## Preservation obligations
+- Data, behavior or interfaces that must survive replacement:
+- Authoritative executable contracts: link schemas, migrations, fixtures or tests.
+- Reproduction/observation entry point: link code or a source-verified run.
+
+## Assumptions
+| Consequential assumption | Disconfirming probe | Evidence / unknown | Revision if wrong |
+|---|---|---|---|
+| … | … | unknown | … |
 
 ## Canonical Vocabulary
 | Term | Definition |
@@ -51,6 +72,18 @@ When a term or decision is resolved, write it to `./docs/<feature-slug>/design.m
 ```
 
 `design.md` is a glossary and decision record — not a spec or implementation plan.
+
+Treat requirements as hypotheses. Inspect the domain and real call/state paths;
+record what would show the proposed behavior is wrong. Compare alternatives when
+uncertainty or replacement cost justifies it; a known repetitive operation needs
+no artificial design contest. When evidence changes a premise, revise the decision
+in place and propagate it to the PRD and unfinished plan before resuming. Bring only
+unresolved owner intent or consequential tradeoffs back to the user.
+
+Keep this document to intent and consequential decisions. Types, module interfaces,
+tests and schemas own current facts; generate maps from source and label recorded
+runs with source hashes. Link those sources instead of maintaining a prose mirror.
+Comments capture constraints and rationale that cannot be inferred from the code.
 
 ### Visualizations — add as structure becomes clear
 

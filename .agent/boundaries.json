@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "rules": [
+    {
+      "from": ["scripts/queue-model.ts", "scripts/queue-db.ts"],
+      "deny": ["scripts/queue.ts", "scripts/queue-console.ts"],
+      "reason": "Queue data and pure operations must not depend on CLI or console presentation shells."
+    }
+  ]
+}

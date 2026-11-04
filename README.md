@@ -16,6 +16,7 @@ gh repo clone victusfate/my-new-project
 
 ## Philosophy
 
+- **Design through evidence** — agents investigate assumptions, compare approaches when needed, and revise code and specifications as they learn. Owners supply intent and consequential tradeoffs. Builds, checks, and delivery automate repeatable work; merge throughput alone does not measure product success. See the rubric's [Design Validity criteria](lib/code-quality-rubric.md#6-design-validity).
 - **Single source of truth** — `AGENTS.md` holds all agent instructions. `CLAUDE.md` imports it; `GEMINI.md` references it; `.cursor/rules/agents.mdc` points to it. No duplication.
 - **Careful before fast** — features start with a structured design Q&A (`grill-with-docs`) that locks in vocabulary and decisions before any code is written.
 - **Automatic flow** — once the Q&A is done, the rest runs on its own (PRD → TDD → review gate), with no handoffs for you to manage.
@@ -81,6 +82,31 @@ score weight:
 Mechanical criteria can never be overridden by either form — the code must be
 fixed. A malformed pragma (unknown criterion, blank reason, or missing separator)
 is itself a `[Clarity/minor]` violation.
+
+## Understanding and safe modification
+
+Prioritize understanding and modification, saved data and compatibility, then
+useful architectural boundaries. Keep current facts in executable types,
+interfaces, examples, schemas and tests; keep intent and tradeoffs in small
+records linking to those sources.
+
+The queue's `contracts` field points to authoritative executable contracts through
+its CLI, SQLite storage and import/export. Configure JavaScript/TypeScript import
+rules with `.agent/boundaries.json` and run
+`node scripts/check-import-boundaries.ts` in CI (requires TypeScript). See
+[safe modification guidance](docs/agents-detail.md#safe-modification--executable-knowledge-and-preservation)
+and the [system quality rubric](lib/code-quality-rubric.md#5-system-quality).
+
+Use [`/mind-meld`](skills/mind-meld.md) to build a repository-owned learning IDE.
+The reference adapter runs a small combat flow and isolated damage step, records
+values and mutations, compares runs, and renders an offline graph/trace/source
+viewer. Each child repository supplies adapters for its own stack.
+Bundles carry source hashes; `verify` detects stale evidence against a checkout.
+The offline viewer identifies its snapshot rather than claiming live freshness.
+
+Time gate attempts and report their cost with `scripts/delivery-metrics.ts`.
+Failures count as false positives only after an explicit review with evidence;
+unreviewed outcomes remain unknown.
 
 ## Harness support
 
