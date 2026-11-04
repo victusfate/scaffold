@@ -53,6 +53,8 @@ export interface Task {
   slug: string | null;
   dependsOn: string[];
   files: string[];
+  /** Authoritative executable schemas, migrations and tests. References, never a prose classification. */
+  contracts: string[];
   /** Free-form labels for grouping and filtering (`group:speed`, `owner-report`); `list --tag` filters on them. */
   tags: string[];
   validate: string | null;
@@ -66,7 +68,7 @@ export interface Task {
 }
 
 /** Fields user-facing queue editors may change. */
-export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'held', 'elapsed', 'slug', 'deps', 'files', 'tags', 'validate', 'accept', 'note'] as const;
+export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'held', 'elapsed', 'slug', 'deps', 'files', 'contracts', 'tags', 'validate', 'accept', 'note'] as const;
 
 export interface QueueConfig {
   status: 'running' | 'stopped';
@@ -142,7 +144,7 @@ function markOf(t: Task): string {
 export function newTask(id: string, title: string): Task {
   return {
     id, title, status: 'pending', mode: 'direct', held: false, elapsedSecs: 0,
-    slug: null, dependsOn: [], files: [], tags: [],
+    slug: null, dependsOn: [], files: [], contracts: [], tags: [],
     validate: null, accept: null, note: null, failures: 0, owner: null, branch: null,
     worktree: null, startedAt: null,
   };
@@ -157,6 +159,15 @@ const ID_TITLE_RE = /^(task-\d+)\s+[—:-]+\s+(.*)$/;
 /** Split a comma-separated field value into trimmed, non-empty items. */
 export function splitList(v: string): string[] {
   return v.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+/** Validate repository-relative contract file pointers at every storage and wire boundary. */
+export function contractPaths(value: unknown): string[] {
+  if (!Array.isArray(value) || !value.every((p: unknown) => typeof p === 'string' && p.trim().length > 0
+    && !/^[\/\\]|^[A-Za-z]:|[\\\0\r\n]/.test(p) && !p.split('/').includes('..'))) {
+    throw new Error('contracts: expected a list of repository-relative file paths without traversal');
+  }
+  return [...new Set(value as string[])];
 }
 
 /**
@@ -245,6 +256,7 @@ export function fieldPatch(key: string, val: string): Partial<Task> {
     case 'slug': return { slug: v || null };
     case 'deps': case 'dependsOn': return { dependsOn: splitList(v) };
     case 'files': return { files: splitList(v) };
+    case 'contracts': return { contracts: contractPaths(splitList(v)) };
     case 'tags': return { tags: splitList(v) };
     case 'validate': return { validate: v || null };
     case 'accept': return { accept: v || null };
@@ -344,6 +356,7 @@ export function taskFields(t: Task, alwaysMode = false): Array<[string, string]>
   push('slug', t.slug ?? '');
   push('deps', t.dependsOn.join(', '));
   push('files', t.files.join(', '));
+  push('contracts', t.contracts.join(', '));
   push('tags', t.tags.join(', '));
   push('validate', t.validate ?? '');
   push('accept', t.accept ?? '');
@@ -829,6 +842,7 @@ export function taskBlock(t: Task): string {
     t.slug ? `slug: docs/${t.slug}/` : '',
     t.accept ? `accept: ${t.accept}` : '',
     t.files.length ? `files: ${t.files.join(', ')}` : '',
+    t.contracts.length ? `contracts: ${t.contracts.join(', ')}` : '',
     t.validate ? `validate: ${t.validate}` : '',
   ].filter(Boolean).join('\n');
   return `<queue_task id="${t.id}">\n${t.title}\n${spec}\n</queue_task>`;

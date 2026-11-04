@@ -276,6 +276,7 @@ try {
         <label>slug</label><input name="slug" placeholder="docs/&lt;slug&gt;/">
         <label>deps</label><input name="deps" placeholder="task-001, task-002">
         <label>files</label><input name="files" placeholder="src/a.ts, test/a.test.ts">
+        <label for="add-contracts">contracts</label><input id="add-contracts" name="contracts" placeholder="src/schema.ts, test/compat.test.ts">
         <label>validate</label><input name="validate" placeholder="npm test">
         <label>accept</label><input name="accept" placeholder="checkable end state">
       </div>
@@ -542,6 +543,7 @@ function editorHtml(t) {
     + f("slug", "slug", t.slug)
     + f("deps", "deps", t.dependsOn.join(", "), "task-001, task-002")
     + f("files", "files", t.files.join(", "))
+    + f("contracts", "contracts", t.contracts.join(", "))
     + f("validate", "validate", t.validate)
     + f("accept", "accept", t.accept)
     + f("note", "note", t.note)
@@ -776,7 +778,7 @@ function renderTasks() {
         const v = name => editor.querySelector('[name="' + name + '"]').value;
         post({ op: "set", id, fields: {
           title: v("title"), mode: v("mode"), slug: v("slug"), deps: v("deps"),
-          files: v("files"), validate: v("validate"), accept: v("accept"), note: v("note"),
+          files: v("files"), contracts: v("contracts"), validate: v("validate"), accept: v("accept"), note: v("note"),
         } });
       });
       editor.querySelector("[data-cancel]").onclick = () => { editingId = null; render(); };
@@ -830,7 +832,7 @@ $("#add").addEventListener("submit", e => {
   e.preventDefault();
   const v = name => $('#add [name="' + name + '"]').value;
   const fields = {};
-  for (const k of ["mode", "slug", "deps", "files", "validate", "accept"]) {
+  for (const k of ["mode", "slug", "deps", "files", "contracts", "validate", "accept"]) {
     if (v(k) && !(k === "mode" && v(k) === "direct")) fields[k] = v(k);
   }
   post({ op: "add", title: v("title"), top: $('#add [name="top"]').checked, fields })

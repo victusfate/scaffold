@@ -36,7 +36,7 @@ import {
 
 export interface TaskPatch {
   title?: string; mode?: string; held?: string; elapsed?: string; slug?: string; deps?: string;
-  files?: string; tags?: string; validate?: string; accept?: string; note?: string;
+  files?: string; contracts?: string; tags?: string; validate?: string; accept?: string; note?: string;
 }
 
 const CONFIG_KEYS = [...NUMERIC_CONFIG_KEYS, ...TEXT_CONFIG_KEYS];
@@ -111,7 +111,10 @@ function parsePatch(fields: TaskPatch): { patch: Partial<Task> } | { error: stri
   }
   for (const key of PATCHABLE) {
     const val = fields[key];
-    if (key !== 'title' && val !== undefined) Object.assign(patch, fieldPatch(key, val));
+    if (key !== 'title' && val !== undefined) {
+      try { Object.assign(patch, fieldPatch(key, val)); }
+      catch (error) { return { error: String(error) }; }
+    }
   }
   return { patch };
 }

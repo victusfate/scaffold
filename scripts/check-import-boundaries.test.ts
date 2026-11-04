@@ -1,0 +1,56 @@
+#!/usr/bin/env node
+// Boundary gate acceptance fixtures: source syntax, aliases, fail-closed inputs and scoped overrides.
+import assert from 'node:assert/strict';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { checkImportBoundaries } from './check-import-boundaries.ts';
+const root = mkdtempSync(join(tmpdir(), 'tiers-'));
+const put = (file: string, value: string) => { mkdirSync(join(root, file, '..'), { recursive: true }); writeFileSync(join(root, file), value); };
+try {
+  execFileSync('git', ['init', '-q', root]);
+  assert.deepEqual(await checkImportBoundaries(root), []);
+  put('.agent/boundaries.json', JSON.stringify({ version: 1, rules: [{ from: ['core/**'], deny: ['experiment/**'], reason: 'core must not depend on experimental UI' }] }));
+  put('experiment/leaf.ts', 'export const value = 1;');
+  put('core/main.ts', 'import { value } from "../experiment/leaf.ts"; console.log(value);');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /core\/main.ts:1.*forbidden/);
+  put('core/main.ts', 'const text = "import x from \'../experiment/leaf.ts\'";');
+  assert.deepEqual(await checkImportBoundaries(root), [], 'strings are not imports');
+  put('core/main.ts', '// quality-ok: import-boundary — isolated migration adapter\nexport * from "../experiment/leaf.ts";');
+  assert.deepEqual(await checkImportBoundaries(root), []);
+  put('core/main.ts', '// quality-ok: import-boundary — \nexport * from "../experiment/leaf.ts";');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /forbidden/);
+  put('core/main.ts', 'const marker = "// quality-ok: import-boundary — string is not a pragma"; import "../experiment/leaf.ts";');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /forbidden/);
+  put('core/main.ts', 'import(/* real edge */ "../experiment/leaf.ts");');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /forbidden/);
+  put('core/main.ts', 'const target = "../experiment/leaf.ts"; import(target);');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /computed/);
+  put('core/main.ts', 'const leaf = require("../experiment/leaf.ts");');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /forbidden/);
+  put('tsconfig.json', JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@exp/*': ['experiment/*'] } } }));
+  put('core/main.ts', 'import { value } from "@exp/leaf";');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /forbidden/);
+  put('bridge.ts', 'export * from "./experiment/leaf.ts";');
+  put('core/main.ts', 'import { value } from "../bridge.ts";');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /bridge.ts:1.*forbidden/, 'transitive dependency must honor origin boundary');
+  put('bridge.ts', 'export const value = 1;');
+  symlinkSync(join(root, 'experiment/leaf.ts'), join(root, 'core/link.ts'));
+  put('core/main.ts', 'import "./link.ts";');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /forbidden|symlink/);
+  rmSync(join(root, 'core/link.ts'));
+  put('core/main.ts', 'import "./missing.ts";');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /unresolved/);
+  put('core/main.ts', 'import {');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /syntax/);
+  put('core/main.ts', 'export {};');
+  put('core/hidden.rs', 'use experiment::leaf;');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /unsupported/);
+  rmSync(join(root, 'core/hidden.rs'));
+  put('.agent/boundaries.json', '{broken');
+  await assert.rejects(checkImportBoundaries(root), /JSON/);
+  put('.agent/boundaries.json', JSON.stringify({ version: 1, rules: [{ from: ['../outside/**'], deny: ['experiment/**'], reason: 'invalid glob' }] }));
+  await assert.rejects(checkImportBoundaries(root), /glob/);
+  console.log('import boundaries: passed');
+} finally { rmSync(root, { recursive: true, force: true }); }

@@ -32,7 +32,7 @@
 //   node scripts/queue.ts loop                       # print the /loop invocation for this queue
 //   node scripts/queue.ts lane beat|finish|list|clear|stop|go <id>  # worker handoffs + heartbeats
 //
-// add/set flags: --mode chain --slug <s> --deps a,b --files a,b --tags a,b --validate "<cmd>"
+// add/set flags: --mode chain --slug <s> --deps a,b --files a,b --contracts schema.ts,migration.test.ts --tags a,b --validate "<cmd>"
 //   node scripts/queue.ts list --tag <t>             # only tasks carrying tag <t>
 //   --accept "<criteria>" --top --worker <name>
 
