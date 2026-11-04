@@ -64,7 +64,10 @@ try {
   for (const file of REQUIRED) assert.ok(existsSync(join(consumer, file)), `synced ${file}`);
   assert.equal(readFileSync(join(consumer, '.agent/boundaries.json'), 'utf8'), policy);
   assert.ok(!existsSync(join(consumer, 'package.json')), 'sync must not require a root package');
-  const bareEnv = { ...process.env, SCAFFOLD_TYPESCRIPT_DIR: '' };
+  // An outer `node --test` sets NODE_TEST_CONTEXT for children, which would route this nested run's report to the
+  // parent instead of stdout (consumers run their test files under `node --test`).
+  const bareEnv: NodeJS.ProcessEnv = { ...process.env, SCAFFOLD_TYPESCRIPT_DIR: '' };
+  delete bareEnv.NODE_TEST_CONTEXT;
   const bareTests = spawnSync(process.execPath, ['--test', 'scripts/check-import-boundaries.test.ts', 'scripts/mind-meld.test.ts'], {
     cwd: consumer, env: bareEnv, encoding: 'utf8',
   });
