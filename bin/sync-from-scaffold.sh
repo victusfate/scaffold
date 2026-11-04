@@ -104,7 +104,11 @@ if [ "$current_sha" = "$last_sha" ]; then
   exit 0
 fi
 
-echo "Syncing to ${current_sha:0:7}${last_sha:+ (from ${last_sha:0:7})}..."
+if [ -n "$last_sha" ]; then
+  echo "Syncing to ${current_sha:0:7} (from ${last_sha:0:7})..."
+else
+  echo "Syncing to ${current_sha:0:7}..."
+fi
 [ "$DRY_RUN" = 1 ] && echo "(dry run — no changes will be written)" || true
 
 # Read manifest from scaffold — a failed read must abort before any writes
@@ -278,7 +282,7 @@ if [ -n "$last_sha" ] && git cat-file -e "${last_sha}:.github/scaffold-files.txt
   new_set=$'\n'"${manifest}"$'\n'   # bound every entry with newlines for exact match
   while IFS= read -r dropped; do
     [ -z "$dropped" ] && continue
-    case "$new_set" in *$'\n'"$dropped"$'\n'*) continue ;; esac  # still shipped
+    [[ "$new_set" == *$'\n'"$dropped"$'\n'* ]] && continue  # still shipped
     [ -e "$dropped" ] || continue                                # already gone
     if in_keep_list "$dropped"; then
       kept_removed+=("$dropped  (kept — .scaffold-keep)")
