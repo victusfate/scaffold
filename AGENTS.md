@@ -37,6 +37,8 @@ created, and only on explicit cancel or timeout. Ambiguous ownership: leave it a
 ## Iterative Autonomous Enhancement — a core design principle
 
 **produce → self-evaluate against the target bar (real signal) → name the gap → improve → re-evaluate.**
+Treat requirements as hypotheses; revise intent, design and the remaining plan when evidence contradicts a
+premise. Judge owner outcomes, risk and learning alongside delivery flow; unknown evidence stays unknown.
 Prefer deterministic evaluators; ratchet, never reset; count defect risk and complexity left behind; cap
 iterations and escalate a real blocker with evidence; stage output, never merge to main without approval.
 → [full text](docs/agents-detail.md#iterative-autonomous-enhancement--a-core-design-principle).

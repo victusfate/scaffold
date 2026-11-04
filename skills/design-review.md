@@ -18,6 +18,10 @@ Detect mode from context: if triggered automatically as part of feature-chain or
 
 **Simplicity** — Is the simplest design that solves the problem on the table? Flag over-engineering and unnecessary structure.
 
+**Validity** — Apply the rubric's Design Validity criteria: owner outcome,
+disconfirming probes, explicit unknowns, proportional alternatives, and a path to
+diagnose failures. Separate evidence about the product from pipeline throughput.
+
 ## Blockers
 
 Resolve before proceeding to PRD:

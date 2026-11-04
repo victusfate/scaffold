@@ -21,7 +21,20 @@ If a question can be answered by exploring the codebase, explore it instead of a
 When a term or decision is resolved, write it to `./docs/<feature-slug>/design.md` immediately — don't batch. State the slug before writing so the user can correct it.
 
 ```markdown
+---
+tier: durable
+---
 # Design: <Feature Name>
+
+## Outcome
+- Owner problem and desired observable change:
+- Constraints and failure consequences:
+- Outcome evidence: unknown until observed; name the intended check.
+
+## Assumptions
+| Consequential assumption | Disconfirming probe | Evidence / unknown | Revision if wrong |
+|---|---|---|---|
+| … | … | unknown | … |
 
 ## Canonical Vocabulary
 | Term | Definition |
@@ -51,6 +64,13 @@ When a term or decision is resolved, write it to `./docs/<feature-slug>/design.m
 ```
 
 `design.md` is a glossary and decision record — not a spec or implementation plan.
+
+Treat requirements as hypotheses. Inspect the domain and real call/state paths;
+record what would show the proposed behavior is wrong. Compare alternatives when
+uncertainty or replacement cost justifies it; a known repetitive operation needs
+no artificial design contest. When evidence changes a premise, revise the decision
+in place and propagate it to the PRD and unfinished plan before resuming. Bring only
+unresolved owner intent or consequential tradeoffs back to the user.
 
 ### Visualizations — add as structure becomes clear
 
