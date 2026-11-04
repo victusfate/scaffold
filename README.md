@@ -85,18 +85,16 @@ is itself a `[Clarity/minor]` violation.
 
 ## Durability and codebase learning
 
-Tasks carry a typed `tier` (`disposable` or `durable`, default durable), including
-SQLite storage and queue import/export. For example:
+Prioritize understanding and modification, saved data and compatibility, then
+useful architectural boundaries. Keep current facts in executable types,
+interfaces, examples, schemas and tests; keep intent and tradeoffs in small
+records linking to those sources.
 
-```bash
-node scripts/queue.ts add "Try a new inspector" --tier disposable --requested "Try a new inspector"
-node scripts/queue.ts set task-001 tier durable
-```
-
-Record the same tier in a design document's YAML front matter. Configure supported
-JavaScript/TypeScript dependency boundaries with `.agent/tiers.json` and run
-`node scripts/check-import-boundaries.ts` in CI. See
-[durability guidance](docs/agents-detail.md#durability-tiers--match-rigor-to-what-the-code-is)
+The queue's `contracts` field points to authoritative executable contracts through
+its CLI, SQLite storage and import/export. Configure JavaScript/TypeScript import
+rules with `.agent/boundaries.json` and run
+`node scripts/check-import-boundaries.ts` in CI (requires TypeScript). See
+[safe modification guidance](docs/agents-detail.md#safe-modification--executable-knowledge-and-preservation)
 and the [system quality rubric](lib/code-quality-rubric.md#5-system-quality).
 
 Use [`/mind-meld`](skills/mind-meld.md) to build a repository-owned learning IDE.

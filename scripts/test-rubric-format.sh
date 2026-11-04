@@ -40,6 +40,8 @@ check "R1 no soft-deletes rule"             "R1 —.*[Nn]o soft-delete|[Nn]o sof
 check "R2 dependency-direction rule"        "mode → domain|domain → mode|[Dd]ependency direction"
 check "vestige reviewer prompt present"     "[Rr]eviewer prompt"
 check "system quality scores boundaries"    "Module boundaries and dependency direction"
+check "system quality prioritizes modification" "Understanding and modification"
+check "system quality preserves compatibility" "Preservation and compatibility"
 check "system quality scores data flow"     "Data-flow clarity"
 check "system quality scores entry points"  "Entry-point traceability"
 check "design validity is scored"           "^## 6\\. Design Validity"

@@ -127,11 +127,12 @@ mail (fallback: a private page or the PR thread), never a duplicate, after updat
 merged, in progress, needs your decision (with a recommendation), problems and risks, live links.
 → [full text](docs/agents-detail.md#owner-status-reports-remote-owner).
 
-## Durability tiers — match rigor to what the code is
+## Safe modification — executable knowledge and preservation
 
-State the tier with the slug. **Disposable** (cheap failure, a leaf): optimize for speed. **Durable** (data,
-security, dependents, long-lived): the full chain and every gate. Durable never imports disposable; unsure
-means durable. → [full text](docs/agents-detail.md#durability-tiers--match-rigor-to-what-the-code-is).
+Prioritize understanding and modification, then data and compatibility, then useful boundaries.
+Keep current facts in types, interfaces, executable contracts and source-derived evidence; docs record
+intent and tradeoffs, comments explain why. Link rather than duplicate; invalidate stale evidence.
+→ [full text](docs/agents-detail.md#safe-modification--executable-knowledge-and-preservation).
 
 ## Veracity — "done" means reachable, not just built
 
