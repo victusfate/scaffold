@@ -73,16 +73,23 @@ function scanTarget(ctx: ScanContext, target: string, external: boolean | undefi
   return DATA.test(target) ? [] : [`${at}: unsupported local import ${localPath(ctx.root, target)}`];
 }
 
+type HiddenFiles = 'declarations' | 'typescript' | undefined;
+function visibleFile(path: string, hidden: HiddenFiles): boolean {
+  if (hidden === 'declarations') return !DECLARATION.test(path);
+  if (hidden === 'typescript') return !TYPESCRIPT.test(path);
+  return true;
+}
+
 /** Resolve both Node condition branches conservatively; declarations must never hide value implementations. */
-function resolveTargets(ctx: ScanContext, path: string, specifier: string, hidden?: RegExp): ts.ResolvedModuleFull[] {
+function resolveTargets(ctx: ScanContext, path: string, specifier: string, hidden?: HiddenFiles): ts.ResolvedModuleFull[] {
   const host: ts.ModuleResolutionHost = {
     ...ctx.compiler.sys,
-    fileExists: file => (!hidden || !hidden.test(file)) && ctx.compiler.sys.fileExists(file),
+    fileExists: file => visibleFile(file, hidden) && ctx.compiler.sys.fileExists(file),
   };
   const modes = [ctx.compiler.ModuleKind.ESNext, ctx.compiler.ModuleKind.CommonJS] as const;
   return modes.flatMap(mode => {
     const resolved = ctx.compiler.resolveModuleName(specifier, path, { ...ctx.options, allowJs: true }, host, undefined, undefined, mode).resolvedModule;
-    return resolved && (!hidden || !hidden.test(resolved.resolvedFileName)) ? [resolved] : [];
+    return resolved && visibleFile(resolved.resolvedFileName, hidden) ? [resolved] : [];
   });
 }
 
@@ -100,9 +107,9 @@ function edgeTargets(ctx: ScanContext, path: string, edge: ReturnType<typeof imp
   const specifier = edge.specifier!;
   const typed = resolveTargets(ctx, path, specifier);
   if (edge.typeOnly) return uniqueTargets(typed);
-  const runtime = resolveTargets(ctx, path, specifier, DECLARATION);
+  const runtime = resolveTargets(ctx, path, specifier, 'declarations');
   // TypeScript sources may themselves shadow adjacent JS. Scan physical JS implementations as well.
-  const javascript = resolveTargets(ctx, path, specifier, TYPESCRIPT);
+  const javascript = resolveTargets(ctx, path, specifier, 'typescript');
   if (!runtime.length && !javascript.length && typed.length) throw new Error('runtime implementation unavailable');
   return uniqueTargets([...typed, ...runtime, ...javascript]);
 }
