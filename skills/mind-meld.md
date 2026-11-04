@@ -41,16 +41,17 @@ docker --host=unix:///var/run/docker.sock pull node:26-alpine@sha256:c6ad9e9c1d8
 Put generated artifacts in a temporary directory outside the repo:
 
 ```sh
-node scripts/mind-meld.ts index > /tmp/meld-index.json
-node scripts/mind-meld.ts flow '{"hp":10,"damage":3}' > /tmp/meld-flow.json
-node scripts/mind-meld.ts piece '{"hp":10,"damage":30}' > /tmp/meld-piece.json
-node scripts/mind-meld.ts diff /tmp/meld-flow.json /tmp/meld-piece.json
-node scripts/mind-meld.ts demo > /tmp/meld-tour.json
-node scripts/mind-meld.ts verify /tmp/meld-tour.json
-node scripts/mind-meld.ts view /tmp/meld-tour.json > /tmp/meld-tour.html
+meld_dir="$(mktemp -d)"
+node scripts/mind-meld.ts index > "$meld_dir/index.json"
+node scripts/mind-meld.ts flow '{"hp":10,"damage":3}' > "$meld_dir/flow.json"
+node scripts/mind-meld.ts piece '{"hp":10,"damage":30}' > "$meld_dir/piece.json"
+node scripts/mind-meld.ts diff "$meld_dir/flow.json" "$meld_dir/piece.json"
+node scripts/mind-meld.ts demo > "$meld_dir/tour.json"
+node scripts/mind-meld.ts verify "$meld_dir/tour.json"
+node scripts/mind-meld.ts view "$meld_dir/tour.json" > "$meld_dir/tour.html"
 ```
 
-Open `/tmp/meld-tour.html` directly in a browser. It needs no server or network.
+Open `$meld_dir/tour.html` directly in a browser. It needs no server or network.
 Use its structure map, source-cited static dependencies, observed call arrows,
 run selector, Previous/Next tour steps, source spans, and state-key filter.
 The page identifies its snapshot hash and says checkout freshness is unknown offline.
