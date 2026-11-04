@@ -14,7 +14,7 @@ import { renderViewer } from './mind-meld-viewer.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const EXAMPLE = 'scripts/mind-meld-example.ts';
-const IMPLEMENTATION = ['mind-meld.ts', 'mind-meld-schema.ts', 'mind-meld-sandbox.ts', 'mind-meld-example.ts'];
+const IMPLEMENTATION = ['mind-meld.ts', 'mind-meld-schema.ts', 'mind-meld-sandbox.ts', 'mind-meld-example.ts', 'mind-meld-viewer.ts'];
 const cache = new Map<string, MeldRun>();
 interface Inputs { hp: number; damage: number }
 function inputs(value: unknown): Inputs {

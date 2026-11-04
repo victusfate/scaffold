@@ -96,15 +96,11 @@ schema version; never mislabel an import as a call to fit version 1.
 Use `scripts/mind-meld-schema.ts` as the executable schema and validator.
 Validate imported bundles before rendering, diffing, or narrating them.
 
-- `version: 1` identifies this contract.
-- `sources` maps checkout-relative paths to exact source strings for offline source inspection.
-- `sourceHashes` maps the same sorted paths to SHA-256 hashes of their UTF-8 bytes.
-- `snapshotHash` hashes the JSON serialization of that sorted hash map.
-- `nodes[]` contains `id`, `file`, one-based `line`/`endLine`, and a display `layer`.
-- `edges[]` contains `from`, `to`, `file`, `line`, and `kind: "call"` for a source-derived static call site.
-- `runs[]` contains a unique `key`, `snapshotHash`, `mode: "flow"|"piece"`, `entry`, string `output`, and `events`.
-- Each event contains a unique `id`, `node`, earlier event `parent` or `null`, `durationMs`, string `input`/`output`, and `changes`.
-- Each change contains a stable state `key`, string `before`, and string `after`.
+The types and checks in that module own the field names, bounds, source spans,
+static call sites, recorded events and snapshot identity. Link to those contracts
+when explaining them instead of maintaining a second schema description here.
+The bundle embeds source bytes for offline inspection and binds each run to the
+same content snapshot. Static dependencies remain separate from observed calls.
 
 Use JSON strings for structured values so adapters in different languages agree.
 Record a parent only from instrumentation's actual active call stack.
