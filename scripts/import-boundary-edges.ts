@@ -59,7 +59,7 @@ function typeOnly(compiler: typeof ts, node: ts.Node, verbatim: boolean): boolea
   return compiler.isImportEqualsDeclaration(node) && node.isTypeOnly;
 }
 
-export function importEdges(compiler: typeof ts, source: ts.SourceFile, verbatimModuleSyntax = false): ImportEdge[] {
+export function importEdges(compiler: typeof ts, source: ts.SourceFile, verbatimModuleSyntax = true): ImportEdge[] {
   const edges: ImportEdge[] = [];
   const visit = (node: ts.Node): void => {
     const found = argumentOf(compiler, node);

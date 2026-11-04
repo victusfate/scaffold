@@ -66,12 +66,17 @@ try {
   put('types-only.d.ts', 'export interface Value { amount: number }');
   put('core/main.ts', 'import type { Value } from "../types-only.js"; export type Result = Value;');
   assert.deepEqual(await checkImportBoundaries(root), [], 'an explicit type-only import needs no runtime implementation');
+  put('core/main.ts', 'import { type Value } from "../types-only.js";');
+  assert.match((await checkImportBoundaries(root)).join('\n'), /runtime.*unavailable/, 'an omitted runtime policy conservatively preserves empty imports');
+  rmSync(join(root, 'tsconfig.json'));
+  assert.match((await checkImportBoundaries(root)).join('\n'), /runtime.*unavailable/, 'without tsconfig native runtime policy is conservative');
+  put('tsconfig.json', JSON.stringify({ compilerOptions: { verbatimModuleSyntax: false } }));
   for (const source of ['import { type Value } from "../types-only.js";', 'export { type Value } from "../types-only.js";']) {
     put('core/main.ts', source);
     assert.deepEqual(await checkImportBoundaries(root), [], 'aggregate named types erase under default TypeScript import elision');
     put('tsconfig.json', JSON.stringify({ compilerOptions: { verbatimModuleSyntax: true } }));
     assert.match((await checkImportBoundaries(root)).join('\n'), /runtime.*unavailable/, 'verbatim named types preserve an empty runtime module edge');
-    put('tsconfig.json', JSON.stringify({ compilerOptions: {} }));
+    put('tsconfig.json', JSON.stringify({ compilerOptions: { verbatimModuleSyntax: false } }));
   }
   for (const source of [
     'import {} from "../types-only.js";', 'import "../types-only.js";',

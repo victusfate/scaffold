@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Enforce explicit source import rules. Usage: node scripts/check-import-boundaries.ts [--root DIR].
 // .agent/boundaries.json opts a repo in; malformed config, syntax and unresolved/computed edges fail closed.
+// Default to native/verbatim runtime edges; only explicit tsconfig verbatimModuleSyntax:false enables type-specifier elision.
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { builtinModules } from 'node:module';
@@ -47,7 +48,7 @@ function configAt(root: string): Boundaries | null {
 
 function compilerOptions(compiler: typeof ts, root: string): ts.CompilerOptions {
   const path = join(root, 'tsconfig.json');
-  const defaults = { allowJs: true, resolveJsonModule: true, moduleResolution: compiler.ModuleResolutionKind.NodeNext };
+  const defaults = { verbatimModuleSyntax: true, allowJs: true, resolveJsonModule: true, moduleResolution: compiler.ModuleResolutionKind.NodeNext };
   if (!existsSync(path)) return defaults;
   const read = compiler.readConfigFile(path, file => compiler.sys.readFile(file));
   if (read.error) throw new Error(`boundaries: invalid tsconfig.json: ${compiler.flattenDiagnosticMessageText(read.error.messageText, ' ')}`);
