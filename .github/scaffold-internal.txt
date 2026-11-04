@@ -81,3 +81,6 @@ scripts/check-agents-detail.test.ts
 # security/approved-deps.txt is never shipped (docs/security-review.md).
 security/approved-deps.txt
 security/rules-accepted.json
+
+# Repository-owned concrete boundary policy; consumers declare their own rules.
+.agent/boundaries.json
