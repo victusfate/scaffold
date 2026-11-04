@@ -7,8 +7,16 @@
 // Reads merged PRs through the GitHub REST API with `gh`, so it works where GraphQL is unavailable.
 //
 //   node scripts/delivery-metrics.ts [--repo owner/name] [--days 30]
+//   node scripts/delivery-metrics.ts --local-only [--rigor-log .agent/rigor.jsonl]
+//   node scripts/delivery-metrics.ts --record-stage lint --unit task-1 --attempt 1 -- npm run lint
+//   node scripts/delivery-metrics.ts --review-stage <id> --false-positive --evidence "minimized repro"
+// Logs contain no command argv/output. Review judgments are explicit, never inferred from failure.
 
 import { execFileSync } from 'node:child_process';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { readRigor, rigorMetrics, formatRigor } from './delivery-rigor.ts';
+import { option, rigorAction } from './delivery-rigor-cli.ts';
 
 export interface PrRecord {
   number: number;
@@ -81,9 +89,11 @@ const hours = (h: number | null) =>
 export function format(m: Metrics, repo: string): string {
   const cr = m.changeRequests;
   return [
+    'Operational flow signals (do not establish customer success):',
     `${repo}: ${m.merged} merged PRs (${m.mergesPerWeek.toFixed(1)}/week)`,
     `  open → merge: median ${hours(m.openToMergeHours)}`,
     `  green CI → merge: median ${hours(m.greenToMergeHours)}  (time waiting on a person after the machines agreed)`,
+    'Outcome/risk/learning evidence: not measured here; see feature design/QA evidence.',
     `  change requests: ${cr.followedByCommit} of ${cr.total} followed by a commit`
       + (m.unaddressed.length ? `; unanswered on ${m.unaddressed.map(n => `#${n}`).join(', ')}` : ''),
   ].join('\n');
@@ -132,19 +142,65 @@ function mergedSince(repo: string, since: number): GhPull[] {
   }
 }
 
-function arg(name: string): string | undefined {
-  const i = process.argv.indexOf(name);
-  return i > 0 ? process.argv[i + 1] : undefined;
+const HELP = `Usage: node scripts/delivery-metrics.ts [--repo owner/name] [--days N]
+  --local-only                      Report local gate telemetry without GitHub access
+  --rigor-log PATH                   JSONL file (default: <repo>/.agent/rigor.jsonl)
+  --record-stage NAME --unit ID --attempt N -- COMMAND [ARGS]
+                                    Run COMMAND without a shell; preserve its exit status
+  --review-stage ID --false-positive|--true-positive --evidence TEXT
+                                    Adjudicate one failed attempt with explicit evidence
+  --help                            Show this help without network access
+
+Run recording/review commands from the repo root. Log writes must stay within cwd.
+Use a stable unit per task/revision and increment attempt per stage on retries.
+Records omit command argv/output. First-try pass uses recorded attempt 1 only.
+False-positive rate uses reviewed failures only and includes review coverage.
+Local costs cover all recorded dates; --days selects the merged-PR window only.
+Operational throughput/cost do not establish customer outcomes or delivered value.`;
+
+function validateFlags(args: string[]): void {
+  const values = new Set(['--repo', '--days', '--rigor-log', '--record-stage', '--unit', '--attempt', '--review-stage', '--evidence']);
+  const booleans = new Set(['--local-only', '--false-positive', '--true-positive', '--help']);
+  const seen = new Set<string>();
+  for (let i = 0; i < args.length; i++) {
+    const name = args[i];
+    if (seen.has(name)) throw new Error(`duplicate ${name}`);
+    seen.add(name);
+    if (values.has(name)) { option(args, name); i++; }
+    else if (!booleans.has(name)) throw new Error(`unknown flag: ${name}`);
+  }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+function main(): number {
+  const args = process.argv.slice(2);
+  const separator = args.indexOf('--');
+  const flags = separator < 0 ? args : args.slice(0, separator);
+  validateFlags(flags);
+  if (flags.includes('--help')) { console.log(HELP); return 0; }
+  const arg = (name: string) => option(flags, name);
+  const log = arg('--rigor-log') ?? join(ROOT, '.agent', 'rigor.jsonl');
+  const action = rigorAction(args, log);
+  if (action !== null) return action;
+  if (flags.some(flag => ['--unit', '--attempt', '--false-positive', '--true-positive', '--evidence'].includes(flag)))
+    throw new Error('record/review metadata requires --record-stage or --review-stage');
+  const cost = formatRigor(rigorMetrics(readRigor(log)));
+  if (flags.includes('--local-only')) { console.log(cost); return 0; }
   const repo = arg('--repo') ?? repoFromRemote(execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8' }));
   const days = Number(arg('--days') ?? DEFAULT_DAYS);
   if (!repo || !isRepo(repo) || !(days > 0)) {
-    console.error('usage: delivery-metrics.ts [--repo owner/name] [--days N]');
+    console.error(HELP);
     process.exit(2);
   }
   // API fields go into request paths; take only well-formed ones.
   const pulls = mergedSince(repo, Date.now() - days * DAY_MS).filter(p => Number.isInteger(p.number) && SHA.test(p.head.sha));
   console.log(format(metrics(pulls.map(p => fetchPr(repo, p)), days), repo));
+  console.log(cost);
+  return 0;
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  try { process.exitCode = main(); }
+  catch (error) { console.error(`delivery-metrics: ${String(error)}`); process.exitCode = 2; }
 }

@@ -222,9 +222,9 @@ const srcRoot = join(__dirname, '../../');
   config.includes('// scaffold-linter: js')
     ? ok('emit: scaffold marker in config')
     : fail_('emit: scaffold marker missing from config');
-  result.written?.length === 2
-    ? ok('emit: result lists 2 written files')
-    : fail_(`emit: expected 2 written, got ${result.written?.length}`);
+  result.written?.length === 4
+    ? ok('emit: result lists 4 written files')
+    : fail_(`emit: expected 4 written, got ${result.written?.length}`);
 }
 
 // emit: conflict → sidecar written, original untouched
@@ -270,9 +270,9 @@ const srcRoot = join(__dirname, '../../');
   config.includes('// scaffold-linter: ts')
     ? ok('emit ts: scaffold marker in config')
     : fail_('emit ts: scaffold marker missing from config');
-  result.written?.length === 3
-    ? ok('emit ts: result lists 3 written files')
-    : fail_(`emit ts: expected 3 written, got ${result.written?.length}`);
+  result.written?.length === 5
+    ? ok('emit ts: result lists 5 written files')
+    : fail_(`emit ts: expected 5 written, got ${result.written?.length}`);
 }
 
 // emit ts: pre-existing tsconfig.json preserved as sidecar (marker-less file)
@@ -298,9 +298,9 @@ const srcRoot = join(__dirname, '../../');
   pkg.devDependencies?.eslint && pkg.devDependencies?.['@eslint/js'] && pkg.devDependencies?.globals
     ? ok('deps: js devDependencies added to package.json')
     : fail_('deps: js devDependencies missing');
-  result.deps?.status === 'written' && result.deps.added.length === 3
-    ? ok('deps: result reports 3 packages added')
-    : fail_(`deps: expected 3 added, got ${result.deps?.added?.length} (${result.deps?.status})`);
+  result.deps?.status === 'written' && result.deps.added.length === 4
+    ? ok('deps: result reports 4 packages added')
+    : fail_(`deps: expected 4 added, got ${result.deps?.added?.length} (${result.deps?.status})`);
 }
 
 // deps — re-emit is idempotent (nothing new added)
@@ -368,12 +368,12 @@ const srcRoot = join(__dirname, '../../');
   writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'x' }, null, 2) + '\n');
   const result = await emit('js', dir, srcRoot);
   const pkg = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'));
-  pkg.scripts?.lint === 'eslint .' && pkg.scripts?.['lint:fix'] === 'eslint . --fix'
+  pkg.scripts?.lint === 'eslint . --max-warnings 0' && pkg.scripts?.['lint:fix'] === 'eslint . --fix'
     ? ok('scripts: js lint + lint:fix added to package.json')
     : fail_(`scripts: js lint scripts missing/wrong (${JSON.stringify(pkg.scripts)})`);
-  result.scripts?.status === 'written' && result.scripts.added.length === 2
-    ? ok('scripts: result reports 2 scripts added')
-    : fail_(`scripts: expected 2 added, got ${result.scripts?.added?.length} (${result.scripts?.status})`);
+  result.scripts?.status === 'written' && result.scripts.added.length === 4
+    ? ok('scripts: result reports 4 scripts added')
+    : fail_(`scripts: expected 4 added, got ${result.scripts?.added?.length} (${result.scripts?.status})`);
 }
 
 // scripts — ts lint:fix is gated on tsc --noEmit

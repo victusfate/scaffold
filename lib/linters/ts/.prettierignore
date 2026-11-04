@@ -1,0 +1,9 @@
+# scaffold-linter: ts
+.tooling/
+lib/linters/
+tools/
+.claude/worktrees/
+dist/
+build/
+coverage/
+**/*.scaffold-new
