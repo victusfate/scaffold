@@ -294,7 +294,7 @@ Builders can choose how much architectural design models contribute: builder-led
 collaborative, or model-led. The typed queue `architecture` field and its generated
 task guidance in `scripts/queue-model.ts` are the canonical mode contract; the CLI
 and console expose it. The default is collaborative, and builders may change it
-per task. This feature uses model-led contribution within the approved scope.
+per task.
 
 Models can carry substantial responsibility for domain investigation, architectural
 coherence and preservation checks. A builder need not be a career software engineer

@@ -196,9 +196,9 @@ try {
     user-select: none; -webkit-user-select: none;
   }
   .editor, .editor input, .editor select { user-select: text; -webkit-user-select: text; cursor: auto; }
+  .architecture-help { grid-column: 2; color: var(--muted); line-height: 1.4; }
   /* The callsign cell: status glyph over the task id, ruled off like the
      first box of a flight strip. */
-  .architecture-help { grid-column: 2; color: var(--muted); line-height: 1.4; }
   .callsign {
     display: flex; flex-direction: column; justify-content: center; gap: 0.1rem;
     padding: 0.4rem 0.5rem; border-right: 1px solid var(--line);
@@ -230,10 +230,12 @@ try {
     .card:hover .actions, .card:focus-within .actions { opacity: 1; }
   }
   .editor { grid-column: 1 / -1; border-top: 1px solid var(--line); padding: 0.3rem 0.5rem 0.5rem; margin-top: 0; }
-  /* Fields shrink to the strip: the bay's containment clips overflow. */
-  .editor.grid { grid-template-columns: auto minmax(0, 1fr); }
+  /* Each bay is narrow, so labels and explanations must not squeeze controls. */
+  .editor.grid { grid-template-columns: minmax(0, 1fr); }
+  .editor label { text-align: left; }
+  .editor .architecture-help { grid-column: 1; }
   .editor input, .editor select { background: var(--field); width: 100%; min-width: 0; }
-  .editor .buttons { grid-column: 2; display: flex; gap: 0.5rem; margin-top: 0.3rem; }
+  .editor .buttons { grid-column: 1; display: flex; gap: 0.5rem; margin-top: 0.3rem; }
   .empty { color: var(--muted); padding: 2.5rem 1rem; text-align: center; }
   /* Moving a strip between bays slides it rather than jumping (view
      transitions; browsers without them just re-render in place). */
