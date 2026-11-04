@@ -314,6 +314,66 @@ echo "my own agents" > "$C/AGENTS.md"; echo "AGENTS.md" > "$C/.scaffold-keep"; e
 out=""; rc=0; sync_into out "$C" "$S" || rc=$?
 check "kept AGENTS.md untouched"       test "$(cat "$C/AGENTS.md")" = "my own agents"
 
+echo "R1. Conflicts remain blocked until explicitly accepting committed resolutions"
+S="$WORK/sr1"; C="$WORK/cr1"
+make_scaffold "$S" "model.ts" "db.ts"
+make_consumer "$C"
+out=""; sync_into out "$C" "$S"
+sha_before=$(cat "$C/.github/scaffold-sync-sha")
+(cd "$C" && git add -A && git commit -qm "synced")
+printf 'consumer model\n' > "$C/model.ts"
+printf 'consumer db\n' > "$C/db.ts"
+(cd "$C" && git add -A && git commit -qm "consumer changes")
+printf 'upstream model\n' > "$S/model.ts"
+printf 'upstream db\n' > "$S/db.ts"
+(cd "$S" && git add -A && git commit -qm "upstream changes")
+rc=0; sync_into out "$C" "$S" || rc=$?
+check "conflict exits 1" test "$rc" -eq 1
+check "conflict does not save SHA" test "$(cat "$C/.github/scaffold-sync-sha")" = "$sha_before"
+check "resolution instructions name flag" test -n "$(echo "$out" | grep -- --mark-resolved)"
+(cd "$C" && git add -A && git commit -qm "unresolved markers")
+rc=0
+out=$(cd "$C" && SCAFFOLD_URL="$S" bash "$SYNC" --mark-resolved model.ts) || rc=$?
+check "committed markers rejected" test "$rc" -ne 0
+printf 'consumer model\nupstream model\n' > "$C/model.ts"
+printf 'consumer db\nupstream db\n' > "$C/db.ts"
+rc=0
+out=$(cd "$C" && SCAFFOLD_URL="$S" bash "$SYNC" --mark-resolved model.ts) || rc=$?
+check "uncommitted resolution rejected" test "$rc" -ne 0
+(cd "$C" && git add model.ts)
+rc=0
+out=$(cd "$C" && SCAFFOLD_URL="$S" bash "$SYNC" --mark-resolved model.ts) || rc=$?
+check "staged resolution rejected" test "$rc" -ne 0
+(cd "$C" && git add -A && git commit -qm "resolved both sides")
+rc=0
+out=$(cd "$C" && SCAFFOLD_URL="$S" bash "$SYNC" --dry-run --mark-resolved model.ts --mark-resolved db.ts) || rc=$?
+check "dry-run accepts repeated resolutions" test "$rc" -eq 0
+check "dry-run leaves SHA alone" test "$(cat "$C/.github/scaffold-sync-sha")" = "$sha_before"
+check "dry-run leaves resolution alone" test -z "$(cd "$C" && git diff -- model.ts db.ts)"
+rc=0
+out=$(cd "$C" && SCAFFOLD_URL="$S" bash "$SYNC" --mark-resolved model.ts --mark-resolved db.ts) || rc=$?
+check "committed resolutions accepted" test "$rc" -eq 0
+check "SHA advances to upstream" test "$(cat "$C/.github/scaffold-sync-sha")" = "$(cd "$S" && git rev-parse HEAD)"
+check "no re-merge of resolved files" test -z "$(cd "$C" && git diff -- model.ts db.ts)"
+rc=0; sync_into out "$C" "$S" || rc=$?
+check "next retry is up to date" test "$rc" -eq 0
+check "up-to-date output" test -n "$(echo "$out" | grep 'Already up to date')"
+
+echo "R2. Invalid resolution arguments fail before modifying managed files"
+make_consumer "$WORK/cr2"
+C="$WORK/cr2"
+for args in missing unmanaged; do
+  rc=0
+  if [ "$args" = missing ]; then
+    out=$(cd "$C" && SCAFFOLD_URL="$S" bash "$SYNC" --mark-resolved) || rc=$?
+  else
+    out=$(cd "$C" && SCAFFOLD_URL="$S" bash "$SYNC" --mark-resolved ../outside.ts) || rc=$?
+  fi
+  check "$args argument rejected" test "$rc" -ne 0
+  check "$args does not write managed files" test ! -e "$C/model.ts"
+  check "$args does not save SHA" test ! -e "$C/.github/scaffold-sync-sha"
+done
+
 # ── summary ────────────────────────────────────────────────────────────────
 
 echo ""

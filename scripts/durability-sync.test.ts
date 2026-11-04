@@ -63,6 +63,20 @@ try {
   assert.equal(synced.status, 0, synced.stdout + synced.stderr);
   for (const file of REQUIRED) assert.ok(existsSync(join(consumer, file)), `synced ${file}`);
   assert.equal(readFileSync(join(consumer, '.agent/boundaries.json'), 'utf8'), policy);
+  assert.ok(!existsSync(join(consumer, 'package.json')), 'sync must not require a root package');
+  const bareEnv = { ...process.env, SCAFFOLD_TYPESCRIPT_DIR: '' };
+  const bareTests = spawnSync(process.execPath, ['--test', 'scripts/check-import-boundaries.test.ts', 'scripts/mind-meld.test.ts'], {
+    cwd: consumer, env: bareEnv, encoding: 'utf8',
+  });
+  assert.equal(bareTests.status, 0, bareTests.stdout + bareTests.stderr);
+  assert.match(bareTests.stdout, /typescript is not installed/);
+  for (const [tool, args] of [['mind-meld', ['index']], ['check-import-boundaries', []]] as const) {
+    const unavailable = spawnSync(process.execPath, [join(consumer, `scripts/${tool}.ts`), ...args], {
+      cwd: consumer, env: bareEnv, encoding: 'utf8',
+    });
+    assert.equal(unavailable.status, 1, unavailable.stdout + unavailable.stderr);
+    assert.match(unavailable.stderr, /needs the typescript package/);
+  }
   // The JS/TS indexer uses the consumer's installed TypeScript toolchain, which is optional: without it, mind
   // meld's index refuses with an install hint and the boundary checks are left to repos that have it.
   if (await loadTypeScript()) {
