@@ -7,6 +7,7 @@ import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync,
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
+import { loadTypeScript } from './typescript-runtime.ts';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REQUIRED = [
@@ -62,25 +63,32 @@ try {
   assert.equal(synced.status, 0, synced.stdout + synced.stderr);
   for (const file of REQUIRED) assert.ok(existsSync(join(consumer, file)), `synced ${file}`);
   assert.equal(readFileSync(join(consumer, '.agent/boundaries.json'), 'utf8'), policy);
-  // The JS/TS indexer uses the consumer's installed TypeScript toolchain.
-  symlinkSync(join(ROOT, 'node_modules'), join(consumer, 'node_modules'), 'dir');
-  const result = spawnSync(process.execPath, [join(consumer, 'scripts/mind-meld.ts'), 'index'], {
-    cwd: consumer, encoding: 'utf8',
-  });
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal((JSON.parse(result.stdout) as { version: number }).version, 1);
-  const boundary = spawnSync(process.execPath, [join(consumer, 'scripts/check-import-boundaries.ts')], {
-    cwd: consumer, encoding: 'utf8',
-  });
-  assert.equal(boundary.status, 0, boundary.stderr);
-  mkdirSync(join(consumer, 'ui'));
-  writeFileSync(join(consumer, 'ui/view.ts'), 'export const view = "experimental";\n');
-  writeFileSync(join(consumer, 'core/state.ts'), 'export { view } from "../ui/view.ts";\n');
-  const forbidden = spawnSync(process.execPath, [join(consumer, 'scripts/check-import-boundaries.ts')], {
-    cwd: consumer, encoding: 'utf8',
-  });
-  assert.equal(forbidden.status, 1, forbidden.stderr);
-  assert.match(forbidden.stdout, /forbidden import ui\/view\.ts/);
+  // The JS/TS indexer uses the consumer's installed TypeScript toolchain, which is optional: without it, mind
+  // meld's index refuses with an install hint and the boundary checks are left to repos that have it.
+  if (await loadTypeScript()) {
+    symlinkSync(join(ROOT, 'node_modules'), join(consumer, 'node_modules'), 'dir');
+    const result = spawnSync(process.execPath, [join(consumer, 'scripts/mind-meld.ts'), 'index'], {
+      cwd: consumer, encoding: 'utf8',
+    });
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal((JSON.parse(result.stdout) as { version: number }).version, 1);
+    const boundary = spawnSync(process.execPath, [join(consumer, 'scripts/check-import-boundaries.ts')], {
+      cwd: consumer, encoding: 'utf8',
+    });
+    assert.equal(boundary.status, 0, boundary.stderr);
+    mkdirSync(join(consumer, 'ui'));
+    writeFileSync(join(consumer, 'ui/view.ts'), 'export const view = "experimental";\n');
+    writeFileSync(join(consumer, 'core/state.ts'), 'export { view } from "../ui/view.ts";\n');
+    const forbidden = spawnSync(process.execPath, [join(consumer, 'scripts/check-import-boundaries.ts')], {
+      cwd: consumer, encoding: 'utf8',
+    });
+    assert.equal(forbidden.status, 1, forbidden.stderr);
+    assert.match(forbidden.stdout, /forbidden import ui\/view\.ts/);
+  } else {
+    const result = spawnSync(process.execPath, [join(consumer, 'scripts/mind-meld.ts'), 'index'], { cwd: consumer, encoding: 'utf8' });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /needs the typescript package/);
+  }
   console.log('durability-sync: actual manifest reaches a clean consumer and preserves its policy');
 } finally {
   rmSync(scratch, { recursive: true, force: true });
