@@ -1,0 +1,55 @@
+// Extract real import edges using the TypeScript parser, never source-text regexes.
+import type ts from 'typescript';
+
+export interface ImportEdge { specifier: string | null; line: number; overridden: boolean }
+
+function isLoaderCall(compiler: typeof ts, expr: ts.Expression): boolean {
+  return expr.kind === compiler.SyntaxKind.ImportKeyword
+    || (compiler.isIdentifier(expr) && expr.text === 'require')
+    || (compiler.isPropertyAccessExpression(expr) && expr.name.text === 'require');
+}
+
+function argumentOf(compiler: typeof ts, node: ts.Node): { argument: ts.Node | undefined } | null {
+  if (compiler.isImportDeclaration(node) || compiler.isExportDeclaration(node)) {
+    return node.moduleSpecifier ? { argument: node.moduleSpecifier } : null;
+  }
+  if (compiler.isImportEqualsDeclaration(node) && compiler.isExternalModuleReference(node.moduleReference)) {
+    return { argument: node.moduleReference.expression };
+  }
+  if (compiler.isCallExpression(node) && isLoaderCall(compiler, node.expression)) return { argument: node.arguments[0] };
+  if (compiler.isImportTypeNode(node)) {
+    return { argument: compiler.isLiteralTypeNode(node.argument) ? node.argument.literal : undefined };
+  }
+  return null;
+}
+
+function overridden(compiler: typeof ts, source: ts.SourceFile, node: ts.Node, line: number): boolean {
+  let statement = node;
+  while (statement.parent && !compiler.isStatement(statement)) statement = statement.parent;
+  const comments = [
+    ...(compiler.getLeadingCommentRanges(source.text, statement.getFullStart()) ?? []),
+    ...(compiler.getTrailingCommentRanges(source.text, node.end) ?? []),
+  ];
+  return comments.some(comment => {
+    const commentLine = source.getLineAndCharacterOfPosition(comment.pos).line;
+    return commentLine >= line - 1 && commentLine <= line
+      && /^\/\/[ \t]*quality-ok:[ \t]*import-boundary[ \t]*[—–-][ \t]*\S[^\n]*$/.test(source.text.slice(comment.pos, comment.end));
+  });
+}
+
+export function importEdges(compiler: typeof ts, source: ts.SourceFile): ImportEdge[] {
+  const edges: ImportEdge[] = [];
+  const visit = (node: ts.Node): void => {
+    const found = argumentOf(compiler, node);
+    if (found) {
+      const line = source.getLineAndCharacterOfPosition(node.getStart(source)).line;
+      edges.push({
+        specifier: found.argument && compiler.isStringLiteralLike(found.argument) ? found.argument.text : null,
+        line: line + 1, overridden: overridden(compiler, source, node, line),
+      });
+    }
+    compiler.forEachChild(node, visit);
+  };
+  visit(source);
+  return edges;
+}

@@ -198,6 +198,7 @@ try {
   .editor, .editor input, .editor select { user-select: text; -webkit-user-select: text; cursor: auto; }
   /* The callsign cell: status glyph over the task id, ruled off like the
      first box of a flight strip. */
+  .architecture-help { grid-column: 2; color: var(--muted); line-height: 1.4; }
   .callsign {
     display: flex; flex-direction: column; justify-content: center; gap: 0.1rem;
     padding: 0.4rem 0.5rem; border-right: 1px solid var(--line);
@@ -273,9 +274,12 @@ try {
       <summary>More fields</summary>
       <div class="grid">
         <label>mode</label><select name="mode"><option>direct</option><option>chain</option></select>
+        <label for="add-architecture">Architectural contribution</label><select id="add-architecture" name="architecture" aria-describedby="add-architecture-help"></select>
+        <small class="architecture-help" id="add-architecture-help"></small>
         <label>slug</label><input name="slug" placeholder="docs/&lt;slug&gt;/">
         <label>deps</label><input name="deps" placeholder="task-001, task-002">
         <label>files</label><input name="files" placeholder="src/a.ts, test/a.test.ts">
+        <label for="add-contracts">contracts</label><input id="add-contracts" name="contracts" placeholder="src/schema.ts, test/compat.test.ts">
         <label>validate</label><input name="validate" placeholder="npm test">
         <label>accept</label><input name="accept" placeholder="checkable end state">
       </div>
@@ -347,6 +351,9 @@ async function refreshHost() {
 async function refresh() {
   const [queue, lanes] = await Promise.all([fetch("/api/queue"), fetch("/api/lanes")]);
   S = await queue.json();
+  const dial = $("#add-architecture");
+  if (!dial.options.length) dial.innerHTML = architectureOptions(S.defaultArchitecture);
+  updateArchitectureHelp(dial, $("#add-architecture-help"));
   L = (await lanes.json()).lanes;
   render();
   void refreshHost();
@@ -530,6 +537,15 @@ function chips(t) {
   return out.join("");
 }
 
+function architectureOptions(selected) {
+  return S.architectureModes.map(mode => '<option value="' + esc(mode) + '"' + (mode === selected ? ' selected' : '') + '>'
+    + esc(mode.charAt(0).toUpperCase() + mode.slice(1).replaceAll("-", " ")) + '</option>').join("");
+}
+
+function updateArchitectureHelp(select, help) {
+  help.textContent = S.architectureGuidance[select.value];
+}
+
 function editorHtml(t) {
   const f = (label, name, value, ph) =>
     '<label>' + label + '</label><input name="' + name + '" value="' + esc(value ?? "") + '"'
@@ -539,9 +555,12 @@ function editorHtml(t) {
     + '<label>mode</label><select name="mode"><option'
       + (t.mode === "direct" ? " selected" : "") + '>direct</option><option'
       + (t.mode === "chain" ? " selected" : "") + '>chain</option></select>'
+    + '<label for="edit-architecture">Architectural contribution</label><select id="edit-architecture" name="architecture" aria-describedby="edit-architecture-help">'
+      + architectureOptions(t.architecture) + '</select><small class="architecture-help" id="edit-architecture-help"></small>'
     + f("slug", "slug", t.slug)
     + f("deps", "deps", t.dependsOn.join(", "), "task-001, task-002")
     + f("files", "files", t.files.join(", "))
+    + f("contracts", "contracts", t.contracts.join(", "))
     + f("validate", "validate", t.validate)
     + f("accept", "accept", t.accept)
     + f("note", "note", t.note)
@@ -584,7 +603,7 @@ function taskHtml(t) {
 
 function taskSearchText(t) {
   return [
-    t.id, t.title, t.mode, t.slug, t.validate, t.accept, t.note, t.owner, t.branch, t.worktree,
+    t.id, t.title, t.mode, t.architecture, t.slug, t.validate, t.accept, t.note, t.owner, t.branch, t.worktree,
     ...t.dependsOn, ...t.files,
   ].filter(value => value !== null && value !== undefined).join(" ").toLocaleLowerCase();
 }
@@ -771,12 +790,16 @@ function renderTasks() {
     });
     const editor = li.querySelector(".editor");
     if (editor) {
+      const dial = editor.querySelector('[name="architecture"]');
+      const help = editor.querySelector("#edit-architecture-help");
+      updateArchitectureHelp(dial, help);
+      dial.addEventListener("change", () => updateArchitectureHelp(dial, help));
       editor.addEventListener("submit", e => {
         e.preventDefault();
         const v = name => editor.querySelector('[name="' + name + '"]').value;
         post({ op: "set", id, fields: {
-          title: v("title"), mode: v("mode"), slug: v("slug"), deps: v("deps"),
-          files: v("files"), validate: v("validate"), accept: v("accept"), note: v("note"),
+          title: v("title"), mode: v("mode"), architecture: v("architecture"), slug: v("slug"), deps: v("deps"),
+          files: v("files"), contracts: v("contracts"), validate: v("validate"), accept: v("accept"), note: v("note"),
         } });
       });
       editor.querySelector("[data-cancel]").onclick = () => { editingId = null; render(); };
@@ -826,15 +849,17 @@ $("#filter-clear").onclick = () => {
   taskFilter.focus();
 };
 
+$("#add-architecture").addEventListener("change", event => updateArchitectureHelp(event.target, $("#add-architecture-help")));
+
 $("#add").addEventListener("submit", e => {
   e.preventDefault();
   const v = name => $('#add [name="' + name + '"]').value;
   const fields = {};
-  for (const k of ["mode", "slug", "deps", "files", "validate", "accept"]) {
+  for (const k of ["mode", "architecture", "slug", "deps", "files", "contracts", "validate", "accept"]) {
     if (v(k) && !(k === "mode" && v(k) === "direct")) fields[k] = v(k);
   }
   post({ op: "add", title: v("title"), top: $('#add [name="top"]').checked, fields })
-    .then(ok => { if (ok) { $("#add").reset(); } });
+    .then(ok => { if (ok) { $("#add").reset(); updateArchitectureHelp($("#add-architecture"), $("#add-architecture-help")); } });
 });
 
 // ------------------------------------------------------------------ live

@@ -41,18 +41,43 @@
 
 export type TaskStatus = 'pending' | 'active' | 'done' | 'failed';
 export type TaskMode = 'direct' | 'chain';
+export const ARCHITECTURE_MODES = ['builder-led', 'collaborative', 'model-led'] as const;
+export type ArchitectureMode = typeof ARCHITECTURE_MODES[number];
+export const DEFAULT_ARCHITECTURE: ArchitectureMode = 'collaborative';
+
+/** The task dial allocates architectural contribution, never validation or release authority. */
+export function parseArchitecture(value: string): ArchitectureMode {
+  if (!(ARCHITECTURE_MODES as readonly string[]).includes(value)) {
+    throw new Error(`architecture: expected ${ARCHITECTURE_MODES.join('|')}; got ${value}`);
+  }
+  return value as ArchitectureMode;
+}
+
+const ARCHITECTURE_GUIDANCE: Record<ArchitectureMode, string> = {
+  'builder-led': "Follow the builder's supplied architecture; surface risks and conflicts with executable contracts before changing it.",
+  collaborative: 'Propose architectural tradeoffs; ask only unresolved product or risk questions, using source and executable contracts as evidence.',
+  'model-led': 'Own architectural investigation, decisions and checks; the builder focuses on UX and product intent. Resolve technical design without requiring the builder to act as architect.',
+};
+
+export function architectureGuidance(mode: ArchitectureMode): string {
+  return ARCHITECTURE_GUIDANCE[parseArchitecture(mode)]
+    + ' In every mode, validation, security and compatibility checks remain mandatory; release authority is unchanged.';
+}
 
 export interface Task {
   id: string;
   title: string;
   status: TaskStatus;
   mode: TaskMode;
+  architecture: ArchitectureMode;
   held: boolean;
   /** Cumulative agent seconds banked across all work sessions on this task. */
   elapsedSecs: number;
   slug: string | null;
   dependsOn: string[];
   files: string[];
+  /** Authoritative executable schemas, migrations and tests. References, never a prose classification. */
+  contracts: string[];
   /** Free-form labels for grouping and filtering (`group:speed`, `owner-report`); `list --tag` filters on them. */
   tags: string[];
   validate: string | null;
@@ -66,7 +91,7 @@ export interface Task {
 }
 
 /** Fields user-facing queue editors may change. */
-export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'held', 'elapsed', 'slug', 'deps', 'files', 'tags', 'validate', 'accept', 'note'] as const;
+export const EDITABLE_TASK_FIELDS = ['title', 'mode', 'architecture', 'held', 'elapsed', 'slug', 'deps', 'files', 'contracts', 'tags', 'validate', 'accept', 'note'] as const;
 
 export interface QueueConfig {
   status: 'running' | 'stopped';
@@ -141,8 +166,8 @@ function markOf(t: Task): string {
 /** A fresh task with all optional fields empty. */
 export function newTask(id: string, title: string): Task {
   return {
-    id, title, status: 'pending', mode: 'direct', held: false, elapsedSecs: 0,
-    slug: null, dependsOn: [], files: [], tags: [],
+    id, title, status: 'pending', mode: 'direct', architecture: DEFAULT_ARCHITECTURE, held: false, elapsedSecs: 0,
+    slug: null, dependsOn: [], files: [], contracts: [], tags: [],
     validate: null, accept: null, note: null, failures: 0, owner: null, branch: null,
     worktree: null, startedAt: null,
   };
@@ -157,6 +182,15 @@ const ID_TITLE_RE = /^(task-\d+)\s+[—:-]+\s+(.*)$/;
 /** Split a comma-separated field value into trimmed, non-empty items. */
 export function splitList(v: string): string[] {
   return v.split(',').map(s => s.trim()).filter(Boolean);
+}
+
+/** Validate repository-relative contract file pointers at every storage and wire boundary. */
+export function contractPaths(value: unknown): string[] {
+  if (!Array.isArray(value) || !value.every((p: unknown) => typeof p === 'string' && p.trim().length > 0
+    && !/^[/\\]|^[A-Za-z]:|[\\\0\r\n]/.test(p) && !p.split('/').includes('..'))) {
+    throw new Error('contracts: expected a list of repository-relative file paths without traversal');
+  }
+  return [...new Set(value as string[])];
 }
 
 /**
@@ -240,11 +274,13 @@ export function fieldPatch(key: string, val: string): Partial<Task> {
   switch (key) {
     case 'title': return v ? { title: v } : {};
     case 'mode': return { mode: v === 'chain' ? 'chain' : 'direct' };
+    case 'architecture': return { architecture: parseArchitecture(v) };
     case 'held': return { held: v === 'true' };
     case 'elapsed': return { elapsedSecs: parseDurationSecs(v) };
     case 'slug': return { slug: v || null };
     case 'deps': case 'dependsOn': return { dependsOn: splitList(v) };
     case 'files': return { files: splitList(v) };
+    case 'contracts': return { contracts: contractPaths(splitList(v)) };
     case 'tags': return { tags: splitList(v) };
     case 'validate': return { validate: v || null };
     case 'accept': return { accept: v || null };
@@ -339,11 +375,13 @@ export function assignIds(q: Queue): { tasks: Task[]; nextId: number } {
 export function taskFields(t: Task, alwaysMode = false): Array<[string, string]> {
   const pairs: Array<[string, string]> = [];
   if (alwaysMode || t.mode !== 'direct') pairs.push(['mode', t.mode]);
+  if (alwaysMode || t.architecture !== DEFAULT_ARCHITECTURE) pairs.push(['architecture', t.architecture]);
   if (t.held) pairs.push(['held', 'true']);
   const push = (k: string, v: string): void => { if (v) pairs.push([k, v]); };
   push('slug', t.slug ?? '');
   push('deps', t.dependsOn.join(', '));
   push('files', t.files.join(', '));
+  push('contracts', t.contracts.join(', '));
   push('tags', t.tags.join(', '));
   push('validate', t.validate ?? '');
   push('accept', t.accept ?? '');
@@ -826,9 +864,12 @@ export function showTask(t: Task): string {
 export function taskBlock(t: Task): string {
   const spec = [
     t.mode === 'chain' ? 'mode: chain (design→prd→plan→tdd→refine, autonomous, no questions)' : 'mode: direct',
+    `architecture: ${t.architecture}`,
+    architectureGuidance(t.architecture),
     t.slug ? `slug: docs/${t.slug}/` : '',
     t.accept ? `accept: ${t.accept}` : '',
     t.files.length ? `files: ${t.files.join(', ')}` : '',
+    t.contracts.length ? `contracts: ${t.contracts.join(', ')}` : '',
     t.validate ? `validate: ${t.validate}` : '',
   ].filter(Boolean).join('\n');
   return `<queue_task id="${t.id}">\n${t.title}\n${spec}\n</queue_task>`;
