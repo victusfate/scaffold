@@ -11,7 +11,7 @@
 import { createRequire } from 'node:module';
 import type { DatabaseSync } from 'node:sqlite';
 import {
-  DEFAULT_CONFIG, contractPaths, assignIds, fmtId, idNum, parseQueue, type Queue, type QueueConfig, type Task,
+  DEFAULT_CONFIG, ARCHITECTURE_MODES, DEFAULT_ARCHITECTURE, parseArchitecture, contractPaths, assignIds, fmtId, idNum, parseQueue, type Queue, type QueueConfig, type Task,
 } from './queue-model.ts';
 
 // node:sqlite prints an ExperimentalWarning on first load. It is emitted
@@ -31,6 +31,8 @@ const { DatabaseSync: Database } = loadSqlite();
 const BUSY_TIMEOUT_MS = 5000;
 const SQLITE_BUSY = 5;
 
+const ARCHITECTURE_COLUMN = `TEXT NOT NULL DEFAULT '${DEFAULT_ARCHITECTURE}' CHECK (architecture IN (${ARCHITECTURE_MODES.map(mode => `'${mode}'`).join(', ')}))`;
+
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS meta (
   key   TEXT PRIMARY KEY NOT NULL,
@@ -42,6 +44,7 @@ CREATE TABLE IF NOT EXISTS tasks (
   title        TEXT NOT NULL,
   status       TEXT NOT NULL CHECK (status IN ('pending', 'active', 'done', 'failed')),
   mode         TEXT NOT NULL CHECK (mode IN ('direct', 'chain')),
+  architecture ${ARCHITECTURE_COLUMN},
   held         INTEGER NOT NULL CHECK (held IN (0, 1)),
   elapsed_secs INTEGER NOT NULL CHECK (elapsed_secs >= 0),
   slug         TEXT,
@@ -99,6 +102,7 @@ export function withStore<T>(path: string, fn: (db: DatabaseSync, fresh: boolean
       db.exec(SCHEMA);
       migrateTags(db);
       migrateContracts(db);
+      migrateArchitecture(db);
       const fresh = getMeta(db, 'initialized') === null;
       if (fresh) setMeta(db, 'initialized', new Date().toISOString());
       out = fn(db, fresh, effect => effects.push(effect));
@@ -155,10 +159,17 @@ function migrateContracts(db: DatabaseSync): void {
   }
 }
 
+/** Legacy tasks retain collaborative contribution without changing any validation or delivery state. */
+function migrateArchitecture(db: DatabaseSync): void {
+  const cols = db.prepare('PRAGMA table_info(tasks)').all() as Array<{ name: string }>;
+  if (!cols.some(c => c.name === 'architecture')) db.exec(`ALTER TABLE tasks ADD COLUMN architecture ${ARCHITECTURE_COLUMN}`);
+}
+
 function rowToTask(r: Row): Task {
   const text = (v: Row[string]): string | null => (v === null ? null : String(v));
   return {
     id: String(r.id), title: String(r.title), status: r.status as Task['status'],
+    architecture: parseArchitecture(String(r.architecture)),
     mode: r.mode as Task['mode'], held: r.held === 1, elapsedSecs: Number(r.elapsed_secs),
     slug: text(r.slug), dependsOn: JSON.parse(String(r.depends_on)) as string[],
     contracts: contractPaths(JSON.parse(String(r.contracts))),
@@ -212,11 +223,11 @@ export function writeStore(db: DatabaseSync, q: Queue): Queue {
   const counter = Math.max(storedNextId(db), q.config.nextId);
   const { tasks, nextId } = assignIds({ config: { ...q.config, nextId: counter }, tasks: q.tasks });
   db.exec('DELETE FROM tasks');
-  const insert = db.prepare(`INSERT INTO tasks (id, position, title, status, mode, held,
+  const insert = db.prepare(`INSERT INTO tasks (id, position, title, status, mode, architecture, held,
     elapsed_secs, slug, depends_on, files, tags, contracts, validate, accept, note, failures, owner, branch,
-    worktree, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+    worktree, started_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   tasks.forEach((t, i) => insert.run(
-    t.id, i, t.title, t.status, t.mode, t.held ? 1 : 0, Math.round(t.elapsedSecs), t.slug,
+    t.id, i, t.title, t.status, t.mode, parseArchitecture(t.architecture), t.held ? 1 : 0, Math.round(t.elapsedSecs), t.slug,
     JSON.stringify(t.dependsOn), JSON.stringify(t.files), JSON.stringify(t.tags ?? []), JSON.stringify(contractPaths(t.contracts)), t.validate, t.accept, t.note,
     t.failures, t.owner, t.branch, t.worktree, t.startedAt,
   ));

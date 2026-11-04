@@ -28,14 +28,14 @@ import {
   addTask, setField, removeTask, moveToTop, moveTask, requeueTask, unclaimTask, beginTask, setConfig,
   holdTask, forceFail, reopenTask, markDone, archivableDone,
   deliveryAllows, isEligible, deadlocked, drainSignal, EDITABLE_TASK_FIELDS, fieldPatch, sweepFinished,
-  NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS,
+  NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS, ARCHITECTURE_MODES, DEFAULT_ARCHITECTURE, architectureGuidance,
   type Queue, type QueueConfig, type Task,
 } from './queue-model.ts';
 
 // ---------------------------------------------------------------- contracts
 
 export interface TaskPatch {
-  title?: string; mode?: string; held?: string; elapsed?: string; slug?: string; deps?: string;
+  title?: string; mode?: string; architecture?: string; held?: string; elapsed?: string; slug?: string; deps?: string;
   files?: string; contracts?: string; tags?: string; validate?: string; accept?: string; note?: string;
 }
 
@@ -57,7 +57,14 @@ export type OpResult =
   | { ok: false; error: string };
 
 export interface ConsoleTask extends Task { eligible: boolean; deadlocked: boolean }
-export interface ConsoleState { config: QueueConfig; tasks: ConsoleTask[]; drain: string | null }
+export interface ConsoleState {
+  architectureModes: readonly string[];
+  defaultArchitecture: string;
+  architectureGuidance: Record<string, string>;
+  config: QueueConfig;
+  tasks: ConsoleTask[];
+  drain: string | null;
+}
 
 export interface LaneView extends LaneState { stale: boolean; stop: boolean }
 export interface QueueConsoleServerOptions {
@@ -86,6 +93,8 @@ export function laneViews(q: Queue): LaneView[] {
 export function consoleState(q: Queue): ConsoleState {
   const stuck = new Set(deadlocked(q).map(t => t.id));
   return {
+    architectureModes: ARCHITECTURE_MODES, defaultArchitecture: DEFAULT_ARCHITECTURE,
+    architectureGuidance: Object.fromEntries(ARCHITECTURE_MODES.map(mode => [mode, architectureGuidance(mode)])),
     config: q.config,
     tasks: q.tasks.map(t => ({ ...t, eligible: isEligible(t, q), deadlocked: stuck.has(t.id) })),
     drain: drainSignal(q),
