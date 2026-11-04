@@ -33,4 +33,15 @@ try {
   assert.match(rust, /cargo fmt --all -- --check/);
   assert.match(rust, /clippy::pedantic/);
 } finally { rmSync(dir, { recursive: true, force: true }); }
+// Prettier supports many config names and package.json's prettier field.
+// Installing another config must not silently take precedence over any of them.
+for (const alternate of ['.prettierrc', 'prettier.config.ts', 'package.json']) {
+  const consumer = mkdtempSync(join(tmpdir(), 'strict-existing-'));
+  try {
+    writeFileSync(join(consumer, alternate), alternate === 'package.json' ? '{"prettier":{"semi":false}}\n' : '{}\n');
+    const result = emit('js', consumer, root);
+    assert.ok(!existsSync(join(consumer, '.prettierrc.json')), alternate);
+    assert.ok(result.sidecars.includes('.prettierrc.json'), alternate);
+  } finally { rmSync(consumer, { recursive: true, force: true }); }
+}
 console.log('strict-defaults.test: ok');
