@@ -68,6 +68,14 @@ try {
     cwd: consumer, encoding: 'utf8',
   });
   assert.equal(boundary.status, 0, boundary.stderr);
+  mkdirSync(join(consumer, 'ui'));
+  writeFileSync(join(consumer, 'ui/view.ts'), 'export const view = "experimental";\n');
+  writeFileSync(join(consumer, 'core/state.ts'), 'export { view } from "../ui/view.ts";\n');
+  const forbidden = spawnSync(process.execPath, [join(consumer, 'scripts/check-import-boundaries.ts')], {
+    cwd: consumer, encoding: 'utf8',
+  });
+  assert.equal(forbidden.status, 1, forbidden.stderr);
+  assert.match(forbidden.stdout, /forbidden import ui\/view\.ts/);
   console.log('durability-sync: actual manifest reaches a clean consumer and preserves its policy');
 } finally {
   rmSync(scratch, { recursive: true, force: true });
