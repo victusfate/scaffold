@@ -49,7 +49,7 @@ function validateEvents(value: unknown, nodes: Set<string>): void {
     ids.add(e.id);
   }
 }
-export const sourceHash = (source: string): string => createHash('sha256').update(source).digest('hex');
+export const sourceHash = (source: string | Buffer): string => createHash('sha256').update(source).digest('hex');
 export function sourceManifest(sources: Record<string, string>): { sourceHashes: Record<string, string>; snapshotHash: string } {
   const sourceHashes = Object.fromEntries(Object.keys(sources).sort().map(file => [file, sourceHash(sources[file])]));
   return { sourceHashes, snapshotHash: sourceHash(JSON.stringify(sourceHashes)) };

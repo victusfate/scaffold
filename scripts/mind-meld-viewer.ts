@@ -129,7 +129,7 @@ export function renderViewer(bundle: MeldBundle): string {
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-${hash(script)}'; style-src 'sha256-${hash(STYLE)}'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Mind Meld · recorded code tour</title><style>${STYLE}</style></head><body>
-<header><h1>Mind Meld</h1><p>A learning IDE over recorded execution. Click a node or step to inspect its source.</p><small>Structure is indexed. Arrows, values and changes are observed. Narration never supplies edges.</small></header>
+<header><h1>Mind Meld</h1><p>A learning IDE over recorded execution. Click a node or step to inspect its source.</p><small>Static arrows show possible calls from source. Observed arrows, values and changes come from recorded runs. Narration never supplies edges.</small></header>
 <main><p id="snapshot">Source snapshot: ${bundle.snapshotHash}. Offline capture; current checkout freshness is unknown. Run the CLI verify command before relying on this tour.</p><section><h2>Structure map</h2><div id="diagram"></div><div id="graph"></div><h3>Static dependencies (possible calls)</h3><ul id="static-edges"></ul><h3>Observed call edges</h3><ul id="edges"></ul></section>
 <div class="columns"><section><h2>Flow trace &amp; guided tour</h2><label>Recorded run <select id="run"></select></label>
 <button id="previous" type="button">Previous step</button><button id="next" type="button">Next step</button><p id="position" aria-live="polite"></p><ol id="trace"></ol><pre id="values"></pre>

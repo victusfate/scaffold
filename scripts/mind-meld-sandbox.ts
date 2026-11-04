@@ -2,10 +2,11 @@
 // Killable, offline Docker execution. Usage: imported by mind-meld.ts.
 // No image pulls or repository writes. Temporary source snapshots are removed. The caller prepares a local image explicitly.
 import { spawnSync } from 'node:child_process';
-import { randomUUID, createHash } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 import { realpathSync, mkdtempSync, readFileSync, writeFileSync, rmSync, chmodSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { sourceHash } from './mind-meld-schema.ts';
 
 export const MELD_IMAGE = 'node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94';
 export const MELD_LIMIT_MS = 10_000;
@@ -40,7 +41,7 @@ function cleanupChild(name: string, env: NodeJS.ProcessEnv): Error | null {
 }
 function snapshotSource(source: string, target: string, expectedHash: string | undefined): void {
   const bytes = readFileSync(source);
-  if (expectedHash && createHash('sha256').update(bytes).digest('hex') !== expectedHash) throw new Error('source changed before execution');
+  if (expectedHash && sourceHash(bytes) !== expectedHash) throw new Error('source changed before execution');
   writeFileSync(target, bytes, { mode: 0o444 }); chmodSync(target, 0o444);
 }
 function executeChild(args: string[], options: { env: NodeJS.ProcessEnv; timeoutMs: number }): string {
