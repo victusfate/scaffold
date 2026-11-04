@@ -22,6 +22,10 @@ Detect mode from context: if triggered automatically as part of feature-chain or
 disconfirming probes, explicit unknowns, proportional alternatives, and a path to
 diagnose failures. Separate evidence about the product from pipeline throughput.
 
+**Contribution** — Respect the builder's chosen architectural depth. Model-led
+design must supply technical reasoning and executable checks without requiring a
+career engineer to prescribe or approve every architectural detail.
+
 ## Blockers
 
 Resolve before proceeding to PRD:

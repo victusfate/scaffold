@@ -1,6 +1,11 @@
 ## Instructions
 
-Interview the user relentlessly about every aspect of the plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one at a time.
+Resolve the problem, constraints and consequential choices at the builder's chosen
+architectural contribution depth (see `docs/agents-detail.md#architectural-contribution`).
+Investigate code and propose answers before asking. In model-led work, perform the
+architectural analysis and design rather than requiring the builder to specify it.
+Ask about unresolved intent or material product/risk tradeoffs; do not repeat
+settled decisions or invent an interview for a clear, already authorized task.
 
 **Ask one question at a time.** Wait for feedback before continuing. Provide your recommended answer with each question.
 
@@ -27,6 +32,7 @@ When a term or decision is resolved, write it to `./docs/<feature-slug>/design.m
 - Owner problem and desired observable change:
 - Constraints and failure consequences:
 - Outcome evidence: unknown until observed; name the intended check.
+- Architectural contribution: link the task mode or record the builder's direction.
 
 ## Preservation obligations
 - Data, behavior or interfaces that must survive replacement:

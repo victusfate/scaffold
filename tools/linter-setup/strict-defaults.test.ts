@@ -17,8 +17,7 @@ try {
   assert.match(eslint, /strictTypeChecked/);
   assert.doesNotMatch(eslint, /\['warn'/);
   const config = JSON.parse(readFileSync(join(dir, 'tsconfig.json'), 'utf8')) as { compilerOptions: Record<string, unknown> };
-  for (const flag of ['strict'])
-    assert.equal(config.compilerOptions[flag], true, flag);
+  assert.equal(config.compilerOptions.strict, true);
   assert.equal(readFileSync(join(dir, '.prettierrc.json'), 'utf8'), '{"semi": false}\n');
   assert.ok(existsSync(join(dir, '.prettierrc.json.scaffold-new')));
   assert.ok(result.sidecars.includes('.prettierrc.json'));

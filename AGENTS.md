@@ -132,6 +132,7 @@ merged, in progress, needs your decision (with a recommendation), problems and r
 Prioritize understanding and modification, then data and compatibility, then useful boundaries.
 Keep current facts in types, interfaces, executable contracts and source-derived evidence; docs record
 intent and tradeoffs, comments explain why. Link rather than duplicate; invalidate stale evidence.
+Respect the architectural contribution dial; models may own technical design while builders focus on UX/product.
 → [full text](docs/agents-detail.md#safe-modification--executable-knowledge-and-preservation).
 
 ## Veracity — "done" means reachable, not just built

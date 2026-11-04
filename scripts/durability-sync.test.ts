@@ -45,9 +45,11 @@ try {
   mkdirSync(join(consumer, '.agent'));
   const policy = '{"version":1,"rules":[{"from":["core/**"],"deny":["ui/**"],"reason":"Core owns its behavior"}]}\n';
   writeFileSync(join(consumer, '.agent/boundaries.json'), policy);
+  mkdirSync(join(consumer, 'core'));
+  writeFileSync(join(consumer, 'core/state.ts'), 'export const initialState = { hp: 10 };\n');
   // Installing unrelated client plugins is outside this isolated consumer probe.
   writeFileSync(join(consumer, '.scaffold-keep'), 'bin/ensure-plugins.sh\n');
-  git(consumer, 'add', '--', '.agent/boundaries.json', '.scaffold-keep');
+  git(consumer, 'add', '--', '.agent/boundaries.json', '.scaffold-keep', 'core/state.ts');
   git(consumer, 'commit', '-qm', 'Consumer-owned policy');
   const synced = spawnSync('bash', [join(ROOT, 'bin/sync-from-scaffold.sh')], {
     cwd: consumer, env: { ...process.env, SCAFFOLD_URL: upstream }, encoding: 'utf8',

@@ -21,6 +21,12 @@ checks; keep this document to owner intent and consequential tradeoffs. A binary
 durable/disposable classifier was rejected during owner review and is not part
 of this design.
 
+The owner approved issue #166's architectural contribution dial after manual
+review. For this implementation, models own technical architecture and verification
+within the requested UX/product intent. The builder is not required to prescribe
+the architecture or approve each low-level decision. The queue mode is the typed
+source of this contribution contract; release authority and checks remain separate.
+
 ## Assumptions
 
 | Assumption | Disconfirming probe | Evidence / unknown | Revision if wrong |
