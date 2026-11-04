@@ -1,4 +1,8 @@
 # scaffold-linter: ruby
+AllCops:
+  NewCops: enable
+  DisabledByDefault: false
+
 Metrics/MethodLength:
   Max: 50
 

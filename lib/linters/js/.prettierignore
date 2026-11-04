@@ -1,0 +1,9 @@
+# scaffold-linter: js
+.tooling/
+lib/linters/
+tools/
+.claude/worktrees/
+dist/
+build/
+coverage/
+**/*.scaffold-new

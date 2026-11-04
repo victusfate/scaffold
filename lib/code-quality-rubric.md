@@ -122,6 +122,92 @@ A file scores 10 when:
 
 ---
 
+## 5. System Quality
+
+Score the **system** as well as its files. A collection of clear files can still
+hide an unclear dependency graph. Report five independent scores using the same
+`10 − Σ(violation weights)` formula and minor (−1), major (−2), critical (−4)
+weights above. Cite `filename:line` for every deduction, including both ends of a
+cross-module edge. Do not average away a boundary violation with clean files.
+
+Prioritize understanding/modification, then data/compatibility, then architectural
+boundaries. The latter support safe change; layering alone earns no points.
+
+| Criterion | A score of 10 means | Deduction examples |
+|---|---|---|
+| Understanding and modification | A maintainer can explain behavior, reproduce a failure, identify the code to change, and verify a modification or replacement through executable evidence. | major: modification depends on a generating prompt rather than discoverable code/contracts; critical: claimed behavior cannot be reproduced or safely changed. |
+| Preservation and compatibility | Versioned schemas, migrations, behavioral contracts and old-data fixtures make preservation obligations executable. | major: a persisted format changes without a compatibility probe; critical: replacement destroys saved data or silently breaks a promised interface. |
+| Module boundaries and dependency direction | Dependencies and state ownership allow independent modification; declared import rules protect concrete contracts; cycles do not cross ownership boundaries. | major: domain code depends on a replaceable UI mechanism; critical: a dependency cycle makes independent replacement impossible. |
+| Data-flow clarity | Every piece of state has one owner; mutations cross explicit interfaces; serialization preserves that ownership. | minor: a documented transfer lacks a source link; major: two modules mutate shared state without an owner; critical: hidden mutation bypasses persistence or security invariants. |
+| Entry-point traceability | A reader can follow user action → handler → core → persistence and back through concrete callers. | minor: one hop requires an unnecessary lookup; major: an event bus hides producer/consumer identity; critical: the advertised path has no reachable implementation. |
+
+```markdown
+## System Quality Scores
+| System scope | Modification | Preservation | Boundaries | Data flow | Entry points |
+|---|---|---|---|---|---|
+| checkout → order → storage | 10 | 10 | 10 | 8 | 10 |
+
+Violations:
+- src/cart.ts:42 and src/orders.ts:18 [Data flow/major] both mutate order totals;
+  give the order core ownership and pass cart changes through its command interface.
+```
+
+Use the repository's declared import rules and gate as boundary evidence. Use a source
+index for static callers and recorded integration/piece runs for observed paths
+(see `skills/mind-meld.md`). Label static and observed evidence separately; a
+missing trace is not proof that a branch cannot run. Review an entry point's error
+and save/load paths as well as its happy path.
+
+Common system failures: globally writable state with several owners; a domain
+module importing UI experiments; plugin callbacks with no discoverable registration;
+and persistence spread across handlers. Fix ownership or dependency direction at
+its source rather than adding narration over the ambiguity.
+
+Current facts have one executable home: types/interfaces own state contracts;
+behavioral examples and assertions own invariants; schemas, migrations and
+compatibility fixtures own preservation. Queue/design records link to these
+sources. Generate maps and traces rather than hand-maintaining a second system
+description. Comments explain hidden constraints and rationale. Mark snapshots
+stale when their source hashes no longer match; a fast lookup of stale context
+still gives a wrong answer.
+
+## 6. Design Validity
+
+Review whether the change solves the right problem before rewarding its file
+scores. Apply the same cited minor (−1), major (−2), critical (−4) deductions to
+each criterion below. Cite artifact lines for intent and assumptions, code or
+trace lines for behavior, and the relevant comparison when evidence contradicts
+the design. Tests passing is implementation evidence, not proof of customer value.
+
+| Criterion | A score of 10 means | Deduction examples |
+|---|---|---|
+| Intent and outcome validity | The owner problem, desired observable outcome, constraints, and success evidence are explicit; unknown outcome evidence stays unknown. | major: merge count substitutes for usefulness; critical: the implementation contradicts the owner's actual need despite green tests. |
+| Assumption testing and learning | Consequential assumptions have a disconfirming probe and an observed result or an explicit unknown; contradictory evidence revises the design and plan. | minor: a low-risk assumption has no probe; major: a hard-to-reverse decision rests on an untested premise presented as fact; critical: a failed premise is ignored to keep the pipeline moving. |
+| Architectural understanding | A reviewer can explain state ownership, dependency direction, constraints, and failure consequences; alternatives are explored in proportion to uncertainty and reversibility. | major: an agent's plausible boundary is accepted without checking real callers; major: a hard-to-reverse design has no comparison or rationale. A routine formatter change needs no speculative alternatives. |
+| Diagnosability and repairability | A maintainer can reproduce a failure, follow its source/state path, and verify a repair without relying on the generating prompt. | minor: reproduction omits a required input; major: only a polished narration exists, without source or execution evidence; critical: persisted failures cannot be diagnosed or safely recovered. |
+
+Report `Intent`, `Learning`, `Understanding`, and `Repairability` beside system
+scores. Missing production outcome data is an explicit unknown, not a fabricated
+success or an automatic demand for production access. Judge whether the proposed
+check is appropriate for the stage and failure consequences; inspect the real result when available.
+
+For example, an implementation can score 10 in every file dimension and still
+lose four Intent points at `docs/search/design.md:14` and `src/search.ts:81` if it
+optimizes automatic query submission when the owner needed an editable preview.
+An observed Mind Meld tour can explain the mismatch and reproduce the failure;
+its existence alone does not establish that the new behavior helps users.
+
+This framing follows Rob West's
+[design-engineering argument](https://robwest.info/articles/the-agentic-software-factory-is-the-wrong-metaphor)
+(19 September 2026). Agents can investigate, challenge, implement, and compare
+candidate designs. Owner intent, domain tradeoffs, and release authority stay
+explicit. Architectural contribution can be builder-led, collaborative or model-led;
+owners may delegate technical design while focusing on UX/product. Score design
+evidence and outcomes regardless of who supplied the architecture. The dial never
+relaxes preservation or verification. Repeatable delivery automation remains valuable; it is one part of the
+design feedback loop. The owner-supplied Joe Maddalone video summary motivates
+the maintainability/understanding concern; no transcript was independently verified.
+
 ## Common Failure Patterns
 
 | Pattern | Dimension | Severity | Fix |

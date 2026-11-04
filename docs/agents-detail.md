@@ -14,6 +14,17 @@ of waiting for a human to judge each result:
 
 > **produce → self-evaluate against the target bar → name the gap → improve → re-evaluate.**
 
+Code is a candidate design, and requirements contain testable assumptions.
+When a probe contradicts a premise, revise the source decision, acceptance
+criteria, and unfinished plan; do not optimize the pipeline around a mistaken
+specification. Agents participate in investigation and design as well as execution.
+Keep owner intent and consequential tradeoffs explicit. Review product outcomes,
+risk reduction, and learning separately from operational flow and gate cost.
+Missing outcome evidence remains unknown. Use the rubric's Design Validity section
+and the design/PRD templates to record this evidence without creating a new approval
+between every phase. Repeatable builds, checks, provisioning, and delivery still
+benefit from automation.
+
 - **Self-evaluate with a real signal, not vibes.** Ground every judgment in something observable: a
   measurement (timings, throughput, a gate's pass/fail, a state delta), a test, a reviewer pass, or an
   automated critique of the actual output (read the rendered result, the log, the diff — not a
@@ -74,8 +85,8 @@ you is paying for expensive autocomplete.
 - Before recommending on a multidimensional problem, **map its shape first** (see *Understand the shape
   of the problem* below).
 - Prefer **reversible moves** so course-correcting costs a sentence, not a redo.
-- **Open each loop with a one-line contract**: the target bar, the signal that judges it, the durability
-  tier, and the iteration cap. The user steers that line (the cheapest moment to redirect) instead of
+- **Open each loop with a one-line contract**: the target bar, the signal that judges it, the preservation
+  obligations, and the iteration cap. The user steers that line (the cheapest moment to redirect) instead of
   approving each pass.
 
 ### The user's judgment is the tiebreaker
@@ -261,29 +272,79 @@ another client). Subagents never send it.
 
   Other harnesses (Codex, pi) document their own scheduler and mail tools here.
 
-## Durability tiers — match rigor to what the code is
+## Safe modification — executable knowledge and preservation
 
-Quality practices exist so the code can be understood and safely changed. How much rigor that takes
-depends on where the code sits between **disposable** and **durable**. Classify before building, and
-state the tier with the feature slug so the user can correct it cheaply:
+Prioritize these in order:
 
-| | Disposable | Durable |
-|---|---|---|
-| Failure costs | an annoyance | data loss, security, downtime |
-| Replacement | minutes to hours by prompt | weeks, with migrations |
-| Inbound dependencies | none (a leaf) | other code relies on its contract |
-| Lifetime | one session or one use | maintained for years |
+1. **Understanding and modification.** A maintainer can explain behavior, locate its
+   owner, reproduce a failure, and change or replace the implementation confidently.
+2. **Data and compatibility.** State what must survive that change: saved data,
+   behavior and public interfaces. Keep those guarantees executable.
+3. **Architectural boundaries.** Use ownership, visibility and dependency rules to
+   support the first two. More layers alone do not improve the score.
 
-- **Disposable:** optimize for speed, skip ceremony (`/ponytail`), and keep it a leaf.
-  Durable code never imports disposable code.
-- **Durable:** the full chain and every gate, with strict types and errors rather
-  than warnings, explicit module boundaries, and deterministic tests that use
-  in-memory fakes at external boundaries instead of network mocks.
-- **When unsure, it's durable.** Throwaway code that gains a dependent has been
-  promoted, and it inherits durable rigor at that point.
+Implementation replaceability and preservation obligations are separate questions.
+An experimental UI can be cheap to replace while its saved data needs strong
+compatibility guarantees. A binary label must not excuse unclear code or hide
+those obligations.
 
-Tiers aren't recorded or enforced mechanically yet. Until a typed field and an
-import-boundary rule exist, the tier is a judgment you state, not a gate.
+### Architectural contribution
+
+Builders can choose how much architectural design models contribute: builder-led,
+collaborative, or model-led. The typed queue `architecture` field and its generated
+task guidance in `scripts/queue-model.ts` are the canonical mode contract; the CLI
+and console expose it. The default is collaborative, and builders may change it
+per task. This feature uses model-led contribution within the approved scope.
+
+Models can carry substantial responsibility for domain investigation, architectural
+coherence and preservation checks. A builder need not be a career software engineer
+to delegate this work; experienced developers may delegate it to focus on UX and
+product. Explain consequential decisions at the builder's requested depth. Ask only
+for unresolved intent, material product/risk tradeoffs, or authority beyond the
+approved scope. Do not require the builder to approve technical minutiae before
+progressing in model-led mode.
+
+The contribution dial does not change release authority or relax compatibility,
+security, verification or evidence-freshness obligations. Match design effort to
+uncertainty and replacement cost; routine changes need no artificial exploration.
+
+| Fact or decision | Authoritative home |
+|---|---|
+| State ownership and valid operations | Types, constructors, module interfaces, explicit mutation methods |
+| Behavior and invariants | Executable examples, behavioral tests, assertions |
+| Data and compatibility | Versioned schemas, migrations, old-save fixtures, compatibility tests |
+| Dependencies | Module/package structure, visibility, repository-owned import rules |
+| Actual execution | Recorded traces linked to source content hashes |
+| Intent and consequential tradeoffs | Small design/decision record linking to executable contracts |
+| Local rationale or hidden constraint | Comment beside the relevant code |
+
+Keep each fact in one authoritative home and link to it elsewhere. The queue's
+`contracts` field stores repository-relative paths to executable contracts, not a
+second specification. Existing `files`, `validate` and `accept` describe change
+scope, verification and intended outcome. Do not claim that a path alone proves a
+guarantee; inspect and execute the referenced contract.
+
+Declare concrete forbidden dependency rules in `.agent/boundaries.json`; run
+`node scripts/check-import-boundaries.ts` in CI. Its JavaScript/TypeScript adapter
+uses the TypeScript compiler and fails closed on invalid rules or unresolved
+configured edges. Other stacks need their own adapters. Consumer policy remains
+consumer-owned. Use small reasoned exceptions, not blanket exclusions.
+
+Generate maps and walkthroughs from source and actual runs. Bind snapshots to
+content hashes and reverify them after changes. Mind Meld's `verify` command
+checks freshness against a checkout; an offline snapshot cannot establish that
+checkout's current state. Narration must cite evidence and cannot supply edges.
+
+Scale verification to failure consequences and affected contracts. Isolate
+experiments from production data and keep the core contracts independently
+executable. Prefer a replaceable UI over persistence, validation and domain
+contracts that can survive its replacement. Use strict starter lint/type/format
+defaults and deterministic tests with in-memory boundary fakes.
+
+Measure the cost of maintaining rigor with the delivery metrics CLI. Timed gate
+attempts and explicit finding reviews reveal expensive checks, retry rates and
+false positives; they do not establish product success. Make costly checks
+cheaper without weakening the preserved guarantees.
 
 ## Veracity — "done" means reachable, not just built
 

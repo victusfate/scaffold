@@ -1,14 +1,10 @@
 # scaffold-linter: python
+line-length = 120
 
 [lint]
-select = [
-  "E",      # pycodestyle errors
-  "W",      # pycodestyle warnings
-  "C901",   # McCabe complexity (max-complexity below)
-  "PLR0913", # too many arguments (>4)
-  "PLR0914", # too many local variables (file size proxy)
-  "PLR2004", # magic value in comparison
-]
+# All lint families; formatter-conflicting layout rules are delegated to ruff format.
+select = ["ALL"]
+ignore = ["D203", "D213", "COM812", "ISC001", "E111", "E114", "E117", "D206", "D300", "Q000", "Q001", "Q002", "Q003"]
 
 [lint.mccabe]
 max-complexity = 10
@@ -17,4 +13,4 @@ max-complexity = 10
 max-args = 4
 
 [format]
-line-length = 120
+quote-style = "double"

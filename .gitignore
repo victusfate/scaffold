@@ -18,6 +18,7 @@ coverage/
 .agent/queue/lanes/
 .agent/queue/loop-state.json
 .agent/queue/queue.db*
+.agent/rigor.jsonl
 
 # Local editor prefs & personal scratch diagrams (not part of scaffold)
 .vscode/
