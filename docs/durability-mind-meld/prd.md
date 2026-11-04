@@ -1,8 +1,9 @@
-# PRD: Durability and Mind Meld
+# PRD: Executable understanding and safe modification
 
 ## Problem Statement
 
-Durability is currently a prose judgment, system quality has no scored criteria,
+Readers need to understand and safely modify a system while preserving its data
+and interfaces. Prose-only descriptions drift, dependency boundaries lack checks,
 and the cost of enforcing quality is invisible. Readers also lack a reusable way
 to explore code through observed execution rather than guessed call graphs.
 
@@ -62,7 +63,7 @@ An independent agent reviews every changed file before merge.
 
 Implementing Rust/Godot adapters or Voidhorizon tours in a different repository;
 running arbitrary code without an OS sandbox; executing narration; retroactively
-guessing durations or false positives from prose.
+guessing durations or false positives from prose; binary durability classifications.
 
 ## Further Notes
 
