@@ -7,7 +7,8 @@ import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
+import type ts from 'typescript';
+import { loadTypeScript } from './typescript-runtime.ts';
 import { runSandbox, MELD_IMAGE, MELD_LIMIT_MS } from './mind-meld-sandbox.ts';
 import { validateBundle, sourceHash, sourceManifest, type MeldBundle, type MeldRun, type MeldNode, type MeldEdge } from './mind-meld-schema.ts';
 import { renderViewer } from './mind-meld-viewer.ts';
@@ -18,6 +19,10 @@ const DEFAULT_INPUTS = { hp: 10, damage: 3 };
 const LETHAL_INPUTS = { hp: 10, damage: 30 };
 const IMPLEMENTATION = ['mind-meld.ts', 'mind-meld-schema.ts', 'mind-meld-sandbox.ts', 'mind-meld-example.ts', 'mind-meld-viewer.ts'];
 const cache = new Map<string, MeldRun>();
+const compiler = await loadTypeScript();   // optional: only index() parses source
+function missingTypeScript(): never {
+  throw new Error('mind meld index needs the typescript package: install it (npm i -D typescript) or set SCAFFOLD_TYPESCRIPT_DIR');
+}
 interface Inputs { hp: number; damage: number }
 function inputs(value: unknown): Inputs {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('expected {hp, damage}');
@@ -31,9 +36,10 @@ function inputs(value: unknown): Inputs {
 
 /** Parse real declaration/call spans. Static edges are possibilities, never execution claims. */
 export function index(): MeldBundle {
+  const tsc = compiler ?? missingTypeScript();
   const sources = Object.fromEntries(IMPLEMENTATION.map(file => [`scripts/${file}`, readFileSync(join(ROOT, 'scripts', file), 'utf8')]));
-  const ast = ts.createSourceFile(EXAMPLE, sources[EXAMPLE], ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const functions = ast.statements.filter(ts.isFunctionDeclaration).filter(f => f.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword));
+  const ast = tsc.createSourceFile(EXAMPLE, sources[EXAMPLE], tsc.ScriptTarget.Latest, true, tsc.ScriptKind.TS);
+  const functions = ast.statements.filter(tsc.isFunctionDeclaration).filter(f => f.modifiers?.some(m => m.kind === tsc.SyntaxKind.ExportKeyword));
   const nodes: MeldNode[] = functions.map(f => ({
     id: f.name!.text, file: EXAMPLE,
     line: ast.getLineAndCharacterOfPosition(f.getStart(ast)).line + 1,
@@ -44,11 +50,11 @@ export function index(): MeldBundle {
   const edges: MeldEdge[] = [];
   for (const f of functions) {
     function visit(node: ts.Node): void {
-      if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && ids.has(node.expression.text)) {
+      if (tsc.isCallExpression(node) && tsc.isIdentifier(node.expression) && ids.has(node.expression.text)) {
         edges.push({ from: f.name!.text, to: node.expression.text, file: EXAMPLE,
           line: ast.getLineAndCharacterOfPosition(node.getStart(ast)).line + 1, kind: 'call' });
       }
-      ts.forEachChild(node, visit);
+      tsc.forEachChild(node, visit);
     }
     visit(f);
   }
@@ -68,7 +74,7 @@ export function verifySnapshot(bundle: MeldBundle, root = ROOT): void {
 /** Includes every execution dependency, runtime/image, inputs, fake policy and schema. */
 export function cacheKey(mode: 'flow' | 'piece', value: unknown, snapshot = index()): string {
   const snapshotHash = snapshot.snapshotHash;
-  return createHash('sha256').update(JSON.stringify({ version: 1, snapshotHash, compiler: ts.version, image: MELD_IMAGE, mode, inputs: inputs(value), fakes: { save: 'memory' } })).digest('hex');
+  return createHash('sha256').update(JSON.stringify({ version: 1, snapshotHash, compiler: compiler?.version ?? null, image: MELD_IMAGE, mode, inputs: inputs(value), fakes: { save: 'memory' } })).digest('hex');
 }
 function run(mode: 'flow' | 'piece', value: unknown): MeldRun {
   const normalized = inputs(value);

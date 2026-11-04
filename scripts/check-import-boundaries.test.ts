@@ -6,6 +6,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { checkImportBoundaries } from './check-import-boundaries.ts';
+import { loadTypeScript } from './typescript-runtime.ts';
+// The gate parses source with the optional typescript package; a consumer without it has nothing to check.
+const compiler = await loadTypeScript();
+if (!compiler) { console.log('import boundaries: skipped (typescript is not installed)'); process.exit(0); }
 const root = mkdtempSync(join(tmpdir(), 'boundaries-'));
 const put = (file: string, value: string) => { mkdirSync(join(root, file, '..'), { recursive: true }); writeFileSync(join(root, file), value); };
 try {
@@ -83,7 +87,6 @@ try {
   execFileSync(process.execPath, [join(root, 'core/main.ts')], { cwd: root });
   assert.equal(readFileSync(marker, 'utf8'), 'executed', 'native Node executes the forbidden side effect behind aggregate type syntax');
   rmSync(marker);
-  const compiler = (await import('typescript')).default;
   const emitted = compiler.transpileModule(nativeSource, { compilerOptions: {
     module: compiler.ModuleKind.ESNext, noEmit: false, verbatimModuleSyntax: false,
   } }).outputText;
