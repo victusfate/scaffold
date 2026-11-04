@@ -31,6 +31,8 @@ The solution from the user's perspective.
 - Consequential assumptions, disconfirming probes, and observed or unknown evidence
 - What evidence would require revising the design or acceptance criteria
 - Product/risk outcome evidence, separately from delivery speed and passing tests
+- Preservation obligations with links to authoritative schemas, migrations,
+  compatibility fixtures or behavioral tests; avoid copying their specifications
 
 ## User Stories
 Numbered list covering the full surface area including edge cases:
