@@ -14,8 +14,8 @@ import { importEdges } from './import-boundary-edges.ts';
 
 interface BoundaryRule { from: string[]; deny: string[]; reason: string }
 interface Boundaries { version: 1; rules: BoundaryRule[] }
-const DECLARATION = /\.d\.[cm]?ts$/;
-const TYPESCRIPT = /\.[cm]?tsx?$/;
+const DECLARATION_SUFFIXES = ['.d.ts', '.d.mts', '.d.cts'];
+const TYPESCRIPT_SUFFIXES = ['.ts', '.tsx', '.mts', '.mtsx', '.cts', '.ctsx'];
 const SOURCE = /\.[cm]?[jt]sx?$/;
 const DATA = /\.(?:md|json|ya?ml|toml|txt|csv|svg|png|jpe?g|gif|webp|ico|lock|css|scss|html)$/;
 const BUILTINS = new Set(builtinModules.flatMap(m => [m, `node:${m}`]));
@@ -78,8 +78,8 @@ function scanTarget(ctx: ScanContext, target: string, external: boolean | undefi
 
 type HiddenFiles = 'declarations' | 'typescript' | undefined;
 function visibleFile(path: string, hidden: HiddenFiles): boolean {
-  if (hidden === 'declarations') return !DECLARATION.test(path);
-  if (hidden === 'typescript') return !TYPESCRIPT.test(path);
+  if (hidden === 'declarations') return !DECLARATION_SUFFIXES.some(suffix => path.endsWith(suffix));
+  if (hidden === 'typescript') return !TYPESCRIPT_SUFFIXES.some(suffix => path.endsWith(suffix));
   return true;
 }
 

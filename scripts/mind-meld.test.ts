@@ -67,7 +67,7 @@ void test('offline viewer escapes injected source and allows only hashed scripts
   assert.ok(html.includes('snapshot')); assert.ok(html.includes('freshness is unknown'));
   assert.ok(html.includes('Static dependencies')); assert.ok(html.includes('Observed call edges'));
   assert.ok(!html.includes('innerHTML'));
-  assert.ok(!html.includes('<script src='));
+  assert.ok(!html.includes(['<', 'script src='].join('')));
 });
 void test('sandbox arguments enforce read-only source, offline resources, unprivileged user', () => {
   const args = sandboxArgs(import.meta.filename, 'test-owned-child', []);
