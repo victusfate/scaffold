@@ -82,6 +82,31 @@ Mechanical criteria can never be overridden by either form — the code must be
 fixed. A malformed pragma (unknown criterion, blank reason, or missing separator)
 is itself a `[Clarity/minor]` violation.
 
+## Durability and codebase learning
+
+Tasks carry a typed `tier` (`disposable` or `durable`, default durable), including
+SQLite storage and queue import/export. For example:
+
+```bash
+node scripts/queue.ts add "Try a new inspector" --tier disposable --requested "Try a new inspector"
+node scripts/queue.ts set task-001 tier durable
+```
+
+Record the same tier in a design document's YAML front matter. Configure supported
+JavaScript/TypeScript dependency boundaries with `.agent/tiers.json` and run
+`node scripts/check-import-boundaries.ts` in CI. See
+[durability guidance](docs/agents-detail.md#durability-tiers--match-rigor-to-what-the-code-is)
+and the [system quality rubric](lib/code-quality-rubric.md#5-system-quality).
+
+Use [`/mind-meld`](skills/mind-meld.md) to build a repository-owned learning IDE.
+The reference adapter runs a small combat flow and isolated damage step, records
+values and mutations, compares runs, and renders an offline graph/trace/source
+viewer. Each child repository supplies adapters for its own stack.
+
+Time gate attempts and report their cost with `scripts/delivery-metrics.ts`.
+Failures count as false positives only after an explicit review with evidence;
+unreviewed outcomes remain unknown.
+
 ## Harness support
 
 | Harness | How it reads instructions |

@@ -21,6 +21,9 @@ If a question can be answered by exploring the codebase, explore it instead of a
 When a term or decision is resolved, write it to `./docs/<feature-slug>/design.md` immediately — don't batch. State the slug before writing so the user can correct it.
 
 ```markdown
+---
+tier: durable
+---
 # Design: <Feature Name>
 
 ## Canonical Vocabulary
