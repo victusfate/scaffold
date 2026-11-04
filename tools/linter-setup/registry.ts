@@ -20,6 +20,7 @@ export const registry: Record<Language, RegistryEntry> = {
     linter: 'ESLint',
     configFile: 'eslint.config.mjs',
     workflowFile: 'lint-js.yml',
+    extraFiles: ['.prettierrc.json', '.prettierignore'],
     marker: '// scaffold-linter: js',
     metricsOnly: false,
     // npm packages the shipped config imports — added to the consumer's
@@ -28,11 +29,14 @@ export const registry: Record<Language, RegistryEntry> = {
       eslint: '^10.5.0',
       '@eslint/js': '^10.0.1',
       globals: '^17.6.0',
+      prettier: '^3.8.1',
     },
     // package.json scripts added on adopt. Plain JS has no type-checker, so
     // `lint:fix` is a bare autofix.
     scripts: {
-      lint: 'eslint .',
+      lint: 'eslint . --max-warnings 0',
+      'format:check': 'prettier . --check',
+      format: 'prettier . --write',
       'lint:fix': 'eslint . --fix',
     },
   },
@@ -45,20 +49,24 @@ export const registry: Record<Language, RegistryEntry> = {
     linter: 'ESLint (typescript-eslint)',
     configFile: 'eslint.config.mjs',
     workflowFile: 'lint-ts.yml',
-    extraFiles: ['tsconfig.json'],
+    extraFiles: ['tsconfig.json', '.prettierrc.json', '.prettierignore'],
     marker: '// scaffold-linter: ts',
     metricsOnly: false,
     devDependencies: {
       eslint: '^10.5.0',
       '@eslint/js': '^10.0.1',
       'typescript-eslint': '^8.61.1',
+      typescript: '^6.0.3',
       globals: '^17.6.0',
+      prettier: '^3.8.1',
     },
     // package.json scripts added on adopt. Type-aware autofix can rewrite code
     // in ways tsc rejects, so `lint:fix` re-runs `tsc --noEmit` as the gate —
     // the fix is only trustworthy if the type-checker still passes.
     scripts: {
-      lint: 'eslint .',
+      lint: 'eslint . --max-warnings 0',
+      'format:check': 'prettier . --check',
+      format: 'prettier . --write',
       'lint:fix': 'eslint . --fix && tsc --noEmit',
     },
   },
