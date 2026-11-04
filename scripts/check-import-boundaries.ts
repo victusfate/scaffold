@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Enforce explicit source import rules. Usage: node scripts/check-import-boundaries.ts [--root DIR].
 // .agent/boundaries.json opts a repo in; malformed config, syntax and unresolved/computed edges fail closed.
+// Default to native runtime edges. Elide aggregate type specifiers only with explicit noEmit:false + verbatimModuleSyntax:false.
+// A noEmit project executes source and keeps empty runtime edges, matching Node native type stripping.
 import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { builtinModules } from 'node:module';
@@ -11,6 +13,8 @@ import { importEdges } from './import-boundary-edges.ts';
 
 interface BoundaryRule { from: string[]; deny: string[]; reason: string }
 interface Boundaries { version: 1; rules: BoundaryRule[] }
+const DECLARATION = /\.d\.[cm]?ts$/;
+const TYPESCRIPT = /\.[cm]?tsx?$/;
 const SOURCE = /\.[cm]?[jt]sx?$/;
 const DATA = /\.(?:md|json|ya?ml|toml|txt|csv|svg|png|jpe?g|gif|webp|ico|lock|css|scss|html)$/;
 const BUILTINS = new Set(builtinModules.flatMap(m => [m, `node:${m}`]));
@@ -45,7 +49,7 @@ function configAt(root: string): Boundaries | null {
 
 function compilerOptions(compiler: typeof ts, root: string): ts.CompilerOptions {
   const path = join(root, 'tsconfig.json');
-  const defaults = { allowJs: true, resolveJsonModule: true, moduleResolution: compiler.ModuleResolutionKind.NodeNext };
+  const defaults = { noEmit: true, verbatimModuleSyntax: true, allowJs: true, resolveJsonModule: true, moduleResolution: compiler.ModuleResolutionKind.NodeNext };
   if (!existsSync(path)) return defaults;
   const read = compiler.readConfigFile(path, file => compiler.sys.readFile(file));
   if (read.error) throw new Error(`boundaries: invalid tsconfig.json: ${compiler.flattenDiagnosticMessageText(read.error.messageText, ' ')}`);
@@ -65,10 +69,51 @@ const escapesRoot = (root: string, path: string) => localPath(root, path).split(
 function scanTarget(ctx: ScanContext, target: string, external: boolean | undefined, at: string): string[] {
   const real = realpathSync(target);
   if (forbidden(ctx, target) || forbidden(ctx, real)) return [`${at}: forbidden import ${localPath(ctx.root, target)}`];
-  if (external) return [];
+  if (external && (escapesRoot(ctx.root, real) || localPath(ctx.root, real).split('/').includes('node_modules'))) return [];
   if (escapesRoot(ctx.root, real)) return [`${at}: local import escapes repository`];
   if (SOURCE.test(target)) return scanSource(ctx, target);
   return DATA.test(target) ? [] : [`${at}: unsupported local import ${localPath(ctx.root, target)}`];
+}
+
+type HiddenFiles = 'declarations' | 'typescript' | undefined;
+function visibleFile(path: string, hidden: HiddenFiles): boolean {
+  if (hidden === 'declarations') return !DECLARATION.test(path);
+  if (hidden === 'typescript') return !TYPESCRIPT.test(path);
+  return true;
+}
+
+/** Resolve both Node condition branches conservatively; declarations must never hide value implementations. */
+function resolveTargets(ctx: ScanContext, path: string, specifier: string, hidden?: HiddenFiles): ts.ResolvedModuleFull[] {
+  const host: ts.ModuleResolutionHost = {
+    ...ctx.compiler.sys,
+    fileExists: file => visibleFile(file, hidden) && ctx.compiler.sys.fileExists(file),
+  };
+  const modes = [ctx.compiler.ModuleKind.ESNext, ctx.compiler.ModuleKind.CommonJS] as const;
+  return modes.flatMap(mode => {
+    const resolved = ctx.compiler.resolveModuleName(specifier, path, { ...ctx.options, allowJs: true }, host, undefined, undefined, mode).resolvedModule;
+    return resolved && visibleFile(resolved.resolvedFileName, hidden) ? [resolved] : [];
+  });
+}
+
+function uniqueTargets(targets: ts.ResolvedModuleFull[]): ts.ResolvedModuleFull[] {
+  const seen = new Set<string>();
+  return targets.filter(target => {
+    const path = resolve(target.resolvedFileName);
+    if (seen.has(path)) return false;
+    seen.add(path);
+    return true;
+  });
+}
+
+function edgeTargets(ctx: ScanContext, path: string, edge: ReturnType<typeof importEdges>[number]): ts.ResolvedModuleFull[] {
+  const specifier = edge.specifier!;
+  const typed = resolveTargets(ctx, path, specifier);
+  if (edge.typeOnly) return uniqueTargets(typed);
+  const runtime = resolveTargets(ctx, path, specifier, 'declarations');
+  // TypeScript sources may themselves shadow adjacent JS. Scan physical JS implementations as well.
+  const javascript = resolveTargets(ctx, path, specifier, 'typescript');
+  if (!runtime.length && !javascript.length && typed.length) throw new Error('runtime implementation unavailable');
+  return uniqueTargets([...typed, ...runtime, ...javascript]);
 }
 
 function scanEdge(ctx: ScanContext, path: string, edge: ReturnType<typeof importEdges>[number]): string[] {
@@ -76,19 +121,21 @@ function scanEdge(ctx: ScanContext, path: string, edge: ReturnType<typeof import
   const at = `${localPath(ctx.root, path)}:${edge.line}`;
   if (edge.specifier === null) return [`${at}: computed import cannot be classified`];
   if (BUILTINS.has(edge.specifier)) return [];
-  const resolved = ctx.compiler.resolveModuleName(edge.specifier, path, ctx.options, ctx.compiler.sys).resolvedModule;
-  if (!resolved) return [`${at}: unresolved import ${edge.specifier}`];
-  return scanTarget(ctx, resolve(resolved.resolvedFileName), resolved.isExternalLibraryImport, at);
+  let targets: ts.ResolvedModuleFull[];
+  try { targets = edgeTargets(ctx, path, edge); }
+  catch (error) { return [`${at}: ${String(error)} for ${edge.specifier}`]; }
+  if (!targets.length) return [`${at}: unresolved import ${edge.specifier}`];
+  return targets.flatMap(target => scanTarget(ctx, resolve(target.resolvedFileName), target.isExternalLibraryImport, at));
 }
 
 function scanSource(ctx: ScanContext, path: string): string[] {
   const real = realpathSync(path);
   if (ctx.seen.has(real)) return [];
   ctx.seen.add(real);
-  const source = ctx.compiler.createSourceFile(path, readFileSync(path, 'utf8'), ctx.compiler.ScriptTarget.Latest, true);
+  const source = ctx.compiler.createSourceFile(real, readFileSync(real, 'utf8'), ctx.compiler.ScriptTarget.Latest, true);
   const diagnostics = (source as ts.SourceFile & { parseDiagnostics: readonly ts.Diagnostic[] }).parseDiagnostics;
-  if (diagnostics.length) return [`${localPath(ctx.root, path)}: syntax error prevents import analysis`];
-  return importEdges(ctx.compiler, source).flatMap(edge => scanEdge(ctx, path, edge));
+  if (diagnostics.length) return [`${localPath(ctx.root, real)}: syntax error prevents import analysis`];
+  return importEdges(ctx.compiler, source, ctx.options.noEmit !== false || ctx.options.verbatimModuleSyntax !== false).flatMap(edge => scanEdge(ctx, real, edge));
 }
 
 function scanConfigured(ctx: ScanContext, path: string): string[] {
