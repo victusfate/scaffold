@@ -125,7 +125,7 @@ A file scores 10 when:
 ## 5. System Quality
 
 Score the **system** as well as its files. A collection of clear files can still
-hide an unclear dependency graph. Report three independent scores using the same
+hide an unclear dependency graph. Report five independent scores using the same
 `10 − Σ(violation weights)` formula and minor (−1), major (−2), critical (−4)
 weights above. Cite `filename:line` for every deduction, including both ends of a
 cross-module edge. Do not average away a boundary violation with clean files.
@@ -201,7 +201,10 @@ This framing follows Rob West's
 [design-engineering argument](https://robwest.info/articles/the-agentic-software-factory-is-the-wrong-metaphor)
 (19 September 2026). Agents can investigate, challenge, implement, and compare
 candidate designs. Owner intent, domain tradeoffs, and release authority stay
-explicit. Repeatable delivery automation remains valuable; it is one part of the
+explicit. Architectural contribution can be builder-led, collaborative or model-led;
+owners may delegate technical design while focusing on UX/product. Score design
+evidence and outcomes regardless of who supplied the architecture. The dial never
+relaxes preservation or verification. Repeatable delivery automation remains valuable; it is one part of the
 design feedback loop. The owner-supplied Joe Maddalone video summary motivates
 the maintainability/understanding concern; no transcript was independently verified.
 

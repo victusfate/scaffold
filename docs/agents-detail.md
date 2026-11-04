@@ -288,6 +288,26 @@ An experimental UI can be cheap to replace while its saved data needs strong
 compatibility guarantees. A binary label must not excuse unclear code or hide
 those obligations.
 
+### Architectural contribution
+
+Builders can choose how much architectural design models contribute: builder-led,
+collaborative, or model-led. The typed queue `architecture` field and its generated
+task guidance in `scripts/queue-model.ts` are the canonical mode contract; the CLI
+and console expose it. The default is collaborative, and builders may change it
+per task. This feature uses model-led contribution within the approved scope.
+
+Models can carry substantial responsibility for domain investigation, architectural
+coherence and preservation checks. A builder need not be a career software engineer
+to delegate this work; experienced developers may delegate it to focus on UX and
+product. Explain consequential decisions at the builder's requested depth. Ask only
+for unresolved intent, material product/risk tradeoffs, or authority beyond the
+approved scope. Do not require the builder to approve technical minutiae before
+progressing in model-led mode.
+
+The contribution dial does not change release authority or relax compatibility,
+security, verification or evidence-freshness obligations. Match design effort to
+uncertainty and replacement cost; routine changes need no artificial exploration.
+
 | Fact or decision | Authoritative home |
 |---|---|
 | State ownership and valid operations | Types, constructors, module interfaces, explicit mutation methods |

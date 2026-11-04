@@ -45,9 +45,11 @@ try {
   mkdirSync(join(consumer, '.agent'));
   const policy = '{"version":1,"rules":[{"from":["core/**"],"deny":["ui/**"],"reason":"Core owns its behavior"}]}\n';
   writeFileSync(join(consumer, '.agent/boundaries.json'), policy);
+  mkdirSync(join(consumer, 'core'));
+  writeFileSync(join(consumer, 'core/state.ts'), 'export const initialState = { hp: 10 };\n');
   // Installing unrelated client plugins is outside this isolated consumer probe.
   writeFileSync(join(consumer, '.scaffold-keep'), 'bin/ensure-plugins.sh\n');
-  git(consumer, 'add', '--', '.agent/boundaries.json', '.scaffold-keep');
+  git(consumer, 'add', '--', '.agent/boundaries.json', '.scaffold-keep', 'core/state.ts');
   git(consumer, 'commit', '-qm', 'Consumer-owned policy');
   const synced = spawnSync('bash', [join(ROOT, 'bin/sync-from-scaffold.sh')], {
     cwd: consumer, env: { ...process.env, SCAFFOLD_URL: upstream }, encoding: 'utf8',
@@ -66,6 +68,14 @@ try {
     cwd: consumer, encoding: 'utf8',
   });
   assert.equal(boundary.status, 0, boundary.stderr);
+  mkdirSync(join(consumer, 'ui'));
+  writeFileSync(join(consumer, 'ui/view.ts'), 'export const view = "experimental";\n');
+  writeFileSync(join(consumer, 'core/state.ts'), 'export { view } from "../ui/view.ts";\n');
+  const forbidden = spawnSync(process.execPath, [join(consumer, 'scripts/check-import-boundaries.ts')], {
+    cwd: consumer, encoding: 'utf8',
+  });
+  assert.equal(forbidden.status, 1, forbidden.stderr);
+  assert.match(forbidden.stdout, /forbidden import ui\/view\.ts/);
   console.log('durability-sync: actual manifest reaches a clean consumer and preserves its policy');
 } finally {
   rmSync(scratch, { recursive: true, force: true });

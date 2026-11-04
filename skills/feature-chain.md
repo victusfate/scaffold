@@ -13,6 +13,13 @@ material tradeoffs, rather than silently converting uncertainty into a ticket.
 
 ## Entry-point detection (run before any phase)
 
+Honor the task's architectural contribution mode from the queue, or the builder's
+explicit direction. Use the guidance in `scripts/queue-model.ts` and
+`docs/agents-detail.md#architectural-contribution`. Model-led work owns technical
+design and its checks; ask the builder for product intent and consequential choices,
+not architectural homework. If no mode was supplied, use collaborative and state
+the assumption without interrupting an already clear, authorized task.
+
 Check `./docs/<feature-slug>/` for existing artifacts and detect whether a document was supplied externally (uploaded file, pasted content, or a path the user named).
 
 | State | Entry point |
