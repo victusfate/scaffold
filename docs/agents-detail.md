@@ -282,8 +282,29 @@ state the tier with the feature slug so the user can correct it cheaply:
 - **When unsure, it's durable.** Throwaway code that gains a dependent has been
   promoted, and it inherits durable rigor at that point.
 
-Tiers aren't recorded or enforced mechanically yet. Until a typed field and an
-import-boundary rule exist, the tier is a judgment you state, not a gate.
+Record `tier: disposable|durable` in a feature's `design.md` front matter and use
+the queue CLI's `--tier` field on tasks. Omitted task tiers default to durable;
+invalid values fail rather than silently downgrading rigor.
+
+Declare durable and disposable path globs in `.agent/tiers.json`. Run
+`node scripts/check-import-boundaries.ts` in CI after installing its supported
+stack's tooling. Configuration and unresolved supported imports fail closed;
+stack-specific adapters must enforce equivalent rules for other languages.
+The system-level rubric in `lib/code-quality-rubric.md` scores boundaries,
+state ownership, and entry-point traceability separately from individual files.
+
+Engineer for disposability:
+
+- Use sandbox environments with no production data, isolated writable temporary
+  state, no network, and a time limit.
+- Keep experiments as leaves with no inbound calls from durable systems.
+- Put a durable fallback core beneath experimental UIs, so replacing the UI does
+  not replace persistence, validation, or domain invariants.
+
+Make rigor cheap enough to keep. Record timed stage attempts with the delivery
+metrics CLI and review false positives with evidence. Inspect per-stage minutes,
+first-try pass rates, and daily expensive-gate rankings; unknown review outcomes
+are not false positives. See the delivery-metrics usage for the recording contract.
 
 ## Veracity — "done" means reachable, not just built
 

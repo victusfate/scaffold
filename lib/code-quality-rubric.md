@@ -122,6 +122,42 @@ A file scores 10 when:
 
 ---
 
+## 5. System Quality
+
+Score the **system** as well as its files. A collection of clear files can still
+hide an unclear dependency graph. Report three independent scores using the same
+`10 − Σ(violation weights)` formula and minor (−1), major (−2), critical (−4)
+weights above. Cite `filename:line` for every deduction, including both ends of a
+cross-module edge. Do not average away a boundary violation with clean files.
+
+| Criterion | A score of 10 means | Deduction examples |
+|---|---|---|
+| Module boundaries and dependency direction | Dependencies point toward stable contracts; durable core never imports disposable leaves; cycles do not cross ownership boundaries. | major: core imports an experimental UI; critical: a dependency cycle makes independent replacement impossible. |
+| Data-flow clarity | Every piece of state has one owner; mutations cross explicit interfaces; serialization preserves that ownership. | minor: a documented transfer lacks a source link; major: two modules mutate shared state without an owner; critical: hidden mutation bypasses persistence or security invariants. |
+| Entry-point traceability | A reader can follow user action → handler → core → persistence and back through concrete callers. | minor: one hop requires an unnecessary lookup; major: an event bus hides producer/consumer identity; critical: the advertised path has no reachable implementation. |
+
+```markdown
+## System Quality Scores
+| System scope | Boundaries | Data flow | Entry points |
+|---|---|---|---|
+| checkout → order → storage | 10 | 8 | 10 |
+
+Violations:
+- src/cart.ts:42 and src/orders.ts:18 [Data flow/major] both mutate order totals;
+  give the order core ownership and pass cart changes through its command interface.
+```
+
+Use the repository's tier map and import gate as boundary evidence. Use a source
+index for static callers and recorded integration/piece runs for observed paths
+(see `skills/mind-meld.md`). Label static and observed evidence separately; a
+missing trace is not proof that a branch cannot run. Review an entry point's error
+and save/load paths as well as its happy path.
+
+Common system failures: globally writable state with several owners; a domain
+module importing UI experiments; plugin callbacks with no discoverable registration;
+and persistence spread across handlers. Fix ownership or dependency direction at
+its source rather than adding narration over the ambiguity.
+
 ## Common Failure Patterns
 
 | Pattern | Dimension | Severity | Fix |
