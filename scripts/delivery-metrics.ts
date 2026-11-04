@@ -173,10 +173,23 @@ function validateFlags(args: string[]): void {
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
+function remoteReport(flags: string[]): string {
+  const arg = (name: string) => option(flags, name);
+  const repo = arg('--repo') ?? repoFromRemote(execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8' }));
+  const days = Number(arg('--days') ?? DEFAULT_DAYS);
+  if (!repo || !isRepo(repo) || !(days > 0) || !Number.isFinite(days)) {
+    throw new Error(HELP);
+  }
+  // API fields go into request paths; take only well-formed ones.
+  const pulls = mergedSince(repo, Date.now() - days * DAY_MS).filter(p => Number.isInteger(p.number) && SHA.test(p.head.sha));
+  return format(metrics(pulls.map(p => fetchPr(repo, p)), days), repo);
+}
+
 function main(): number {
   const args = process.argv.slice(2);
   const separator = args.indexOf('--');
   const flags = separator < 0 ? args : args.slice(0, separator);
+  if (separator >= 0 && !flags.includes('--record-stage')) throw new Error('-- command requires --record-stage');
   validateFlags(flags);
   if (flags.includes('--help')) { console.log(HELP); return 0; }
   const arg = (name: string) => option(flags, name);
@@ -187,15 +200,7 @@ function main(): number {
     throw new Error('record/review metadata requires --record-stage or --review-stage');
   const cost = formatRigor(rigorMetrics(readRigor(log)));
   if (flags.includes('--local-only')) { console.log(cost); return 0; }
-  const repo = arg('--repo') ?? repoFromRemote(execFileSync('git', ['remote', 'get-url', 'origin'], { encoding: 'utf8' }));
-  const days = Number(arg('--days') ?? DEFAULT_DAYS);
-  if (!repo || !isRepo(repo) || !(days > 0)) {
-    console.error(HELP);
-    process.exit(2);
-  }
-  // API fields go into request paths; take only well-formed ones.
-  const pulls = mergedSince(repo, Date.now() - days * DAY_MS).filter(p => Number.isInteger(p.number) && SHA.test(p.head.sha));
-  console.log(format(metrics(pulls.map(p => fetchPr(repo, p)), days), repo));
+  console.log(remoteReport(flags));
   console.log(cost);
   return 0;
 }
