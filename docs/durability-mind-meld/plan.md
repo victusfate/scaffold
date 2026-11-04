@@ -1,12 +1,9 @@
----
-tier: durable
----
 # Implementation plan
 
-- [ ] Queue and import boundaries: typed tier through all storage/CLI paths;
+- [ ] Queue and import boundaries: typed contract references through all storage/CLI paths;
   enforce configured boundaries with isolated tests and a CI entry point.
 - [ ] Rigor: record real timed attempts, render daily stage metrics and reviewed
-  false-positive rates; start consumers with strict durable lint/format defaults.
+  false-positive rates; start consumers with strict lint/format defaults.
 - [ ] Mind Meld: registered build skill, validated graph/trace format, real flow
   and piece example, run diff, and an offline source/graph/trace viewer.
 - [ ] Integrate: scored system rubric, durability guidance, consumer sync manifest,

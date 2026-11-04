@@ -85,8 +85,8 @@ you is paying for expensive autocomplete.
 - Before recommending on a multidimensional problem, **map its shape first** (see *Understand the shape
   of the problem* below).
 - Prefer **reversible moves** so course-correcting costs a sentence, not a redo.
-- **Open each loop with a one-line contract**: the target bar, the signal that judges it, the durability
-  tier, and the iteration cap. The user steers that line (the cheapest moment to redirect) instead of
+- **Open each loop with a one-line contract**: the target bar, the signal that judges it, the preservation
+  obligations, and the iteration cap. The user steers that line (the cheapest moment to redirect) instead of
   approving each pass.
 
 ### The user's judgment is the tiebreaker
@@ -272,50 +272,59 @@ another client). Subagents never send it.
 
   Other harnesses (Codex, pi) document their own scheduler and mail tools here.
 
-## Durability tiers — match rigor to what the code is
+## Safe modification — executable knowledge and preservation
 
-Quality practices exist so the code can be understood and safely changed. How much rigor that takes
-depends on where the code sits between **disposable** and **durable**. Classify before building, and
-state the tier with the feature slug so the user can correct it cheaply:
+Prioritize these in order:
 
-| | Disposable | Durable |
-|---|---|---|
-| Failure costs | an annoyance | data loss, security, downtime |
-| Replacement | minutes to hours by prompt | weeks, with migrations |
-| Inbound dependencies | none (a leaf) | other code relies on its contract |
-| Lifetime | one session or one use | maintained for years |
+1. **Understanding and modification.** A maintainer can explain behavior, locate its
+   owner, reproduce a failure, and change or replace the implementation confidently.
+2. **Data and compatibility.** State what must survive that change: saved data,
+   behavior and public interfaces. Keep those guarantees executable.
+3. **Architectural boundaries.** Use ownership, visibility and dependency rules to
+   support the first two. More layers alone do not improve the score.
 
-- **Disposable:** optimize for speed, skip ceremony (`/ponytail`), and keep it a leaf.
-  Durable code never imports disposable code.
-- **Durable:** the full chain and every gate, with strict types and errors rather
-  than warnings, explicit module boundaries, and deterministic tests that use
-  in-memory fakes at external boundaries instead of network mocks.
-- **When unsure, it's durable.** Throwaway code that gains a dependent has been
-  promoted, and it inherits durable rigor at that point.
+Implementation replaceability and preservation obligations are separate questions.
+An experimental UI can be cheap to replace while its saved data needs strong
+compatibility guarantees. A binary label must not excuse unclear code or hide
+those obligations.
 
-Record `tier: disposable|durable` in a feature's `design.md` front matter and use
-the queue CLI's `--tier` field on tasks. Omitted task tiers default to durable;
-invalid values fail rather than silently downgrading rigor.
+| Fact or decision | Authoritative home |
+|---|---|
+| State ownership and valid operations | Types, constructors, module interfaces, explicit mutation methods |
+| Behavior and invariants | Executable examples, behavioral tests, assertions |
+| Data and compatibility | Versioned schemas, migrations, old-save fixtures, compatibility tests |
+| Dependencies | Module/package structure, visibility, repository-owned import rules |
+| Actual execution | Recorded traces linked to source content hashes |
+| Intent and consequential tradeoffs | Small design/decision record linking to executable contracts |
+| Local rationale or hidden constraint | Comment beside the relevant code |
 
-Declare durable and disposable path globs in `.agent/tiers.json`. Run
-`node scripts/check-import-boundaries.ts` in CI after installing its supported
-stack's tooling. Configuration and unresolved supported imports fail closed;
-stack-specific adapters must enforce equivalent rules for other languages.
-The system-level rubric in `lib/code-quality-rubric.md` scores boundaries,
-state ownership, and entry-point traceability separately from individual files.
+Keep each fact in one authoritative home and link to it elsewhere. The queue's
+`contracts` field stores repository-relative paths to executable contracts, not a
+second specification. Existing `files`, `validate` and `accept` describe change
+scope, verification and intended outcome. Do not claim that a path alone proves a
+guarantee; inspect and execute the referenced contract.
 
-Engineer for disposability:
+Declare concrete forbidden dependency rules in `.agent/boundaries.json`; run
+`node scripts/check-import-boundaries.ts` in CI. Its JavaScript/TypeScript adapter
+uses the TypeScript compiler and fails closed on invalid rules or unresolved
+configured edges. Other stacks need their own adapters. Consumer policy remains
+consumer-owned. Use small reasoned exceptions, not blanket exclusions.
 
-- Use sandbox environments with no production data, isolated writable temporary
-  state, no network, and a time limit.
-- Keep experiments as leaves with no inbound calls from durable systems.
-- Put a durable fallback core beneath experimental UIs, so replacing the UI does
-  not replace persistence, validation, or domain invariants.
+Generate maps and walkthroughs from source and actual runs. Bind snapshots to
+content hashes and reverify them after changes. Mind Meld's `verify` command
+checks freshness against a checkout; an offline snapshot cannot establish that
+checkout's current state. Narration must cite evidence and cannot supply edges.
 
-Make rigor cheap enough to keep. Record timed stage attempts with the delivery
-metrics CLI and review false positives with evidence. Inspect per-stage minutes,
-first-try pass rates, and daily expensive-gate rankings; unknown review outcomes
-are not false positives. See the delivery-metrics usage for the recording contract.
+Scale verification to failure consequences and affected contracts. Isolate
+experiments from production data and keep the core contracts independently
+executable. Prefer a replaceable UI over persistence, validation and domain
+contracts that can survive its replacement. Use strict starter lint/type/format
+defaults and deterministic tests with in-memory boundary fakes.
+
+Measure the cost of maintaining rigor with the delivery metrics CLI. Timed gate
+attempts and explicit finding reviews reveal expensive checks, retry rates and
+false positives; they do not establish product success. Make costly checks
+cheaper without weakening the preserved guarantees.
 
 ## Veracity — "done" means reachable, not just built
 

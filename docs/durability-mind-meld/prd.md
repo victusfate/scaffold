@@ -1,17 +1,15 @@
----
-tier: durable
----
-# PRD: Durability and Mind Meld
+# PRD: Executable understanding and safe modification
 
 ## Problem Statement
 
-Durability is currently a prose judgment, system quality has no scored criteria,
+Readers need to understand and safely modify a system while preserving its data
+and interfaces. Prose-only descriptions drift, dependency boundaries lack checks,
 and the cost of enforcing quality is invisible. Readers also lack a reusable way
 to explore code through observed execution rather than guessed call graphs.
 
 ## Solution
 
-Make durability typed and enforce dependency boundaries. Show timed gate attempts
+Keep preservation obligations executable and enforce dependency boundaries. Show timed gate attempts
 and their reviewed outcomes. Supply a Mind Meld skill and a working offline
 example that connects structure, execution, source, and state changes.
 
@@ -26,10 +24,10 @@ slices rather than force the original specification through a green pipeline.
 
 ## User Stories
 
-1. An owner can add, edit, import, persist, and inspect a task's tier without losing it.
-2. A durable module cannot depend on a disposable module unnoticed by CI.
+1. An owner can add, edit, import, persist, and inspect a task's executable contract references without losing it.
+2. Declared dependency boundaries cannot be crossed unnoticed by CI.
 3. A reviewer can cite weighted system-level deductions and concrete failure patterns.
-4. A consumer starts with strict durable defaults and keeps ownership of its settings.
+4. A consumer starts with strict defaults and keeps ownership of its settings.
 5. An owner can record gate attempts, identify first-try failures, review false positives,
    and rank the most expensive gates each day without inventing missing data.
 6. A reader can run an example integration flow or isolated piece, compare two runs,
@@ -41,7 +39,7 @@ slices rather than force the original specification through a green pipeline.
 
 ## Implementation Decisions
 
-- Add a validated durability union to the existing queue contract and migrate storage.
+- Add validated executable-contract path references to the existing queue and migrate storage.
 - Resolve supported imports mechanically against repository root declarations.
 - Add additive system scoring alongside the existing four file dimensions.
 - Record rigor attempts locally through an explicit CLI; retain PR delivery reporting.
@@ -53,7 +51,7 @@ slices rather than force the original specification through a green pipeline.
 
 ## Testing Decisions
 
-Test queue CLI and SQLite round trips with disposable sentinels and invalid values;
+Test queue CLI and SQLite round trips with non-default contract paths and invalid values;
 temporary-repository import violations, safe imports, malformed configs, and overrides;
 telemetry with retries, multiple dates, unknown reviews, and invalid input; isolated
 reference flow/piece runs and changed inputs; permission denials, timeout, graph schema,
@@ -65,7 +63,7 @@ An independent agent reviews every changed file before merge.
 
 Implementing Rust/Godot adapters or Voidhorizon tours in a different repository;
 running arbitrary code without an OS sandbox; executing narration; retroactively
-guessing durations or false positives from prose.
+guessing durations or false positives from prose; binary durability classifications.
 
 ## Further Notes
 

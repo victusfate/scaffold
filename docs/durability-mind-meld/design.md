@@ -1,7 +1,4 @@
----
-tier: durable
----
-# Durability and Mind Meld
+# Executable understanding and safe modification
 
 ## Owner specification
 
@@ -14,15 +11,21 @@ then merge it and close the issues with a reference to its branch.
 
 The owner wants a codebase people can understand and repair, with useful
 automation and a rubric that rejects a well-tested implementation of the wrong
-problem. Observe tier enforcement, actual execution traces, attributable gate
+problem. Observe executable contract preservation, actual execution traces, attributable gate
 costs, and visible design feedback. Customer impact beyond these probes remains
 unknown until a consumer uses the changes.
+
+Priorities: understanding/modification first, saved data/compatibility second,
+architectural boundaries third. Keep implemented facts in executable code and
+checks; keep this document to owner intent and consequential tradeoffs. A binary
+durable/disposable classifier was rejected during owner review and is not part
+of this design.
 
 ## Assumptions
 
 | Assumption | Disconfirming probe | Evidence / unknown | Revision if wrong |
 |---|---|---|---|
-| Existing queue surfaces can carry tiers | CLI/store migration round trip | pending validation | repair all storage paths before delivery |
+| Existing queue surfaces can carry contract references | CLI/store migration round trip | pending validation | repair all storage paths before delivery |
 | A reference execution sandbox is available | run flow, piece, denial and timeout probes | pending validation | fail closed; do not claim a live execution |
 | Gate cost can be attributed without guessing | record retry and explicit review through CLI | pending validation | retain unknown rather than infer outcomes |
 | Current workflow can expose learning without extra ceremony | independent review of canonical templates and rubric | pending review | remove redundant prompts, retain outcome/probe evidence |
@@ -31,9 +34,9 @@ unknown until a consumer uses the changes.
 
 - Extend existing queue fields, SQLite persistence, delivery metrics, linter templates,
   skill registration, and scaffold sync. Keep their existing calling surfaces.
-- Treat an omitted tier as durable. Reject invalid explicit values. Persist and render
-  the tier rather than infer it from a title or tag.
-- A repository declares durability roots with path globs. An import check fails closed
+- Queue contract references point to executable files without duplicating their specifications.
+  Preserve them through every storage/editing path; reject malformed references.
+- A repository declares concrete forbidden dependency rules with path globs. An import check fails closed
   on invalid configuration or an edge it cannot safely resolve in its supported stack.
   Language-specific adapters remain necessary for Rust and Godot consumers.
 - Score system boundaries, state ownership, and entry-point traceability using the
@@ -57,7 +60,7 @@ unknown until a consumer uses the changes.
 
 | Term | Meaning |
 |---|---|
-| tier | disposable or durable, with durable the conservative default |
+| executable contract | authoritative source, schema, migration, fixture or test defining a guarantee |
 | structure edge | a dependency established by an index |
 | observed edge | a call or state change recorded by an actual execution |
 | flow | an integration entry point executed under tracing |
