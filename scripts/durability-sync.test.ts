@@ -12,13 +12,18 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const REQUIRED = [
   'scripts/check-import-boundaries.ts', 'scripts/import-boundary-edges.ts',
   'scripts/delivery-rigor.ts', 'scripts/delivery-rigor-cli.ts',
-  'scripts/mind-meld.ts', 'scripts/mind-meld-schema.ts', 'scripts/mind-meld-sandbox.ts',
+  'scripts/mind-meld.ts', 'scripts/mind-meld-schema.ts', 'scripts/mind-meld-sandbox.ts', 'scripts/typescript-runtime.ts',
   'scripts/mind-meld-example.ts', 'scripts/mind-meld-viewer.ts', 'skills/mind-meld.md',
   '.agents/skills/mind-meld/SKILL.md', 'lib/linters/ts/.prettierrc.json',
 ];
-const manifest = readFileSync(join(ROOT, '.github/scaffold-files.txt'), 'utf8').split('\n').filter(Boolean);
-for (const file of REQUIRED) assert.ok(manifest.includes(file), `${file} must ship to consumers`);
-assert.ok(!manifest.includes('.agent/boundaries.json'), 'consumer-owned boundary policy must not be overwritten');
+const listed = readFileSync(join(ROOT, '.github/scaffold-files.txt'), 'utf8').split('\n').filter(Boolean);
+// Scaffold itself ships every listed file. A consumer keeps some local (.scaffold-keep) or never had them,
+// so there the simulated upstream uses only the managed files that exist.
+const inScaffold = (() => { try { return (JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as { name?: unknown }).name === 'scaffold'; } catch { return false; } })();
+const manifest = inScaffold ? listed : listed.filter(file => existsSync(join(ROOT, file)));
+if (inScaffold) assert.deepEqual(listed.filter(file => !existsSync(join(ROOT, file))), [], 'every listed file exists in scaffold');
+for (const file of REQUIRED) assert.ok(listed.includes(file), `${file} must ship to consumers`);
+assert.ok(!listed.includes('.agent/boundaries.json'), 'consumer-owned boundary policy must not be overwritten');
 
 const scratch = mkdtempSync(join(tmpdir(), 'durability-sync-'));
 const upstream = join(scratch, 'upstream');

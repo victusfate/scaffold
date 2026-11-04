@@ -9,6 +9,7 @@ import { builtinModules } from 'node:module';
 import { dirname, isAbsolute, join, matchesGlob, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type ts from 'typescript';
+import { requireTypeScript } from './typescript-runtime.ts';
 import { importEdges } from './import-boundary-edges.ts';
 
 interface BoundaryRule { from: string[]; deny: string[]; reason: string }
@@ -159,7 +160,7 @@ export async function checkImportBoundaries(root: string): Promise<string[]> {
   root = realpathSync(root);
   const config = configAt(root);
   if (!config) return [];
-  const compiler = (await import('typescript')).default;
+  const compiler = await requireTypeScript('check-import-boundaries');
   const options = compilerOptions(compiler, root);
   const files = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
     cwd: root, encoding: 'utf8',

@@ -10,8 +10,11 @@ import { index, run_flow, run_piece, diff, cacheKey, verifySnapshot } from './mi
 import { validateBundle, sourceManifest, type MeldBundle } from './mind-meld-schema.ts';
 import { runSandbox, sandboxArgs } from './mind-meld-sandbox.ts';
 import { renderViewer } from './mind-meld-viewer.ts';
+import { loadTypeScript } from './typescript-runtime.ts';
 
-const live = { skip: process.env.RUN_MIND_MELD_SANDBOX !== '1' };
+// index() parses source with the optional typescript package; consumers without it skip these.
+const parses = { skip: (await loadTypeScript()) ? false : 'typescript is not installed' };
+const live = { skip: process.env.RUN_MIND_MELD_SANDBOX !== '1' || parses.skip };
 function temp<T>(work: (root: string) => T): T {
   const root = mkdtempSync(join(tmpdir(), 'meld-test-'));
   try { return work(root); } finally { rmSync(root, { recursive: true, force: true }); }
@@ -19,7 +22,7 @@ function temp<T>(work: (root: string) => T): T {
 function invalid(mutate: (bundle: MeldBundle) => void): void {
   const graph = index(); mutate(graph); assert.throws(() => validateBundle(graph));
 }
-void test('index cites real declarations and static call expressions', () => {
+void test('index cites real declarations and static call expressions', parses, () => {
   const graph = index(); validateBundle(graph);
   assert.equal(graph.nodes.length, 3);
   assert.ok(graph.nodes.every(n => n.line > 0 && !Object.hasOwn(n, 'tier')));
@@ -27,7 +30,7 @@ void test('index cites real declarations and static call expressions', () => {
   assert.notEqual(cacheKey('flow', { hp: 10, damage: 2 }), cacheKey('flow', { hp: 10, damage: 3 }));
   assert.equal(cacheKey('flow', { hp: 10, damage: 2 }), cacheKey('flow', { damage: 2, hp: 10 }));
 });
-void test('freshness compares every source byte and refuses a changed checkout', () => temp(root => {
+void test('freshness compares every source byte and refuses a changed checkout', parses, () => temp(root => {
   const graph = index();
   for (const [file, source] of Object.entries(graph.sources)) {
     const target = join(root, file); mkdirSync(dirname(target), { recursive: true }); writeFileSync(target, source);
@@ -36,7 +39,7 @@ void test('freshness compares every source byte and refuses a changed checkout',
   writeFileSync(join(root, graph.nodes[0].file), '// changed after recording');
   assert.throws(() => verifySnapshot(graph, root), /stale source snapshot/);
 }));
-void test('malformed graph, hashes, paths, spans, and dangling edges fail closed', () => {
+void test('malformed graph, hashes, paths, spans, and dangling edges fail closed', parses, () => {
   invalid(b => { b.version = 2 as 1; });
   invalid(b => { b.nodes[1].id = b.nodes[0].id; });
   invalid(b => { b.nodes[0].line = -1; });
@@ -53,7 +56,7 @@ void test('unknown targets, malformed inputs and fake policies never execute', (
   assert.throws(() => run_flow('combat', { hp: 1, damage: 1, extra: true }), /only hp/);
   assert.throws(() => run_piece('damage', { hp: 1, damage: 1 }, { save: 'production' }), /memory/);
 });
-void test('offline viewer escapes injected source and allows only hashed scripts', () => {
+void test('offline viewer escapes injected source and allows only hashed scripts', parses, () => {
   const bundle = index();
   bundle.sources[bundle.nodes[0].file] += '\n</script><img src=x onerror=alert(1)>';
   Object.assign(bundle, sourceManifest(bundle.sources));

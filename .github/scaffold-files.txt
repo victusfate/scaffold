@@ -345,6 +345,7 @@ scripts/delivery-rigor-cli.ts
 scripts/delivery-rigor.test.ts
 scripts/durability-sync.test.ts
 scripts/mind-meld.ts
+scripts/typescript-runtime.ts
 scripts/mind-meld-schema.ts
 scripts/mind-meld-sandbox.ts
 scripts/mind-meld-example.ts
