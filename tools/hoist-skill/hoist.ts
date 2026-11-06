@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 
 import { loadKeep, type WriteResult } from '../lib/safe-write.ts';
-import { readManifest, upsertManifest } from './manifest.ts';
+import { readManifest, resolveManifestEntries, upsertManifest } from './manifest.ts';
 import { makeEmitters, NOTICES_REL, type Capability, type Emitter } from './emitters.ts';
 import { parseResolverRows, type ResolverRow } from '../lib/resolver-parse.ts';
 
@@ -154,7 +154,7 @@ function checkLocalSources(pairs: EmitPair[], srcRoot: string, registry: Resolve
 // Extracted so hoist() reads as a linear sequence of stages rather than a
 // branching block that mixes validation with construction.
 function resolveEmitPairs({
-  fromManifestFlag, manifestReadPath, registry, rawNames, rawHarness, ref,
+  fromManifestFlag, manifestReadPath, registry, rawNames, rawHarness, ref, refExplicit,
 }: {
   fromManifestFlag: boolean;
   manifestReadPath: string;
@@ -162,9 +162,11 @@ function resolveEmitPairs({
   rawNames: string;
   rawHarness: string;
   ref: string;
+  refExplicit: boolean;
 }): EmitPair[] {
   if (fromManifestFlag) {
-    const entries = readManifest(manifestReadPath);
+    const entries = resolveManifestEntries(readManifest(manifestReadPath),
+      new Set(registry.map(r => r.name)), refExplicit ? ref : undefined);
     if (!entries.length) throw new Error(`No entries found in manifest: ${manifestReadPath}`);
     const unknownNames     = entries.filter(e => !registry.find(r => r.name === e.name)).map(e => e.name);
     const unknownHarnesses = entries.filter(e => !(HARNESSES as readonly string[]).includes(e.harness)).map(e => e.harness);
@@ -250,7 +252,7 @@ export async function hoist(opts: HoistOpts = {}): Promise<HoistResult> {
     };
   }
 
-  const emitPairs = resolveEmitPairs({ fromManifestFlag, manifestReadPath, registry, rawNames, rawHarness, ref });
+  const emitPairs = resolveEmitPairs({ fromManifestFlag, manifestReadPath, registry, rawNames, rawHarness, ref, refExplicit });
 
   // Plan mode: output annotated sources list, no emit
   if (planMode) {
@@ -294,8 +296,10 @@ export async function hoist(opts: HoistOpts = {}): Promise<HoistResult> {
     emit(cap, INTO, kept, results);
   }
 
-  // Record manifest — skip if replaying without an explicit --ref (nothing changed)
-  if (!noRecord && (!fromManifestFlag || refExplicit)) {
+  // Persist a successful rename even when replaying without a new explicit ref.
+  const renamed = fromManifestFlag && readManifest(manifestReadPath)
+    .some(e => !emitPairs.some(p => p.name === e.name && p.harness === e.harness));
+  if (!noRecord && (!fromManifestFlag || refExplicit || renamed)) {
     const writePath = fromManifestFlag ? manifestReadPath : manifestWritePath;
     const entries = emitPairs.map(({ name, harness, ref: r }) => ({
       name, harness, ref: refExplicit ? ref : (r ?? 'main'),

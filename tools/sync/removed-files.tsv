@@ -40,3 +40,4 @@ tools/linter-setup/deps.mjs	-	a5a742a	2026-06-18	Fix linter detection + convert 
 .claude/skills/grill-with-docs/SKILL.md	.claude/skills/co-plan/SKILL.md	dc2760d	2026-11-06	Rename collaborative planning skill to co-plan
 .cursor/rules/grill-with-docs.mdc	.cursor/rules/co-plan.mdc	dc2760d	2026-11-06	Rename collaborative planning skill to co-plan
 skills/grill-with-docs.md	skills/co-plan.md	dc2760d	2026-11-06	Rename collaborative planning skill to co-plan
+.pi/skills/grill-with-docs/SKILL.md	.pi/skills/co-plan/SKILL.md	dc2760d	2026-11-06	Rename collaborative planning skill to co-plan
