@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/loop`, `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/mind-meld`, `/modern-web`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`, `/deslop`, `/upstream`, `/investigate`, `/qa`, `/gmail-automation`, `/retro`.
+Skills can be invoked individually: `/loop`, `/feature-chain`, `/co-plan`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/mind-meld`, `/modern-web`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`, `/deslop`, `/upstream`, `/investigate`, `/qa`, `/gmail-automation`, `/retro`.
 
 In Codex, use `$skill-name` or `/skills` to select these workflows from `.agents/skills`. See [Codex support](codex.md) for setup and client-specific behavior.
 
@@ -41,7 +41,7 @@ tools/
     RESOLVER.md                # central routing table — skill → regex → path
     loop/SKILL.md              # Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver
     feature-chain/SKILL.md     # Orchestrate design → PRD → TDD → review end to end
-    grill-with-docs/SKILL.md   # Design Q&A → design.md + canonical vocabulary
+    co-plan/SKILL.md           # Collaborate with the user to resolve a feature idea, constraints, and design decisions into design.md before implementation
     to-prd/SKILL.md            # Synthesize context + codebase → prd.md
     tdd/SKILL.md               # Vertical-slice TDD → plan.md + tdd-log.md
     design-review/SKILL.md     # Structural review of design.md
@@ -87,7 +87,7 @@ tools/
     agents.mdc            # thin pointer to AGENTS.md
     loop.mdc              # mirrors loop for Cursor
     feature-chain.mdc     # mirrors feature-chain for Cursor
-    grill-with-docs.mdc   # mirrors grill-with-docs for Cursor
+    co-plan.mdc           # mirrors co-plan for Cursor
     to-prd.mdc            # mirrors to-prd for Cursor
     tdd.mdc               # mirrors tdd for Cursor
     design-review.mdc     # mirrors design-review for Cursor
@@ -125,7 +125,7 @@ tools/
   skills/
     loop/SKILL.md              # Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver
     feature-chain/SKILL.md     # Orchestrate design → PRD → TDD → review end to end
-    grill-with-docs/SKILL.md   # Design Q&A → design.md + canonical vocabulary
+    co-plan/SKILL.md           # Collaborate with the user to resolve a feature idea, constraints, and design decisions into design.md before implementation
     to-prd/SKILL.md            # Synthesize context + codebase → prd.md
     tdd/SKILL.md               # Vertical-slice TDD → plan.md + tdd-log.md
     design-review/SKILL.md     # Structural review of design.md
@@ -166,7 +166,7 @@ tools/
   workflows/
     loop.md              # Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver
     feature-chain.md     # Orchestrate design → PRD → TDD → review end to end
-    grill-with-docs.md   # Design Q&A → design.md + canonical vocabulary
+    co-plan.md           # Collaborate with the user to resolve a feature idea, constraints, and design decisions into design.md before implementation
     to-prd.md            # Synthesize context + codebase → prd.md
     tdd.md               # Vertical-slice TDD → plan.md + tdd-log.md
     design-review.md     # Structural review of design.md

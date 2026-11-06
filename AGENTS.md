@@ -48,7 +48,7 @@ iterations and escalate a real blocker with evidence; stage output, never merge 
 1. **Sync check:** warn and rebase/pull if behind `origin/main` (hook, or `git fetch` + `rev-list --count`).
 2. **PR watch:** subscribe to this branch's open PR, or snapshot it with `gh pr view` / `gh pr checks`.
 3. **Artifacts:** resume relevant `./docs/` `design.md` / `prd.md` / `plan.md`; none and it's feature work →
-   start `/feature-chain` (the grill resolves vague intent).
+   start `/feature-chain` (collaborative planning resolves vague intent).
 → [full text](docs/agents-detail.md#session-start).
 
 ## Responsiveness & Steerability
@@ -162,7 +162,7 @@ repeated judgment to a check; gate model output that drives decisions; mechanica
 
 ## Feature-chain workflow
 
-Non-trivial features run `/feature-chain`: **Design** `/grill-with-docs` → `design.md` (+ `/design-review`) →
+Non-trivial features run `/feature-chain`: **Design** `/co-plan` → `design.md` (+ `/design-review`) →
 **PRD** `/to-prd` → **Plan** vertical slices in `plan.md` → **TDD** `/tdd` RED → GREEN → REFACTOR, then
 `/code-refiner` and `/qa`. Stop on "stop", "pause" or "just answer".
 → [full text](docs/agents-detail.md#feature-chain-workflow) ·

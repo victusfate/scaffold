@@ -475,7 +475,7 @@ On your first response in a new session:
   unrelated artifacts without blocking new work; ask only if intent is unclear.
 - **No artifacts:** when the request is feature work (see *What This Doesn't Apply To*),
   start `/feature-chain` without asking permission. If the user's intent is vague or
-  unstated, the grill (Phase 1) resolves it through Q&A. Do not ask a pre-question first.
+  unstated, collaborative planning (Phase 1) resolves it through Q&A. Do not ask a pre-question first.
 
 ## Minimum Viable Diff
 
@@ -491,7 +491,7 @@ Prefer the smallest change that achieves the goal.
 
 Run `/feature-chain` to execute all phases automatically. Or invoke individually:
 
-1. **Design** — `/grill-with-docs`. Interview one question at a time until
+1. **Design** — `/co-plan`. Interview one question at a time until
    the design tree is resolved. Produces `design.md` with Q&A, decisions, and
    a **canonical vocabulary**. Run `/design-review` (auto-fix mode) before
    advancing — patches `design.md` directly. Auto-advances to PRD when complete.
