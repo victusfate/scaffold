@@ -362,3 +362,9 @@ lib/linters/js/.prettierrc.json
 lib/linters/js/.prettierignore
 .pi/skills/mind-meld/SKILL.md
 tools/linter-setup/strict-defaults.test.ts
+skills/retro.md
+.claude/skills/retro/SKILL.md
+.cursor/rules/retro.mdc
+.agents/skills/retro/SKILL.md
+.agent/workflows/retro.md
+.pi/skills/retro/SKILL.md
