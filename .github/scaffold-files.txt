@@ -368,3 +368,4 @@ skills/retro.md
 .agents/skills/retro/SKILL.md
 .agent/workflows/retro.md
 .pi/skills/retro/SKILL.md
+THIRD_PARTY_NOTICES.txt

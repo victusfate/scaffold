@@ -8,7 +8,7 @@ import { tmpdir } from 'node:os';
 
 import { loadKeep, type WriteResult } from '../lib/safe-write.ts';
 import { readManifest, upsertManifest } from './manifest.ts';
-import { makeEmitters, type Capability, type Emitter } from './emitters.ts';
+import { makeEmitters, NOTICES_REL, type Capability, type Emitter } from './emitters.ts';
 import { parseResolverRows, type ResolverRow } from '../lib/resolver-parse.ts';
 
 export type Harness = 'claude' | 'cursor' | 'antigravity' | 'codex' | 'pi';
@@ -80,7 +80,11 @@ process.on('exit', () => {
 // ---------------------------------------------------------------- source paths (for --plan and --fetch)
 
 function capSourcePaths(cap: Capability, harness: Harness): SourcePath[] {
-  const paths: SourcePath[] = [{ path: cap.path, required: true }];
+  const paths: SourcePath[] = [
+    { path: cap.path, required: true },
+    // Older pinned releases have no shared notice; referenced notices are required at emit.
+    { path: NOTICES_REL, required: false },
+  ];
   if (harness === 'claude') {
     paths.push({ path: `.claude/skills/${cap.name}/SKILL.md`, required: false });
   } else if (harness === 'cursor') {
