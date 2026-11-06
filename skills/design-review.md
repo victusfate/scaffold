@@ -4,7 +4,7 @@
 
 **Review** (called standalone): Present findings as annotated comments or a proposed diff against `design.md`. Wait for user approval before making any changes.
 
-Detect mode from context: if triggered automatically as part of feature-chain or grill-with-docs, use auto-fix. If the user invoked this skill directly, use review mode.
+Detect mode from context: if triggered automatically as part of feature-chain or co-plan, use auto-fix. If the user invoked this skill directly, use review mode.
 
 ## Checklist
 

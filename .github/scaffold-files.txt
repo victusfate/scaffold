@@ -135,7 +135,7 @@ skills/hoist-skill.md
 .agent/workflows/hoist-skill.md
 .claude/skills/RESOLVER.md
 skills/feature-chain.md
-skills/grill-with-docs.md
+skills/co-plan.md
 skills/to-prd.md
 skills/tdd.md
 skills/design-review.md
@@ -143,7 +143,7 @@ skills/skillify.md
 skills/sync-scaffold.md
 skills/create-pr.md
 .claude/skills/feature-chain/SKILL.md
-.claude/skills/grill-with-docs/SKILL.md
+.claude/skills/co-plan/SKILL.md
 .claude/skills/to-prd/SKILL.md
 .claude/skills/tdd/SKILL.md
 .claude/skills/design-review/SKILL.md
@@ -153,14 +153,14 @@ skills/create-pr.md
 .cursor/rules/agents.mdc
 .cursor/rules/design-review.mdc
 .cursor/rules/feature-chain.mdc
-.cursor/rules/grill-with-docs.mdc
+.cursor/rules/co-plan.mdc
 .cursor/rules/skillify.mdc
 .cursor/rules/tdd.mdc
 .cursor/rules/to-prd.mdc
 .cursor/rules/sync-scaffold.mdc
 .cursor/rules/create-pr.mdc
 .agents/skills/feature-chain/SKILL.md
-.agents/skills/grill-with-docs/SKILL.md
+.agents/skills/co-plan/SKILL.md
 .agents/skills/to-prd/SKILL.md
 .agents/skills/tdd/SKILL.md
 .agents/skills/design-review/SKILL.md
@@ -168,7 +168,7 @@ skills/create-pr.md
 .agents/skills/sync-scaffold/SKILL.md
 .agents/skills/create-pr/SKILL.md
 .agent/workflows/feature-chain.md
-.agent/workflows/grill-with-docs.md
+.agent/workflows/co-plan.md
 .agent/workflows/to-prd.md
 .agent/workflows/tdd.md
 .agent/workflows/design-review.md
@@ -369,3 +369,4 @@ skills/retro.md
 .agent/workflows/retro.md
 .pi/skills/retro/SKILL.md
 THIRD_PARTY_NOTICES.txt
+.pi/skills/co-plan/SKILL.md

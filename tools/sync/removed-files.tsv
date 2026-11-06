@@ -35,3 +35,8 @@ tools/linter-setup/deps.mjs	-	a5a742a	2026-06-18	Fix linter detection + convert 
 .agent/workflows/skill-export.md	-	71941b6	2026-06-04	refactor: rename capability-export → hoist-skill, skill-export → hoist-skill
 .claude/skills/thermo-nuclear-quality-review/SKILL.md	-	1f9a4d6	2026-05-28	refactor(quality): split into design-review and code-quality-review skills
 .cursor/rules/thermo-nuclear-quality-review.mdc	-	1f9a4d6	2026-05-28	refactor(quality): split into design-review and code-quality-review skills
+.agent/workflows/grill-with-docs.md	.agent/workflows/co-plan.md	dc2760d	2026-11-06	Rename collaborative planning skill to co-plan
+.agents/skills/grill-with-docs/SKILL.md	.agents/skills/co-plan/SKILL.md	dc2760d	2026-11-06	Rename collaborative planning skill to co-plan
+.claude/skills/grill-with-docs/SKILL.md	.claude/skills/co-plan/SKILL.md	dc2760d	2026-11-06	Rename collaborative planning skill to co-plan
+.cursor/rules/grill-with-docs.mdc	.cursor/rules/co-plan.mdc	dc2760d	2026-11-06	Rename collaborative planning skill to co-plan
+skills/grill-with-docs.md	skills/co-plan.md	dc2760d	2026-11-06	Rename collaborative planning skill to co-plan
