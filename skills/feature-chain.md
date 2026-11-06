@@ -48,7 +48,7 @@ Rationale: Phase 2 (`to-prd`) adds value even when the input is already a comple
 
 ## Phase 1: Design
 
-Run `/grill-with-docs`; it owns the interview, the design-tree resolution, and
+Run `/co-plan`; it owns the interview, the design-tree resolution, and
 `design.md`. Chain-specific glue:
 
 - **Callable units — decide at design time.** If the feature adds a tool,
@@ -129,4 +129,4 @@ Wait here unless existing session or standing project policy already authorizes 
 
 ## Stopping and resuming
 
-If the user says "stop", "pause", or "just answer", stop the chain immediately. Resume any phase individually: `/grill-with-docs`, `/to-prd`, `/tdd`.
+If the user says "stop", "pause", or "just answer", stop the chain immediately. Resume any phase individually: `/co-plan`, `/to-prd`, `/tdd`.

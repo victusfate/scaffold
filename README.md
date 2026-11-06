@@ -18,7 +18,7 @@ gh repo clone victusfate/my-new-project
 
 - **Design through evidence** — agents investigate assumptions, compare approaches when needed, and revise code and specifications as they learn. Owners supply intent and consequential tradeoffs. Builds, checks, and delivery automate repeatable work; merge throughput alone does not measure product success. See the rubric's [Design Validity criteria](lib/code-quality-rubric.md#6-design-validity).
 - **Single source of truth** — `AGENTS.md` holds all agent instructions. `CLAUDE.md` imports it; `GEMINI.md` references it; `.cursor/rules/agents.mdc` points to it. No duplication.
-- **Careful before fast** — features start with a structured design Q&A (`grill-with-docs`) that locks in vocabulary and decisions before any code is written.
+- **Careful before fast** — features start with a structured design Q&A (`co-plan`) that locks in vocabulary and decisions before any code is written.
 - **Automatic flow** — once the Q&A is done, the rest runs on its own (PRD → TDD → review gate), with no handoffs for you to manage.
 - **Minimum viable diff** — agents are told to make the smallest change that does the job and skip opportunistic refactors.
 - **Quality is scored, not vibed** — every changed file is graded on a four-dimension rubric with cited, weighted deductions, and the chain won't open a PR until each one scores 10/10.
@@ -28,11 +28,11 @@ gh repo clone victusfate/my-new-project
 Start a feature by telling your agent what you want to build. The `feature-chain` skill picks it up and runs four phases:
 
 ```
-grill-with-docs → to-prd → tdd → review
+co-plan → to-prd → tdd → review
      (Q&A)        (auto)   (auto)  (you)
 ```
 
-1. **grill-with-docs** — Agent interviews you one question at a time, sharpens terminology, stress-tests against the codebase, and produces `./docs/<slug>/design.md` with a canonical vocabulary and Mermaid/ASCII diagrams as structure becomes clear.
+1. **co-plan** — Agent interviews you one question at a time, sharpens terminology, stress-tests against the codebase, and produces `./docs/<slug>/design.md` with a canonical vocabulary and Mermaid/ASCII diagrams as structure becomes clear.
 2. **to-prd** — Synthesizes the conversation and codebase into `./docs/<slug>/prd.md` automatically. No re-interviewing.
 3. **tdd** — Derives `plan.md` from the PRD, then executes RED → GREEN → REFACTOR one vertical slice at a time, scoring each slice against the quality rubric as it goes. Commits per slice.
 4. **Review** — Once the slices pass, `simplify` brings every changed file to 10/10 on all four rubric dimensions, and `qa` runs the app through the changed entry points and fixes what breaks. Then the chain shows you a summary of what was built, which tests pass, and any departures from the plan, and waits for your review before merging.
@@ -211,7 +211,7 @@ The sync flow above is bulk — it pulls every file in the manifest. If you only
 ```bash
 # From inside a scaffold clone, target another repo
 node tools/hoist-skill/run \
-  --names feature-chain,grill-with-docs,tdd \
+  --names feature-chain,co-plan,tdd \
   --harness claude \
   --into ../my-project
 ```
@@ -412,7 +412,7 @@ No manual steps needed day-to-day:
 
 ## Credits
 
-The `grill-with-docs`, `to-prd`, and `tdd` skills are adapted from [Matt Pocock's skills repo](https://github.com/mattpocock/skills/tree/main/skills/engineering). The core workflow — careful design Q&A → PRD → vertical-slice TDD — is his.
+The `co-plan`, `to-prd`, and `tdd` skills are adapted from [Matt Pocock's skills repo](https://github.com/mattpocock/skills/tree/main/skills/engineering). The core workflow — careful design Q&A → PRD → vertical-slice TDD — is his. Copyright and MIT terms for these skills and `retro` are in [THIRD_PARTY_NOTICES.txt](THIRD_PARTY_NOTICES.txt), shipped separately from agent instructions.
 
 Other skills adapted from MIT-licensed projects:
 

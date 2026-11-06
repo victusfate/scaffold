@@ -135,3 +135,5 @@ When the full test suite is green, run `/code-refiner` in auto-fix mode. It revi
 Prompt: **"All tests pass. Please review the generated source before merging."**
 
 Wait for the user to confirm or request changes.
+
+Adapted from Matt Pocock ([MIT notice](../THIRD_PARTY_NOTICES.txt)).

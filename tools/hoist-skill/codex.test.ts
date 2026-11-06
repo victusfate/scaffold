@@ -1,3 +1,7 @@
+// Shared export regressions run through this existing npm test entry point.
+import './notices.test.ts';
+import './rename.test.ts';
+
 import assert from 'node:assert/strict';
 import { execFile, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
