@@ -39,8 +39,9 @@ prior checkpoints. Keep it terse and act-ready:
 - **Exact next action** — the precise command(s) to run next, written so a cold
   reader acts without guessing. This section is what makes pickup instant.
 - **In-flight state** — which subagent / worktree holds which task (agent id),
-  any lane whose push was rejected and still has to land, and the serial-resource
+  any lane whose integration is pending, and the serial-resource
   cursor (e.g. which GPU or queue item is mid-flight).
+- **Process control** — link to [process ownership](../AGENTS.md#session-and-process-ownership), rather than restating it.
 - **Pending decisions** — anything awaiting the user.
 - **`## State`** — the facts the next session will rely on, one bullet each, tagged
   `[verified: <command or file:line>]` or `[unverified]`. A cold reader acts on these
@@ -62,9 +63,9 @@ No secrets, keys, or tokens — this gets pushed.
 
 ### 3 — Push immediately
 
-- `git push` from the one working branch, after the local preflight. Worktree lanes never push; the
-  orchestrator merges them and is the only pusher (AGENTS.md, *NO PUSH RACE*). A local-only checkpoint does
-  not survive the machine going away.
+- Publish the one working branch after local preflight, following
+  [process ownership](../AGENTS.md#session-and-process-ownership). A local-only checkpoint does not survive
+  the machine going away.
 - No upstream? Set one (`git push -u origin <branch>`); without a push, pickup cannot work.
 
 ### 4 — Near the usage limit: schedule past the reset
@@ -84,8 +85,8 @@ the remainder:
 
 1. **Frequent beats final.** Fire `/save` on every lane merge and at each meaningful step, not once at the
    end. A checkpoint one step stale survives a rate-limit; one written only at shutdown does not.
-2. **Pushed or stranded.** Pickup sees only pushed commits: the orchestrator pushes converged work; lanes
-   commit locally only.
+2. **Pushed or stranded.** Pickup sees only published commits; follow
+   [process ownership](../AGENTS.md#session-and-process-ownership).
 3. **Explicit paths, no junk.** Stage converged work by path; never `git add -A` in a repo carrying build or
    forge intermediates.
 4. **One handoff, overwritten, on the branch only.** `.pause/handoff.md` is always current; history keeps

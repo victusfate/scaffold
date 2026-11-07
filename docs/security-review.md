@@ -108,7 +108,7 @@ the whole rule, its severity; read from `origin/main`), and `scripts/security-ru
 | Check | Tool | Fails on (finding id) |
 |---|---|---|
 | Secrets in the merged commits | gitleaks (`.gitleaks.toml`) | any credential pattern, values redacted (`secret:<fingerprint>`) |
-| Static analysis of changed files | Semgrep: the latest registry packs, diffed against the accepted rule set (`default`, `secrets`, `r2c-security-audit`, `typescript`, `nodejsscan`) + the repo's `.semgrep/` rules | ERROR/WARNING findings introduced by this diff (`sast:<rule>@<file>:<line>`); a file it could not parse (`sast-error:<type>@<file>`) |
+| Static analysis of changed files | Semgrep: the latest registry packs, diffed against the accepted rule set (`default`, `secrets`, `r2c-security-audit`, `typescript`, `nodejsscan`) + the repo's `.semgrep/` rules | ERROR/WARNING findings introduced by this diff (`sast:<rule>@<file>:<line>`); new parser coverage gaps (`sast-error:<type>@<file>`); unchanged same-type/path gaps remain visible in report `coverage` |
 | Known-vulnerable dependencies | osv-scanner | a vulnerable package/version the diff adds (`vuln:<id>:<pkg>@<version>`) |
 | Rust crate sources | cargo-deny (`deny.toml`, `--frozen`) on an isolated copy of HEAD | any non-crates.io source or ban, lockfile drift (`cargo-deny:<code>`) |
 | JS/TS security lint, changed lines only | ESLint via `scripts/security-eslint.ts` and the pinned stack: eslint-plugin-security, eslint-plugin-no-unsanitized, typescript-eslint type-aware rules | an error on a line this diff added or changed, or a file it cannot parse (`eslint:<rule>@<file>:<line>`) |
@@ -276,7 +276,7 @@ environment, user-writable directories.
       it, and then only quoted as evidence.
 - [ ] Changes to `AGENTS.md`, `skills/`, `.githooks/`, `.github/`, the gate's own
       files, release and deploy scripts get extra scrutiny: they steer agents or run with credentials.
-- [ ] Subagents, lanes and external-driver runs never gain push, deploy, release or credential access through the change.
+- [ ] Review publication and lifecycle capabilities against [process ownership](../AGENTS.md#session-and-process-ownership).
 
 ## Recording
 
