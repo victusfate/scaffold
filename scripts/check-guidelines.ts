@@ -29,7 +29,7 @@ const PROCESS_RULES = [
   /\b(?:never|do not|must not|only)\b[^.!?]*\b(?:kill|pkill|killall|taskkill|terminate|signal|stop|wait)\b[^.!?]*\b(?:name|pattern|pid|pids|process|child|ownership)\b/i,
   /\b(?:wait|stop)\b[^.!?]*\brecorded\b[^.!?]*\b(?:pid|pids|identity|handle)\b/i,
   /\b(?:lanes?|subagents?)\b[^.!?]*\b(?:never|must not|do not)\b[^.!?]*\b(?:push|publish)\b/i,
-  /\bonly\s+(?:the\s+)?orchestrator\b[^.!?]*\bpush(?:es)?\b/i,
+  /\bonly (?:the )?orchestrator\b[^.!?]*\bpush(?:es)?\b/i,
   /\b(?:never|do not|must not)\b[^.!?]*\bforce[- ]push\b/i,
 ];
 
