@@ -370,3 +370,4 @@ skills/retro.md
 .pi/skills/retro/SKILL.md
 THIRD_PARTY_NOTICES.txt
 .pi/skills/co-plan/SKILL.md
+skills/loop/reference.md

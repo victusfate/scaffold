@@ -86,3 +86,4 @@ security/rules-accepted.json
 .agent/boundaries.json
 tools/hoist-skill/notices.test.ts
 tools/hoist-skill/rename.test.ts
+tools/hoist-skill/references.test.ts

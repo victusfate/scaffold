@@ -84,6 +84,7 @@ function capSourcePaths(cap: Capability, harness: Harness): SourcePath[] {
     { path: cap.path, required: true },
     // Older pinned releases have no shared notice; referenced notices are required at emit.
     { path: NOTICES_REL, required: false },
+    { path: cap.path.replace(/\.md$/, '/reference.md'), required: false },
   ];
   if (harness === 'claude') {
     paths.push({ path: `.claude/skills/${cap.name}/SKILL.md`, required: false });

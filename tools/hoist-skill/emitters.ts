@@ -35,6 +35,12 @@ function safeWrite(dest: string, relPath: string, content: string, kept: KeepMat
 // quality-override: parameter-discipline — internal; makeEmitters presents the public 4-arg Emitter form
 function writeBody(cap: Capability, dest: string, srcRoot: string, kept: KeepMatcher, results: WriteResult[], force: boolean): void {
   const body = readFileSync(join(srcRoot, cap.path), 'utf8');
+  const referenceRel = cap.path.replace(/\.md$/, '/reference.md');
+  const reference = join(srcRoot, referenceRel);
+  if (body.includes(`${cap.name}/reference.md`) && !existsSync(reference))
+    throw new Error(`hoist-skill: missing source ${referenceRel} required by ${cap.path}`);
+  if (existsSync(reference))
+    safeWrite(dest, referenceRel, readFileSync(reference, 'utf8'), kept, results, force);
   const notices = join(srcRoot, NOTICES_REL);
   if (existsSync(notices)) {
     safeWrite(dest, NOTICES_REL, readFileSync(notices, 'utf8'), kept, results, force);
