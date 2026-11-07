@@ -745,14 +745,26 @@ Full rationale and pilot plan: [`docs/knowledge-architecture.md`](docs/knowledge
   doc drifts: agents read the binding rules at session start, not every plan. When an owner states a
   standing rule ("X is the source of truth"), add it to the binding rule file and, where it can be
   checked, a check that fails when new work violates it.
-- **Tasks are human-owned.** Top-level tasks come from a human. Work an agent finds while working
-  (review follow-ups, bugs hit while shipping, report clusters) attaches to the task it came from as
-  a child (`queue add "<title>" --parent <task-id>`) or a note on that task. An agent adds a new
-  top-level task only for a human's explicit request, quoting their words
-  (`--requested "<their words>"`); with no parent and no request it asks the human first. The queue
-  CLI enforces this in agent sessions (`scripts/queue-task-origin.ts`) and records the origin as a
-  `parent:<id>` or `requested-by:human` tag. The quote is unauthenticated text, so only quote real
-  words, as with owner sign-offs.
+- **Only the owner creates tasks.** Every task comes from the owner. An agent creates a task only when
+  the owner explicitly asks for *that* task, quoting their words (`--requested "<their words>"`).
+  Work an agent finds while working (review follow-ups, bugs hit while shipping, report clusters,
+  the unfinished remainder of a slice) **augments the existing task it came from** — a note, a typed
+  checkpoint or evidence on that task — or goes into the orchestrator's summary for the owner to
+  triage. A child task (`--parent`) is not a way around this: agent-filed children for findings or
+  for shipping bookkeeping are what turn a backlog into one that only grows. The queue CLI records
+  the origin as a `requested-by:human` tag (`scripts/queue-task-origin.ts`); the quote is
+  unauthenticated text, so only quote real words, as with owner sign-offs. (Owner: "only I can
+  authorize new tasks / you can augment existing tasks".)
+- **Time-box tasks; no forever tasks.** Each task gets a fixed budget of worker time (default 4–6
+  hours, or the owner's own box). The worker brief states the box and ONE concrete outcome with a stop
+  condition, and says workers never create tasks. The orchestrator checks lane run age every loop
+  tick; at the box it stops the lane cleanly (work committed, typed checkpoint), ships the green part,
+  and either closes the task as done — the shipped scope counts — or returns it to owner triage with
+  one checkpoint note of what remains. It never auto-continues the task or spins the remainder into
+  new tasks, and the freed slot takes the next task in the queue's existing order. A task that keeps
+  growing (measurement programs, infrastructure detours) is a signal to ship what is green and stop,
+  not to extend the box. (Owner: "we cannot afford to get stuck on forever tasks that create more
+  tasks and never end"; "each task gets 4-6hours tops".)
 - **Generate hook points; don't hand-write them.** Code locations come from code at a named
   commit, and plans state intent and gates. Subagents own the details and write discoveries back.
 - **Never keep project facts only in harness-private memory.** Facts every subagent needs live in

@@ -69,7 +69,9 @@ the tension lives, then recommend from that mapped space; surfacing the shape le
 Run standing directives **continuously**; the committed, tested slice is the checkpoint. Timers only for
 external gating, usage-limit windows or a crash-safety re-arm, never to pace work. Steering preempts. One fully
 gated unit at a time. Supervise background work by **progress, not liveness**. Never idle while described
-work is unbuilt: "exhausted" means built and reachable.
+work is unbuilt: "exhausted" means built and reachable. **Time-box every task** (default 4–6 h of worker time, or
+the owner's box): at the box, ship the green part and close the task or return it to owner triage with one
+checkpoint note; never auto-continue it or spin its remainder into new tasks.
 → [full text](docs/agents-detail.md#continuous-execution-loops--build-until-done).
 
 ## Orchestration hygiene (lessons from long autonomous runs)
@@ -96,9 +98,10 @@ Lifecycle state (branch, plan, PR, evidence, decisions) lives in the queue CLI's
 markers. **Done requires evidence** (PR, test ids, commit, scope), which goes stale when covered files change.
 Record each owner decision when made, with an id and the owner's words, no broader than those words; promote
 a standing directive into the binding rules (with a check where possible), not only a plan doc. Generate code
-hook points, don't hand-write them. Project facts live in the repo, never only in harness-private memory. **Tasks are
-human-owned:** an agent adds a task only as a child (`--parent <id>`) or with the human's own words
-(`--requested`); the queue CLI refuses a bare agent add.
+hook points, don't hand-write them. Project facts live in the repo, never only in harness-private memory. **Only the
+owner creates tasks:** an agent adds a task only when the owner explicitly asks for that task, quoting their words
+(`--requested`); otherwise it augments an existing task (note, checkpoint, evidence). A child (`--parent`) is not an
+exception, and findings go to the owner, never into new tasks.
 → [full text](docs/agents-detail.md#knowledge-state-typed-and-evidenced-not-prose) ·
 [`docs/knowledge-architecture.md`](docs/knowledge-architecture.md).
 
