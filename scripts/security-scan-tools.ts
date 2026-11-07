@@ -8,7 +8,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { packConfigs } from './security-rules.ts';
 import { type Ctx, EXIT_CLEAN, EXIT_FINDINGS, MAX_BUFFER, MSG_MAX, addFinding, die, exportTree, git, headTree,
   isFile, lastLine, minimalEnv, need, neutraliseSemgrepIgnore, parseJson, run } from './security-scan-core.ts';
@@ -131,9 +131,13 @@ function parserType(type: unknown): unknown {
   if (type.length !== 2 || type[0] !== 'PartialParsing' || !Array.isArray(type[1])) return null;
   return type[0];
 }
+/** Match Git paths using the host separator only; a backslash can be a literal filename character on POSIX. */
+export function semgrepPath(tree: string, file: string, pathApi = { relative, resolve, sep }): string {
+  return pathApi.relative(tree, pathApi.resolve(tree, file)).split(pathApi.sep).join('/');
+}
 function semgrepError(value: unknown, tree: string, targets: string[]): SemgrepError {
   const { e, paths } = errorPaths(value);
-  const normalized = paths.map(p => relative(tree, resolve(tree, p)));
+  const normalized = paths.map(p => semgrepPath(tree, p));
   const path = normalized[0] || '?';
   const rawType: unknown = parserType(e.type);
   const scoped = normalized.length > 0 && normalized.every(p => p === path) && targets.includes(path) && isFile(join(tree, path));
@@ -152,8 +156,7 @@ export function reportSemgrep(c: Pick<Ctx, 'findings' | 'coverage'>, head: Run, 
   const known = new Set(baseErrors.map(e => e.key).filter(k => k !== null));
   const errors = semgrepErrors(head, targets);
   // A config/global failure in the baseline scan also makes its results untrustworthy.
-  const baseFailures = baseErrors.filter(e => e.key === null
-    && !errors.some(h => h.type === e.type && h.path === e.path));
+  const baseFailures = baseErrors.filter(e => e.key === null);
   for (const e of [...errors, ...baseFailures]) {
     if (e.key !== null && known.has(e.key)) {
       (c.coverage ??= []).push({ tool: 'semgrep', at: e.path, type: e.type,

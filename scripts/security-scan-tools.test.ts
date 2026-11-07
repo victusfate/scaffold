@@ -4,9 +4,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, posix, win32 } from 'node:path';
 import { tmpdir } from 'node:os';
-import { SAST_TARGETS_FILE, parseSastTargets, sastTargets, reportSemgrep } from './security-scan-tools.ts';
+import { SAST_TARGETS_FILE, parseSastTargets, sastTargets, reportSemgrep, semgrepPath } from './security-scan-tools.ts';
 
 /** A gate dir holding `list` as its security/sast-targets.txt (or none when `list` is null). */
 function cfgDir(list: string | null): string {
@@ -87,7 +87,7 @@ void test('new error type, new unparseable file, and real findings still block',
   assert.equal(c.findings.length, 1);
   assert.equal(c.findings[0].id, 'sast:danger@ship.sh:1');
   assert.equal(c.coverage?.length, 1);
-  assert.equal(semgrepFixture([{ type: 'PartialParsing', path: 'new.sh' }]).findings.length, 1);
+  assert.equal(semgrepFixture([{ type: 'PartialParsing', path: 'new.sh' }], []).findings.length, 1);
 });
 
 void test('unknown, global, out-of-target and ambiguous errors cannot be baselined', () => {
@@ -96,7 +96,7 @@ void test('unknown, global, out-of-target and ambiguous errors cannot be baselin
     { type: 'PartialParsing' }, { type: 'PartialParsing', path: '../ship.sh' },
     { type: 'PartialParsing', path: 'ship.sh', spans: [{ file: 'other.sh' }] },
     { type: 'PartialParsing!', path: 'ship.sh' }, { type: ['PartialParsing', {}], path: 'ship.sh' }, { type: {}, path: 'ship.sh' },
-  ]) assert.equal(semgrepFixture([error]).findings.length, 1, JSON.stringify(error));
+  ]) assert.equal(semgrepFixture([error]).findings.length, 2, JSON.stringify(error));
   for (const error of [null, 'bad', { type: 'PartialParsing', path: 1 }, { spans: {} }]) {
     assert.throws(() => semgrepFixture([error]), /semgrep.*error/);
   }
@@ -125,4 +125,37 @@ void test('a parser coverage gap repaired in HEAD no longer appears in findings 
   const c = semgrepFixture([], [{ type: 'PartialParsing', path: 'ship.sh' }]);
   assert.deepEqual(c.findings, []);
   assert.deepEqual(c.coverage, []);
+});
+
+void test('inherited coverage cannot hide unknown or malformed baseline errors with the same display id', () => {
+  const valid = { type: 'PartialParsing', path: 'ship.sh' };
+  for (const type of ['PartialParsing!', ['PartialParsing', {}]]) {
+    const c = semgrepFixture([valid], [valid, { type, path: 'ship.sh' }]);
+    assert.equal(c.findings.length, 1, JSON.stringify(type));
+    assert.equal(c.coverage?.length, 1);
+  }
+});
+
+void test('native error path separators normalize to Git paths without changing literal POSIX backslashes', () => {
+  assert.equal(semgrepPath('C:\\export', '.\\scripts\\ship.sh', win32), 'scripts/ship.sh');
+  assert.equal(semgrepPath('C:\\export', 'C:\\export\\scripts\\ship.sh', win32), 'scripts/ship.sh');
+  assert.equal(semgrepPath('/export', './scripts/ship.sh', posix), 'scripts/ship.sh');
+  assert.equal(semgrepPath('/export', 'scripts/a\\b.sh', posix), 'scripts/a\\b.sh');
+});
+
+void test('nested Git target paths retain inherited coverage', () => {
+  const dir = cfgDir(null);
+  const base = join(dir, 'base');
+  const head = join(dir, 'head');
+  const c = { findings: [], coverage: [] } as Pick<import('./security-scan-core.ts').Ctx, 'findings' | 'coverage'>;
+  try {
+    for (const tree of [base, head]) {
+      mkdirSync(join(tree, 'scripts'), { recursive: true });
+      writeFileSync(join(tree, 'scripts/ship.sh'), 'echo fixture\n');
+    }
+    reportSemgrep(c, { tree: head, out: { results: [], errors: [{ type: 'PartialParsing', path: join(head, 'scripts/ship.sh') }] } },
+      { tree: base, out: { results: [], errors: [{ type: 'PartialParsing', path: './scripts/ship.sh' }] } }, ['scripts/ship.sh']);
+    assert.deepEqual(c.findings, []);
+    assert.equal(c.coverage?.[0].at, 'scripts/ship.sh');
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });
