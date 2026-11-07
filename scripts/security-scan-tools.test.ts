@@ -115,3 +115,8 @@ void test('absolute export paths normalize to the same repo-relative coverage id
     assert.equal(c.coverage?.[0].at, 'ship.sh');
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+void test('a failed non-parser merge-base scan cannot supply a trusted baseline', () => {
+  const c = semgrepFixture([], [{ type: 'FatalError', path: 'ship.sh' }]);
+  assert.equal(c.findings.length, 1);
+});

@@ -148,8 +148,13 @@ export function reportSemgrep(c: Pick<Ctx, 'findings' | 'coverage'>, head: Run, 
     const msg = r.extra.message.replace(/\s+/g, ' ').slice(0, MSG_MAX);
     addFinding(c, { id: `sast:${r.check_id.split('.').pop()}@${at}`, tool: 'semgrep', at, msg: `[${r.extra.severity}] ${msg}` });
   }
-  const known = new Set(base ? semgrepErrors(base, targets).map(e => e.key).filter(k => k !== null) : []);
-  for (const e of semgrepErrors(head, targets)) {
+  const baseErrors = base ? semgrepErrors(base, targets) : [];
+  const known = new Set(baseErrors.map(e => e.key).filter(k => k !== null));
+  const errors = semgrepErrors(head, targets);
+  // A config/global failure in the baseline scan also makes its results untrustworthy.
+  const baseFailures = baseErrors.filter(e => e.key === null
+    && !errors.some(h => h.type === e.type && h.path === e.path));
+  for (const e of [...errors, ...baseFailures]) {
     if (e.key !== null && known.has(e.key)) {
       (c.coverage ??= []).push({ tool: 'semgrep', at: e.path, type: e.type,
         msg: 'existing parser coverage gap at merge base' });
