@@ -1,5 +1,6 @@
 // Shared export regressions run through this existing npm test entry point.
 import './notices.test.ts';
+import './references.test.ts';
 import './rename.test.ts';
 
 import assert from 'node:assert/strict';

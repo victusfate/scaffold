@@ -29,7 +29,7 @@ const PROCESS_RULES = [
   /\b(?:never|do not|must not|only)\b[^.!?]*\b(?:kill|pkill|killall|taskkill|terminate|signal|stop|wait)\b[^.!?]*\b(?:name|pattern|pid|pids|process|child|ownership)\b/i,
   /\b(?:wait|stop)\b[^.!?]*\brecorded\b[^.!?]*\b(?:pid|pids|identity|handle)\b/i,
   /\b(?:lanes?|subagents?)\b[^.!?]*\b(?:never|must not|do not)\b[^.!?]*\b(?:push|publish)\b/i,
-  /\bonly\s+(?:the\s+)?orchestrator\b[^.!?]*\bpush(?:es)?\b/i,
+  /\bonly (?:the )?orchestrator\b[^.!?]*\bpush(?:es)?\b/i,
   /\b(?:never|do not|must not)\b[^.!?]*\bforce[- ]push\b/i,
 ];
 
@@ -43,6 +43,14 @@ function processCopies(path: string, text: string): string[] {
     .filter(p => PROCESS_RULES.some(rule => rule.test(p)));
 }
 
+function processErrors(path: string, text: string): string[] {
+  const errors = processCopies(path, text).map(copy =>
+    `${path}: process-safety rule outside ${PROCESS_HOME}; link to it instead: "${copy.slice(0, 80)}…"`);
+  if (PROCESS_POINTERS.has(path) && !text.includes(PROCESS_HOME))
+    errors.push(`${path} needs a process-safety pointer to ${PROCESS_HOME}`);
+  return errors;
+}
+
 function paragraphs(text: string): string[] {
   return text.replace(/```[\s\S]*?```/g, '').split(/\n\s*\n/)
     .map(p => p.replace(/\s+/g, ' ').trim()).filter(p => p.length >= MIN_PARAGRAPH && !p.includes('quality-override:'));
@@ -52,10 +60,7 @@ export function check(files: Map<string, string>, skillMax = SKILL_MAX_BYTES): s
   const errors: string[] = [];
   const homes = new Map<string, string[]>();
   for (const [path, text] of files) {
-    if (PROCESS_POINTERS.has(path) && !text.includes(PROCESS_HOME))
-      errors.push(`${path} needs a process-safety pointer to ${PROCESS_HOME}`);
-    for (const copy of processCopies(path, text))
-      errors.push(`${path}: process-safety rule outside ${PROCESS_HOME}; link to it instead: "${copy.slice(0, 80)}…"`);
+    errors.push(...processErrors(path, text));
     for (const p of paragraphs(text)) homes.set(p, [...(homes.get(p) ?? []), path]);
     text.split('\n').forEach((line, i) => {
       if (ROOT_TERM.test(line)) errors.push(`${path}:${i + 1} says "the root"; the canonical term is "the orchestrator"`);

@@ -90,6 +90,13 @@ inline_skill() {
 RESOLVED="$(inline_skill "$SKILL_MD")" || exit 1
 # The standalone skill keeps its notice beside SKILL.md, rather than above skills/.
 RESOLVED="${RESOLVED//..\/THIRD_PARTY_NOTICES.txt/THIRD_PARTY_NOTICES.txt}"
+REFERENCE="$REPO/skills/$NAME/reference.md"
+REFERENCE_LINK="($NAME/reference.md)"
+if [[ "$RESOLVED" == *"$REFERENCE_LINK"* ]] && [ ! -f "$REFERENCE" ]; then
+  echo "ERROR: missing required reference: $REFERENCE" >&2
+  exit 1
+fi
+RESOLVED="${RESOLVED//"$REFERENCE_LINK"/(reference.md)}"
 NOTICES="$REPO/THIRD_PARTY_NOTICES.txt"
 if [[ "$RESOLVED" == *THIRD_PARTY_NOTICES.txt* ]] && [ ! -f "$NOTICES" ]; then
   echo "ERROR: missing required notice: $NOTICES" >&2
@@ -100,6 +107,7 @@ if [ "$DRY" -eq 1 ]; then
   echo "# DRY RUN — $NAME from $REPO  →  $TARGET/$NAME/"
   echo "# ---- resolved SKILL.md ----"
   printf '%s\n' "$RESOLVED"
+  [ ! -f "$REFERENCE" ] || echo "# + would copy aux: reference.md"
   [ ! -f "$NOTICES" ] || echo "# + would copy aux: THIRD_PARTY_NOTICES.txt"
   # list aux files that would also be copied
   while IFS= read -r f; do
@@ -121,6 +129,11 @@ while IFS= read -r f; do
   cp "$f" "$TARGET/$NAME/$rel"
   aux=$((aux+1))
 done < <(find "$SKILL_DIR" -type f)
+
+if [ -f "$REFERENCE" ]; then
+  cp "$REFERENCE" "$TARGET/$NAME/reference.md"
+  aux=$((aux+1))
+fi
 
 # Keep license text as a sidecar, never part of the resolved prompt.
 if [ -f "$NOTICES" ]; then
