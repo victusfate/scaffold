@@ -15,23 +15,28 @@ is active, and never change global model, trust or permission settings to make a
 
 ## Session and process ownership
 
-One orchestrator per session; other sessions are independent owners. Never stop, signal, reclaim or
-interrupt another session's orchestrator, subagents or user-launched agent CLIs; process names, PIDs, queue
-labels and worktrees never grant authority. Only a lifecycle controller may terminate the exact child tree it
-created, and only on explicit cancel or timeout. Ambiguous ownership: leave it alone and report.
-→ [full text](docs/agents-detail.md#session-and-process-ownership).
+One orchestrator per session; other sessions and user-launched CLIs are independent owners.
+- Control this session's recorded handles/worktrees. Names, PIDs, queue labels, staleness and aggregate
+  resource observation grant no lifecycle authority.
+- Only a lifecycle controller may terminate its exact child tree for the current generation, on explicit
+  cancel or timeout. Normal completion sends no signal; ambiguous ownership stays untouched and stops dispatch.
+- Wait and stop by recorded PID or owned handle, never by name/pattern matching or inferred PID.
+- Cancellation/timeouts cover the owned tree/session, including destructive-job children. Pause agents,
+  not user-visible applications they launched.
+- Only the authorized orchestrator publishes. Lanes and bounded runs commit locally and report; they do not
+  push, merge the orchestrator's branch, or deploy. Push without force and preserve main's history.
+→ [rationale](docs/agents-detail.md#session-and-process-ownership).
 
 ## Roles — orchestrator, subagent, active agent
 
-- **Orchestrator:** one per session. Owns the plan, the working branch, integration, pushes, the PR, and merges
+- **Orchestrator:** one per session. Owns the plan, the working branch, integration, the PR, and merges
   (only with explicit authorization).
 - **Subagent:** started by the orchestrator for one task, in its own lane. Works only that task, commits
-  locally, never pushes, merges or edits outside its lane, and reports evidence (commit, tests run, doubts).
+  locally in that lane and reports evidence (commit, tests run, doubts).
 - **Active agent:** whichever agent is running now. Every rule binds it in its current role; alone in a
   session, it is the orchestrator. A subagent that picks up a task from a skill or the queue follows that
   skill's subagent steps, never its orchestrator steps. A run started by an external driver (`agent-loop`) or a
-  scheduled or queue child is a bounded run, not an orchestrator: it commits locally and never pushes, merges
-  or publishes.
+  scheduled or queue child is a bounded run, not an orchestrator.
 → [terms](docs/agent-authoring-requirements.md#7-writing-guideline-text-agentsmd-skills-their-full-text-docs).
 
 ## Iterative Autonomous Enhancement — a core design principle
@@ -78,18 +83,15 @@ checkpoint note; never auto-continue it or spin its remainder into new tasks.
 
 - Confirm the PR is `MERGED` and its commit is in `origin/main` before deleting branches, worktrees or tasks.
 - Gate with the full suite (`--no-fail-fast`), diff the failure set against main, and read the test diff.
-- Never feed parsed command output into `rm`/`mv` loops; kill a destructive job's children too.
+- Never feed parsed command output into `rm`/`mv` loops.
 - Subagents that "wait" may be asleep: check their processes each tick; subagents never end a turn idle.
 - Tests use isolated save/user dirs; hold a host lock around one command, never a shell.
 - Keep the task board true as subagents start, stop and merge.
 - Never park a worker branch: at most one branch per active subagent plus main. When a subagent stops, resolve its
   branch the same tick: merge it (done), merge sound progress and note what remains, or send another subagent.
-- Wait on and stop processes by recorded PID or a done-marker, never `pgrep -f` name matches (they can match your own
-  shell and any agent whose prompt names the script). Time budgets measure work, not lock waits. A cached result's
+- Time budgets measure work, not lock waits. A cached result's
   key excludes what the checked step itself produces.
-- A warm-up/pre-build step runs the exact invocation (args, flags, env) of the check it warms. Pausing workers
-  never freezes an interactive or GUI process they launched (pause the agent's own processes, not a visible program); a timed-out stage kills the payload's whole
-  session, since GNU `timeout` re-groups its child and a process-group kill misses it.
+- A warm-up/pre-build step runs the exact invocation (args, flags, env) of the check it warms.
 → [full text](docs/agents-detail.md#orchestration-hygiene-lessons-from-long-autonomous-runs).
 
 ## Knowledge state: typed and evidenced, not prose
@@ -179,7 +181,8 @@ Non-trivial features run `/feature-chain`: **Design** `/co-plan` → `design.md`
 **One independent task per PR/merge cycle.** Validate locally, open the PR, verify real required checks on the
 final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of
 the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main.
-**Merge by squash:** one commit per PR on main, titled with the PR title; never rewrite or force-push main.
+**Merge by squash:** one commit per PR on main, titled with the PR title; publication follows
+[process ownership](#session-and-process-ownership).
 **A skipped required check counts as passing on GitHub:** read the actual conclusions, capture the watch
 command's own exit, and make roll-up jobs fail closed (`if: always()` plus a guard). **Handoffs live only on
 branches:** before merging to main, the orchestrator commits `git rm .pause/handoff.md`, and
@@ -209,8 +212,8 @@ back, and the integrator runs `security-gate.ts --precheck` before any preflight
 - **Retire completed artifacts at integration**, and reap zombie worktrees left by interrupted sessions:
   finish lanes with unmerged commits; delete only after verifying owned subagent end and preserving
   unique evidence.
-- **NO PUSH RACE:** lanes commit locally and **never push**. The orchestrator merges, runs the CI gates
-  locally as a pre-flight, and pushes in controlled batches, never with force.
+- **NO PUSH RACE:** follow [publication ownership](#session-and-process-ownership); integrate lanes locally,
+  run the CI preflight, and publish in controlled batches.
 → [full text](docs/agents-detail.md#one-working-branch--fan-out-integration-non-negotiable).
 
 ## File Delivery

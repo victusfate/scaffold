@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
-import { check, MIN_PARAGRAPH } from './check-guidelines.ts';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { check, guidelineFiles, MIN_PARAGRAPH } from './check-guidelines.ts';
 
 const para = (s: string) => s.padEnd(MIN_PARAGRAPH, '.');
 const rule = para('Run the gate before every merge and read the real conclusions');
@@ -33,5 +36,37 @@ assert.match(check(new Map([['skills/big.md', 'x'.repeat(50)]]), 40)[0], /skills
 assert.deepEqual(check(new Map([['skills/big.md', '<!-- quality-ok: skill-length — one protocol -->' + 'x'.repeat(50)]]), 40), []);
 // The budget is for skills; AGENTS.md has its own check.
 assert.deepEqual(check(new Map([['docs/agents-detail.md', 'x'.repeat(50)]]), 40), []);
+
+// Process safety has one binding home, including short and paraphrased copies.
+const processHome = 'AGENTS.md#session-and-process-ownership';
+for (const copy of [
+  'Never kill an agent by process-name matching.',
+  'Do not terminate processes by name or pattern.',
+  'Wait only on recorded PIDs.',
+  'Subagents must not push to origin.',
+  'Only the orchestrator pushes.',
+  'Never force-push main.',
+]) {
+  assert.match(check(new Map([['skills/example.md', copy]]))[0] ?? '', /process-safety rule.*AGENTS.md#session-and-process-ownership/, copy);
+}
+assert.deepEqual(check(new Map([['AGENTS.md', '## Session and process ownership\n\nNever kill an agent by process-name matching.\n\n## Other\n\nText.']])), []);
+assert.match(check(new Map([['AGENTS.md', '## Other\n\nSubagents must not push to origin.']]))[0], /process-safety rule/);
+assert.deepEqual(check(new Map([['skills/example.md', `Follow [process safety](../${processHome}).`]])), []);
+assert.match(check(new Map([['skills/example.md', `Follow [process safety](../${processHome}). Never force-push main.`]]))[0], /process-safety rule/);
+assert.deepEqual(check(new Map([['skills/example.md', '```sh\n# Never kill an agent by process-name matching.\n```']])), []);
+for (const path of ['skills/loop.md', 'skills/pause.md', 'skills/save.md'])
+  assert.match(check(new Map([[path, 'Instructions without the policy pointer.']]))[0], /process-safety pointer/);
+
+const root = mkdtempSync(join(tmpdir(), 'guideline-reference-'));
+try {
+  mkdirSync(join(root, 'docs'));
+  mkdirSync(join(root, 'skills/loop'), { recursive: true });
+  for (const path of ['AGENTS.md', 'docs/agents-detail.md', 'docs/security-review.md'])
+    writeFileSync(join(root, path), '');
+  writeFileSync(join(root, 'skills/loop/reference.md'), 'Wait only on recorded PIDs.');
+  const files = guidelineFiles(root);
+  assert.ok(files.has('skills/loop/reference.md'));
+  assert.match(check(files)[0], /skills\/loop\/reference.md: process-safety rule/);
+} finally { rmSync(root, { recursive: true, force: true }); }
 
 console.log('check-guidelines.test: ok');

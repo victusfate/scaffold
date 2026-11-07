@@ -108,7 +108,7 @@ Report, with links:
 
 ## Never
 
-- Never push to scaffold `main` directly or force-push.
+- Follow [publication ownership](../AGENTS.md#session-and-process-ownership); deliver through the scaffold PR.
 - Never merge on skipped, failing or unread checks.
 - Never upstream secrets, personal data or one project's specifics.
 - Never edit, stash or check out branches in a scaffold or consumer checkout another session is using. Use a worktree.

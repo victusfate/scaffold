@@ -340,8 +340,8 @@ claimed task is self-contained. During execution:
 The orchestrator owns the complete cycle:
 
 1. Claim one independently useful task. Parallel agents work on **subtasks of this
-   task** in isolated worktrees; they report and commit locally. Only the orchestrator
-   integrates, pushes, opens/updates the task PR, and merges.
+   task** in isolated worktrees; they report and commit locally under
+   [publication ownership](../AGENTS.md#session-and-process-ownership).
 2. Satisfy full acceptance, review the diff, and run real local validation on the
    integrated branch. `done` records implementation acceptance, **not a merge**.
 3. Run `/create-pr`; inspect actual required hosted check conclusions on the final
@@ -423,10 +423,8 @@ unique-content audit.
 
 After a harness restart or power outage has erased child handles, an explicit operator
 recovery instruction authorizes the orchestrator to release the stale queue claim
-with the exact stored owner. This authority applies to the queue record only: never run
-`kill`, `pkill`, `killall`, or `taskkill`, and never infer process ownership from a
-name or PID. Claims belonging to another live/possibly-live session remain fail-closed:
-leave its process, record, and worktree untouched and report the ambiguity.
+with the exact stored owner. This authority applies to queue metadata;
+[process ownership](../AGENTS.md#session-and-process-ownership) governs lifecycle control and ambiguous claims.
 
 ## Cleanup at integration
 

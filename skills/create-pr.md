@@ -296,8 +296,8 @@ a CLI check was performed. Never claim a CLI check is a persistent subscription.
 PR creation is not merge authorization. In the default queue flow, the orchestrator keeps this task current until local and required hosted
 validation pass on the final head, an authorized merge actually completes, and a fresh working branch exists.
 If merge authority is absent, preserve the ready PR and report that blocker; do not start another independent
-task. Follow `queue advance` in [queue.md](queue.md) only after verifying those facts. Subagents never push or
-merge the orchestrator's branch.
+task. Follow `queue advance` in [queue.md](queue.md) only after verifying those facts; apply
+[publication ownership](../AGENTS.md#session-and-process-ownership).
 
 ### Clear the handoff (before any merge)
 
