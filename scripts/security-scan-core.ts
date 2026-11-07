@@ -20,6 +20,7 @@ export const MAX_BUFFER = 1 << 30;
 /** git's empty tree: as --attr-source it applies NO .gitattributes, so export-ignore/export-subst cannot hide files. */
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
+export interface CoverageGap { tool: string; at: string; type: string; msg: string }
 export interface Finding { id: string; tool: string; at: string; msg: string; hold: boolean }
 
 /** A setup or scanner failure: the scan fails closed with exit 2. */
@@ -33,6 +34,8 @@ export interface Ctx {
   /** Every path the diff touches, deletions and both sides of renames included (what the gate holds). */
   touched: string[];
   findings: Finding[];
+  /** Existing parser gaps: informational, excluded from the blocking findings. */
+  coverage?: CoverageGap[];
   /** Tools whose pinned hash was verified this scan. */
   verified: Set<string>;
   /** The committed HEAD tree, exported once (scanners never read the working tree). */

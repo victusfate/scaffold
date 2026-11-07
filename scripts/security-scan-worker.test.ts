@@ -7,12 +7,12 @@ import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { GATE_FILES } from './security-gate.ts';
-import type { Finding } from './security-scan-core.ts';
+import type { CoverageGap, Finding } from './security-scan-core.ts';
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..');
 type Failure = 'none' | 'throw' | 'all-errors' | 'exit-zero' | 'partial-zero' | 'partial' | 'timeout' | 'oom' | 'missing';
 interface Timing { name: string; start: number; end: number }
-interface Report { status: number; findings: Finding[]; stages: { name: string }[] }
+interface Report { status: number; findings: Finding[]; coverage: CoverageGap[]; stages: { name: string }[] }
 
 function fixture(mode: Failure = 'none') {
   const root = mkdtempSync(join(tmpdir(), 'scan-worker-test-'));
@@ -33,6 +33,7 @@ function scan(c, name) {
     if (!readFileSync(tree + '/README.md', 'utf8').includes('changed')) throw new Error('wrong committed content');
     if (existsSync(tree + '/untouched.txt')) throw new Error('unexpected full export');
   }
+  if (name === 'semgrep') c.coverage = [{ tool: 'semgrep', at: 'README.md', type: 'PartialParsing', msg: 'baseline fixture' }];
   addFinding(c, { id: name + ':fixture', tool: name, at: 'README.md', msg: 'fixture only' });
   appendFileSync(c.root + '/timings', JSON.stringify({ name, start, end: Date.now() }) + '\\n');
   if (${JSON.stringify(mode)} === 'all-errors') throw new Error(name + ': injected failure');
@@ -45,7 +46,7 @@ function scan(c, name) {
   }
   if (${JSON.stringify(mode)} === 'partial') {
     parentPort.postMessage({ name: 'gitleaks', findings: [], started_at: new Date().toISOString(),
-      ended_at: new Date().toISOString(), seconds: 0 });
+      ended_at: new Date().toISOString(), seconds: 0, coverage: [] });
     process.exit(9);
   }
   if (${JSON.stringify(mode)} === 'timeout') {
@@ -106,6 +107,7 @@ void test('dispatcher preserves findings and committed targets with overlapping 
   assert.equal(r.exit, 1, r.error);
   assert.ok(r.report);
   assert.deepEqual(r.report.findings.map(f => f.id).sort(), ['check:fixture.ts:fixture', 'gitleaks:fixture', 'semgrep:fixture']);
+  assert.deepEqual(r.report.coverage, [{ tool: 'semgrep', at: 'README.md', type: 'PartialParsing', msg: 'baseline fixture' }]);
   assert.deepEqual(r.report.stages.map(s => s.name),
     ['gitleaks', 'semgrep', 'osv', 'zizmor', 'new-deps', 'eslint', 'project-checks', 'cargo-deny']);
   assert.match(r.output, /^security-stage: /m);

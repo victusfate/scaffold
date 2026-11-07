@@ -11,7 +11,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -369,4 +369,41 @@ void test('security gate end-to-end', { skip: SKIP }, async t => {
     g('commit', '-qm', 'drop the accepted list');
     assert.match(gate(body, env).out, /HOLD rules-accepted-deleted/);
   });
+});
+
+
+void test('Semgrep parser gaps baseline unchanged shell coverage but block new unparseable files', { skip: SKIP }, t => {
+  assert.ok(!MISSING, `SECURITY_REQUIRE_TOOLS=1 but ${MISSING}`);
+  mkdirSync(T, { recursive: true });
+  setup();
+  t.after(() => rmSync(T, { recursive: true, force: true }));
+  g('reset', '-q', '--hard', 'origin/main');
+  commit('.semgrep/bash-fixture.yml', 'rules:\n  - id: parser-fixture\n    languages: [bash]\n'
+    + '    severity: INFO\n    message: parse fixture\n    pattern: eval $X\n', 'parser fixture rule');
+  const broken = '#!/bin/bash\neval "$fixture"\n) invalid syntax (\n';
+  commit('ship.sh', broken, 'pre-existing parser gap');
+  pushMain();
+  fresh();
+  commit('ship.sh', `# harmless comment\n${broken}`, 'edit without changing parser coverage');
+  const scan = () => {
+    const report = join(T, 'coverage-report.json');
+    const r = spawnSync(process.execPath, [join(REPO, 'scripts/security-scan.ts'), '--report', report], {
+      cwd: REPO, encoding: 'utf8', env: { ...process.env, ...RULES_ENV,
+        SECURITY_RULES_DIR: RULES, SECURITY_ESLINT_DIR: ESLINT_STACK },
+    });
+    assert.equal(r.error, undefined, String(r.error));
+    const data = JSON.parse(readFileSync(report, 'utf8')) as {
+      findings: { id: string }[]; coverage: { at: string; type: string }[];
+    };
+    return { exit: r.status, data, output: r.stdout + r.stderr };
+  };
+  const inherited = scan();
+  assert.equal(inherited.exit, 0, inherited.output);
+  assert.deepEqual(inherited.data.findings, []);
+  assert.ok(inherited.data.coverage.some(gap => gap.at === 'ship.sh' && gap.type === 'PartialParsing'));
+  commit('new.sh', broken, 'new parser gap');
+  const introduced = scan();
+  assert.equal(introduced.exit, 1, introduced.output);
+  assert.ok(introduced.data.findings.some(f => f.id === 'sast-error:PartialParsing@new.sh'));
+  assert.ok(introduced.data.coverage.some(gap => gap.at === 'ship.sh'));
 });

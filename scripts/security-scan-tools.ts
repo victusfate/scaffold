@@ -8,7 +8,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 import { packConfigs } from './security-rules.ts';
 import { type Ctx, EXIT_CLEAN, EXIT_FINDINGS, MAX_BUFFER, MSG_MAX, addFinding, die, exportTree, git, headTree,
   isFile, lastLine, minimalEnv, need, neutraliseSemgrepIgnore, parseJson, run } from './security-scan-core.ts';
@@ -58,7 +58,7 @@ interface SemgrepResult {
 }
 interface SemgrepOut {
   results: SemgrepResult[];
-  errors?: { type?: unknown; path?: string; spans?: { file?: string }[] }[];
+  errors?: unknown[];
 }
 
 /** A semgrep error's type, reduced to an id-safe token. */
@@ -79,6 +79,7 @@ function semgrepIn(c: Ctx, tree: string, configs: string[], targets: string[]): 
   if (r.status !== EXIT_CLEAN && r.status !== EXIT_FINDINGS) die(`semgrep exited ${r.status}: ${lastLine(r.stderr)}`);
   const out = parseJson(r.stdout, 'semgrep') as SemgrepOut | null;
   if (!Array.isArray(out?.results)) die('semgrep wrote no valid results');
+  if (out.errors !== undefined && !Array.isArray(out.errors)) die('semgrep wrote invalid errors');
   return out;
 }
 
@@ -105,18 +106,57 @@ export function newResults(head: Run, base: Run | null): SemgrepResult[] {
   });
 }
 
-function reportSemgrep(c: Ctx, results: SemgrepResult[], errors: SemgrepOut['errors']): void {
-  for (const r of results.filter(x => x.extra.severity !== 'INFO')) {
+// Only known target-parser errors can inherit a coverage gap. Rule, config, resource and unknown errors block.
+const PARSE_ERRORS = new Set(['PartialParsing', 'ParseError', 'LexicalError', 'OtherParseError',
+  'Syntax error', 'Lexical error', 'Other syntax error']);
+interface SemgrepError { type: string; path: string; key: string | null }
+function semgrepErrors(run: Run, targets: string[]): SemgrepError[] {
+  if (run.out.errors !== undefined && !Array.isArray(run.out.errors)) die('semgrep wrote invalid errors');
+  return (run.out.errors ?? []).map(value => semgrepError(value, run.tree, targets));
+}
+interface RawSemgrepError { type?: unknown; path?: unknown; spans?: { file?: unknown }[] }
+function errorPaths(value: unknown): { e: RawSemgrepError; paths: string[] } {
+  if (!value || typeof value !== 'object') die('semgrep wrote an invalid error');
+  const e = value as RawSemgrepError;
+  if (e.path !== undefined && typeof e.path !== 'string') die('semgrep error has an invalid path');
+  if (e.spans !== undefined && (!Array.isArray(e.spans) || e.spans.some(s => !s || typeof s.file !== 'string'))) {
+    die('semgrep error has invalid spans');
+  }
+  const paths = [e.path, ...(e.spans ?? []).map(s => s.file)].filter((p): p is string => typeof p === 'string');
+  return { e, paths };
+}
+function parserType(type: unknown): unknown {
+  if (!Array.isArray(type)) return type;
+  // PartialParsing is the only tagged parser variant; malformed payloads must not inherit a baseline.
+  if (type.length !== 2 || type[0] !== 'PartialParsing' || !Array.isArray(type[1])) return null;
+  return type[0];
+}
+function semgrepError(value: unknown, tree: string, targets: string[]): SemgrepError {
+  const { e, paths } = errorPaths(value);
+  const normalized = paths.map(p => relative(tree, resolve(tree, p)));
+  const path = normalized[0] || '?';
+  const rawType: unknown = parserType(e.type);
+  const scoped = normalized.length > 0 && normalized.every(p => p === path) && targets.includes(path) && isFile(join(tree, path));
+  return { type: errorType(e.type), path,
+    key: scoped && typeof rawType === 'string' && PARSE_ERRORS.has(rawType) ? `${rawType}\0${path}` : null };
+}
+
+/** Baseline findings and file-scoped parser gaps separately; inherited gaps remain visible, never a clean scan claim. */
+export function reportSemgrep(c: Pick<Ctx, 'findings' | 'coverage'>, head: Run, base: Run | null, targets: string[]): void {
+  for (const r of newResults(head, base).filter(x => x.extra.severity !== 'INFO')) {
     const at = `${clean(r.path)}:${r.start.line}`;
     const msg = r.extra.message.replace(/\s+/g, ' ').slice(0, MSG_MAX);
     addFinding(c, { id: `sast:${r.check_id.split('.').pop()}@${at}`, tool: 'semgrep', at, msg: `[${r.extra.severity}] ${msg}` });
   }
-  // A file semgrep could not parse was not scanned: that is a finding, not a pass.
-  for (const e of errors ?? []) {
-    const path = clean(e.path ?? e.spans?.[0]?.file ?? '?');
-    const type = errorType(e.type);
-    addFinding(c, { id: `sast-error:${type}@${path}`, tool: 'semgrep', at: path,
-      msg: `semgrep could not fully scan this file (${type})` });
+  const known = new Set(base ? semgrepErrors(base, targets).map(e => e.key).filter(k => k !== null) : []);
+  for (const e of semgrepErrors(head, targets)) {
+    if (e.key !== null && known.has(e.key)) {
+      (c.coverage ??= []).push({ tool: 'semgrep', at: e.path, type: e.type,
+        msg: 'existing parser coverage gap at merge base' });
+    } else {
+      addFinding(c, { id: `sast-error:${e.type}@${e.path}`, tool: 'semgrep', at: e.path,
+        msg: `semgrep could not fully scan this file (${e.type})` });
+    }
   }
 }
 
@@ -136,7 +176,7 @@ export function scanSast(c: Ctx): void {
   const atBase = git(['ls-tree', '-r', '-z', '--name-only', c.mb, '--', ...targets], c.root).split('\0').filter(Boolean);
   const baseTree = atBase.length ? exportTree(c, c.mb, join(c.work, 'base-tree'), atBase) : '';
   const base = baseTree ? { tree: baseTree, out: semgrepIn(c, baseTree, configs, atBase) } : null;
-  reportSemgrep(c, newResults({ tree: head, out: headOut }, base), headOut.errors);
+  reportSemgrep(c, { tree: head, out: headOut }, base, targets);
 }
 
 /**
