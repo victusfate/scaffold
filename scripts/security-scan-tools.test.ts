@@ -120,3 +120,9 @@ void test('a failed non-parser merge-base scan cannot supply a trusted baseline'
   const c = semgrepFixture([], [{ type: 'FatalError', path: 'ship.sh' }]);
   assert.equal(c.findings.length, 1);
 });
+
+void test('a parser coverage gap repaired in HEAD no longer appears in findings or coverage', () => {
+  const c = semgrepFixture([], [{ type: 'PartialParsing', path: 'ship.sh' }]);
+  assert.deepEqual(c.findings, []);
+  assert.deepEqual(c.coverage, []);
+});
