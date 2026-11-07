@@ -198,7 +198,7 @@ Models from small local ones to frontier read these files. Every line costs atte
 | Term | Means | Not |
 |---|---|---|
 | orchestrator | the one agent per session that owns the plan, the working branch, integration, pushes, merges and the PR | root |
-| subagent | an agent the orchestrator starts for one task in its own lane; it commits locally, never pushes or merges, and reports evidence | worker |
+| subagent | an agent the orchestrator starts for one task in its own lane; it commits locally, follows [publication ownership](../AGENTS.md#session-and-process-ownership), and reports evidence | worker |
 | active agent | whichever agent is running now; every rule binds it in its current role (alone in a session, it is the orchestrator) | — |
 | lane | a subagent's isolated git worktree off the working branch | — |
 | handoff | `.pause/handoff.md`, the branch-only checkpoint | — |

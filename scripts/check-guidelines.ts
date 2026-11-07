@@ -7,7 +7,8 @@
 //     exempt, and so is a paragraph carrying a `quality-override:` pragma that explains the repetition;
 //   - "the root" for the orchestrator (the canonical term);
 //   - a skill over SKILL_MAX_BYTES, unless it carries `quality-ok: skill-length — <reason>`.
-// AGENTS.md's own size limit is scripts/check-agents-detail.ts.
+//   - common process-safety restatements outside the canonical ownership section, or a missing policy pointer.
+// Nested skill references are checked too. AGENTS.md's size limit is scripts/check-agents-detail.ts.
 //
 //   node scripts/check-guidelines.ts [repo-root]
 
@@ -21,6 +22,26 @@ export const SKILL_MAX_BYTES = 32_000;
 
 const ROOT_TERM = /\bthe root(?:'s)?\b(?!\s+(?:cause|of|dir|directory|folder|checkout|path|commit))|\broot orchestrator\b/i;
 const SKILL_PRAGMA = /quality-ok:\s*skill-length\s*—\s*\S/;
+const PROCESS_HOME = 'AGENTS.md#session-and-process-ownership';
+const PROCESS_POINTERS = new Set(['skills/loop.md', 'skills/pause.md', 'skills/save.md']);
+// Common normative restatements; references and executable examples remain valid.
+const PROCESS_RULES = [
+  /\b(?:never|do not|must not|only)\b[^.!?]*\b(?:kill|pkill|killall|taskkill|terminate|signal|stop|wait)\b[^.!?]*\b(?:name|pattern|pid|pids|process|child|ownership)\b/i,
+  /\b(?:wait|stop)\b[^.!?]*\brecorded\b[^.!?]*\b(?:pid|pids|identity|handle)\b/i,
+  /\b(?:lanes?|subagents?)\b[^.!?]*\b(?:never|must not|do not)\b[^.!?]*\b(?:push|publish)\b/i,
+  /\bonly\s+(?:the\s+)?orchestrator\b[^.!?]*\bpush(?:es)?\b/i,
+  /\b(?:never|do not|must not)\b[^.!?]*\bforce[- ]push\b/i,
+];
+
+function processCopies(path: string, text: string): string[] {
+  let canonical = false;
+  const body = text.replace(/```[\s\S]*?```/g, '').split('\n').filter(line => {
+    if (/^## /.test(line)) canonical = path === 'AGENTS.md' && line === '## Session and process ownership';
+    return !canonical;
+  }).join('\n');
+  return body.split(/\n\s*\n/).map(p => p.replace(/`/g, '').replace(/\s+/g, ' '))
+    .filter(p => PROCESS_RULES.some(rule => rule.test(p)));
+}
 
 function paragraphs(text: string): string[] {
   return text.replace(/```[\s\S]*?```/g, '').split(/\n\s*\n/)
@@ -31,6 +52,10 @@ export function check(files: Map<string, string>, skillMax = SKILL_MAX_BYTES): s
   const errors: string[] = [];
   const homes = new Map<string, string[]>();
   for (const [path, text] of files) {
+    if (PROCESS_POINTERS.has(path) && !text.includes(PROCESS_HOME))
+      errors.push(`${path} needs a process-safety pointer to ${PROCESS_HOME}`);
+    for (const copy of processCopies(path, text))
+      errors.push(`${path}: process-safety rule outside ${PROCESS_HOME}; link to it instead: "${copy.slice(0, 80)}…"`);
     for (const p of paragraphs(text)) homes.set(p, [...(homes.get(p) ?? []), path]);
     text.split('\n').forEach((line, i) => {
       if (ROOT_TERM.test(line)) errors.push(`${path}:${i + 1} says "the root"; the canonical term is "the orchestrator"`);
@@ -45,8 +70,11 @@ export function check(files: Map<string, string>, skillMax = SKILL_MAX_BYTES): s
 }
 
 export function guidelineFiles(root: string): Map<string, string> {
+  const skillFiles = (dir: string): string[] => readdirSync(join(root, dir), { withFileTypes: true })
+    .flatMap(entry => entry.isDirectory() ? skillFiles(`${dir}/${entry.name}`)
+      : entry.name.endsWith('.md') ? [`${dir}/${entry.name}`] : []);
   const paths = ['AGENTS.md', 'docs/agents-detail.md', 'docs/security-review.md',
-    ...readdirSync(join(root, 'skills')).filter(f => f.endsWith('.md')).sort().map(f => `skills/${f}`)];
+    ...skillFiles('skills').sort()];
   return new Map(paths.map(p => [p, readFileSync(join(root, p), 'utf8')]));
 }
 

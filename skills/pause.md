@@ -40,6 +40,7 @@ rest). Keep it tight and high-signal:
 - **Done this session** — three to six bullets of what changed.
 - **Next steps** — concrete, with exact commands. The most important section:
   write it so a cold reader acts without guessing.
+- **Process control** — link to [process ownership](../AGENTS.md#session-and-process-ownership), rather than restating it.
 - **Open questions** — anything unresolved.
 - **`## State`** — the facts the next session will rely on, one bullet each, tagged
   `[verified: <command or file:line>]` or `[unverified]`.

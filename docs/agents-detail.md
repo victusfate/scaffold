@@ -568,7 +568,7 @@ with explicit session or standing project authorization**. Creating a PR does no
 without that permission, preserve the ready PR and gate the next task. A failed gate remains part of
 the current task; never grow the branch with another feature to defer it. Confirm the actual merge and
 cut a fresh branch from updated main before the next independent task. Subagents may parallelize
-subtasks of the current task; only the orchestrator integrates, pushes and merges. Explicit project
+subtasks of the current task under [publication ownership](../AGENTS.md#session-and-process-ownership). Explicit project
 policy may opt into legacy batch delivery (`queue config deliveryMode batch`). See `skills/queue.md`
 for runtime boundaries, migration and the `advance` acknowledgment.
 
@@ -586,7 +586,7 @@ for runtime boundaries, migration and the `advance` acknowledgment.
 happened. The squash commit's title is the PR title, and its body keeps the PR's attribution trailers.
 Make it the repo's only option once, so nobody merges another way by accident:
 `gh repo edit --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false`.
-Never rewrite or force-push main to squash older history. Recorded commit IDs (task evidence, release
+[Publication ownership](../AGENTS.md#session-and-process-ownership) protects existing history. Recorded commit IDs (task evidence, release
 names, rollback references, PR links) and every existing clone, worktree and branch depend on it; use
 `git log --first-parent main` for a one-line-per-merge view instead. A squash-merged branch is never an
 ancestor of main, so `git branch --merged` cannot tell you it landed: decide by the PR's `MERGED` state
@@ -648,16 +648,11 @@ defaults; infer routine choices from the repository and existing authorization.
 
 ## Session and process ownership
 
-Each session has exactly one orchestrator. Separate sessions may work concurrently, including in the
-same repository, but they are independent owners. Never inspect, stop, reclaim, interrupt, or signal
-another session's orchestrator, subagents, or a user-launched agent CLI as lifecycle targets. Read-only
-aggregate resource checks may observe them, but process names, PIDs, terminals, queue owner labels,
-lease timestamps, and worktrees never establish authority over them.
-
-Only a lifecycle controller may terminate the exact child tree it created for its current generation,
-and only on explicit cancel or timeout. Normal child completion must not send a cleanup signal. If
-ownership is ambiguous, leave the process and worktree untouched, stop conflicting dispatch, and report
-the conflict.
+The binding rules live in [AGENTS.md](../AGENTS.md#session-and-process-ownership).
+Independent sessions can share a repository without sharing lifecycle authority.
+A process name, stale lease or worktree path is evidence to investigate, not an ownership token.
+A normal child exit already completed its lifecycle; a cleanup signal can hit a reused identity.
+For an owned timeout, GNU `timeout` may regroup its child, so the payload session identifies the full tree.
 
 ## Orchestration hygiene (lessons from long autonomous runs)
 
@@ -672,9 +667,9 @@ These failures each cost hours in a real run; each has a cheap guard.
   every target after it. A mass rename can also rewrite deliberately invalid test fixtures into
   valid ones, so read the test diff, not just the result.
 - **Never feed parsed command output into `rm`, `mv` or delete loops.** Handle each named
-  path explicitly after looking at it, and never act on a directory you didn't create. After
-  you kill a destructive job, kill its children too: a `mv` across mounts copies first and
-  keeps running after its parent dies.
+  path explicitly after looking at it, and never act on a directory you didn't create. A `mv` across mounts
+  copies first, so child scope matters during cancellation; follow
+  [process ownership](../AGENTS.md#session-and-process-ownership).
 - **Subagents that "wait" may be asleep.** A subagent that ends its turn waiting on its own
   background job often has nothing running and never wakes. Check that the subagent's processes
   are alive each tick and resume it if not. Tell subagents never to end a turn idle: poll with
@@ -700,13 +695,9 @@ These failures each cost hours in a real run; each has a cheap guard.
   progress or making it that slot's next job, not leaving its branch behind. Deleting a branch that
   holds unmerged commits needs the owner's OK. Count branches each tick: more than active subagents
   plus main is a defect to fix before dispatching new work.
-- **Wait on and stop processes by recorded identity, never by name match.** `pgrep -f '<script>'`
-  matches the shell running the check (its own command line contains the pattern, even a bracketed
-  one when the same line names the script elsewhere) and every agent whose prompt mentions that
-  script. One waiter blocked for two hours because a worker's prompt named the release script it was
-  waiting on; a stop command killed its own shell. Record `$!` when you start background work and wait
-  with `kill -0 <pid>`, or poll a log line or done-marker the job writes. Stop processes by recorded
-  PID, in a separate command from any relaunch.
+- **Link process-control policy instead of copying it.** Use
+  [process ownership](../AGENTS.md#session-and-process-ownership) in loop prompts and handoffs.
+  A pattern waiter can match its own shell or an agent whose prompt names the command.
 - **Time budgets measure work, not waiting.** A check with a wall-clock limit that also waits for a
   shared lock fails whenever other work holds the lock, though the check itself fits. Admit first,
   then start the work timer; give the wait its own cap and a named failure cause (for example
@@ -720,10 +711,9 @@ These failures each cost hours in a real run; each has a cheap guard.
   equals the check's. A different fingerprint wastes the warm-up and recompiles inside the timed window.
   Measured: a lint warm-up run without the flag, then the check with it, re-linted (~110 s) every run; with
   identical flags the check took 0.1 s.
-- **Pausing workers never freezes an interactive or GUI process they launched.** Pause or resume the agent's own
-  processes, never an application window the user can see: a frozen window left on a user's screen for minutes was the trigger. A stage
-  that times out kills the payload's whole session, not just a process group: GNU `timeout` puts its child in
-  its own group, so a group kill misses it and the orphan keeps holding locks.
+- **Keep lifecycle scope explicit.** The pause and timeout boundaries are in
+  [process ownership](../AGENTS.md#session-and-process-ownership). A frozen GUI can remain visible to its user,
+  and GNU `timeout` can place a payload in another process group.
 
 ## Knowledge state: typed and evidenced, not prose
 
@@ -847,14 +837,6 @@ most important operational rule when fanning out; violating it silently splits t
 
 ### NO PUSH RACE — lanes commit LOCALLY, the orchestrator merges + gates + pushes
 
-**Subagent worktree lanes NEVER `git push` to GitHub.** A lane commits to its OWN worktree branch and
-reports; it does not touch `origin`. Telling a lane to `git push origin HEAD:<branch>` is a bug: it
-creates a **push race** where N lanes pushing rapidly each trigger a full CI run, and rapid pushes
-cancel and cold-restart the slow gates, burning CI minutes. There is ONE pusher: the orchestrator.
-
-Every time: (1) lane commits locally in its worktree, reports — no push; (2) orchestrator merges the
-lane branch into the LOCAL one working branch, deletes the worktree; (3) orchestrator runs the CI
-gates **LOCALLY as a pre-flight** (a fast local `make ci`/preflight of the same checks CI runs) and
-fixes locally before spending a GitHub run; (4) orchestrator pushes to GitHub in **controlled batches**
-(rebase-retry, never force). GitHub CI is a fast confirmation, not the failure-finder. The
-orchestrator's own commits ride the same batched push, so there is no second branch and no push race.
+The binding publication rule is [process ownership](../AGENTS.md#session-and-process-ownership).
+The orchestrator integrates each lane, runs local CI preflight, then publishes a controlled batch.
+This avoids lane pushes repeatedly cancelling and cold-starting the same hosted CI jobs.
