@@ -75,6 +75,8 @@ scripts/queue-db.test.ts
 scripts/queue-tags.test.ts
 scripts/queue-task-origin.test.ts
 scripts/queue-worktrees.ts
+scripts/queue-links.ts
+scripts/queue-links.test.ts
 scripts/queue-gates.ts
 scripts/queue-delivery.ts
 scripts/queue-edit.test.ts

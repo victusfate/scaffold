@@ -776,6 +776,12 @@ Full rationale and pilot plan: [`docs/knowledge-architecture.md`](docs/knowledge
 - **Never keep project facts only in harness-private memory.** Facts every subagent needs live in
   the repo, readable by every harness. Private memory holds harness preferences only.
 
+
+**A task's branch link names only a live working branch.** Empty means the task is on main. Set the
+link when a lane actually starts on that branch, not before (a refused launch leaves a link to nothing),
+and clear it when the branch merges or is retired, including for a task that stays open for follow-up
+slices. A link to a deleted branch is a stale fact that misleads dispatch and branch accounting;
+`queue links` reports them (exit 1) and `queue links --fix` clears them without changing task status.
 ## Understand the shape of the problem first
 
 Before committing to a solution, map the **shape of the problem** (the dimensions it balances and
