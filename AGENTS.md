@@ -2,7 +2,7 @@
 
 Each section is the binding rule; its full text is linked in [`docs/agents-detail.md`](docs/agents-detail.md).
 Keep this file under 16 KB so consumer repos can add sections and stay under the 24 KB rule-file limit some
-harnesses enforce (`scripts/check-agents-detail.ts` checks both).
+harnesses enforce (`scripts/check-agents-detail.ts` checks only the 24 KB one).
 
 ## Harness capabilities
 
@@ -50,7 +50,7 @@ iterations and escalate a real blocker with evidence; stage output, never merge 
 
 ## Session Start
 
-1. **Sync check:** warn and rebase/pull if behind `origin/main` (hook, or `git fetch` + `rev-list --count`).
+1. **Sync check:** warn and merge `origin/main` (pull on `main`) if behind (hook, or `git fetch` + `rev-list --count`).
 2. **PR watch:** subscribe to this branch's open PR, or snapshot it with `gh pr view` / `gh pr checks`.
 3. **Artifacts:** resume relevant `./docs/` `design.md` / `prd.md` / `plan.md`; none and it's feature work →
    start `/feature-chain` (collaborative planning resolves vague intent).

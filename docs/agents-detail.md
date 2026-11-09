@@ -459,10 +459,12 @@ use it only when keeping the file whole aids comprehension more than splitting i
 On your first response in a new session:
 
 1. **Sync check** — Claude Code's `SessionStart` hook fetches `origin/main` and warns if
-   the current branch is behind. If you see that warning, rebase before
-   starting new feature work (`git rebase origin/main`) or pull if on `main`
-   (`git pull origin main`). Without that hook, run `git fetch origin main`
-   and `git rev-list --count HEAD..origin/main` explicitly. On a fetch failure,
+   the current branch is behind. If you see that warning, merge before
+   starting new feature work (`git merge origin/main`) or pull if on `main`
+   (`git pull origin main`). Rebase only an unpushed branch; a pushed one
+   follows [publication ownership](../AGENTS.md#session-and-process-ownership).
+   Without that hook, run `git fetch origin main` and
+   `git rev-list --count HEAD..origin/main` explicitly. On a fetch failure,
    report that freshness is unverified and continue local work where possible.
 2. **PR watch** — If the current branch has an open PR, subscribe to it with
    `subscribe_pr_activity`. Watch only this session's branch's PR, not PRs from

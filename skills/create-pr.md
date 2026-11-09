@@ -345,6 +345,6 @@ path filter / `if:` that never runs, **skips** on failure, and GitHub counts the
 
 ### Error handling
 
-- Merge conflicts or branch divergence → rebase first, then retry.
+- Merge conflicts or branch divergence → merge `origin/main` into the branch, then retry.
 - Auth failures → surface the error message verbatim, stop.
 - Already-open PR for this branch → report the existing PR URL and subscribe to it instead of creating a duplicate.

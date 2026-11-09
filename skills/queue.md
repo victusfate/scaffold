@@ -122,7 +122,7 @@ points at its first holder and is flagged with `!`; check each flagged dep.
 ```
 list | show <id>                       # overview | one task's full spec
 add "<title>" [flags]                  # append a task (flags below); --top to prepend
-                                       #   agents: add --parent <id> or --requested "<human words>" (tasks are human-owned)
+                                       #   agents: add --requested "<human words>" (tasks are human-owned; --parent adds lineage only)
 add-many                               # seed many tasks from stdin, one per line (same origin flags)
 set <id> <field> <value>               # edit a field (mode/slug/deps/files/validate/accept)
 next | ready                           # serial pick | fan-out candidate set (under the cap)
@@ -263,9 +263,10 @@ printf 'Write the README\nAdd unit tests\n' | node scripts/queue.ts add-many --r
 ```
 
 `add-many` **appends** (never clobbers) and also takes positional args. Tasks are
-human-owned: in an agent session `add` and `add-many` need `--parent <task-id>` (a child of
-the task the work came from) or `--requested "<the human's own words>"`; a bare agent add
-exits 2.
+human-owned: an agent adds one only when the owner asked for it, quoting their words with
+`--requested "<the human's own words>"`. The CLI also accepts `--parent <task-id>` (a child of
+the task the work came from), but that records lineage, not permission — a child still needs
+the owner's request. A bare agent add exits 2.
 
 Each line becomes its own task, so split the list to the atomic grain below
 before piping it in — bulk-seeding is where umbrella tasks sneak in.
