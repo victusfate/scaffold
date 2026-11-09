@@ -122,7 +122,7 @@ points at its first holder and is flagged with `!`; check each flagged dep.
 ```
 list | show <id>                       # overview | one task's full spec
 add "<title>" [flags]                  # append a task (flags below); --top to prepend
-                                       #   agents: add --parent <id> or --requested "<human words>" (tasks are human-owned)
+                                       #   agents: add --requested "<human words>" (tasks are human-owned; --parent adds lineage only)
 add-many                               # seed many tasks from stdin, one per line (same origin flags)
 set <id> <field> <value>               # edit a field (mode/slug/deps/files/validate/accept)
 next | ready                           # serial pick | fan-out candidate set (under the cap)

@@ -2,6 +2,8 @@
 // child of an existing task (`--parent <id>`) or carrying the human's own request (`--requested
 // "<their words>"`). This is a guardrail against agents growing the backlog with their own ideas,
 // not authentication: the quote is unauthenticated text, so an agent must only ever quote real words.
+// Policy is stricter than this check (AGENTS.md): `--parent` records lineage; the human's request is
+// what permits an agent to add a task.
 // The queue console (queue-console.ts) is the human's own UI, so its add is exempt; agents never drive it.
 import type { Parsed } from './queue-cli-args.ts';
 import type { Queue, Task } from './queue-model.ts';
@@ -28,9 +30,9 @@ export function taskOrigin(q: Queue, f: Parsed, env: NodeJS.ProcessEnv = process
   return { ok: true, patch: originPatch(parent, requested) };
 }
 
-const AGENT_ADD_REFUSAL = 'queue add: tasks are human-owned. From an agent session, attach the work to the task it came from '
-  + 'with --parent <task-id>, or pass --requested "<the human\'s own words>" when a human asked for it. '
-  + 'Review follow-ups and bugs found while working belong to their parent task; ask the human before adding new top-level work.';
+const AGENT_ADD_REFUSAL = 'queue add: tasks are human-owned. From an agent session, add a task only when a human asked for it: '
+  + 'pass --requested "<the human\'s own words>" (add --parent <task-id> to record lineage). '
+  + 'Record findings on the existing task (note, checkpoint, evidence) and ask the human before adding new work.';
 
 /** Tags and note recording where a task came from; both origins are kept when both are given. */
 function originPatch(parent: string, requested: string): Partial<Task> {
