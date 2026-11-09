@@ -695,6 +695,22 @@ These failures each cost hours in a real run; each has a cheap guard.
   progress or making it that slot's next job, not leaving its branch behind. Deleting a branch that
   holds unmerged commits needs the owner's OK. Count branches each tick: more than active subagents
   plus main is a defect to fix before dispatching new work.
+- **Tests synchronize on readiness, never on time — and never wait forever.** A fixed `sleep` used
+  to let something "probably finish" is a race that passes on a quiet host and fails under load.
+  Wait on an explicit readiness signal (a marker file, a recorded event, an open port) and, before a
+  fixture's cleanup, on the exit of the children the test itself started, identified per
+  [process ownership](../AGENTS.md#session-and-process-ownership). Every such
+  wait is **bounded**: a hard timeout that fails the test closed with a named cause. A test never runs
+  indefinitely; a hang is a failure, not a long pass.
+- **Prove a flaky-test fix under load.** A test that failed only under host load is fixed when it
+  passes N runs in a row (default 10/10) under artificial CPU or I/O load, plus normal runs, with
+  its assertions unchanged. One quiet pass proves nothing.
+- **Debug builds can hide defects; verify in the shipping configuration.** Some runtimes check
+  object validity, bounds or lifetimes only in debug builds and dereference freed memory in release
+  (for example, an engine that logs "previously freed instance" in debug and crashes in release). A
+  green debug suite is not evidence for lifetime- or memory-sensitive changes — pools, caches,
+  eviction, object teardown, scene or state swaps. Verify those in the build players run (a
+  release build or a release soak), and treat debug-only warnings of that class as bugs.
 - **Link process-control policy instead of copying it.** Use
   [process ownership](../AGENTS.md#session-and-process-ownership) in loop prompts and handoffs.
   A pattern waiter can match its own shell or an agent whose prompt names the command.

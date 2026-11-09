@@ -86,6 +86,8 @@ checkpoint note; never auto-continue it or spin its remainder into new tasks.
 - Never feed parsed command output into `rm`/`mv` loops.
 - Subagents that "wait" may be asleep: check their processes each tick; subagents never end a turn idle.
 - Tests use isolated save/user dirs; hold a host lock around one command, never a shell.
+- Tests sync on readiness and owned PIDs, never sleeps, and every wait has a failing timeout. Prove a flake fix
+  10/10 under load; verify lifetime-sensitive changes in the shipping build (debug can hide them).
 - Keep the task board true as subagents start, stop and merge.
 - Never park a worker branch: at most one branch per active subagent plus main. When a subagent stops, resolve its
   branch the same tick: merge it (done), merge sound progress and note what remains, or send another subagent.
