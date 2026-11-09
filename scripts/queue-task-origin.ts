@@ -1,5 +1,5 @@
-// Human-owned tasks: top-level tasks come from a human. An agent session may add a task only as a
-// child of an existing task (`--parent <id>`) or carrying the human's own request (`--requested
+// Human-owned tasks: top-level tasks come from a human. This check accepts an agent add only as a
+// child of an existing task (`--parent <id>`) or with the human's own request (`--requested
 // "<their words>"`). This is a guardrail against agents growing the backlog with their own ideas,
 // not authentication: the quote is unauthenticated text, so an agent must only ever quote real words.
 // Policy is stricter than this check (AGENTS.md): `--parent` records lineage; the human's request is
