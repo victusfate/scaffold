@@ -19,11 +19,12 @@ try {
   q = setField(q, gone, { branch: 'feat/merged-and-deleted' });
   q = setField(q, finished, { branch: 'feat/old' });
   q = setTaskStatus(q, gone, 'active');
-  q = setTaskStatus(q, finished, 'done');
   save(q);
   const branches = new Set(['main', 'feat/live']);
 
-  assert.deepEqual(danglingLinks(load(), branches), [{ id: gone, branch: 'feat/merged-and-deleted' }],
+  // A done task is history. Checked in memory: consumers may require completion evidence before a
+  // done task can be saved, which this fixture doesn't need to model.
+  assert.deepEqual(danglingLinks(setTaskStatus(load(), finished, 'done'), branches), [{ id: gone, branch: 'feat/merged-and-deleted' }],
     'only an open task linking a missing branch is dangling (empty = main; done tasks are history)');
   assert.equal(cmdLinks(load(), false, branches), 1, 'report mode fails closed on a dangling link');
   assert.equal(load().tasks.find(t => t.id === gone)!.branch, 'feat/merged-and-deleted', 'report mode changes nothing');
