@@ -99,7 +99,7 @@ checkpoint note; never auto-continue it or spin its remainder into new tasks.
 ## Knowledge state: typed and evidenced, not prose
 
 Lifecycle state (branch, plan, PR, evidence, decisions) lives in the queue CLI's typed fields, never as prose
-markers. **Done requires evidence** (PR, test ids, commit, scope), which goes stale when covered files change.
+markers; a task's branch names only a live working branch (empty = main; `queue links` flags stale ones). **Done requires evidence** (PR, test ids, commit, scope), which goes stale when covered files change.
 Record each owner decision when made, with an id and the owner's words, no broader than those words; promote
 a standing directive into the binding rules (with a check where possible), not only a plan doc. Generate code
 hook points, don't hand-write them. Project facts live in the repo, never only in harness-private memory. **Only the

@@ -20,6 +20,7 @@
 //   node scripts/queue.ts move <id> <pos>            # reorder to a 1-based position (as in `list`)
 //   node scripts/queue.ts hold <id> | unhold <id>    # park a task (drain skips it) | release it
 //   node scripts/queue.ts park <id> --branch b [--resume "next step"]  # lane stopped with work: [~]
+//   node scripts/queue.ts links [--fix]       # report (exit 1) or clear task links to branches that no longer exist
 //   node scripts/queue.ts requeue <id>               # revive a failed task (pending, failures cleared)
 //   node scripts/queue.ts start | stop               # run/pause the worker
 //   node scripts/queue.ts interval 6m                # edit the wake interval
@@ -62,6 +63,7 @@ import { taskOrigin, withOrigin } from './queue-task-origin.ts';
 import { cmdLane } from './queue-lanes.ts';
 import { cmdAdvance } from './queue-delivery.ts';
 import { cmdWorktree } from './queue-worktrees.ts';
+import { cmdLinks } from './queue-links.ts';
 
 // ---------------------------------------------------------------- flags
 
@@ -469,6 +471,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       return 1;
     }
     case 'loop': return cmdLoop(q);
+    case 'links': return cmdLinks(q, f.bools.has('fix'));
     case 'worktree': case 'wt': return cmdWorktree(q, f.positionals[0] ?? '', f.positionals[1] ?? '');
     case 'lane': return cmdLane(q, f.positionals[0] ?? '', f.positionals[1] ?? '', f);
 

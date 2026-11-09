@@ -132,6 +132,7 @@ claim <id> [--worker w]                # atomic claim for a parallel worker
 release <id> --worker w                # return a confirmed-ended owned claim to pending
 done <id> [--skip-validate]            # implementation accepted; delivery gate remains
 advance <id> --pr <url> --branch <name> # root attests merged PR and fresh branch
+links [--fix]                          # report (exit 1) / clear task links to branches that no longer exist
 fail <id> [reason...]                  # record a failure (retries, then terminal)
 top <id> | move <id> <pos> | remove <id>   # reprioritize (1-based pos, as `list` numbers) | prune
 requeue <id>                           # revive a failed task (pending again, failures cleared)
