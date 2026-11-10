@@ -4,7 +4,7 @@
 // load/save through them, and append the audit-log / archive sidecars.
 
 import {
-  readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, openSync, closeSync, rmSync, renameSync,
+  readFileSync, writeFileSync, existsSync, mkdirSync, appendFileSync, openSync, closeSync, rmSync, renameSync, linkSync,
 } from 'node:fs';
 import { join, dirname, extname, resolve, basename, relative } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -71,8 +71,11 @@ export function now(): string { return new Date().toISOString(); }
 // Queue mutations span read → mutate → write, so an exclusive sidecar prevents
 // concurrent CLI and console processes from saving stale snapshots. A lock is
 // never age-stolen: a slow, live process is indistinguishable from a dead one.
-// Contenders wait only this bounded interval, then fail loudly for an operator
-// to inspect/remove a lock left by a confirmed-dead holder.
+// It is reclaimed only when its recorded holder is confirmed dead on this host
+// (no such process, or that PID now belongs to a process started after the lock
+// was taken). A holder killed mid-transaction (SIGKILL, a caller's `timeout`)
+// never runs its `finally`, so without this its lock wedged every later caller.
+// Otherwise contenders wait this bounded interval, then fail loudly.
 const LOCK_POLL_MS = 20;
 const LOCK_WAIT_MS = 60_000;
 let held: { fd: number; path: string } | null = null;
@@ -101,6 +104,7 @@ function acquire(): void {
       return;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+      if (reclaimDeadHolder(path)) continue;
       if (Date.now() >= deadline) {
         throw new Error(`queue: lock ${path} remained held for ${LOCK_WAIT_MS}ms; `
           + 'confirm its holder is dead before removing it', { cause: error });
@@ -108,6 +112,55 @@ function acquire(): void {
       napSync(LOCK_POLL_MS);
     }
   }
+}
+
+/** The lock record a holder wrote: `pid=<n> acquiredAt=<ISO time>`. */
+export function parseLockRecord(text: string): { pid: number; acquiredAt: number } | null {
+  const pid = Number(/\bpid=(\d+)\b/.exec(text)?.[1]);
+  const acquiredAt = Date.parse(/\bacquiredAt=(\S+)/.exec(text)?.[1] ?? '');
+  return Number.isSafeInteger(pid) && pid > 0 && Number.isFinite(acquiredAt) ? { pid, acquiredAt } : null;
+}
+
+/** Linux: when `pid` started, from /proc (boot time + start ticks); null when unknown. */
+function processStartMs(pid: number): number | null {
+  try {
+    const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
+    const ticks = Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[19]);
+    const btime = Number(/^btime (\d+)$/m.exec(readFileSync('/proc/stat', 'utf8'))?.[1]);
+    if (!Number.isFinite(ticks) || !Number.isFinite(btime)) return null;
+    return btime * 1000 + (ticks / 100) * 1000; // USER_HZ is 100 on Linux
+  } catch { return null; }
+}
+
+/** True only when the recorded holder is confirmed gone; any doubt counts as alive. */
+export function holderIsDead(record: { pid: number; acquiredAt: number }): boolean {
+  try { process.kill(record.pid, 0); } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'ESRCH';
+  }
+  const started = processStartMs(record.pid);
+  // A live PID that started after the lock was written is a reused PID, not the holder.
+  return started !== null && started > record.acquiredAt + 1000;
+}
+
+/**
+ * Reclaim a lock whose holder is confirmed dead. The rename is atomic, so two contenders cannot both
+ * take it; the renamed file must still be the dead holder's record, otherwise it is put back.
+ */
+function reclaimDeadHolder(path: string): boolean {
+  let text: string;
+  try { text = readFileSync(path, 'utf8'); } catch { return true; } // released meanwhile: retry now
+  const record = parseLockRecord(text);
+  if (!record || record.pid === process.pid || !holderIsDead(record)) return false;
+  const aside = `${path}.dead-${record.pid}-${process.pid}`;
+  try { renameSync(path, aside); } catch { return true; } // another contender won: retry
+  if (readFileSync(aside, 'utf8') !== text) {
+    try { linkSync(aside, path); } catch { /* a newer lock exists; ours was not it */ }
+    rmSync(aside, { force: true });
+    return false;
+  }
+  rmSync(aside, { force: true });
+  process.stderr.write(`queue: reclaimed lock from dead holder pid=${record.pid} (${text.trim()})\n`);
+  return true;
 }
 
 function release(): void {

@@ -21,3 +21,4 @@ jobs:
       - run: node scripts/agent-loop.integration.test.ts
       - run: node scripts/queue-edit.test.ts
       - run: node scripts/queue-lock.test.ts
+      - run: node scripts/queue-lock-reclaim.test.ts
