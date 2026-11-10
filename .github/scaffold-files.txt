@@ -82,6 +82,7 @@ scripts/queue-delivery.ts
 scripts/queue-edit.test.ts
 scripts/queue-view.test.ts
 scripts/queue-lock.test.ts
+scripts/queue-lock-reclaim.test.ts
 scripts/queue-cli-args.ts
 scripts/queue-task-origin.ts
 scripts/sse-watch.ts

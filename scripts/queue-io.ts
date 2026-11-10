@@ -121,14 +121,21 @@ export function parseLockRecord(text: string): { pid: number; acquiredAt: number
   return Number.isSafeInteger(pid) && pid > 0 && Number.isFinite(acquiredAt) ? { pid, acquiredAt } : null;
 }
 
+// /proc/<pid>/stat field 22 (starttime), counted after the `comm)` field, in USER_HZ clock ticks.
+const PROC_STAT_STARTTIME_INDEX = 19;
+const USER_HZ = 100; // Linux exposes clock ticks at a fixed 100 Hz to userspace
+const MS_PER_S = 1000;
+// A holder writes its record just after it starts; a process that started this much later is a reused PID.
+const PID_REUSE_SLACK_MS = 1000;
+
 /** Linux: when `pid` started, from /proc (boot time + start ticks); null when unknown. */
 function processStartMs(pid: number): number | null {
   try {
     const stat = readFileSync(`/proc/${pid}/stat`, 'utf8');
-    const ticks = Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[19]);
+    const ticks = Number(stat.slice(stat.lastIndexOf(')') + 2).split(' ')[PROC_STAT_STARTTIME_INDEX]);
     const btime = Number(/^btime (\d+)$/m.exec(readFileSync('/proc/stat', 'utf8'))?.[1]);
     if (!Number.isFinite(ticks) || !Number.isFinite(btime)) return null;
-    return btime * 1000 + (ticks / 100) * 1000; // USER_HZ is 100 on Linux
+    return btime * MS_PER_S + (ticks / USER_HZ) * MS_PER_S;
   } catch { return null; }
 }
 
@@ -139,7 +146,7 @@ export function holderIsDead(record: { pid: number; acquiredAt: number }): boole
   }
   const started = processStartMs(record.pid);
   // A live PID that started after the lock was written is a reused PID, not the holder.
-  return started !== null && started > record.acquiredAt + 1000;
+  return started !== null && started > record.acquiredAt + PID_REUSE_SLACK_MS;
 }
 
 /**
