@@ -22,6 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { load, save, log, appendArchive, queueFile, dbFile, withLock, now, ROOT } from './queue-io.ts';
 import { QueueIntegrityError } from './queue-db.ts';
 import { laneDir, readLanes, laneStale, requestStop, stopRequested, type LaneState } from './queue-lanes.ts';
+import { loadTopology, defaultTopology, TopologyError, type Topology, type Slot } from './topology.ts';
 import { collectHostStatus, createCachedHostProbe, type HostStatus } from './queue-host-status.ts';
 import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
@@ -64,7 +65,24 @@ export interface ConsoleState {
   config: QueueConfig;
   tasks: ConsoleTask[];
   drain: string | null;
+  /** Orchestrator + cadence from .agent/topology.json; null when the file is invalid. */
+  topology: { orchestrator: { model: string }; tickMinutes: number } | null;
+  topologyError: string | null;
+  slots: SlotView[];
+  /** Active tasks whose owner is not a slot id (only flagged once slots are declared). */
+  orphans: ConsoleOrphan[];
 }
+
+export interface SlotTask { id: string; title: string; startedAt: string | null }
+/** One topology slot: busy iff an active task is owned by the slot id. Lane heartbeat is optional detail. */
+export interface SlotView extends Slot {
+  busy: boolean;
+  /** More than one active task owned by this slot: a dispatch bug worth flagging. */
+  overbooked: boolean;
+  tasks: SlotTask[];
+  lane: LaneView | null;
+}
+export interface ConsoleOrphan { id: string; title: string; owner: string | null }
 
 export interface LaneView extends LaneState { stale: boolean; stop: boolean }
 export interface QueueConsoleServerOptions {
@@ -87,18 +105,61 @@ export function laneViews(q: Queue): LaneView[] {
   }));
 }
 
+// ---------------------------------------------------------------- slots
+
+/**
+ * Derive slot occupancy from task status alone (owner = slot id), so the UI is only as true as the
+ * orchestrator's task bookkeeping. Heartbeat sidecars, when present, attach as detail.
+ */
+export function slotViews(q: Queue, topology: Topology, lanes: LaneView[] = []): { slots: SlotView[]; orphans: ConsoleOrphan[] } {
+  const active = q.tasks.filter(t => t.status === 'active');
+  const slots = topology.slots.map(slot => {
+    const mine = active.filter(t => t.owner === slot.id);
+    const lane = lanes.find(l => mine.some(t => t.id === l.id)) ?? null;
+    return {
+      ...slot, busy: mine.length > 0, overbooked: mine.length > 1, lane,
+      tasks: mine.map(t => ({ id: t.id, title: t.title, startedAt: t.startedAt })),
+    };
+  });
+  const ids = new Set(topology.slots.map(s => s.id));
+  const orphans = topology.slots.length === 0 ? [] : active.filter(t => !t.owner || !ids.has(t.owner))
+    .map(t => ({ id: t.id, title: t.title, owner: t.owner }));
+  return { slots, orphans };
+}
+
+/** Topology for the console: an invalid file is reported, not fatal. */
+export function readTopology(): { topology: Topology | null; error: string | null } {
+  try { return { topology: loadTopology(), error: null }; }
+  catch (error) {
+    if (!(error instanceof TopologyError)) throw error;
+    return { topology: null, error: error.message };
+  }
+}
+
 // ---------------------------------------------------------------- state
 
 /** The derived snapshot the console page renders — model truth, not page logic. */
-export function consoleState(q: Queue): ConsoleState {
+export function consoleState(
+  q: Queue, topology: Topology | null = defaultTopology(), topologyError: string | null = null, lanes: LaneView[] = [],
+): ConsoleState {
   const stuck = new Set(deadlocked(q).map(t => t.id));
+  const { slots, orphans } = topology ? slotViews(q, topology, lanes) : { slots: [], orphans: [] };
   return {
+    topology: topology && { orchestrator: topology.orchestrator, tickMinutes: topology.tickMinutes },
+    topologyError, slots, orphans,
     architectureModes: ARCHITECTURE_MODES, defaultArchitecture: DEFAULT_ARCHITECTURE,
     architectureGuidance: Object.fromEntries(ARCHITECTURE_MODES.map(mode => [mode, architectureGuidance(mode)])),
     config: q.config,
     tasks: q.tasks.map(t => ({ ...t, eligible: isEligible(t, q), deadlocked: stuck.has(t.id) })),
     drain: drainSignal(q),
   };
+}
+
+/** The served snapshot: queue + topology + (optional) lane heartbeats. */
+export function liveState(): ConsoleState {
+  const q = load();
+  const { topology, error } = readTopology();
+  return consoleState(q, topology, error, laneViews(q));
 }
 
 // ---------------------------------------------------------------- validation
@@ -390,7 +451,7 @@ async function handleOp(req: http.IncomingMessage, res: http.ServerResponse): Pr
   }
   if (!result.ok) { sendJson(res, HTTP_BAD_REQUEST, { error: result.error }); return; }
   log(`console ${op.op}${'id' in op ? ' ' + op.id : ''}`);
-  sendJson(res, HTTP_OK, consoleState(load()));
+  sendJson(res, HTTP_OK, liveState());
 }
 
 /**
@@ -413,7 +474,7 @@ export function startServer(port: number, options: QueueConsoleServerOptions = {
       res.writeHead(HTTP_OK, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(readFileSync(TEMPLATE, 'utf8'));
     } else if (req.method === 'GET' && req.url === '/api/queue') {
-      sendJson(res, HTTP_OK, consoleState(load()));
+      sendJson(res, HTTP_OK, liveState());
     } else if (req.method === 'GET' && req.url === '/api/lanes') {
       sendJson(res, HTTP_OK, { lanes: laneViews(load()) });
     } else if (req.method === 'GET' && req.url === '/api/host') {

@@ -21,6 +21,13 @@ labels and worktrees never grant authority. Only a lifecycle controller may term
 created, and only on explicit cancel or timeout. Ambiguous ownership: leave it alone and report.
 → [full text](docs/agents-detail.md#session-and-process-ownership).
 
+## Agent topology
+
+`.agent/topology.json` (consumer-owned, never synced) lists the orchestrator model and the subagent slots
+(`id`, `harness`, `model`); no routing fields. Each loop tick collects finished slots, then gives every free
+slot the next priority task with owner = slot id. Swap resources by editing the file, not the loop prompt.
+→ [full text](docs/agents-detail.md#agent-topology).
+
 ## Roles — orchestrator, subagent, active agent
 
 - **Orchestrator:** one per session. Owns the plan, the working branch, integration, pushes, the PR, and merges

@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Agent topology (.agent/topology.json)",
+  "description": "Orchestrator model and subagent slots. No routing fields: the orchestrator picks which task suits which slot. Validated by scripts/topology.ts.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["orchestrator"],
+  "properties": {
+    "orchestrator": {
+      "type": "object", "additionalProperties": false, "required": ["model"],
+      "properties": { "model": { "type": "string", "minLength": 1 } }
+    },
+    "tick_minutes": { "type": "number", "exclusiveMinimum": 0, "default": 10 },
+    "slots": {
+      "type": "array", "default": [],
+      "items": {
+        "type": "object", "additionalProperties": false, "required": ["id", "harness", "model"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$", "description": "Unique; also the queue task owner while busy." },
+          "harness": { "type": "string", "minLength": 1, "description": "claude, codex, agy, pi, or another name the dispatcher understands." },
+          "model": { "type": "string", "minLength": 1 },
+          "effort": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

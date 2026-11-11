@@ -8,11 +8,8 @@ remember to continue.
 ## Invocation
 
 ```text
-/loop 10min continue working on agreed upon tasks, sending jobs to 1 gpu lane
-and up to 3 cpu lanes, merging in worktrees as they complete and managing
-subagents to ensure they don't get stuck. If nothing else is pressing review
-the work queue for tasks and keep grabbing work from there following its
-interface and usage docs
+/loop 10min run the topology tick (skills/loop.md): finished slots first, then dispatch the next
+priority queue task to every free slot in .agent/topology.json
 
 /loop status
 /loop stop
@@ -52,16 +49,8 @@ Include these execution instructions in the agent prompt:
   before editing.
 - Work continuously during each run; the interval restarts an ended run and is not permission to stop after
   one small action while useful work remains.
-- **Lane reconcile, every run, before dispatching.** Compare three views of "what is being worked": the
-  driver's live subagent handles (the client's agent list), the queue's `[>]` active tasks, and
-  `git worktree list`. A subagent that replied and went idle is NOT a running lane. Fix each mismatch on the
-  spot:
-  - An active task with no running subagent: resume it (message the subagent its next step) or park it with
-    `node scripts/queue.ts park <id> --branch <b> --resume "<next step>"` (keeps the branch, clears the owner
-    and lease, banks elapsed time; renders `[~]`: work exists, nobody on it).
-  - A running subagent with no `[>]` task: claim the task or stop the subagent.
-  - A worktree with no task and no subagent: merge, park, or clean it.
-  - The `[>]` count must equal the live subagent count when the run ends.
+- **Run the topology tick, every run** (next section). Slots replace lane counts and per-task routing in the
+  scheduled prompt.
 - Reconcile only driver-owned handles and current-session worktree lanes before spawning. Do not inspect other
   agent sessions for cleanup, duplicate surviving jobs, or reclaim live leases. Do not start a second
   orchestrator while a human/session is editing the same checkout.
@@ -79,8 +68,8 @@ Include these execution instructions in the agent prompt:
   not defer steering to finish the old agenda or to wait for another interval. An in-flight tool may need to
   return or an atomic write finish safely; do not resume superseded work afterward. A real blocker requires a
   report, not silent continuation of the old instruction.
-- Requested lane counts are ceilings. Respect actual client slots and host limits; use the repo's memory guard
-  for heavy jobs. A timeout is not a RAM cap.
+- The slot list in `.agent/topology.json` is the ceiling on concurrent subagents. Respect actual client slots
+  and host limits; use the repo's memory guard for heavy jobs. A timeout is not a RAM cap.
 - Inspect current-session stuck jobs using owned handles, logs, elapsed time, and process state. Bound
   retries, keep independent work moving, and never loosen permissions or kill unrelated jobs. Launch long jobs
   nonblockingly, retain their identifiers/logs, and inspect them periodically while staying responsive to
@@ -94,6 +83,34 @@ Include these execution instructions in the agent prompt:
   `blocked` through the structured result. When useful work remains and no terminal blocker exists, report
   `continue`. Do not call the driver's `stop` command from inside the scheduled child. Exit zero alone does not
   prove the objective complete.
+
+## Topology tick
+
+The agent topology lives in **`.agent/topology.json`** (consumer-owned; scaffold never overwrites it; schema
+`lib/topology.schema.json`, example `lib/topology.example.json`, reader `scripts/topology.ts`). It names the
+orchestrator model, the tick cadence, and the subagent **slots**. It has no routing fields: the orchestrator
+judges which task suits which slot. Swapping resources means editing that file, never the scheduled prompt.
+
+Each tick, in order:
+
+1. **Read the topology.** `node scripts/topology.ts` validates it; an invalid file is a blocker to report, not
+   a reason to guess. No file means orchestrator only, no slots (work serially yourself).
+2. **Collect finished slots.** For every slot whose task finished (the subagent replied or its worktree has
+   commits), review it, integrate or ship it within your existing authorization, and set the task status
+   (`done`, `fail`, or `park --resume "<next step>"`). A subagent that replied and went idle is not running.
+3. **Dispatch free slots.** A slot is free when no active (`[>]`) task has `owner == slot id`. For each free
+   slot, pick the highest-priority eligible task that suits that slot's harness/model and claim it with the
+   slot id as owner (`node scripts/queue.ts claim <id> --worker <slot-id>`), then start the subagent on that
+   slot's harness and model in its own worktree. Leave a slot free rather than send it a task it should not
+   take.
+4. **Housekeeping.** Reconcile three views and fix each mismatch on the spot: the live subagent handles, the
+   `[>]` tasks, and `git worktree list`. An active task with no running subagent is resumed or parked; a
+   subagent with no task is claimed or stopped; a worktree with neither is merged, parked or cleaned. An
+   active task whose owner is not a slot id is orphaned: adopt it into a free slot or park it. The `[>]` count
+   equals the live subagent count when the run ends.
+
+The task UI (`scripts/queue-console.ts`) draws its Slots panel from the same file plus task status, so the UI
+is only as true as the owner/status bookkeeping above; lane heartbeat sidecars are optional detail.
 
 ## Select and arm a driver
 

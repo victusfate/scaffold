@@ -61,6 +61,10 @@ tools/sync
 # repo sets its own default language; scaffold's own copy is never shipped.
 .agent/default-language.md
 
+# Likewise consumer-owned: each repo declares its own orchestrator + subagent slots
+# (schema/example/reader ship under lib/ and scripts/). Never created or overwritten by sync.
+.agent/topology.json
+
 # Per-repo work-queue state (see skills/queue.md). Each repo owns its own queue;
 # scaffold ships the /queue skill + scripts/queue.ts, not this runtime file.
 .agent/queue/queue.md

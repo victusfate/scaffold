@@ -102,6 +102,10 @@ scripts/queue-host-status.ts
 scripts/queue-host-status.test.ts
 scripts/queue-isolation.test.ts
 scripts/queue-lanes.ts
+scripts/topology.ts
+scripts/topology.test.ts
+lib/topology.schema.json
+lib/topology.example.json
 scripts/queue-lanes.test.ts
 scripts/queue-lifecycle.test.ts
 scripts/queue-elapsed.test.ts

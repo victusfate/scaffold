@@ -9,6 +9,7 @@ import { join } from 'node:path';
 import http from 'node:http';
 import { parseQueue } from './queue-model.ts';
 import { consoleState, applyOp, startServer, type Op } from './queue-console.ts';
+import { parseTopology } from './topology.ts';
 import { beatLane, requestStop, readLanes, stopRequested } from './queue-lanes.ts';
 
 let passed = 0, failed = 0;
@@ -52,6 +53,50 @@ maxParallel: 2
   assert('drain null when stopped',
     consoleState(parseQueue(SAMPLE.replace('status: running', 'status: stopped'))).drain === null);
   assert('task fields survive shaping', s.tasks[2].note === 'needs-spec: which db?');
+}
+
+// ---- slots panel: occupancy derives from task status (owner = slot id) ----
+{
+  const topo = parseTopology({
+    orchestrator: { model: 'opus' },
+    slots: [
+      { id: 'sonnet-1', harness: 'claude', model: 'sonnet' },
+      { id: 'codex-1', harness: 'codex', model: 'gpt-6.1-sol' },
+      { id: 'agy-1', harness: 'agy', model: 'flash' },
+    ],
+  });
+  const q = parseQueue(`# Work Queue
+
+- [>] task-010 — On codex
+  - owner: codex-1
+  - started: 2026-11-11T10:00:00.000Z
+- [>] task-011 — Stray worker
+  - owner: worker-9
+- [>] task-012 — No owner
+- [ ] task-013 — Waiting
+`);
+  const s = consoleState(q, topo, null, [{ id: 'task-010', worker: 'codex-1', model: null, step: null, state: 'running',
+    startedAt: null, updatedAt: '2026-11-11T10:05:00.000Z', tail: null, stale: false, stop: false }]);
+  const by = (id: string) => s.slots.find(x => x.id === id)!;
+  assert('busy slot shows its task', by('codex-1').busy && by('codex-1').tasks[0].id === 'task-010'
+    && by('codex-1').tasks[0].startedAt === '2026-11-11T10:00:00.000Z');
+  assert('free slots are free', !by('sonnet-1').busy && !by('agy-1').busy && by('agy-1').tasks.length === 0);
+  assert('lane heartbeat is optional detail', by('codex-1').lane?.updatedAt === '2026-11-11T10:05:00.000Z' && by('sonnet-1').lane === null);
+  assert('orphans: owner not a slot, or no owner', s.orphans.map(o => o.id).join(',') === 'task-011,task-012');
+  assert('pending tasks are never orphans', !s.orphans.some(o => o.id === 'task-013'));
+  assert('state carries orchestrator and tick', s.topology?.orchestrator.model === 'opus' && s.topology.tickMinutes === 10);
+  const twice = consoleState(parseQueue(`# Work Queue
+
+- [>] task-020 — A
+  - owner: codex-1
+- [>] task-021 — B
+  - owner: codex-1
+`), topo);
+  assert('two active tasks on one slot are flagged', twice.slots.find(x => x.id === 'codex-1')!.overbooked);
+  const none = consoleState(q);
+  assert('no slots declared: panel empty and nothing orphaned', none.slots.length === 0 && none.orphans.length === 0);
+  const bad = consoleState(q, null, 'slots[0].id must be kebab-case');
+  assert('invalid topology is reported, not fatal', bad.topology === null && bad.topologyError !== null && bad.slots.length === 0);
 }
 
 // ---- applyOp: happy paths ----
@@ -275,6 +320,10 @@ maxParallel: 2
   has('filter changes use the draft-preserving render path', 'taskFilter.addEventListener("input", () => {\n  render();');
   has('filtered active cards do not invent free lanes', 'const activeCount = S.tasks.filter');
   has('status header mount point', 'id="status"');
+  has('slots panel mount point', 'id="slots"');
+  has('slots panel renders free slots', '>free</li>');
+  has('slots panel flags orphaned active tasks', 'is not a slot');
+  has('slots panel reports an invalid topology file', 'Invalid .agent/topology.json');
   has('host resource status mount point', 'id="host-status"');
   has('host status is passive rather than a noisy live region', 'aria-live="off"');
   has('host status names the resource guard', 'Resource guard');
@@ -408,6 +457,22 @@ maxParallel: 2
   assert('hand-edited view left untouched', readFileSync(file, 'utf8') === handEdited);
   assert('reads still serve the store', (await fetch(`${base}/api/queue`)).status === 200);
   writeFileSync(file, handEdited.replace('- [ ] task-001 — merged-in duplicate\n', ''));
+
+  const topoFile = join(dir, 'topology.json');
+  process.env.TOPOLOGY_FILE = topoFile;
+  const noFile = await (await fetch(`${base}/api/queue`)).json() as { slots: unknown[]; topologyError: string | null };
+  assert('no topology file: no slots, no error', noFile.slots.length === 0 && noFile.topologyError === null);
+  writeFileSync(topoFile, JSON.stringify({ orchestrator: { model: 'opus' }, slots: [{ id: 'worker-1', harness: 'claude', model: 'sonnet' }] }));
+  const withSlots = await (await fetch(`${base}/api/queue`)).json() as { slots: { id: string; busy: boolean }[] };
+  assert('GET /api/queue serves slots from the topology file', withSlots.slots.length === 1 && withSlots.slots[0].id === 'worker-1');
+  await post({ op: 'claim-lane', id: 'task-001', worker: 'http-worker' });
+  const claimed = await (await fetch(`${base}/api/queue`)).json() as { slots: { busy: boolean }[]; orphans: { id: string }[] };
+  assert('claim-lane owner outside the topology is an orphan', !claimed.slots[0].busy && claimed.orphans.some(o => o.id === 'task-001'));
+  await post({ op: 'release', id: 'task-001' });
+  writeFileSync(topoFile, '{ bad');
+  const invalid = await (await fetch(`${base}/api/queue`)).json() as { topologyError: string | null };
+  assert('invalid topology file surfaces an error', /invalid JSON/.test(invalid.topologyError ?? ''));
+  delete process.env.TOPOLOGY_FILE;
 
   const lanes = await (await fetch(`${base}/api/lanes`)).json() as { lanes: { id: string }[] };
   assert('GET /api/lanes reflects sidecars', Array.isArray(lanes.lanes));
