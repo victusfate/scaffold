@@ -1,0 +1,8 @@
+{
+  "orchestrator": { "model": "opus" },
+  "tick_minutes": 10,
+  "slots": [
+    { "id": "sonnet-1", "harness": "claude", "model": "sonnet" },
+    { "id": "codex-1", "harness": "codex", "model": "gpt-6.1-sol", "effort": "high" }
+  ]
+}

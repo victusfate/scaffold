@@ -100,6 +100,15 @@ try {
   #host-status .guard-clear { color: var(--ok); }
   #host-status .guard-warn { color: var(--warn); }
   #host-status .guard-blocked { color: var(--bad); font-weight: 650; }
+  #slots { margin: 0 0 0.9rem; }
+  #slots h2 { font-size: 0.95rem; margin: 0 0 0.4rem; }
+  #slots ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  #slots li { border: 1px solid var(--line); border-radius: 6px; padding: 0.4rem 0.7rem; min-width: 14rem; font-size: 0.86rem; }
+  #slots li.busy { border-left: 4px solid var(--accent); }
+  #slots li.free { border-left: 4px solid var(--ok); }
+  #slots li.orphan, #slots li.overbooked { border-left: 4px solid var(--bad); }
+  #slots .meta { color: var(--muted); }
+  #slots .flag { color: var(--bad); font-weight: 650; }
   #stale {
     display: none; margin: 0 0 0.9rem; padding: 0.55rem 0.85rem; border-radius: 6px;
     border: 1px solid var(--warn); background: var(--panel);
@@ -265,6 +274,7 @@ try {
   </form>
 </dialog>
 
+<section id="slots" aria-label="Agent slots" hidden></section>
 <section id="task-tools" aria-label="Task controls">
   <form id="add">
     <div class="row">
@@ -491,6 +501,39 @@ function renderStatus() {
   $("#sweep").onclick = () => post({ op: "archive" });
   $("#cfg-interval").onchange = e => post({ op: "config", key: "interval", value: e.target.value });
   $("#cfg-parallel").onchange = e => post({ op: "config", key: "maxParallel", value: e.target.value });
+}
+
+// ------------------------------------------------------------------ slots
+
+// Slots come from .agent/topology.json; busy/free is derived from task status (owner = slot id).
+// Lane heartbeat sidecars, when present, only add the "last beat" detail.
+function slotCard(slot) {
+  const label = esc(slot.id) + ' <span class="meta">' + esc(slot.harness) + ' / ' + esc(slot.model)
+    + (slot.effort ? ' / ' + esc(slot.effort) : '') + '</span>';
+  if (!slot.busy) return '<li class="free" data-slot="' + esc(slot.id) + '"><strong>' + label + '</strong><br>free</li>';
+  const work = slot.tasks.map(t => '<div>' + esc(t.id) + ' — ' + esc(t.title)
+    + (t.startedAt ? ' <span class="meta">started <time datetime="' + esc(t.startedAt) + '">' + esc(t.startedAt) + '</time></span>' : '')
+    + '</div>').join("");
+  const beat = slot.lane ? '<div class="meta">last beat <time datetime="' + esc(slot.lane.updatedAt) + '">'
+    + esc(slot.lane.updatedAt) + '</time>' + (slot.lane.stale ? ' (stale)' : '') + '</div>' : '';
+  return '<li class="busy' + (slot.overbooked ? ' overbooked' : '') + '" data-slot="' + esc(slot.id) + '"><strong>' + label + '</strong>'
+    + (slot.overbooked ? ' <span class="flag">more than one active task</span>' : '') + work + beat + '</li>';
+}
+
+function renderSlots() {
+  const el = $("#slots");
+  const none = !S.slots.length && !S.topologyError;
+  el.hidden = none;
+  if (none) { el.innerHTML = ""; return; }
+  const t = S.topology;
+  el.innerHTML = '<h2>Slots'
+      + (t ? ' <span class="meta">orchestrator ' + esc(t.orchestrator.model) + ', tick ' + esc(t.tickMinutes) + ' min</span>' : '')
+      + '</h2>'
+    + (S.topologyError ? '<p class="flag">Invalid .agent/topology.json: ' + esc(S.topologyError) + '</p>' : '')
+    + '<ul role="list">' + S.slots.map(slotCard).join("")
+    + S.orphans.map(o => '<li class="orphan" data-orphan="' + esc(o.id) + '"><strong>' + esc(o.id) + ' — ' + esc(o.title)
+      + '</strong><br><span class="flag">orphaned: owner ' + esc(o.owner || "none") + ' is not a slot</span></li>').join("")
+    + '</ul>';
 }
 
 // ------------------------------------------------------------------ tasks
@@ -816,6 +859,7 @@ function renderNow() {
   const typed = openEditor
     ? [...openEditor.querySelectorAll("[name]")].map(el => [el.name, el.value]) : null;
   renderStatus();
+  renderSlots();
   renderTasks();
   if (typed) {
     const editor = $('#tasks li[data-id="' + editingId + '"] .editor');

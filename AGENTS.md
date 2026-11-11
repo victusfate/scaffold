@@ -76,7 +76,7 @@ external gating, usage-limit windows or a crash-safety re-arm, never to pace wor
 gated unit at a time. Supervise background work by **progress, not liveness**. Never idle while described
 work is unbuilt: "exhausted" means built and reachable. **Time-box every task** (default 4–6 h of worker time, or
 the owner's box): at the box, ship the green part and close the task or return it to owner triage with one
-checkpoint note; never auto-continue it or spin its remainder into new tasks.
+checkpoint note; never auto-continue it or spin its remainder into new tasks. Slots: [`.agent/topology.json`](docs/agents-detail.md#agent-topology).
 → [full text](docs/agents-detail.md#continuous-execution-loops--build-until-done).
 
 ## Orchestration hygiene (lessons from long autonomous runs)

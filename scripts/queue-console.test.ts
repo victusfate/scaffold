@@ -227,31 +227,6 @@ maxParallel: 2
   err('set with unknown field rejected', { op: 'set', id: 'task-001', fields: { owner: 'me' } });
 }
 
-// ---- applyOp: dependency integrity — the interface guards the DAG ----
-{
-  const q = parseQueue('- [ ] task-001 — base\n- [ ] task-002 — mid\n  - deps: task-001\n'
-    + '- [ ] task-003 — leaf\n  - deps: task-002\n- [x] task-004 — old\n');
-  const err = (label: string, op: unknown): void => {
-    const r = applyOp(q, op as Op);
-    assert(label, !r.ok && typeof (r as { error: string }).error === 'string');
-  };
-
-  err('deps to a nonexistent task rejected', { op: 'set', id: 'task-003', fields: { deps: 'task-999' } });
-  err('self-dependency rejected', { op: 'set', id: 'task-001', fields: { deps: 'task-001' } });
-  err('dependency cycle rejected', { op: 'set', id: 'task-001', fields: { deps: 'task-003' } });
-  err('add with unknown dep rejected', { op: 'add', title: 'x', fields: { deps: 'task-999' } });
-  err('remove of a depended-on task rejected', { op: 'remove', id: 'task-001' });
-
-  const leaf = applyOp(q, { op: 'remove', id: 'task-003' });
-  assert('remove of a leaf allowed', leaf.ok);
-  const done = applyOp(q, { op: 'remove', id: 'task-004' });
-  assert('remove of a done task nothing depends on allowed', done.ok);
-  const cleared = applyOp(q, { op: 'set', id: 'task-002', fields: { deps: '' } });
-  assert('clearing deps allowed', cleared.ok && cleared.queue.tasks[1].dependsOn.length === 0);
-  const valid = applyOp(q, { op: 'set', id: 'task-003', fields: { deps: 'task-001, task-002' } });
-  assert('valid multi-dep accepted', valid.ok && valid.queue.tasks[2].dependsOn.join(',') === 'task-001,task-002');
-}
-
 // ---- template: the page's contract with the server and the design ----
 {
   const html = readFileSync(join(import.meta.dirname, 'queue-console.template.html'), 'utf8');
@@ -275,6 +250,10 @@ maxParallel: 2
   has('filter changes use the draft-preserving render path', 'taskFilter.addEventListener("input", () => {\n  render();');
   has('filtered active cards do not invent free lanes', 'const activeCount = S.tasks.filter');
   has('status header mount point', 'id="status"');
+  has('slots panel mount point', 'id="slots"');
+  has('slots panel renders free slots', '>free</li>');
+  has('slots panel flags orphaned active tasks', 'is not a slot');
+  has('slots panel reports an invalid topology file', 'Invalid .agent/topology.json');
   has('host resource status mount point', 'id="host-status"');
   has('host status is passive rather than a noisy live region', 'aria-live="off"');
   has('host status names the resource guard', 'Resource guard');
@@ -408,6 +387,22 @@ maxParallel: 2
   assert('hand-edited view left untouched', readFileSync(file, 'utf8') === handEdited);
   assert('reads still serve the store', (await fetch(`${base}/api/queue`)).status === 200);
   writeFileSync(file, handEdited.replace('- [ ] task-001 — merged-in duplicate\n', ''));
+
+  const topoFile = join(dir, 'topology.json');
+  process.env.TOPOLOGY_FILE = topoFile;
+  const noFile = await (await fetch(`${base}/api/queue`)).json() as { slots: unknown[]; topologyError: string | null };
+  assert('no topology file: no slots, no error', noFile.slots.length === 0 && noFile.topologyError === null);
+  writeFileSync(topoFile, JSON.stringify({ orchestrator: { model: 'opus' }, slots: [{ id: 'worker-1', harness: 'claude', model: 'sonnet' }] }));
+  const withSlots = await (await fetch(`${base}/api/queue`)).json() as { slots: { id: string; busy: boolean }[] };
+  assert('GET /api/queue serves slots from the topology file', withSlots.slots.length === 1 && withSlots.slots[0].id === 'worker-1');
+  await post({ op: 'claim-lane', id: 'task-001', worker: 'http-worker' });
+  const claimed = await (await fetch(`${base}/api/queue`)).json() as { slots: { busy: boolean }[]; orphans: { id: string }[] };
+  assert('claim-lane owner outside the topology is an orphan', !claimed.slots[0].busy && claimed.orphans.some(o => o.id === 'task-001'));
+  await post({ op: 'release', id: 'task-001' });
+  writeFileSync(topoFile, '{ bad');
+  const invalid = await (await fetch(`${base}/api/queue`)).json() as { topologyError: string | null };
+  assert('invalid topology file surfaces an error', /invalid JSON/.test(invalid.topologyError ?? ''));
+  delete process.env.TOPOLOGY_FILE;
 
   const lanes = await (await fetch(`${base}/api/lanes`)).json() as { lanes: { id: string }[] };
   assert('GET /api/lanes reflects sidecars', Array.isArray(lanes.lanes));

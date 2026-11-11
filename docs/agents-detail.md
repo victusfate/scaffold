@@ -864,3 +864,31 @@ most important operational rule when fanning out; violating it silently splits t
 The binding publication rule is [process ownership](../AGENTS.md#session-and-process-ownership).
 The orchestrator integrates each lane, runs local CI preflight, then publishes a controlled batch.
 This avoids lane pushes repeatedly cancelling and cold-starting the same hosted CI jobs.
+
+## Agent topology
+
+`.agent/topology.json` declares who does the work. Like `.agent/default-language.md` it is **consumer-owned**:
+scaffold ships its schema (`lib/topology.schema.json`), an example (`lib/topology.example.json`) and the reader
+(`scripts/topology.ts`, `node scripts/topology.ts` validates), and never creates or overwrites the file.
+
+```json
+{
+  "orchestrator": { "model": "opus" },
+  "tick_minutes": 10,
+  "slots": [
+    { "id": "sonnet-1", "harness": "claude", "model": "sonnet" },
+    { "id": "codex-1", "harness": "codex", "model": "gpt-6.1-sol", "effort": "high" }
+  ]
+}
+```
+
+- `slots[].id` is unique kebab-case and doubles as the queue task **owner** while the slot is busy. `harness`
+  is `claude`, `codex`, `agy`, `pi` or another name the repo's dispatcher understands.
+- Unknown keys are rejected, and there are no routing fields: the orchestrator decides which task suits which
+  slot. A missing file means orchestrator only, no slots.
+- The [loop skill](../skills/loop.md#topology-tick) runs the tick: read the topology, review and ship finished
+  slots, dispatch the next priority task to every free slot, then housekeeping. Changing models or the slot mix
+  is an edit to this file, never to the scheduled prompt.
+- The queue console's **Slots** panel reads the same file plus task status: a slot is busy when an active task
+  is owned by its id, and an active task owned by a non-slot is flagged as orphaned. Orchestrator and subagents
+  must keep task status and owner correct for the panel to be true; lane heartbeat sidecars are optional detail.
