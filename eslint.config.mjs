@@ -19,7 +19,7 @@ const MAX_COMPLEXITY = 10;
 const MAX_PARAMS = 4;
 
 export default tseslint.config(
-  // .tooling/** is untracked local tooling (the security scanners' venv and ESLint stack); .claude/worktrees/**
+  // .tooling/** is untracked machine-local tooling; .claude/worktrees/**
   // holds subagent worktrees, which are other checkouts of this repo.
   { ignores: ['lib/linters/**', '**/*.scaffold-new', 'node_modules/**', '.tooling/**', '.claude/worktrees/**'] },
   js.configs.recommended,
