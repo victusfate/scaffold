@@ -17,7 +17,7 @@ assert.equal(check(new Map([['a.md', rule], ['b.md', rule.replace('before every'
 // Short paragraphs (headings, one-liners) may repeat.
 assert.deepEqual(check(new Map([['a.md', '## Steps'], ['b.md', '## Steps']]), 1e6), []);
 // Fenced code is exempt: the same command may be shown where it is used.
-const fence = '```bash\n' + para('node scripts/security-gate.ts body.md') + '\n```';
+const fence = '```bash\n' + para('node scripts/check-handoff.ts body.md') + '\n```';
 assert.deepEqual(check(new Map([['a.md', fence], ['b.md', fence]]), 1e6), []);
 
 // An explained, deliberate repetition (a skill must stand alone) carries a quality-override pragma.
@@ -61,7 +61,7 @@ const root = mkdtempSync(join(tmpdir(), 'guideline-reference-'));
 try {
   mkdirSync(join(root, 'docs'));
   mkdirSync(join(root, 'skills/loop'), { recursive: true });
-  for (const path of ['AGENTS.md', 'docs/agents-detail.md', 'docs/security-review.md'])
+  for (const path of ['AGENTS.md', 'docs/agents-detail.md'])
     writeFileSync(join(root, path), '');
   writeFileSync(join(root, 'skills/loop/reference.md'), 'Wait only on recorded PIDs.');
   const files = guidelineFiles(root);

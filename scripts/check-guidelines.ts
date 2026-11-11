@@ -78,8 +78,7 @@ export function guidelineFiles(root: string): Map<string, string> {
   const skillFiles = (dir: string): string[] => readdirSync(join(root, dir), { withFileTypes: true })
     .flatMap(entry => entry.isDirectory() ? skillFiles(`${dir}/${entry.name}`)
       : entry.name.endsWith('.md') ? [`${dir}/${entry.name}`] : []);
-  const paths = ['AGENTS.md', 'docs/agents-detail.md', 'docs/security-review.md',
-    ...skillFiles('skills').sort()];
+  const paths = ['AGENTS.md', 'docs/agents-detail.md', ...skillFiles('skills').sort()];
   return new Map(paths.map(p => [p, readFileSync(join(root, p), 'utf8')]));
 }
 

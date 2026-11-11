@@ -1,0 +1,89 @@
+name: Security
+
+# Ultralight security scan of what a PR adds. Each scanner runs only when the PR touches what it checks:
+#   gitleaks     secrets in changed files
+#   osv-scanner  known (published) vulnerabilities in changed lockfiles
+#   zizmor       unsafe GitHub Actions workflows, when a workflow, action or dependabot.yml changes
+# Make "Security scan" a required status check in branch protection (/protect-branch).
+# False positives are suppressed in the repo, reviewed like any other diff:
+#   a `gitleaks:allow` comment on the line · osv-scanner.toml [[IgnoredVulns]] with a reason (next to the
+#   lockfile) · `# zizmor: ignore[<rule>]` on the workflow line.
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Security scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      # Release artifacts pinned by version and sha256 (verified against each release's published checksums).
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+      OSV_VERSION: 2.7.0
+      OSV_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+      ZIZMOR_VERSION: 1.30.1
+      ZIZMOR_SHA256: e65324f4430c2717591937edcec90ccbefaf14c174f8ec9415e03ca875b46e1a
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          # The PR's merge commit plus its first parent (the base tip): HEAD^1..HEAD is exactly what merging adds.
+          fetch-depth: 2
+          persist-credentials: false
+      - name: Scan the changes
+        run: |
+          set -euo pipefail
+          bin="$RUNNER_TEMP/bin"; mkdir -p "$bin"
+          # fetch <repo> <tag> <asset> <sha256>: download a release asset and refuse it unless it is the pinned one.
+          fetch() {
+            curl -sSfL --retry 3 -o "$RUNNER_TEMP/$3" "https://github.com/$1/releases/download/$2/$3"
+            echo "$4  $RUNNER_TEMP/$3" | sha256sum -c --quiet -
+          }
+          mapfile -d '' changed < <(git diff -z --name-only --diff-filter=ACMR HEAD^1 HEAD)
+          echo "${#changed[@]} changed file(s)"
+          failed=()
+
+          if [ ${#changed[@]} -gt 0 ]; then
+            fetch gitleaks/gitleaks "v$GITLEAKS_VERSION" "gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" "$GITLEAKS_SHA256"
+            tar -xzf "$RUNNER_TEMP/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" -C "$bin" gitleaks
+            tree="$RUNNER_TEMP/changed"; mkdir -p "$tree"
+            # The checkout is HEAD, so copy the changed files from it (paths on stdin: no argument-length limit).
+            printf '%s\0' "${changed[@]}" | tar --null -T - -cf - | tar -x -C "$tree"
+            echo "::group::gitleaks (secrets in changed files)"
+            (cd "$tree" && "$bin/gitleaks" dir . --no-banner --redact -v -i "$GITHUB_WORKSPACE") || failed+=(gitleaks)
+            echo "::endgroup::"
+          fi
+
+          locks=()
+          for f in "${changed[@]}"; do
+            case "${f##*/}" in
+              package-lock.json|npm-shrinkwrap.json|yarn.lock|pnpm-lock.yaml|bun.lock|Cargo.lock|go.mod|poetry.lock|uv.lock|Pipfile.lock|Gemfile.lock|composer.lock|requirements*.txt)
+                locks+=(-L "$f") ;;
+            esac
+          done
+          if [ ${#locks[@]} -gt 0 ]; then
+            fetch google/osv-scanner "v$OSV_VERSION" osv-scanner_linux_amd64 "$OSV_SHA256"
+            install -m755 "$RUNNER_TEMP/osv-scanner_linux_amd64" "$bin/osv-scanner"
+            echo "::group::osv-scanner (known vulnerabilities in changed lockfiles)"
+            rc=0; "$bin/osv-scanner" scan source "${locks[@]}" || rc=$?
+            [ "$rc" -eq 0 ] || [ "$rc" -eq 128 ] || failed+=(osv-scanner)   # 128: no packages in the lockfile
+            echo "::endgroup::"
+          fi
+
+          if printf '%s\n' "${changed[@]}" | grep -qE '^(\.github/(workflows|actions)/|action\.ya?ml$|\.github/dependabot\.ya?ml$)'; then
+            fetch zizmorcore/zizmor "v$ZIZMOR_VERSION" zizmor-x86_64-unknown-linux-gnu.tar.gz "$ZIZMOR_SHA256"
+            tar -xzf "$RUNNER_TEMP/zizmor-x86_64-unknown-linux-gnu.tar.gz" -C "$bin" zizmor
+            echo "::group::zizmor (GitHub Actions workflows)"
+            "$bin/zizmor" . || failed+=(zizmor)
+            echo "::endgroup::"
+          fi
+
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "::error::security scan found problems: ${failed[*]} (see the groups above)"
+            exit 1
+          fi
+          echo "security scan: clean"

@@ -24,7 +24,7 @@ coverage/
 .vscode/
 diagrams/
 
-# Pinned security scanners (scripts/setup-security-tools.sh) — machine-local, never committed
+# Machine-local tooling — never committed
 .tooling/
 
 # Subagent git worktrees (Claude Code isolation: worktree); local only, never committed.

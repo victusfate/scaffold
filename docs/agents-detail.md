@@ -202,8 +202,8 @@ cheapest at it:
 
 - **Machines check everything decidable:** scanners, lint, types, tests, `/validate`, `/simplify`.
   A repeated review comment becomes a rule or a check (*Deterministic first*).
-- **Agent review stays line by line.** The `## Security review` and `/code-refiner` read every changed
-  line. Their findings are fixed before a person sees the PR.
+- **Agent review stays line by line.** `/code-refiner` reads every changed
+  line. Its findings are fixed before a person sees the PR.
 - **Critical changes are mapped, not hidden in the diff.** Every PR body carries a `## Critical changes`
   section: the key notes of what changed where, for the parts with blast radius (agent rules, durable
   contracts, data, security, CI and release, anything `[unverified]`). At most five, ranked by blast
