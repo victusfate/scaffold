@@ -3,6 +3,8 @@ name: Sync agent guidance from scaffold
 on:
   workflow_dispatch:
 
+permissions: {}
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -10,9 +12,10 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Sync from scaffold
         id: sync
@@ -31,6 +34,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
           git checkout -b chore/sync-scaffold-guidance
           git add -A
           git commit -m "chore: sync agent guidance from scaffold"
