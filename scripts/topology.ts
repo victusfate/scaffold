@@ -68,27 +68,33 @@ function parseSlot(raw: unknown, index: number): Slot {
   return slot;
 }
 
-/** Validate a parsed JSON value. Throws TopologyError naming the first problem. */
-export function parseTopology(raw: unknown): Topology {
-  if (!isObject(raw)) throw new TopologyError('topology must be a JSON object');
-  rejectUnknown(raw, TOP_KEYS, 'topology');
-  if (!isObject(raw.orchestrator)) throw new TopologyError('orchestrator must be an object');
-  rejectUnknown(raw.orchestrator, ['model'], 'orchestrator');
-  const orchestrator = { model: nonEmptyString(raw.orchestrator.model, 'orchestrator.model') };
+function parseOrchestrator(raw: unknown): { model: string } {
+  if (!isObject(raw)) throw new TopologyError('orchestrator must be an object');
+  rejectUnknown(raw, ['model'], 'orchestrator');
+  return { model: nonEmptyString(raw.model, 'orchestrator.model') };
+}
 
-  const tick = raw.tick_minutes ?? DEFAULT_TICK_MINUTES;
-  if (typeof tick !== 'number' || !Number.isFinite(tick) || tick <= 0) {
-    throw new TopologyError('tick_minutes must be a positive number');
-  }
-  const rawSlots = raw.slots ?? [];
-  if (!Array.isArray(rawSlots)) throw new TopologyError('slots must be an array');
-  const slots = rawSlots.map(parseSlot);
+function parseSlots(raw: unknown): Slot[] {
+  if (!Array.isArray(raw)) throw new TopologyError('slots must be an array');
+  const slots = raw.map(parseSlot);
   const seen = new Set<string>();
   for (const s of slots) {
     if (seen.has(s.id)) throw new TopologyError(`duplicate slot id "${s.id}"`);
     seen.add(s.id);
   }
-  return { orchestrator, tickMinutes: tick, slots };
+  return slots;
+}
+
+/** Validate a parsed JSON value. Throws TopologyError naming the first problem. */
+export function parseTopology(raw: unknown): Topology {
+  if (!isObject(raw)) throw new TopologyError('topology must be a JSON object');
+  rejectUnknown(raw, TOP_KEYS, 'topology');
+  const orchestrator = parseOrchestrator(raw.orchestrator);
+  const tick = raw.tick_minutes ?? DEFAULT_TICK_MINUTES;
+  if (typeof tick !== 'number' || !Number.isFinite(tick) || tick <= 0) {
+    throw new TopologyError('tick_minutes must be a positive number');
+  }
+  return { orchestrator, tickMinutes: tick, slots: parseSlots(raw.slots ?? []) };
 }
 
 /** Read and validate the topology file; a missing file is the default (orchestrator only). */
