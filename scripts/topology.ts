@@ -30,6 +30,7 @@ export interface Topology {
 
 export class TopologyError extends Error {}
 
+// quality-ok: magic-number — the loop skill's documented default tick cadence
 export const DEFAULT_TICK_MINUTES = 10;
 export const TOPOLOGY_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', '.agent', 'topology.json');
 const KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;

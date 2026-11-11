@@ -22,7 +22,8 @@ import { fileURLToPath } from 'node:url';
 import { load, save, log, appendArchive, queueFile, dbFile, withLock, now, ROOT } from './queue-io.ts';
 import { QueueIntegrityError } from './queue-db.ts';
 import { laneDir, readLanes, laneStale, requestStop, stopRequested, type LaneState } from './queue-lanes.ts';
-import { loadTopology, defaultTopology, TopologyError, type Topology, type Slot } from './topology.ts';
+import { defaultTopology, type Topology } from './topology.ts';
+import { slotViews, readTopology, type SlotView, type ConsoleOrphan } from './queue-console-slots.ts';
 import { collectHostStatus, createCachedHostProbe, type HostStatus } from './queue-host-status.ts';
 import { createSseChannel, watchFileChanges } from './sse-watch.ts';
 import {
@@ -32,6 +33,8 @@ import {
   NUMERIC_CONFIG_KEYS, TEXT_CONFIG_KEYS, ARCHITECTURE_MODES, DEFAULT_ARCHITECTURE, architectureGuidance,
   type Queue, type QueueConfig, type Task,
 } from './queue-model.ts';
+
+export { slotViews, readTopology, type SlotTask, type SlotView, type ConsoleOrphan } from './queue-console-slots.ts';
 
 // ---------------------------------------------------------------- contracts
 
@@ -73,16 +76,6 @@ export interface ConsoleState {
   orphans: ConsoleOrphan[];
 }
 
-export interface SlotTask { id: string; title: string; startedAt: string | null }
-/** One topology slot: busy iff an active task is owned by the slot id. Lane heartbeat is optional detail. */
-export interface SlotView extends Slot {
-  busy: boolean;
-  /** More than one active task owned by this slot: a dispatch bug worth flagging. */
-  overbooked: boolean;
-  tasks: SlotTask[];
-  lane: LaneView | null;
-}
-export interface ConsoleOrphan { id: string; title: string; owner: string | null }
 
 export interface LaneView extends LaneState { stale: boolean; stop: boolean }
 export interface QueueConsoleServerOptions {
@@ -103,37 +96,6 @@ export function laneViews(q: Queue): LaneView[] {
   return readLanes().map(l => ({
     ...l, stale: laneStale(l, at, q.config.leaseMinutes), stop: stopRequested(l.id),
   }));
-}
-
-// ---------------------------------------------------------------- slots
-
-/**
- * Derive slot occupancy from task status alone (owner = slot id), so the UI is only as true as the
- * orchestrator's task bookkeeping. Heartbeat sidecars, when present, attach as detail.
- */
-export function slotViews(q: Queue, topology: Topology, lanes: LaneView[] = []): { slots: SlotView[]; orphans: ConsoleOrphan[] } {
-  const active = q.tasks.filter(t => t.status === 'active');
-  const slots = topology.slots.map(slot => {
-    const mine = active.filter(t => t.owner === slot.id);
-    const lane = lanes.find(l => mine.some(t => t.id === l.id)) ?? null;
-    return {
-      ...slot, busy: mine.length > 0, overbooked: mine.length > 1, lane,
-      tasks: mine.map(t => ({ id: t.id, title: t.title, startedAt: t.startedAt })),
-    };
-  });
-  const ids = new Set(topology.slots.map(s => s.id));
-  const orphans = topology.slots.length === 0 ? [] : active.filter(t => !t.owner || !ids.has(t.owner))
-    .map(t => ({ id: t.id, title: t.title, owner: t.owner }));
-  return { slots, orphans };
-}
-
-/** Topology for the console: an invalid file is reported, not fatal. */
-export function readTopology(): { topology: Topology | null; error: string | null } {
-  try { return { topology: loadTopology(), error: null }; }
-  catch (error) {
-    if (!(error instanceof TopologyError)) throw error;
-    return { topology: null, error: error.message };
-  }
 }
 
 // ---------------------------------------------------------------- state

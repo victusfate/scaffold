@@ -27,13 +27,6 @@ One orchestrator per session; other sessions and user-launched CLIs are independ
   push, merge the orchestrator's branch, or deploy. Push without force and preserve main's history.
 → [rationale](docs/agents-detail.md#session-and-process-ownership).
 
-## Agent topology
-
-`.agent/topology.json` (consumer-owned, never synced) lists the orchestrator model and the subagent slots
-(`id`, `harness`, `model`); no routing fields. Each loop tick collects finished slots, then gives every free
-slot the next priority task with owner = slot id. Swap resources by editing the file, not the loop prompt.
-→ [full text](docs/agents-detail.md#agent-topology).
-
 ## Roles — orchestrator, subagent, active agent
 
 - **Orchestrator:** one per session. Owns the plan, the working branch, integration, the PR, and merges
@@ -83,7 +76,7 @@ external gating, usage-limit windows or a crash-safety re-arm, never to pace wor
 gated unit at a time. Supervise background work by **progress, not liveness**. Never idle while described
 work is unbuilt: "exhausted" means built and reachable. **Time-box every task** (default 4–6 h of worker time, or
 the owner's box): at the box, ship the green part and close the task or return it to owner triage with one
-checkpoint note; never auto-continue it or spin its remainder into new tasks.
+checkpoint note; never auto-continue it or spin its remainder into new tasks. Slots: [`.agent/topology.json`](docs/agents-detail.md#agent-topology).
 → [full text](docs/agents-detail.md#continuous-execution-loops--build-until-done).
 
 ## Orchestration hygiene (lessons from long autonomous runs)

@@ -97,8 +97,11 @@ scripts/codex-jsonl.ts
 scripts/queue.test.ts
 scripts/queue-park.test.ts
 scripts/queue-console.ts
+scripts/queue-console-slots.ts
 scripts/queue-console.template.html
 scripts/queue-console.test.ts
+scripts/queue-console-slots.test.ts
+scripts/queue-console-deps.test.ts
 scripts/queue-console-concurrency.test.ts
 scripts/queue-host-status.ts
 scripts/queue-host-status.test.ts
