@@ -122,7 +122,7 @@ points at its first holder and is flagged with `!`; check each flagged dep.
 ```
 list | show <id>                       # overview | one task's full spec
 add "<title>" [flags]                  # append a task (flags below); --top to prepend
-                                       #   agents: add --parent <id> or --requested "<human words>" (tasks are human-owned)
+                                       #   agents: add --requested "<human words>" (tasks are human-owned; --parent adds lineage only)
 add-many                               # seed many tasks from stdin, one per line (same origin flags)
 set <id> <field> <value>               # edit a field (mode/slug/deps/files/validate/accept)
 next | ready                           # serial pick | fan-out candidate set (under the cap)
@@ -132,6 +132,7 @@ claim <id> [--worker w]                # atomic claim for a parallel worker
 release <id> --worker w                # return a confirmed-ended owned claim to pending
 done <id> [--skip-validate]            # implementation accepted; delivery gate remains
 advance <id> --pr <url> --branch <name> # root attests merged PR and fresh branch
+links [--fix]                          # report (exit 1) / clear task links to branches that no longer exist
 fail <id> [reason...]                  # record a failure (retries, then terminal)
 top <id> | move <id> <pos> | remove <id>   # reprioritize (1-based pos, as `list` numbers) | prune
 requeue <id>                           # revive a failed task (pending again, failures cleared)
@@ -262,9 +263,10 @@ printf 'Write the README\nAdd unit tests\n' | node scripts/queue.ts add-many --r
 ```
 
 `add-many` **appends** (never clobbers) and also takes positional args. Tasks are
-human-owned: in an agent session `add` and `add-many` need `--parent <task-id>` (a child of
-the task the work came from) or `--requested "<the human's own words>"`; a bare agent add
-exits 2.
+human-owned: an agent adds one only when the owner asked for it, quoting their words with
+`--requested "<the human's own words>"`. The CLI also accepts `--parent <task-id>` (a child of
+the task the work came from), but that records lineage, not permission — a child still needs
+the owner's request. A bare agent add exits 2.
 
 Each line becomes its own task, so split the list to the atomic grain below
 before piping it in — bulk-seeding is where umbrella tasks sneak in.
@@ -340,8 +342,8 @@ claimed task is self-contained. During execution:
 The orchestrator owns the complete cycle:
 
 1. Claim one independently useful task. Parallel agents work on **subtasks of this
-   task** in isolated worktrees; they report and commit locally. Only the orchestrator
-   integrates, pushes, opens/updates the task PR, and merges.
+   task** in isolated worktrees; they report and commit locally under
+   [publication ownership](../AGENTS.md#session-and-process-ownership).
 2. Satisfy full acceptance, review the diff, and run real local validation on the
    integrated branch. `done` records implementation acceptance, **not a merge**.
 3. Run `/create-pr`; inspect actual required hosted check conclusions on the final
@@ -423,10 +425,8 @@ unique-content audit.
 
 After a harness restart or power outage has erased child handles, an explicit operator
 recovery instruction authorizes the orchestrator to release the stale queue claim
-with the exact stored owner. This authority applies to the queue record only: never run
-`kill`, `pkill`, `killall`, or `taskkill`, and never infer process ownership from a
-name or PID. Claims belonging to another live/possibly-live session remain fail-closed:
-leave its process, record, and worktree untouched and report the ambiguity.
+with the exact stored owner. This authority applies to queue metadata;
+[process ownership](../AGENTS.md#session-and-process-ownership) governs lifecycle control and ambiguous claims.
 
 ## Cleanup at integration
 

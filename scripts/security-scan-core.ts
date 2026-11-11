@@ -20,6 +20,7 @@ export const MAX_BUFFER = 1 << 30;
 /** git's empty tree: as --attr-source it applies NO .gitattributes, so export-ignore/export-subst cannot hide files. */
 const EMPTY_TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904';
 
+export interface CoverageGap { tool: string; at: string; type: string; msg: string }
 export interface Finding { id: string; tool: string; at: string; msg: string; hold: boolean }
 
 /** A setup or scanner failure: the scan fails closed with exit 2. */
@@ -33,6 +34,8 @@ export interface Ctx {
   /** Every path the diff touches, deletions and both sides of renames included (what the gate holds). */
   touched: string[];
   findings: Finding[];
+  /** Existing parser gaps: informational, excluded from the blocking findings. */
+  coverage?: CoverageGap[];
   /** Tools whose pinned hash was verified this scan. */
   verified: Set<string>;
   /** The committed HEAD tree, exported once (scanners never read the working tree). */
@@ -49,7 +52,7 @@ const PASS_THROUGH = ['PATH', 'LANG', 'LC_ALL', 'TMPDIR', 'HTTPS_PROXY', 'https_
   'NO_PROXY', 'no_proxy', 'SSL_CERT_FILE', 'SSL_CERT_DIR',
   // Node's extra trust roots: a sandbox whose egress proxy re-signs TLS (cloud agent sessions) sets it, and npm
   // cannot reach the registry without it. Operator environment only, never repo content.
-  'NODE_EXTRA_CA_CERTS'];
+  'NODE_EXTRA_CA_CERTS', 'NODE_USE_ENV_PROXY'];
 
 export function minimalEnv(c: Pick<Ctx, 'work'>, extra: Record<string, string> = {}): NodeJS.ProcessEnv {
   const home = join(c.work, 'home');

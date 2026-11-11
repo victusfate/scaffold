@@ -28,5 +28,5 @@ BEHIND=$(git rev-list --count HEAD..origin/main 2>/dev/null || echo "0")
 if [ "$BRANCH" = "main" ]; then
   echo "⚠  main is $BEHIND commit(s) behind origin/main — run: git pull origin main"
 else
-  echo "⚠  '$BRANCH' is $BEHIND commit(s) behind origin/main — rebase before new feature work: git rebase origin/main"
+  echo "⚠  '$BRANCH' is $BEHIND commit(s) behind origin/main — merge before new feature work: git merge origin/main"
 fi

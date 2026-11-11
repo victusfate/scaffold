@@ -88,3 +88,6 @@ security/rules-accepted.json
 
 # Repository-owned concrete boundary policy; consumers declare their own rules.
 .agent/boundaries.json
+tools/hoist-skill/notices.test.ts
+tools/hoist-skill/rename.test.ts
+tools/hoist-skill/references.test.ts

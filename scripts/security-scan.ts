@@ -6,7 +6,7 @@
  *
  *   node scripts/security-scan.ts [--base <ref>] [--report <file.json>] [--config-dir <dir>]
  *     --base        compare HEAD against this ref (default origin/main); only the diff is judged
- *     --report      write a JSON summary {status, findings:[{id,tool,at,msg,hold}]}
+ *     --report      write a JSON summary {status, findings, coverage, stages}; existing parser gaps are informational
  *     --config-dir  where the gate's configs and helper scripts (GATE_FILES in security-gate.ts) come from. The
  *                   gate passes a copy exported from origin/main, so a branch can never weaken the gate that
  *                   judges it. Default: the repo being scanned.
@@ -155,12 +155,12 @@ const STAGES: Record<string, (c: Ctx) => void> = {
   'project-checks': runProjectChecks,
   'cargo-deny': c => { if (c.changed.some(p => CARGO_MANIFEST.test(p))) scanCrates(c); },
 };
-interface StageResult { name: string; started_at: string; ended_at: string; seconds: number; findings: Ctx['findings'] }
+interface StageResult { name: string; started_at: string; ended_at: string; seconds: number; findings: Ctx['findings']; coverage: NonNullable<Ctx['coverage']> }
 function validStageResult(message: unknown, name: string): message is StageResult {
   if (typeof message !== 'object' || message === null) return false;
   const result = message as Partial<StageResult>;
   return result.name === name && typeof result.started_at === 'string' && typeof result.ended_at === 'string'
-    && typeof result.seconds === 'number' && Number.isFinite(result.seconds) && Array.isArray(result.findings);
+    && typeof result.seconds === 'number' && Number.isFinite(result.seconds) && Array.isArray(result.findings) && Array.isArray(result.coverage);
 }
 function stageWorker(c: Ctx, name: string): Promise<StageResult> {
   return new Promise((resolve, reject) => {
@@ -186,12 +186,13 @@ async function scanAll(c: Ctx): Promise<StageResult[]> {
   const results = await parallelStages(Object.keys(STAGES).map(name => () => {
     const work = join(c.work, name);
     mkdirSync(work);
-    return stageWorker({ ...c, work, findings: [], verified: new Set<string>(), headTree: undefined,
+    return stageWorker({ ...c, work, findings: [], coverage: [], verified: new Set<string>(), headTree: undefined,
       // Semgrep already reads only changed targets. Other scanners retain their full export contracts.
       headPaths: name === 'semgrep' ? c.changed : undefined }, name);
   }));
   for (const result of results) {
     c.findings.push(...result.findings);
+    (c.coverage ??= []).push(...result.coverage);
     console.log(`security-stage: ${JSON.stringify({ name: result.name, started_at: result.started_at,
       ended_at: result.ended_at, seconds: result.seconds, exit: statusOf(result.findings) })}`);
   }
@@ -204,7 +205,7 @@ function runWorker(): void {
   const started_at = new Date().toISOString();
   STAGES[name](c);
   parentPort?.postMessage({ name, started_at, ended_at: new Date().toISOString(),
-    seconds: (performance.now() - started) / MS_PER_SECOND, findings: c.findings });
+    seconds: (performance.now() - started) / MS_PER_SECOND, findings: c.findings, coverage: c.coverage ?? [] });
 }
 
 interface Args { base: string; report: string; cfg: string }
@@ -256,7 +257,7 @@ async function scan(a: Args, work: string): Promise<number> {
   console.log(`security-scan: ${c.touched.length} changed file(s) since ${c.mb.slice(0, 9)}; gate config from ${c.cfg}`);
   const stages = c.touched.length ? await scanAll(c) : [];
   const status = statusOf(c.findings);
-  if (a.report) writeFileSync(a.report, JSON.stringify({ status, findings: c.findings, stages }, null, 2));
+  if (a.report) writeFileSync(a.report, JSON.stringify({ status, findings: c.findings, coverage: c.coverage ?? [], stages }, null, 2));
   console.log(`security-scan: ${VERDICT[status]}`);
   return status;
 }

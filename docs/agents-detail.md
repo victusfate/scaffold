@@ -459,10 +459,12 @@ use it only when keeping the file whole aids comprehension more than splitting i
 On your first response in a new session:
 
 1. **Sync check** — Claude Code's `SessionStart` hook fetches `origin/main` and warns if
-   the current branch is behind. If you see that warning, rebase before
-   starting new feature work (`git rebase origin/main`) or pull if on `main`
-   (`git pull origin main`). Without that hook, run `git fetch origin main`
-   and `git rev-list --count HEAD..origin/main` explicitly. On a fetch failure,
+   the current branch is behind. If you see that warning, merge before
+   starting new feature work (`git merge origin/main`) or pull if on `main`
+   (`git pull origin main`). Rebase only an unpushed branch; a pushed one
+   follows [publication ownership](../AGENTS.md#session-and-process-ownership).
+   Without that hook, run `git fetch origin main` and
+   `git rev-list --count HEAD..origin/main` explicitly. On a fetch failure,
    report that freshness is unverified and continue local work where possible.
 2. **PR watch** — If the current branch has an open PR, subscribe to it with
    `subscribe_pr_activity`. Watch only this session's branch's PR, not PRs from
@@ -475,7 +477,7 @@ On your first response in a new session:
   unrelated artifacts without blocking new work; ask only if intent is unclear.
 - **No artifacts:** when the request is feature work (see *What This Doesn't Apply To*),
   start `/feature-chain` without asking permission. If the user's intent is vague or
-  unstated, the grill (Phase 1) resolves it through Q&A. Do not ask a pre-question first.
+  unstated, collaborative planning (Phase 1) resolves it through Q&A. Do not ask a pre-question first.
 
 ## Minimum Viable Diff
 
@@ -491,7 +493,7 @@ Prefer the smallest change that achieves the goal.
 
 Run `/feature-chain` to execute all phases automatically. Or invoke individually:
 
-1. **Design** — `/grill-with-docs`. Interview one question at a time until
+1. **Design** — `/co-plan`. Interview one question at a time until
    the design tree is resolved. Produces `design.md` with Q&A, decisions, and
    a **canonical vocabulary**. Run `/design-review` (auto-fix mode) before
    advancing — patches `design.md` directly. Auto-advances to PRD when complete.
@@ -568,7 +570,7 @@ with explicit session or standing project authorization**. Creating a PR does no
 without that permission, preserve the ready PR and gate the next task. A failed gate remains part of
 the current task; never grow the branch with another feature to defer it. Confirm the actual merge and
 cut a fresh branch from updated main before the next independent task. Subagents may parallelize
-subtasks of the current task; only the orchestrator integrates, pushes and merges. Explicit project
+subtasks of the current task under [publication ownership](../AGENTS.md#session-and-process-ownership). Explicit project
 policy may opt into legacy batch delivery (`queue config deliveryMode batch`). See `skills/queue.md`
 for runtime boundaries, migration and the `advance` acknowledgment.
 
@@ -586,7 +588,7 @@ for runtime boundaries, migration and the `advance` acknowledgment.
 happened. The squash commit's title is the PR title, and its body keeps the PR's attribution trailers.
 Make it the repo's only option once, so nobody merges another way by accident:
 `gh repo edit --enable-squash-merge --enable-merge-commit=false --enable-rebase-merge=false`.
-Never rewrite or force-push main to squash older history. Recorded commit IDs (task evidence, release
+[Publication ownership](../AGENTS.md#session-and-process-ownership) protects existing history. Recorded commit IDs (task evidence, release
 names, rollback references, PR links) and every existing clone, worktree and branch depend on it; use
 `git log --first-parent main` for a one-line-per-merge view instead. A squash-merged branch is never an
 ancestor of main, so `git branch --merged` cannot tell you it landed: decide by the PR's `MERGED` state
@@ -648,16 +650,11 @@ defaults; infer routine choices from the repository and existing authorization.
 
 ## Session and process ownership
 
-Each session has exactly one orchestrator. Separate sessions may work concurrently, including in the
-same repository, but they are independent owners. Never inspect, stop, reclaim, interrupt, or signal
-another session's orchestrator, subagents, or a user-launched agent CLI as lifecycle targets. Read-only
-aggregate resource checks may observe them, but process names, PIDs, terminals, queue owner labels,
-lease timestamps, and worktrees never establish authority over them.
-
-Only a lifecycle controller may terminate the exact child tree it created for its current generation,
-and only on explicit cancel or timeout. Normal child completion must not send a cleanup signal. If
-ownership is ambiguous, leave the process and worktree untouched, stop conflicting dispatch, and report
-the conflict.
+The binding rules live in [AGENTS.md](../AGENTS.md#session-and-process-ownership).
+Independent sessions can share a repository without sharing lifecycle authority.
+A process name, stale lease or worktree path is evidence to investigate, not an ownership token.
+A normal child exit already completed its lifecycle; a cleanup signal can hit a reused identity.
+For an owned timeout, GNU `timeout` may regroup its child, so the payload session identifies the full tree.
 
 ## Orchestration hygiene (lessons from long autonomous runs)
 
@@ -672,9 +669,9 @@ These failures each cost hours in a real run; each has a cheap guard.
   every target after it. A mass rename can also rewrite deliberately invalid test fixtures into
   valid ones, so read the test diff, not just the result.
 - **Never feed parsed command output into `rm`, `mv` or delete loops.** Handle each named
-  path explicitly after looking at it, and never act on a directory you didn't create. After
-  you kill a destructive job, kill its children too: a `mv` across mounts copies first and
-  keeps running after its parent dies.
+  path explicitly after looking at it, and never act on a directory you didn't create. A `mv` across mounts
+  copies first, so child scope matters during cancellation; follow
+  [process ownership](../AGENTS.md#session-and-process-ownership).
 - **Subagents that "wait" may be asleep.** A subagent that ends its turn waiting on its own
   background job often has nothing running and never wakes. Check that the subagent's processes
   are alive each tick and resume it if not. Tell subagents never to end a turn idle: poll with
@@ -700,13 +697,25 @@ These failures each cost hours in a real run; each has a cheap guard.
   progress or making it that slot's next job, not leaving its branch behind. Deleting a branch that
   holds unmerged commits needs the owner's OK. Count branches each tick: more than active subagents
   plus main is a defect to fix before dispatching new work.
-- **Wait on and stop processes by recorded identity, never by name match.** `pgrep -f '<script>'`
-  matches the shell running the check (its own command line contains the pattern, even a bracketed
-  one when the same line names the script elsewhere) and every agent whose prompt mentions that
-  script. One waiter blocked for two hours because a worker's prompt named the release script it was
-  waiting on; a stop command killed its own shell. Record `$!` when you start background work and wait
-  with `kill -0 <pid>`, or poll a log line or done-marker the job writes. Stop processes by recorded
-  PID, in a separate command from any relaunch.
+- **Tests synchronize on readiness, never on time — and never wait forever.** A fixed `sleep` used
+  to let something "probably finish" is a race that passes on a quiet host and fails under load.
+  Wait on an explicit readiness signal (a marker file, a recorded event, an open port) and, before a
+  fixture's cleanup, on the exit of the children the test itself started, identified per
+  [process ownership](../AGENTS.md#session-and-process-ownership). Every such
+  wait is **bounded**: a hard timeout that fails the test closed with a named cause. A test never runs
+  indefinitely; a hang is a failure, not a long pass.
+- **Prove a flaky-test fix under load.** A test that failed only under host load is fixed when it
+  passes N runs in a row (default 10/10) under artificial CPU or I/O load, plus normal runs, with
+  its assertions unchanged. One quiet pass proves nothing.
+- **Debug builds can hide defects; verify in the shipping configuration.** Some runtimes check
+  object validity, bounds or lifetimes only in debug builds and dereference freed memory in release
+  (for example, an engine that logs "previously freed instance" in debug and crashes in release). A
+  green debug suite is not evidence for lifetime- or memory-sensitive changes — pools, caches,
+  eviction, object teardown, scene or state swaps. Verify those in the build players run (a
+  release build or a release soak), and treat debug-only warnings of that class as bugs.
+- **Link process-control policy instead of copying it.** Use
+  [process ownership](../AGENTS.md#session-and-process-ownership) in loop prompts and handoffs.
+  A pattern waiter can match its own shell or an agent whose prompt names the command.
 - **Time budgets measure work, not waiting.** A check with a wall-clock limit that also waits for a
   shared lock fails whenever other work holds the lock, though the check itself fits. Admit first,
   then start the work timer; give the wait its own cap and a named failure cause (for example
@@ -720,10 +729,9 @@ These failures each cost hours in a real run; each has a cheap guard.
   equals the check's. A different fingerprint wastes the warm-up and recompiles inside the timed window.
   Measured: a lint warm-up run without the flag, then the check with it, re-linted (~110 s) every run; with
   identical flags the check took 0.1 s.
-- **Pausing workers never freezes an interactive or GUI process they launched.** Pause or resume the agent's own
-  processes, never an application window the user can see: a frozen window left on a user's screen for minutes was the trigger. A stage
-  that times out kills the payload's whole session, not just a process group: GNU `timeout` puts its child in
-  its own group, so a group kill misses it and the orphan keeps holding locks.
+- **Keep lifecycle scope explicit.** The pause and timeout boundaries are in
+  [process ownership](../AGENTS.md#session-and-process-ownership). A frozen GUI can remain visible to its user,
+  and GNU `timeout` can place a payload in another process group.
 
 ## Knowledge state: typed and evidenced, not prose
 
@@ -745,19 +753,37 @@ Full rationale and pilot plan: [`docs/knowledge-architecture.md`](docs/knowledge
   doc drifts: agents read the binding rules at session start, not every plan. When an owner states a
   standing rule ("X is the source of truth"), add it to the binding rule file and, where it can be
   checked, a check that fails when new work violates it.
-- **Tasks are human-owned.** Top-level tasks come from a human. Work an agent finds while working
-  (review follow-ups, bugs hit while shipping, report clusters) attaches to the task it came from as
-  a child (`queue add "<title>" --parent <task-id>`) or a note on that task. An agent adds a new
-  top-level task only for a human's explicit request, quoting their words
-  (`--requested "<their words>"`); with no parent and no request it asks the human first. The queue
-  CLI enforces this in agent sessions (`scripts/queue-task-origin.ts`) and records the origin as a
-  `parent:<id>` or `requested-by:human` tag. The quote is unauthenticated text, so only quote real
-  words, as with owner sign-offs.
+- **Only the owner creates tasks.** Every task comes from the owner. An agent creates a task only when
+  the owner explicitly asks for *that* task, quoting their words (`--requested "<their words>"`).
+  Work an agent finds while working (review follow-ups, bugs hit while shipping, report clusters,
+  the unfinished remainder of a slice) **augments the existing task it came from** — a note, a typed
+  checkpoint or evidence on that task — or goes into the orchestrator's summary for the owner to
+  triage. A child task (`--parent`) is not a way around this: agent-filed children for findings or
+  for shipping bookkeeping are what turn a backlog into one that only grows. The queue CLI records
+  the origin as a `requested-by:human` tag (`scripts/queue-task-origin.ts`); the quote is
+  unauthenticated text, so only quote real words, as with owner sign-offs. (Owner: "only I can
+  authorize new tasks / you can augment existing tasks".)
+- **Time-box tasks; no forever tasks.** Each task gets a fixed budget of worker time (default 4–6
+  hours, or the owner's own box). The worker brief states the box and ONE concrete outcome with a stop
+  condition, and says workers never create tasks. The orchestrator checks lane run age every loop
+  tick; at the box it stops the lane cleanly (work committed, typed checkpoint), ships the green part,
+  and either closes the task as done — the shipped scope counts — or returns it to owner triage with
+  one checkpoint note of what remains. It never auto-continues the task or spins the remainder into
+  new tasks, and the freed slot takes the next task in the queue's existing order. A task that keeps
+  growing (measurement programs, infrastructure detours) is a signal to ship what is green and stop,
+  not to extend the box. (Owner: "we cannot afford to get stuck on forever tasks that create more
+  tasks and never end"; "each task gets 4-6hours tops".)
 - **Generate hook points; don't hand-write them.** Code locations come from code at a named
   commit, and plans state intent and gates. Subagents own the details and write discoveries back.
 - **Never keep project facts only in harness-private memory.** Facts every subagent needs live in
   the repo, readable by every harness. Private memory holds harness preferences only.
 
+
+**A task's branch link names only a live working branch.** Empty means the task is on main. Set the
+link when a lane actually starts on that branch, not before (a refused launch leaves a link to nothing),
+and clear it when the branch merges or is retired, including for a task that stays open for follow-up
+slices. A link to a deleted branch is a stale fact that misleads dispatch and branch accounting;
+`queue links` reports them (exit 1) and `queue links --fix` clears them without changing task status.
 ## Understand the shape of the problem first
 
 Before committing to a solution, map the **shape of the problem** (the dimensions it balances and
@@ -835,17 +861,9 @@ most important operational rule when fanning out; violating it silently splits t
 
 ### NO PUSH RACE — lanes commit LOCALLY, the orchestrator merges + gates + pushes
 
-**Subagent worktree lanes NEVER `git push` to GitHub.** A lane commits to its OWN worktree branch and
-reports; it does not touch `origin`. Telling a lane to `git push origin HEAD:<branch>` is a bug: it
-creates a **push race** where N lanes pushing rapidly each trigger a full CI run, and rapid pushes
-cancel and cold-restart the slow gates, burning CI minutes. There is ONE pusher: the orchestrator.
-
-Every time: (1) lane commits locally in its worktree, reports — no push; (2) orchestrator merges the
-lane branch into the LOCAL one working branch, deletes the worktree; (3) orchestrator runs the CI
-gates **LOCALLY as a pre-flight** (a fast local `make ci`/preflight of the same checks CI runs) and
-fixes locally before spending a GitHub run; (4) orchestrator pushes to GitHub in **controlled batches**
-(rebase-retry, never force). GitHub CI is a fast confirmation, not the failure-finder. The
-orchestrator's own commits ride the same batched push, so there is no second branch and no push race.
+The binding publication rule is [process ownership](../AGENTS.md#session-and-process-ownership).
+The orchestrator integrates each lane, runs local CI preflight, then publishes a controlled batch.
+This avoids lane pushes repeatedly cancelling and cold-starting the same hosted CI jobs.
 
 ## Agent topology
 

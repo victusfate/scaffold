@@ -61,3 +61,5 @@ Open questions or follow-on considerations.
 ### When PRD is complete
 
 Commit `prd.md` with message `docs(<slug>): PRD`. Then automatically proceed to `/tdd` without waiting for permission.
+
+Adapted from Matt Pocock ([MIT notice](../THIRD_PARTY_NOTICES.txt)).

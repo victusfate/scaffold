@@ -9,7 +9,7 @@ the first match.
 |---|---|---|---|
 | loop | `/(?:^\/loop\b)/i` | `skills/loop.md` | Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver |
 | feature-chain | `/(?:^\/feature-chain\b)\|(?:build\|implement\|add)\s+(?:a\s+)?(?:new\s+)?(?:feature\|capability)/i` | `skills/feature-chain.md` | Orchestrate design → PRD → TDD → review end to end |
-| grill-with-docs | `/(?:^\/grill-with-docs\b)\|(?:stress[-\s]?test\|sharpen)\s+(?:the\s+)?(?:plan\|design\|idea)/i` | `skills/grill-with-docs.md` | Design Q&A → design.md + canonical vocabulary |
+| co-plan | `/(?:^\/co-plan\b)\|(?:stress[-\s]?test\|sharpen)\s+(?:the\s+)?(?:plan\|design\|idea)/i` | `skills/co-plan.md` | Collaborate with the user to resolve a feature idea, constraints, and design decisions into design.md before implementation |
 | to-prd | `/(?:^\/to-prd\b)\|(?:write\|create\|generate)\s+(?:a\s+)?prd/i` | `skills/to-prd.md` | Synthesize context + codebase → prd.md |
 | tdd | `/(?:^\/tdd\b)\|red[-\s]?green[-\s]?refactor\|test[-\s]?(?:first\|driven)/i` | `skills/tdd.md` | Vertical-slice TDD → plan.md + tdd-log.md |
 | design-review | `/(?:^\/design-review\b)\|review\s+(?:the\s+)?design(?:\.md)?/i` | `skills/design-review.md` | Structural review of design.md |
@@ -42,6 +42,7 @@ the first match.
 | investigate | `/(?:^\/investigate\b)|(?:root[-\s]?cause|debug|investigate)\s+(?:this|the|a)\s+(?:bug|failure|error|crash|test)/i` | `skills/investigate.md` | Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim |
 | qa | `/(?:^\/qa\b)|(?:qa|smoke[-\s]?test)\s+(?:this|the\s+(?:app|feature|change))|check\s+(?:that\s+)?it\s+actually\s+works/i` | `skills/qa.md` | Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report |
 | gmail-automation | `/(?:^\/gmail-automation\b)|gmail\s+(?:filter|label|tag|automation)s?|(?:auto[-\s]?(?:tag|label)|filter)\s+(?:my\s+)?(?:e-?mails?|inbox)/i` | `skills/gmail-automation.md` | Automate Gmail tasks, filter setup, email tagging, and programmatic inbox management without using the desktop web interface. Use when the user wants to set up filters, apply tags, or process emails via API, scripts, or agentic commands. |
+| retro | `/(?:^\/retro\b)/i` | `skills/retro.md` | Use only when the user requests a session retrospective to identify evidence-backed improvements to agent tooling, checks, navigation, and steering; present proposals before changes |
 
 ## Column contract
 

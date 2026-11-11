@@ -36,7 +36,7 @@ inputs:
   plan:
     type: boolean
     default: false
-    description: Print annotated source paths ({ path, required }) without emitting any files. required:true sources must exist; required:false sources are generated when absent.
+    description: Print annotated source paths ({ path, required }) without emitting any files. required:true sources must exist; required:false sources may be absent in older releases; missing harness wrappers are generated.
   fetch:
     type: boolean
     default: false

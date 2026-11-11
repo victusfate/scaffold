@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Cross-process mutations must retain every record rather than clobbering a stale snapshot.
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { tmpdir } from 'node:os';
 import { parseQueue } from './queue-model.ts';
@@ -120,6 +120,26 @@ try {
     throw new Error('concurrent transition was not preserved');
   }
   console.log('queue-lock: validation refuses a changed task claim PASS');
+
+  // A holder killed mid-transaction (SIGKILL, a caller's `timeout`) never runs its finally. Its lock is reclaimed
+  // once the holder is confirmed dead; a live holder's lock never is.
+  const { holderIsDead, parseLockRecord } = await import('./queue-io.ts');
+  const deadPid = Number(spawnSync(process.execPath, ['-e', 'process.stdout.write(String(process.pid))'], { encoding: 'utf8' }).stdout);
+  if (parseLockRecord('garbage') !== null) throw new Error('an unreadable lock record must never be reclaimed');
+  if (holderIsDead({ pid: process.pid, acquiredAt: Date.now() })) throw new Error('a live holder was treated as dead');
+  if (!holderIsDead({ pid: deadPid, acquiredAt: Date.now() })) throw new Error('an exited holder was treated as alive');
+  if (existsSync('/proc/self/stat') && !holderIsDead({ pid: process.pid, acquiredAt: 0 })) {
+    throw new Error('a PID that started after the lock was taken (reused) was treated as the holder');
+  }
+  const staleFile = join(dir, 'stale', 'queue.md');
+  mkdirSync(dirname(staleFile), { recursive: true });
+  writeFileSync(staleFile, '# Work Queue\n\n');
+  writeFileSync(join(dirname(staleFile), 'queue.db.lock'), `pid=${deadPid} acquiredAt=${new Date().toISOString()}\n`);
+  const reclaimStart = Date.now();
+  if (run(staleFile, 'add', 'after a dead holder') !== 0) throw new Error('a dead holder\'s lock wedged the CLI');
+  if (Date.now() - reclaimStart > 20_000) throw new Error('reclaim waited for the 60 s lock timeout');
+  if (existsSync(join(dirname(staleFile), 'queue.db.lock'))) throw new Error('reclaimed lock was not released');
+  console.log('queue-lock: a dead holder\'s lock is reclaimed, a live one is kept PASS');
 } finally {
   rmSync(dir, { recursive: true, force: true });
 }

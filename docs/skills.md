@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/loop`, `/feature-chain`, `/grill-with-docs`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/mind-meld`, `/modern-web`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`, `/deslop`, `/upstream`, `/investigate`, `/qa`, `/gmail-automation`.
+Skills can be invoked individually: `/loop`, `/feature-chain`, `/co-plan`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/mind-meld`, `/modern-web`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`, `/deslop`, `/upstream`, `/investigate`, `/qa`, `/gmail-automation`, `/retro`.
 
 In Codex, use `$skill-name` or `/skills` to select these workflows from `.agents/skills`. See [Codex support](codex.md) for setup and client-specific behavior.
 
@@ -41,7 +41,7 @@ tools/
     RESOLVER.md                # central routing table — skill → regex → path
     loop/SKILL.md              # Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver
     feature-chain/SKILL.md     # Orchestrate design → PRD → TDD → review end to end
-    grill-with-docs/SKILL.md   # Design Q&A → design.md + canonical vocabulary
+    co-plan/SKILL.md           # Collaborate with the user to resolve a feature idea, constraints, and design decisions into design.md before implementation
     to-prd/SKILL.md            # Synthesize context + codebase → prd.md
     tdd/SKILL.md               # Vertical-slice TDD → plan.md + tdd-log.md
     design-review/SKILL.md     # Structural review of design.md
@@ -74,6 +74,7 @@ tools/
     investigate/SKILL.md       # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
     qa/SKILL.md                # Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report
     gmail-automation/SKILL.md  # Automate Gmail tasks, filter setup, email tagging, and programmatic inbox management without using the desktop web interface. Use when the user wants to set up filters, apply tags, or process emails via API, scripts, or agentic commands.
+    retro/SKILL.md             # Use only when the user requests a session retrospective to identify evidence-backed improvements to agent tooling, checks, navigation, and steering; present proposals before changes
     improve/SKILL.md           # (bundled) Survey a codebase as a read-only senior advisor and produce prioritized, self-contained implementation plans for other agents to execute
   session-start/
     hook.sh                      # SessionStart hook: fetches origin/main, warns if branch is behind
@@ -86,7 +87,7 @@ tools/
     agents.mdc            # thin pointer to AGENTS.md
     loop.mdc              # mirrors loop for Cursor
     feature-chain.mdc     # mirrors feature-chain for Cursor
-    grill-with-docs.mdc   # mirrors grill-with-docs for Cursor
+    co-plan.mdc           # mirrors co-plan for Cursor
     to-prd.mdc            # mirrors to-prd for Cursor
     tdd.mdc               # mirrors tdd for Cursor
     design-review.mdc     # mirrors design-review for Cursor
@@ -119,11 +120,12 @@ tools/
     investigate.mdc       # mirrors investigate for Cursor
     qa.mdc                # mirrors qa for Cursor
     gmail-automation.mdc  # mirrors gmail-automation for Cursor
+    retro.mdc             # mirrors retro for Cursor
 .agents/
   skills/
     loop/SKILL.md              # Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver
     feature-chain/SKILL.md     # Orchestrate design → PRD → TDD → review end to end
-    grill-with-docs/SKILL.md   # Design Q&A → design.md + canonical vocabulary
+    co-plan/SKILL.md           # Collaborate with the user to resolve a feature idea, constraints, and design decisions into design.md before implementation
     to-prd/SKILL.md            # Synthesize context + codebase → prd.md
     tdd/SKILL.md               # Vertical-slice TDD → plan.md + tdd-log.md
     design-review/SKILL.md     # Structural review of design.md
@@ -156,6 +158,7 @@ tools/
     investigate/SKILL.md       # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
     qa/SKILL.md                # Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report
     gmail-automation/SKILL.md  # Automate Gmail tasks, filter setup, email tagging, and programmatic inbox management without using the desktop web interface. Use when the user wants to set up filters, apply tags, or process emails via API, scripts, or agentic commands.
+    retro/SKILL.md             # Use only when the user requests a session retrospective to identify evidence-backed improvements to agent tooling, checks, navigation, and steering; present proposals before changes
     improve/SKILL.md              # bridge to the bundled advisor and its references
 .agent/
   rules/
@@ -163,7 +166,7 @@ tools/
   workflows/
     loop.md              # Schedule recurring work, inspect or stop loops, and route user steering to an active main-orchestrator loop by default; portable macOS/Linux/WSL/Windows driver
     feature-chain.md     # Orchestrate design → PRD → TDD → review end to end
-    grill-with-docs.md   # Design Q&A → design.md + canonical vocabulary
+    co-plan.md           # Collaborate with the user to resolve a feature idea, constraints, and design decisions into design.md before implementation
     to-prd.md            # Synthesize context + codebase → prd.md
     tdd.md               # Vertical-slice TDD → plan.md + tdd-log.md
     design-review.md     # Structural review of design.md
@@ -196,6 +199,7 @@ tools/
     investigate.md       # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
     qa.md                # Run the real app, drive the changed entry points like a user (browser, API, CLI, job), fix in-tier issues with a regression test each, re-verify, and report
     gmail-automation.md  # Automate Gmail tasks, filter setup, email tagging, and programmatic inbox management without using the desktop web interface. Use when the user wants to set up filters, apply tags, or process emails via API, scripts, or agentic commands.
+    retro.md             # Use only when the user requests a session retrospective to identify evidence-backed improvements to agent tooling, checks, navigation, and steering; present proposals before changes
 scripts/
   check-resolvable.ts            # RESOLVER linter (reachability/ambiguity/DRY/MECE/parity/sync)
   update-skills-doc.ts           # regenerate docs/skills.md skill sections from RESOLVER.md

@@ -1,371 +1,70 @@
-## Purpose
+## Native first
 
-Run an instruction or explicit command repeatedly from a real scheduler outside the model's turn. Use for a
-loop invocation with an interval and instruction, recurring agent work, steering an active loop, and loop
-status/stop requests. This is an execution driver: it does not replace the queue skill and is not a promise to
-remember to continue.
-
-## Invocation
-
-```text
-/loop 10min run the topology tick (skills/loop.md): finished slots first, then dispatch the next
-priority queue task to every free slot in .agent/topology.json
-
-/loop status
-/loop stop
-/loop stop --cancel
-```
-
-A native recurring-loop command takes precedence; do not override it.
+Use `/loop <interval> <instruction>`, `/loop status`, `/loop stop`, or `/loop stop --cancel`.
+Prefer the harness's exposed native recurring command or session wakeup when it supports the request.
+Claude Code's built-in loop takes precedence; on pi, use native recurrence only when actually available.
+Capture the contract below, then use that scheduler's real start, status, steering, and stop controls.
+For editing, require serial runs in the checkout; inspect existing status before arming another recurrence.
+Record the actual scheduler ID, lifetime, cadence, overlap behavior, and stop method after verifying startup.
+Treat a session-bound scheduler as session-bound; claim no persistence or capabilities its tools do not supply.
+When native recurrence suffices, apply the shared rules below without loading the external-driver reference.
+Only when native support is absent/insufficient, or survival after session closure is requested, read
+[external driver and continuity](loop/reference.md) before configuring that fallback.
+For status or changes to an existing external loop, read that reference and use the recorded driver.
+Follow [session and process ownership](../AGENTS.md#session-and-process-ownership) for all lifecycle actions.
 
 ## Capture the contract
 
-Text after the interval is an **agent instruction**, not shell code. Use argv mode only for an explicitly
-requested command. Preserve quotes and multiline instructions; never interpolate them into `eval`, a shell
-script, or `sh -c`.
-
-Resolve the checkout, active branch, agent executable, interval, and existing authorization. Capture a
-self-contained instruction: agreed objective, next tasks, artifact/handoff paths, branch,
-validation/publication permissions, and completion condition. Use the repo's durable handoff convention and
-preserve any unrelated handoff. Include this snapshot in the scheduled prompt; a fresh CLI session does not
-inherit chat memory or native subagent handles.
-
-Before the first external run:
-
-- Finish or checkpoint the current edit and transfer checkout ownership: the parent session stops editing that
-  checkout once the driver starts.
-- Finish native subagent lanes first, or record their worktrees and logs; never transfer authority through raw
-  PIDs.
-- To resume interactive edits, stop the loop and wait for the current run to finish (or explicitly cancel it).
-  Status-only check-ins do not require stopping it.
-- Keep lifecycle control with the parent or supervisor. A scheduled child reports its outcome through the
-  structured result below; it never invokes `stop` on its own driver.
-
-Include these execution instructions in the agent prompt:
-
-- Stay within agreed tasks and the explicitly requested queue fallback. Do not infer additional projects,
-  publication authority, or permission to restart a stopped queue.
-- Read repo instructions and the recorded handoff. If the recorded branch changed, stop the loop and report
-  before editing.
-- Work continuously during each run; the interval restarts an ended run and is not permission to stop after
-  one small action while useful work remains.
-- **Run the topology tick, every run** (next section). Slots replace lane counts and per-task routing in the
-  scheduled prompt.
-- Reconcile only driver-owned handles and current-session worktree lanes before spawning. Do not inspect other
-  agent sessions for cleanup, duplicate surviving jobs, or reclaim live leases. Do not start a second
-  orchestrator while a human/session is editing the same checkout.
-- Recurrence belongs to the recurring agent. Subagents receive bounded assignments and are monitored, retasked
-  and joined by that agent; they do not arm independent loops. A subagent asked to schedule recurrence returns
-  that request to its parent instead of starting another driver.
-- Read the steering inbox at run start, at each safe work boundary (when a tool or subagent result returns),
-  before dispatching more work, before publishing, and before exiting. Apply new direction before resuming the
-  older agenda. Retask affected subagents, update the durable handoff, then acknowledge each ID with its
-  disposition. Only the recurring agent consumes steering; subagents follow its assignments. Include the exact
-  `inbox` and `ack` commands below in the captured prompt, using the absolute helper and checkout paths.
-- User steering supersedes conflicting captured loop instructions, queue priorities and subagent assignments,
-  subject to higher-priority safety rules. Process messages in receipt order; the latest user direction wins
-  on conflict. Stop dispatching conflicting work and retask affected subagents at the next safe boundary. Do
-  not defer steering to finish the old agenda or to wait for another interval. An in-flight tool may need to
-  return or an atomic write finish safely; do not resume superseded work afterward. A real blocker requires a
-  report, not silent continuation of the old instruction.
-- The slot list in `.agent/topology.json` is the ceiling on concurrent subagents. Respect actual client slots
-  and host limits; use the repo's memory guard for heavy jobs. A timeout is not a RAM cap.
-- Inspect current-session stuck jobs using owned handles, logs, elapsed time, and process state. Bound
-  retries, keep independent work moving, and never loosen permissions or kill unrelated jobs. Launch long jobs
-  nonblockingly, retain their identifiers/logs, and inspect them periodically while staying responsive to
-  steering.
-- If queue draining was requested, follow its skill and CLI for claims and completion, not direct queue-file
-  edits or a replacement queue.
-- An external-driver run leaves completed worktree commits isolated and reports their branches and paths; it
-  does not merge or publish. A native recurring orchestrator may integrate or publish only within its existing
-  authorization. Refresh concrete next steps each run.
-- At the completion condition or a blocker requiring user direction, checkpoint and report `complete` or
-  `blocked` through the structured result. When useful work remains and no terminal blocker exists, report
-  `continue`. Do not call the driver's `stop` command from inside the scheduled child. Exit zero alone does not
-  prove the objective complete.
+Text after the interval is an agent instruction, not shell code; use argv mode only for an explicit command.
+Preserve quotes and multiline text as one argument; never interpolate instructions into `eval` or `sh -c`.
+Resolve the checkout, active branch, interval, execution limits, existing authorization, and completion condition.
+Capture the agreed objective, next tasks, artifact/handoff paths, branch, permissions, and requested queue fallback.
+Use the repo's durable handoff convention and preserve unrelated handoffs; include the snapshot in the scheduled prompt.
+A fresh CLI run inherits neither chat memory nor native subagent handles; make its instruction self-contained.
+Continue useful authorized work during each run; an interval restarts ended work rather than pacing live work.
+Recurrence belongs to the recurring agent; subagents return scheduling requests to it and receive bounded assignments.
+Use the queue's skill and CLI for requested queue work; the loop is a driver, not a replacement queue.
 
 ## Topology tick
 
-The agent topology lives in **`.agent/topology.json`** (consumer-owned; scaffold never overwrites it; schema
-`lib/topology.schema.json`, example `lib/topology.example.json`, reader `scripts/topology.ts`). It names the
-orchestrator model, the tick cadence, and the subagent **slots**. It has no routing fields: the orchestrator
-judges which task suits which slot. Swapping resources means editing that file, never the scheduled prompt.
+`.agent/topology.json` (consumer-owned; schema `lib/topology.schema.json`, reader `node scripts/topology.ts`)
+names the orchestrator, the tick cadence and the subagent **slots**, with no routing: the orchestrator judges which
+task suits which slot. Swapping resources edits that file, never the scheduled prompt. Each tick:
 
-Each tick, in order:
+1. Read and validate the topology; an invalid file is a blocker to report. No file: orchestrator only.
+2. For each slot whose task finished, review it, integrate or ship it within existing authorization, and set the
+   task status (`done`, `fail`, or `park --resume "<next step>"`).
+3. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with
+   `node scripts/queue.ts claim <id> --worker <slot-id>` and start that slot's harness/model in its own worktree.
+   Leave a slot free rather than send it a task it should not take.
+4. Reconcile (below). An active task whose owner is not a slot id is orphaned: adopt it into a free slot or park it.
 
-1. **Read the topology.** `node scripts/topology.ts` validates it; an invalid file is a blocker to report, not
-   a reason to guess. No file means orchestrator only, no slots (work serially yourself).
-2. **Collect finished slots.** For every slot whose task finished (the subagent replied or its worktree has
-   commits), review it, integrate or ship it within your existing authorization, and set the task status
-   (`done`, `fail`, or `park --resume "<next step>"`). A subagent that replied and went idle is not running.
-3. **Dispatch free slots.** A slot is free when no active (`[>]`) task has `owner == slot id`. For each free
-   slot, pick the highest-priority eligible task that suits that slot's harness/model and claim it with the
-   slot id as owner (`node scripts/queue.ts claim <id> --worker <slot-id>`), then start the subagent on that
-   slot's harness and model in its own worktree. Leave a slot free rather than send it a task it should not
-   take.
-4. **Housekeeping.** Reconcile three views and fix each mismatch on the spot: the live subagent handles, the
-   `[>]` tasks, and `git worktree list`. An active task with no running subagent is resumed or parked; a
-   subagent with no task is claimed or stopped; a worktree with neither is merged, parked or cleaned. An
-   active task whose owner is not a slot id is orphaned: adopt it into a free slot or park it. The `[>]` count
-   equals the live subagent count when the run ends.
+The queue console's Slots panel reads the same file plus task status, so it is only as true as this bookkeeping.
 
-The task UI (`scripts/queue-console.ts`) draws its Slots panel from the same file plus task status, so the UI
-is only as true as the owner/status bookkeeping above; lane heartbeat sidecars are optional detail.
+## Reconcile lanes before dispatch
 
-## Select and arm a driver
+Compare current-session live subagent handles, queue `[>]` tasks, and `git worktree list` every run.
+A subagent that replied and went idle is not a running lane; resolve each mismatch before spawning more work:
 
-### Orchestrator and process isolation
+- Active task without a running subagent: resume it, or park it with
+  `node scripts/queue.ts park <id> --branch <b> --resume "<next step>"` to preserve work and release ownership.
+- Running subagent without an active task: claim its task or stop that owned assignment.
+- Worktree without a task or subagent: integrate, park, or clean it under the repository's branch rules.
+- End each run with the active-task count matching the live subagent count.
 
-AGENTS.md *Session and process ownership* applies. Loop-specific rules:
+Treat the topology's slot list as the ceiling on concurrent subagents; respect client slots, host limits, and the repo's memory guard.
+Launch long jobs nonblockingly; retain owned identifiers/logs and inspect progress at safe boundaries.
+Bound retries, keep independent work moving, and refresh concrete next steps after each run.
 
-- Aggregate resource checks may observe other sessions' processes read-only; that grants no lifecycle
-  authority.
-- Only the driver may terminate the exact child process tree it created, and only for that driver generation
-  after an explicit cancel or timeout. Normal child exit must not trigger a cleanup signal.
-- Never use `kill`, `pkill`, `killall`, taskkill, process-name matching, or PID inference to reconcile agent
-  sessions.
-- If another orchestrator appears to overlap this checkout, leave it untouched, stop dispatching new work in
-  the current session, and report the ownership conflict.
-- Queue lease recovery changes queue metadata only; it never authorizes an OS signal.
+## Steering, status, and completion
 
-### Publication and recurrence
-
-Each session has one orchestrator, the interactive session that alone integrates into the working branch,
-pushes, merges to protected branches, and deploys. A **recurring agent** performs scheduled work. **Bounded
-runs** (subagents, worktrees, and external-driver runs) commit locally and report; they never publish or merge
-into the orchestrator's branch, so no detached second writer races the orchestrator.
-
-This is an authorization contract, not credential isolation: the generic driver executes the reviewed argv with
-inherited process access. When publication must be technically impossible, run the external command with
-credentials and OS permissions that cannot push, merge remotely, or deploy.
-
-Recurrence uses one of two shapes:
-
-  1. **Native self-continuation** (harnesses with a session-scoped wakeup / dynamic mode, e.g. Claude Code,
-     pi.dev pre-set): the orchestrator is also the recurring agent (the same session re-scheduled), and
-     recurrence dies with that session. No separate process exists. Prefer this wherever the harness has it.
-     **On Claude Code this is the built-in loop; the external driver below does not replace or override it.**
-     Use the driver on Claude only for a loop that must survive the session fully closing; it extends the
-     built-in loop with a bounded external run.
-  2. **External driver** (harnesses with no native continuation, e.g. Codex capture-path): the portable
-     `agent-loop.ts` supervisor (below) provides the recurrence, because those harnesses cannot otherwise run a
-     loop. Its recurring agent is a bounded run: it commits locally and reports while the interactive
-     orchestrator remains the sole publisher.
-     Verified with Claude as the child: cold `claude -p --session-id {{SESSION}}` → warm
-     `claude -p --resume {{SESSION}}` recalls context, and the driver spawns/steers/stops it cleanly.
-
-An unattended overnight run keeps the same invariant: publication has a single writer, and no detached process
-publishes on its own. With native self-continuation, publishing pauses when the session fully closes (a fresh
-session resumes it). With the external driver, the bounded run keeps committing locally and the orchestrator
-integrates its commits when it next runs.
-
-Choosing a scheduler:
-
-- Use an exposed native recurring scheduler if it supports the requested behavior. For editing jobs it must
-  prevent overlapping runs in the same checkout; otherwise use the external driver or report the unsupported
-  requirement.
-- Record its actual ID, lifetime, overlap behavior, and stop method. Do not claim session persistence unless
-  provided.
-- Check existing driver status first. Never arm two drivers for the same work.
-- Report whether native recurrence is fixed cadence or completion-relative, and give the child a supported
-  self-stop mechanism.
-- When the user needs an external driver and native scheduling is session-bound or absent, use the external
-  fallback.
-
-### Portable external fallback
-
-Requires Node >=23.6 on macOS, Linux/WSL, or native Windows. A detached Node supervisor runs outside the chat
-and launches commands serially. No systemd, launchd, Task Scheduler, boot installation, global settings,
-permission changes, or paid agent calls as probes. Unsupported hosts fail explicitly.
-
-Schedule foreground commands that keep their parent alive until the work they start finishes. Non-overlap applies to
-those command runs, not arbitrary detached services. On Windows, tree cancellation requires the command parent
-to still be alive; a launcher that spawns background work and exits is unsupported. Independently detached
-jobs need their own lifecycle controls and are reconciled by the agent, not covered by the supervisor's
-timeout. Do not use a fire-and-forget launcher as the recurring command.
-
-```text
-node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --lifetime 8h --timeout 30min --max-failures 3 --require-result -- EXECUTABLE ARG...
-node scripts/agent-loop.ts status --cwd /absolute/checkout
-node scripts/agent-loop.ts logs --cwd /absolute/checkout
-node scripts/agent-loop.ts stop --cwd /absolute/checkout
-node scripts/agent-loop.ts stop --cwd /absolute/checkout --cancel
-```
-
-Use the absolute helper path outside the scaffold-synced repo. Full scaffold sync ships the helper and modules;
-skill-only hoist may not. Verify the helper exists before scheduling. Never claim an unwired wrapper works.
-
-For natural language, inspect the installed agent CLI help and build its headless argv:
-
-- Pass the captured prompt as one argument. The helper pins the CWD.
-- A detached invocation may not inherit the parent session's permission, trust, sandbox, model, or
-  device-access mode. Preserve those settings in the child argv using only the target CLI's reviewed
-  unattended-approval mechanism. Never enable an unreviewed permission or sandbox bypass.
-- Before claiming the loop is usable, verify that the child can perform the capabilities its task requires,
-  including Git-metadata writes, device/GPU access, and required paths outside the workspace.
-- If a required capability is unavailable, do not leave an apparently healthy recurrence armed: stop it,
-  report the failed capability, and continue in the current session or checkpoint the work instead.
-- Do not change global permission, trust, sandbox, or model configuration.
-
-Use `--require-result` for agent-driven work. The driver supplies the writable `SCAFFOLD_AGENT_LOOP_RESULT`
-path to each run. Before exiting successfully, the child command writes one JSON object there; a reviewed
-harness adapter may produce the same object from the agent's structured response:
-
-```json
-{"status":"continue|complete|blocked","summary":"concrete progress or blocker","resume":"<optional id for next run's {{SESSION}}>"}
-```
-
-- `summary` must be a nonempty description of concrete progress, completion, or the blocker.
-- `continue` schedules another run, `complete` ends the recurrence successfully, and `blocked` ends it with the
-  typed directive and summary visible in status.
-- The optional `resume` string is the capture path for session continuity (below): when present, the driver
-  substitutes it for `{{SESSION}}` on the next run, overriding the minted id. When absent, the minted id is
-  kept.
-- A missing, empty, malformed, or unknown result fails closed instead of treating exit code zero as progress.
-- The scheduled child must not also invoke `agent-loop stop`: that reduces every terminal outcome to
-  `reason: stopped` and erases the distinction.
-- Grant the child access only to that private result path when its sandbox requires an explicit writable path.
-- Explicit command loops that already use meaningful process exit codes may omit this protocol.
-
-**Session continuity (opt-in, cuts per-run token cost).** A fresh agent each run re-reads its whole context
-(repo instructions, handoff, playbook) and re-probes capabilities every interval. To avoid that, split the
-start command with a `:::` sentinel into a COLD command (run 1, full prompt) and a WARM command (runs 2+, a
-short continuation prompt) so the agent keeps one conversation: the driver substitutes the effective session
-id for every `{{SESSION}}` token in either command. The warm run inherits the cold run's context and prompt
-cache. The result/steering/timeout protocol is unchanged.
-
-Two paths feed `{{SESSION}}`; the driver knows nothing CLI-specific about either:
-
-- **Pre-set path (CLIs that accept a caller-chosen id).** The driver mints a uuid at `start` time. The child
-  sets it once on the cold run and resumes it on warm runs. No `resume` field needed: when a run omits
-  `resume`, the minted id is kept.
-- **Capture path (CLIs that generate their own id).** The child reports the CLI-generated id as `"resume"` in
-  its result object. The driver stores it and substitutes it for `{{SESSION}}` on the NEXT run, overriding the
-  minted id. The cold command ignores `{{SESSION}}` (there is nothing to resume yet); the warm command resumes
-  `{{SESSION}}`.
-
-Per-harness cold/warm argv (verified headless). Keep each warm prompt self-sufficient: a run may be the first
-after a supervisor restart, and steering/handoff remain the durable memory the session must reconcile. This
-holds even without a `:::` sentinel, where the same command runs cold each interval.
-
-```text
-# Claude Code — pre-set path (driver-minted id set once, resumed after)
-node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --require-result -- \
-  claude -p "<FULL cold-start prompt>" --session-id {{SESSION}} --permission-mode <mode> \
-  ::: \
-  claude -p "<SHORT warm prompt>" --resume {{SESSION}} --permission-mode <mode>
-
-# pi.dev — pre-set path (same shape; verified: cold creates the session file,
-# warm with the same id resumes it and recalls prior context)
-node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --require-result -- \
-  pi -p --session-id {{SESSION}} "<FULL cold-start prompt>" \
-  ::: \
-  pi -p --session-id {{SESSION}} "<SHORT warm prompt>"
-
-# Codex — shipped capture adapter (first run generates thread_id)
-# The adapter owns --json, structured output and the private result file.
-# Warm: resume the captured id explicitly — never --last (it may pick unrelated work).
-node scripts/agent-loop.ts start --cwd /absolute/checkout --interval 10min --require-result -- \
-  node /absolute/scaffold/scripts/agent-loop-codex.ts codex -- --prompt "<FULL cold-start prompt>" \
-  ::: \
-  node /absolute/scaffold/scripts/agent-loop-codex.ts codex -- resume {{SESSION}} --prompt "<SHORT warm prompt>"
-```
-
-The shipped Codex adapter asks Codex for a `status`/`summary` object, captures the `thread.started` ID from
-JSONL, validates both, and writes the private driver result with that ID as `resume`; from run 2 on, the driver
-substitutes it for `{{SESSION}}`. The adapter withholds the private result-file path from the Codex process;
-filesystem isolation still depends on the selected Codex sandbox and OS permissions. The adapter rejects
-caller-supplied output flags, `--ephemeral`, and `--last`; put reviewed Codex options between the first `--`
-and `--prompt`. On Windows use `codex.exe`, or place `node.exe` plus the installed Codex JavaScript entrypoint
-before the first `--`, not a `.cmd` shim.
-
-- `--fork-session` is available if a run should branch instead of extending the thread.
-- Resume an explicitly selected session with supported options; never use a global "latest session" selector
-  that might pick unrelated work.
-- On Windows use an actual `.exe`, or `node.exe` plus the installed CLI's JavaScript entrypoint. A `.cmd`/`.bat`
-  shim is not an executable argv target without shell parsing. Do not silently enable a shell to run agent
-  instructions through a shim.
-- Pass native absolute paths on Windows, for example `C:\\work\\project`; the POSIX paths above are
-  placeholders, not required path syntax.
-
-Explain defaults when arming unless the user supplied alternatives:
-
-- First run starts promptly; the next starts one interval after completion. Long runs do not overlap or
-  accumulate a backlog. This is a restart delay, not an independent 10-minute watchdog polling an active agent.
-  The active agent manages its subagents; the timeout bounds a hang.
-- Lifetime 8h, per-run timeout 30min, stop after three consecutive failures. Lifetime prevents new runs after
-  expiration; a run already active may finish afterward within its own timeout. Choose a longer explicit
-  timeout for known long jobs. Timeouts can interrupt work. Semantic stagnation needs agent judgment; the
-  driver sees exit codes.
-- Survives chat/terminal closure while the supervisor lives, not reboot/WSL shutdown or a supervisor crash.
-  Does not wake the computer or run without CLI authentication. Stale/crashed ownership is reported, not
-  auto-reclaimed; inspect only current-session handles before a deliberate recovery. Foreign or ambiguous jobs
-  stay untouched and block overlapping dispatch.
-- Stop disables future runs; current work finishes. `--cancel` also terminates the current command's process
-  tree. Explain that distinction before cancelling. Stop returns after recording the request. Poll status until
-  `ended` before claiming cancellation finished or handing the checkout back to interactive work.
-- Private state includes argv and logs. Keep credentials out of prompts/argv and sensitive command details out
-  of public status updates.
-
-After start succeeds, immediately call `status`. Report the actual supervisor ID/PID, checkout, interval,
-expiration, timeout, logs and stop commands. If startup or verification fails, report **not armed** and
-resolve the specific failure within scope. Never claim background execution without verified driver state.
-
-## Status, changes, and stopping
-
-### Steering is routed by default
-
-When an interactive user sends a task correction while this checkout has an active loop, route it to that loop
-by default; do not require `/loop steer` or a restart.
-
-- First inspect the recorded driver's status and confirm the intended checkout.
-- Enqueue the user's relevant direction without broadening its scope, then report the returned message ID as
-  **queued**, not already applied.
-- Status questions alone are not steering; explicit stop/cancel requests use those controls.
-- Do not edit the loop-owned checkout to deliver a message.
-- If several checkouts have active loops, route only to those the user clearly placed in scope; ask which one
-  when ambiguous instead of broadcasting.
-
-```text
-node /absolute/scaffold/scripts/agent-loop.ts steer --cwd /absolute/checkout --message "Keep the slide torso more vertical"
-node /absolute/scaffold/scripts/agent-loop.ts steer --cwd /absolute/checkout --message-file /private/steering.txt
-node /absolute/scaffold/scripts/agent-loop.ts inbox --cwd /absolute/checkout
-node /absolute/scaffold/scripts/agent-loop.ts ack --cwd /absolute/checkout --id MESSAGE_ID --outcome applied
-node /absolute/scaffold/scripts/agent-loop.ts ack --cwd /absolute/checkout --id MESSAGE_ID --outcome deferred --note "Finish the current atomic export, then adjust the pose; recorded in handoff"
-node /absolute/scaffold/scripts/agent-loop.ts inbox --cwd /absolute/checkout --all
-```
-
-- Use one message source, not both. Preserve text as data, never shell source.
-- Prefer a private message file for long/sensitive text; command arguments can be visible in process listings.
-  Inbox storage is outside the checkout.
-- Default reads return unacknowledged messages for the current generation without consuming them; `--all`
-  explicitly inspects history, including prior generations.
-- Messages survive run boundaries until acknowledged, so handle redelivery idempotently.
-- Acknowledge only after adopting the direction in the working plan/handoff, not on mere read. `applied` means
-  direction adopted, **not** that the requested deliverable is done.
-- `deferred` and `blocked` require an explanatory note and must remain visible in the handoff/work queue.
-  Deferral is for an unavoidable safe boundary, not lower priority than older work.
-- Record superseding direction before acknowledging it. Do not silently replay an old generation after a
-  restart.
-- The CLI refuses restart while the previous generation has unacknowledged steering. Inspect its inbox first,
-  incorporate applicable direction into the new handoff/prompt (or record why the user superseded it), then
-  acknowledge that disposition, so recovery never silently returns to the old agenda.
-
-This is cooperative delivery, not a native chat interceptor; it cannot preempt an in-flight tool call. The chat
-agent must enqueue the update, and the recurring agent must have the polling instructions in its launch prompt.
-
-- Do not silently alter arbitrary executable argv to add agent behavior.
-- For a native scheduler, use its actual steering mechanism if available; otherwise report that steering
-  delivery is unsupported.
-- For an older already-running prompt without inbox polling, queueing alone is insufficient: report the
-  limitation and use the existing stop/wait/handoff procedure before a deliberate restart.
-- Never rearm a user-stopped loop. Do not claim automatic delivery is active until the recipient can poll.
-
-### Configuration changes
-
-- Status/log requests are read-only: never create or restart a timer. Use the recorded driver.
-- Active scheduling does not prove productive progress; inspect recent job output too.
-- To change configuration, stop future runs, wait for or explicitly cancel current work, then start anew. Do
-  not overwrite an active configuration.
-- Disabling future runs is immediate and must not be auto-rearmed. The current run may still claim new tasks
-  until it ends or times out; use explicit cancellation when the user wants all current work stopped too.
+Route relevant user corrections to the active loop by default; confirm the intended checkout before delivery.
+Status questions are read-only; explicit stop/cancel requests use those controls instead of steering.
+Use native steering when supported; for an external loop use the reference's inbox protocol.
+Report a queued message as queued until the recurring agent adopts it; report unsupported delivery explicitly.
+At the next safe boundary, apply the latest conflicting user direction before resuming the older agenda.
+Retask affected subagents, update the handoff, and report a real blocker instead of continuing superseded work.
+At completion or a blocker needing user direction, checkpoint and end recurrence with that outcome.
+Inspect productive progress as well as scheduler status; changing configuration requires stop, wait/cancel, then restart.
+Explain whether stop lets current work finish or cancel interrupts it, and verify termination before returning the checkout.
+A user-stopped loop stays stopped until the user requests recurrence again.

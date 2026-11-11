@@ -3,6 +3,9 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { safeWrite as sharedSafeWrite, type KeepMatcher, type WriteResult } from '../lib/safe-write.ts';
 
+// Distributed alongside skills, never included in their prompt text.
+export const NOTICES_REL = 'THIRD_PARTY_NOTICES.txt';
+
 // A skill capability resolved from RESOLVER.md, ready to emit per harness.
 export interface Capability {
   name: string;
@@ -31,7 +34,20 @@ function safeWrite(dest: string, relPath: string, content: string, kept: KeepMat
 // A table-driven approach would need variable-length rows and wouldn't be clearer.
 // quality-override: parameter-discipline — internal; makeEmitters presents the public 4-arg Emitter form
 function writeBody(cap: Capability, dest: string, srcRoot: string, kept: KeepMatcher, results: WriteResult[], force: boolean): void {
-  safeWrite(dest, cap.path, readFileSync(join(srcRoot, cap.path), 'utf8'), kept, results, force);
+  const body = readFileSync(join(srcRoot, cap.path), 'utf8');
+  const referenceRel = cap.path.replace(/\.md$/, '/reference.md');
+  const reference = join(srcRoot, referenceRel);
+  if (body.includes(`${cap.name}/reference.md`) && !existsSync(reference))
+    throw new Error(`hoist-skill: missing source ${referenceRel} required by ${cap.path}`);
+  if (existsSync(reference))
+    safeWrite(dest, referenceRel, readFileSync(reference, 'utf8'), kept, results, force);
+  const notices = join(srcRoot, NOTICES_REL);
+  if (existsSync(notices)) {
+    safeWrite(dest, NOTICES_REL, readFileSync(notices, 'utf8'), kept, results, force);
+  } else if (body.includes(NOTICES_REL)) {
+    throw new Error(`hoist-skill: missing source ${NOTICES_REL} required by ${cap.path}`);
+  }
+  safeWrite(dest, cap.path, body, kept, results, force);
 }
 
 // Each emitter writes the body then one or more harness-specific wrappers.

@@ -20,6 +20,25 @@ export function readManifest(path: string): ManifestEntry[] {
     .filter(e => e.name && e.harness);
 }
 
+const PREVIOUS_PLAN = 'grill-with-docs';
+const CURRENT_PLAN = 'co-plan';
+
+/** Resolve a recorded rename only against a registry that has adopted it. */
+export function resolveManifestEntries(entries: ManifestEntry[], available: Set<string>, refOverride?: string): ManifestEntry[] {
+  const migrate = available.has(CURRENT_PLAN) && !available.has(PREVIOUS_PLAN);
+  return entries.filter(e => !migrate || e.name !== PREVIOUS_PLAN ||
+    !entries.some(n => n.name === CURRENT_PLAN && n.harness === e.harness)).map(e => {
+    const ref = refOverride ?? e.ref;
+    if (!migrate || e.name !== PREVIOUS_PLAN) return { ...e, ref };
+    if (ref !== 'main') throw new Error(
+      `${PREVIOUS_PLAN} is pinned to ${ref}; its historical path cannot be renamed to ${CURRENT_PLAN}.\n` +
+      `Re-hoist with --names ${CURRENT_PLAN} --harness ${e.harness} --ref main to migrate deliberately, ` +
+      `or use a scaffold release that still contains ${PREVIOUS_PLAN}.`,
+    );
+    return { ...e, name: CURRENT_PLAN, ref };
+  });
+}
+
 export function upsertManifest(path: string, newEntries: ManifestEntry[]): void {
   mkdirSync(dirname(path), { recursive: true });
   const existing = readManifest(path);
@@ -28,7 +47,9 @@ export function upsertManifest(path: string, newEntries: ManifestEntry[]): void 
     const commentLines = readFileSync(path, 'utf8').split('\n').filter(l => l.startsWith('#'));
     if (commentLines.length) header = commentLines.join('\n') + '\n';
   }
-  const merged = [...existing];
+  // Explicitly hoisting the replacement retires the matching legacy registration.
+  const merged = existing.filter(e => e.name !== PREVIOUS_PLAN ||
+    !newEntries.some(n => n.name === CURRENT_PLAN && n.harness === e.harness));
   for (const entry of newEntries) {
     const idx = merged.findIndex(e => e.name === entry.name && e.harness === entry.harness);
     if (idx >= 0) merged[idx] = entry;
