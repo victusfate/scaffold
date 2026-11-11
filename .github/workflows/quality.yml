@@ -4,12 +4,17 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
+permissions:
+  contents: read
+
 jobs:
   mechanical:
     name: Mechanical checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
       - name: Run mechanical quality checks (all files)
         run: |
           mapfile -t FILES < <(git ls-files | grep -E '\.(js|mjs|ts|tsx|sh|py|rb|go)$' || true)
@@ -19,7 +24,9 @@ jobs:
     name: Shellcheck (dogfood)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
       # Lint scaffold's own vendored shell scripts against the very .shellcheckrc
       # we ship to consumers — so we never again ship a config our scripts fail.
       - name: Shellcheck own scripts with the shipped config
