@@ -363,7 +363,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
 
     case 'claim':
       if (!needId()) { console.error('claim: unknown task id'); return 1; }
-      return cmdClaim(q, id, f.flags);
+      return cmdClaim(q, id, f.flags, taskBlock);
     case 'release': {
       const task = q.tasks.find(t => t.id === id);
       if (!task || task.status !== 'active' || !f.flags.get('worker') || task.owner !== f.flags.get('worker')) {

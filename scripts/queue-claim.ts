@@ -2,7 +2,7 @@
 // worker's branch in the same write as the claim, so a slot's task never sits active with an unlinked
 // branch (the Slots panel and branch accounting read this link).
 import { save, log, now } from './queue-io.ts';
-import { beginTask, setField, deliveryAllows, taskBlock, type Queue, type Task } from './queue-model.ts';
+import { beginTask, setField, deliveryAllows, type Queue, type Task } from './queue-model.ts';
 
 /** Why `t` can't be claimed now, or null when it can (printed to stdout, as before the split). */
 function refusal(q: Queue, t: Task): { message: string; stderr: boolean } | null {
@@ -19,8 +19,11 @@ function branchFlag(flags: Map<string, string>): string | null {
   return branch && !/\s/.test(branch) ? branch : null;
 }
 
-/** `queue claim <id> [--worker w] [--branch b]`. Returns the process exit code. */
-export function cmdClaim(q: Queue, id: string, flags: Map<string, string>): number {
+/**
+ * `queue claim <id> [--worker w] [--branch b]`. Returns the process exit code. The caller passes its task
+ * printer, so consumers whose queue keeps `taskBlock` in another module sync this file unchanged.
+ */
+export function cmdClaim(q: Queue, id: string, flags: Map<string, string>, taskBlock: (t: Task) => string): number {
   const t = q.tasks.find(x => x.id === id)!;
   const refused = refusal(q, t);
   if (refused) { (refused.stderr ? console.error : console.log)(refused.message); return 1; }
