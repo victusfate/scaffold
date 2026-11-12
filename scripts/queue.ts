@@ -11,7 +11,7 @@
 //   node scripts/queue.ts next | ready               # serial pick | fan-out candidate set
 //   node scripts/queue.ts tick                       # serial loop entry (ownership-check→begin→print)
 //   node scripts/queue.ts signal                     # print DRAIN-WANTED iff drainable (Monitor poll)
-//   node scripts/queue.ts claim <id> [--worker w]    # atomic claim for a parallel worker
+//   node scripts/queue.ts claim <id> [--worker w] [--branch b]  # atomic claim; --branch links the worker's branch
 //   node scripts/queue.ts release <id> --worker w    # release a confirmed ended owned lane
 //   node scripts/queue.ts done <id> [--skip-validate]# run validate, then complete
 //   node scripts/queue.ts advance <id> --pr <url> --branch <fresh> # root delivery acknowledgment
@@ -62,6 +62,7 @@ import { parse, taskOverrides, SPEC_FLAGS } from './queue-cli-args.ts';
 import { taskOrigin, withOrigin } from './queue-task-origin.ts';
 import { cmdLane } from './queue-lanes.ts';
 import { cmdAdvance } from './queue-delivery.ts';
+import { cmdClaim } from './queue-claim.ts';
 import { cmdWorktree } from './queue-worktrees.ts';
 import { cmdLinks } from './queue-links.ts';
 
@@ -360,16 +361,9 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
     case 'tick': return cmdTick(q);
     case 'signal': return cmdSignal(q);
 
-    case 'claim': {
+    case 'claim':
       if (!needId()) { console.error('claim: unknown task id'); return 1; }
-      const t = q.tasks.find(x => x.id === id)!;
-      if (t.status !== 'pending') { console.log(`claim: ${id} is ${t.status}, not claimable`); return 1; }
-      if (!deliveryAllows(q, id)) { console.error('claim: current delivery cycle must finish first'); return 1; }
-      if (t.held) { console.log(`claim: ${id} is held — unhold it first`); return 1; }
-      const worker = f.flags.get('worker') ?? `worker-${process.pid}`;
-      save(beginTask(q, id, now(), worker)); log(`claim ${id} by ${worker}`);
-      console.log(`claimed ${id} for ${worker}\n${taskBlock({ ...t, owner: worker })}`); return 0;
-    }
+      return cmdClaim(q, id, f.flags);
     case 'release': {
       const task = q.tasks.find(t => t.id === id);
       if (!task || task.status !== 'active' || !f.flags.get('worker') || task.owner !== f.flags.get('worker')) {

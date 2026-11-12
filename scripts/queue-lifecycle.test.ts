@@ -37,6 +37,14 @@ function claim(validate?: string): string {
 }
 try {
   ok('config', 'deliveryMode', 'batch'); // This suite exercises independent legacy lanes.
+  // claim --branch links the worker's branch in the same write as the claim (topology slots).
+  const linked = `task-${String(++serial).padStart(3, '0')}`;
+  ok('add', linked);
+  assert.notEqual(run('claim', linked, '--worker', 'slot-1', '--branch', 'two words').status, 0);
+  ok('claim', linked, '--worker', 'slot-1', '--branch', 'lane/slot-1');
+  const shown = run('show', linked).stdout;
+  assert.match(shown, /\[active\]/); assert.match(shown, /slot-1/); assert.match(shown, /lane\/slot-1/);
+  ok('release', linked, '--worker', 'slot-1');
   const neighbor = claim();
   const released = claim();
   assert.notEqual(run('release', released, '--worker', 'other').status, 0);
