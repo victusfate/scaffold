@@ -479,6 +479,34 @@ On your first response in a new session:
   start `/feature-chain` without asking permission. If the user's intent is vague or
   unstated, collaborative planning (Phase 1) resolves it through Q&A. Do not ask a pre-question first.
 
+## Retire means remove
+
+When a feature, rule, specialty, setting or subsystem is retired, the change that retires it **removes it**:
+its code paths, its config/data keys, its UI and help text, its tests, and every reference to it, including in
+scripts, tools and experiments, which are updated or deleted. Setting a value to zero, disabling a branch, or
+leaving a "no longer used" field behind is not retirement: it leaves code that still runs and data that still
+loads, looks live, and gets maintained, read and copied as if it mattered.
+
+- **What may remain:** an explicit compatibility shim for data already in the wild. Existing users' data keeps
+  loading, and anything they invested in the retired thing is handled appropriately: in a game, a save holding
+  a retired skill, power or item has its spent XP or currency refunded once on load. Name the shim as retired,
+  keep it minimal, and cover it with a test that loads the old data and checks the refund happens exactly once.
+- **Retire aggressively before release.** How much compatibility a retirement owes depends on who holds the
+  data. Before release, while the only users are the team or a handful of internal testers, remove retired
+  features, unused config and stale references outright, and keep only the minimal migration those testers'
+  data needs, isolated in ONE compatibility module (a table of retired ids → what to refund or convert) and
+  tagged pre-release so it can be dropped together at launch. After release, every supported version's data
+  gets a tested migration. Don't carry public-release compatibility costs before there is a public.
+- **Check it mechanically:** prefer checks that make vestiges fail: every config/balance key is read by code,
+  no symbol is reachable only from tests, and every retired enum value is a named, tested compatibility shim.
+  Ratchet existing findings, then drive them down.
+- **Review for it:** the code-quality rubric's *Vestige & Layering* section ("the old system is neutered instead
+  of removed") applies to every retirement. A reviewer who sees a retirement-by-zero asks for the removal.
+
+Example: a game retired a specialty by setting its max ranks to 0. The balance keys, the per-level value and the
+reach calculation all stayed, computing 0 forever. The right change removes all three and keeps only the save
+decoder that refunds players' old ranks, with a test.
+
 ## Minimum Viable Diff
 
 Prefer the smallest change that achieves the goal.
