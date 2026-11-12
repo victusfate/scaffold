@@ -169,6 +169,9 @@ repeated judgment to a check; gate model output that drives decisions; mechanica
   off-language file needs a hard blocking need plus approval. → [full text](docs/agents-detail.md#default-language).
 - **Modern web code:** run `/modern-web` before writing or reviewing browser-facing code.
   → [full text](docs/agents-detail.md#modern-web-platform-code).
+- **Retire means remove:** retiring a feature deletes its code, config/data and every reference in the same change;
+  only explicit, tested compatibility shims remain (old saves load and refund what was spent, once). Scripts and
+  experiments are updated or deleted. → [full text](docs/agents-detail.md#retire-means-remove).
 
 ## Feature-chain workflow
 
