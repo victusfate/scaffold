@@ -35,8 +35,11 @@ task suits which slot. Swapping resources edits that file, never the scheduled p
 2. For each slot whose task finished, review it, integrate or ship it within existing authorization, and set the
    task status (`done`, `fail`, or `park --resume "<next step>"`).
 3. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with
-   `node scripts/queue.ts claim <id> --worker <slot-id>` and start that slot's harness/model in its own worktree.
-   Leave a slot free rather than send it a task it should not take.
+   `node scripts/queue.ts claim <id> --worker <slot-id> --branch <branch>` and start that slot's harness/model in
+   that branch's worktree. Create the worktree first so the claim links its branch in the same write; when the
+   harness names its own worktree branch, link it with `queue set <id> branch <b>` right after dispatch, in
+   the same step. An unlinked active branch breaks the Slots panel and branch accounting. Leave a slot free
+   rather than send it a task it should not take.
 4. Reconcile (below). An active task whose owner is not a slot id is orphaned: adopt it into a free slot or park it.
 
 The queue console's Slots panel reads the same file plus task status, so it is only as true as this bookkeeping.
