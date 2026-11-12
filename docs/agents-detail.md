@@ -491,6 +491,12 @@ loads, looks live, and gets maintained, read and copied as if it mattered.
   loading, and anything they invested in the retired thing is handled appropriately: in a game, a save holding
   a retired skill, power or item has its spent XP or currency refunded once on load. Name the shim as retired,
   keep it minimal, and cover it with a test that loads the old data and checks the refund happens exactly once.
+- **Retire aggressively before release.** How much compatibility a retirement owes depends on who holds the
+  data. Before release, while the only users are the team or a handful of internal testers, remove retired
+  features, unused config and stale references outright, and keep only the minimal migration those testers'
+  data needs, isolated in ONE compatibility module (a table of retired ids → what to refund or convert) and
+  tagged pre-release so it can be dropped together at launch. After release, every supported version's data
+  gets a tested migration. Don't carry public-release compatibility costs before there is a public.
 - **Check it mechanically:** prefer checks that make vestiges fail: every config/balance key is read by code,
   no symbol is reachable only from tests, and every retired enum value is a named, tested compatibility shim.
   Ratchet existing findings, then drive them down.
