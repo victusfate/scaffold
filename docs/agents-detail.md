@@ -733,6 +733,21 @@ These failures each cost hours in a real run; each has a cheap guard.
   [process ownership](../AGENTS.md#session-and-process-ownership). A frozen GUI can remain visible to its user,
   and GNU `timeout` can place a payload in another process group.
 
+- **Async continuations revalidate what they captured.** A coroutine, task or callback that suspends
+  (`await`, yield, a deferred callback) can resume after the object it was working on is torn down: a scene
+  swapped, a request cancelled, a node or handle freed. Some runtimes cancel member coroutines with their
+  owner but still resume free or static ones. After every suspension, check that each captured resource is
+  still alive and still the current generation, and stop cleanly if it is not. Never pass a possibly-freed
+  object where the type system dereferences it. Hold long-lived captures weakly. Debug builds often only log
+  this; release builds crash. Example: a Godot game's static scene-build chain read a freed node after a
+  test timed out mid-load and freed the scene. The fix was a liveness check after every `await`, plus a
+  static check that flags new unguarded continuations.
+- **Heavy or parallel jobs run under a resource guard.** Builds, bakes, exports, renders and test sweeps
+  run inside a memory/CPU guard (cgroup scope, `ulimit`, a repo memory-guard wrapper) with a stated cap.
+  A worker runs at most a small fixed number in parallel and leaves headroom for the host's other
+  workers. Unguarded parallel jobs get the whole host OOM-killed, including other agents' work. Example:
+  five parallel mesh-decomposition jobs (4–10 GB each, unguarded) triggered the kernel OOM killer and
+  killed an unrelated merge job. Treat any large process outside a guard as a finding.
 ## Knowledge state: typed and evidenced, not prose
 
 Prose that a script parses is an accidental database, and a claim nobody re-checks is a rumor.

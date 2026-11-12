@@ -94,6 +94,9 @@ checkpoint note; never auto-continue it or spin its remainder into new tasks. Sl
 - Time budgets measure work, not lock waits. A cached result's
   key excludes what the checked step itself produces.
 - A warm-up/pre-build step runs the exact invocation (args, flags, env) of the check it warms.
+- After every suspension (`await`, yield, callback), an async continuation revalidates what it captured
+  before use; its owner may be gone.
+- Heavy or parallel jobs run under a resource guard with a stated cap and host headroom; never unguarded.
 → [full text](docs/agents-detail.md#orchestration-hygiene-lessons-from-long-autonomous-runs).
 
 ## Knowledge state: typed and evidenced, not prose
