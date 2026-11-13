@@ -3,6 +3,7 @@
 import { createHash } from 'node:crypto';
 import { stripTypeScriptTypes } from 'node:module';
 import { validateBundle, type MeldBundle, type MeldEvent, type MeldNode } from './mind-meld-schema.ts';
+import { jsonForScript } from './json-script.ts';
 
 /** Kept self-contained because this function becomes the standalone browser payload. */
 function viewer(bundle: MeldBundle): void {
@@ -136,7 +137,7 @@ const STYLE = `body{font:16px system-ui;margin:0;background:#f7f5ef;color:#18252
 const hash = (text: string) => createHash('sha256').update(text).digest('base64');
 export function renderViewer(bundle: MeldBundle): string {
   validateBundle(bundle);
-  const data = JSON.stringify(bundle).replace(/</g, '\\u003c').replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029');
+  const data = jsonForScript(bundle);
   const script = stripTypeScriptTypes(`(${viewer.toString()})(${data});`);
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

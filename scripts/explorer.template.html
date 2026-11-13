@@ -1,0 +1,362 @@
+<!doctype html>
+<!-- explorer.template.html — the generic explorer page runtime. explorer-render.ts
+     injects the validated spec into the #spec JSON block and the <title>; every
+     page-specific fact lives in the spec, never here.
+     quality-ok: file-length — single-file-by-design: the rendered page must be one
+     self-contained HTML file (no server, no CDN script) that opens in any harness
+     and publishes as one claude.ai Artifact. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>__TITLE__</title>
+<style>
+:root{
+  --bg:#f1f4f7; --surface:#ffffff; --sunk:#e7ecf1; --ink:#15202b; --muted:#566473; --line:#d3dae2;
+  --accent:#0a6a94; --accent-soft:#dcedf5; --flow:#a8480a; --flow-soft:#fbe9d8;
+  --display:"Space Grotesk","Inter",system-ui,sans-serif; --body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f151b; --surface:#172029; --sunk:#111920; --ink:#e5ebf1; --muted:#93a2b1; --line:#2b3845;
+  --accent:#62c2ea; --accent-soft:#16384a; --flow:#f2ae5c; --flow-soft:#40290f; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0f151b; --surface:#172029; --sunk:#111920; --ink:#e5ebf1; --muted:#93a2b1; --line:#2b3845;
+  --accent:#62c2ea; --accent-soft:#16384a; --flow:#f2ae5c; --flow-soft:#40290f; color-scheme:dark }
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;padding:24px 16px 48px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1{font-family:var(--display);font-size:1.7rem;font-weight:600;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.lede{color:var(--muted);margin:4px 0 0;max-width:68ch}
+.eyebrow{font-size:.72rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.note{color:var(--muted);font-size:.82rem;margin:0}
+.flows{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-weight:500;font-size:.9rem}
+.chip:hover{border-color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--flow);border-color:var(--flow);color:var(--bg)}
+.main{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.lane{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.lane-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.lane-head span{color:var(--muted);font-size:.85rem}
+.nodes{display:flex;flex-wrap:wrap;gap:8px}
+.node{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:8px 12px;text-align:left;font-weight:500;font-size:.9rem;transition:opacity .15s,border-color .15s}
+.node:hover{border-color:var(--accent)}
+.node.is-selected{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);background:var(--accent-soft)}
+.has-flow .node:not(.in-flow){opacity:.38}
+.node.in-flow{border-color:var(--flow)}
+.node.is-step{background:var(--flow-soft);box-shadow:0 0 0 2px var(--flow)}
+.badge{font-family:var(--mono);font-size:.7rem;color:var(--flow);margin-left:8px;font-weight:500}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:18px;min-width:0;position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}
+.panel h2{font-family:var(--display);font-size:1.2rem;font-weight:600;margin:2px 0 0}
+.panel h3{font-size:.72rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.panel p{margin:0}
+.panel ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.sec{display:flex;flex-direction:column}
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:4px}
+.steps button{width:100%;text-align:left;background:none;border:1px solid transparent;border-radius:6px;padding:6px 8px;display:grid;grid-template-columns:22px minmax(0,1fr);gap:6px}
+.steps button:hover{background:var(--sunk)}
+.steps button[aria-current="true"]{background:var(--flow-soft);border-color:var(--flow)}
+.steps .n{font-family:var(--mono);font-size:.78rem;color:var(--flow);padding-top:2px;font-variant-numeric:tabular-nums}
+.hop{font-weight:600;font-size:.88rem}
+.what{color:var(--muted);font-size:.88rem}
+.payload{font-family:var(--mono);font-size:.76rem;background:var(--sunk);border-radius:4px;padding:3px 6px;margin-top:4px;display:inline-block;overflow-wrap:anywhere}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:6px 12px;font-weight:500;font-size:.88rem}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--bg)}
+.btn:disabled{opacity:.5;cursor:default}
+.rule{border:0;border-top:1px solid var(--line);margin:0}
+.qs{display:flex;flex-direction:column;gap:6px;margin-bottom:8px}
+.q{text-align:left;background:var(--sunk);border:1px solid transparent;border-radius:6px;padding:7px 10px;font-size:.88rem}
+.q:hover{border-color:var(--accent)}
+textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;min-height:64px;resize:vertical}
+.thread{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.who{font-size:.72rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+.txt{white-space:pre-wrap;overflow-wrap:anywhere}
+.me .txt{font-weight:500}
+.term{border:0;background:none;padding:0;font:inherit;color:inherit;border-bottom:1.5px dotted var(--accent);cursor:help;text-align:inherit}
+.term:hover,.term[aria-expanded="true"]{color:var(--accent)}
+.def{display:block;background:var(--accent-soft);border-radius:6px;padding:8px 10px;margin:6px 0 2px;font-size:.88rem;font-weight:400;white-space:normal}
+.def .def{background:var(--surface)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;font-size:.85rem;width:100%;min-width:420px}
+th,td{text-align:left;vertical-align:top;padding:6px 8px;border-bottom:1px solid var(--line)}
+thead th{font-family:var(--mono);font-weight:500;color:var(--muted)}
+tbody th{font-weight:600;white-space:nowrap}
+.more>summary{cursor:pointer}
+.more>summary::marker{color:var(--accent)}
+.more-body{margin:8px 0 4px;padding:10px 12px;background:var(--sunk);border-radius:6px;display:flex;flex-direction:column;gap:8px;font-size:.9rem}
+pre.code{font-family:var(--mono);font-size:.74rem;line-height:1.45;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;overflow-x:auto;margin:0}
+.card-box{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.seq{overflow-x:auto}
+.seq-in{background-repeat:repeat-x;padding-bottom:8px}
+.seq-head{display:flex}
+.seq-p{flex:none;text-align:center;font-size:.76rem;font-weight:600;line-height:1.25;padding:4px 6px 8px;background:var(--surface)}
+.seq-row{display:block;position:relative;width:100%;height:42px;background:none;border:0;padding:0}
+.seq-arrow{position:absolute;top:28px;height:0;border-top:1.5px solid var(--muted)}
+.seq-arrow::after{content:"";position:absolute;top:-5.5px;border:5px solid transparent}
+.seq-arrow.r::after{right:-1px;border-left-color:var(--muted);border-right-width:0}
+.seq-arrow.l::after{left:-1px;border-right-color:var(--muted);border-left-width:0}
+.seq-lab{position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:max(100%,210px);text-align:center;font-family:var(--mono);font-size:.68rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.seq-row:hover .seq-lab{color:var(--ink)}
+.seq-row.is-cur .seq-arrow{border-top-color:var(--flow);border-top-width:2.5px}
+.seq-row.is-cur .seq-arrow.r::after{border-left-color:var(--flow)}
+.seq-row.is-cur .seq-arrow.l::after{border-right-color:var(--flow)}
+.seq-row.is-cur .seq-lab{color:var(--flow);font-weight:500}
+.tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--line)}
+.tab{background:none;border:0;border-bottom:2px solid transparent;padding:8px 12px;font-weight:500;color:var(--muted);margin-bottom:-1px}
+.tab:hover{color:var(--ink)}
+.tab[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent)}
+.view{display:flex;flex-direction:column;gap:20px}
+.view[hidden]{display:none}
+.view>p{margin:0;max-width:72ch}
+.view h2{font-family:var(--display);font-size:1.15rem;font-weight:600;margin:8px 0 0}
+.tl{display:grid;gap:10px;align-items:start}
+.tl .when{font-family:var(--display);font-size:1.05rem;font-weight:600;padding-top:7px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.tl .cell{display:flex;flex-direction:column;gap:8px;min-width:0}
+.tl .rowline{grid-column:1/-1;border-top:1px solid var(--line)}
+.trk{display:none}
+details.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:0}
+details.card>summary{cursor:pointer;padding:9px 12px;font-weight:500}
+details.card>summary:hover{color:var(--accent)}
+details.card[open]{border-color:var(--accent)}
+.card .body{padding:0 12px 12px;display:flex;flex-direction:column;gap:9px;font-size:.92rem}
+.card .body p{margin:0}
+.card .body ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px}
+.jump{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.jump span{color:var(--muted);font-size:.82rem}
+.link{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:3px 10px;font-size:.82rem}
+.link:hover{border-color:var(--accent);color:var(--accent)}
+.stack{display:flex;flex-direction:column;gap:8px;max-width:860px}
+.gl{max-width:760px;margin:0}
+.gl dt{font-weight:600;margin-top:14px}
+.gl dd{margin:2px 0 0}
+#gl-q{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;width:100%;max-width:360px}
+@media (max-width:860px){
+  .main{grid-template-columns:minmax(0,1fr)} .panel{position:static;max-height:none} h1{font-size:1.4rem}
+  .tl{grid-template-columns:minmax(0,1fr)!important} .tl .hd{display:none} .tl .cell:empty{display:none} .trk{display:block} }
+@media (prefers-reduced-motion:reduce){ .node{transition:none} }
+</style></head><body>
+<div class="wrap">
+  <header><div class="eyebrow" id="eyebrow"></div><h1 id="title"></h1><p class="lede" id="lede"></p></header>
+  <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+  <section class="view" id="view-map">
+    <p class="note">Pick a flow to trace it step by step, or select any component to see how it works, where it breaks, and questions to dig into.</p>
+    <div class="flows" id="flows" role="group" aria-label="Flows"></div>
+    <div class="main"><div class="col"><div class="col" id="lanes"></div><div id="seq"></div></div>
+      <aside class="panel" id="panel" aria-live="polite"></aside></div>
+  </section>
+  <section class="view" id="view-timeline" hidden></section>
+  <section class="view" id="view-topics" hidden></section>
+  <section class="view" id="view-glossary" hidden></section>
+</div>
+<script type="application/json" id="spec">__SPEC__</script>
+<script>
+const spec = JSON.parse(document.getElementById('spec').textContent);
+const nodes = spec.nodes, FLOWS = spec.flows || [], glossary = spec.glossary || {}, topics = spec.topics || [];
+const $ = (t, a, ...kids) => { const e = document.createElement(t);
+  for (const k in (a||{})) { const v = a[k]; if (k==='class') e.className=v; else if (k.startsWith('on')) e.addEventListener(k.slice(2), v); else if (v!==false && v!=null) e.setAttribute(k, v); }
+  for (const c of kids.flat()) if (c!=null) e.append(c); return e; };
+const el = id => document.getElementById(id);
+
+/* ---------- inline glossary: any alias in body text opens its definition in place ---------- */
+const ALIAS = {}; for (const k in glossary) for (const a of glossary[k].a) ALIAS[a] = k;
+const aliases = Object.keys(ALIAS).sort((a,b)=>b.length-a.length).map(s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'));
+const TERM_RE = aliases.length ? new RegExp('(?<![\\w-])(' + aliases.join('|') + ')(?![\\w-])','g') : null;
+function rich(text, skip){
+  if (!TERM_RE) return [text];
+  const out=[], seen=new Set(); let last=0, m; TERM_RE.lastIndex=0;
+  while ((m = TERM_RE.exec(text))) { const k = ALIAS[m[1]]; if (k===skip || seen.has(k)) continue; seen.add(k);
+    out.push(text.slice(last, m.index), $('button',{class:'term',type:'button','aria-expanded':'false',onclick:e=>toggleDef(e.currentTarget,k)}, m[1])); last = m.index + m[1].length; }
+  out.push(text.slice(last)); return out;
+}
+function toggleDef(btn, k){
+  const host = btn.closest('.def,li,td,p,dd,summary');
+  const open = [...host.children].find(c => c.classList.contains('def') && c.dataset.k===k);
+  if (open) { open.remove(); btn.setAttribute('aria-expanded','false'); return; }
+  host.append($('span',{class:'def','data-k':k}, $('b',{}, glossary[k].t + '. '), rich(glossary[k].d, k))); btn.setAttribute('aria-expanded','true');
+}
+
+/* ---------- map: lanes, flows, sequence strip, inspector ---------- */
+const state = {node: spec.start?.node || Object.keys(nodes)[0], flow: null, step: 0, thread: [], busy: false, view: 'map'};
+let sample = null, abort = null;
+const HISTORY_TURNS = 6;               // earlier Q&A turns sent with each question
+const NARROW = '(max-width:860px)';    // keep in step with the CSS @media breakpoint
+const flow = () => FLOWS.find(f => f.id===state.flow);
+function setFlow(id){ if (state.flow===id || !id) { state.flow=null; } else { state.flow=id; state.step=0; state.node=flow().steps[0][1]; } render(); }
+function renderFlows(){
+  const box = el('flows'); box.replaceChildren();
+  if (!FLOWS.length) return;
+  box.append($('span',{class:'eyebrow'},'Trace a flow'));
+  for (const f of FLOWS) box.append($('button',{class:'chip','aria-pressed':String(state.flow===f.id),onclick:()=>setFlow(f.id)},f.name));
+}
+function renderLanes(){
+  const f = flow(), cur = f && f.steps[state.step], marks = {};
+  if (f) f.steps.forEach((s,i)=>{ for (const id of [s[0],s[1]]) (marks[id] ||= new Set()).add(i+1); });
+  const box = el('lanes'); box.replaceChildren(); box.classList.toggle('has-flow', !!f);
+  for (const l of spec.lanes) {
+    const row = $('div',{class:'nodes'});
+    for (const id in nodes) if (nodes[id].lane===l.id) {
+      const cls = ['node', state.node===id&&'is-selected', marks[id]&&'in-flow', cur&&(cur[0]===id||cur[1]===id)&&'is-step'].filter(Boolean).join(' ');
+      row.append($('button',{class:cls,'aria-pressed':String(state.node===id),onclick:()=>pick(id)}, nodes[id].name,
+        marks[id] ? $('span',{class:'badge'},[...marks[id]].join('·')) : null));
+    }
+    box.append($('section',{class:'lane'}, $('div',{class:'lane-head'}, $('div',{class:'eyebrow'},l.name), l.sub ? $('span',{},l.sub) : null), row));
+  }
+}
+function pick(id){ state.node=id; render(); if (matchMedia(NARROW).matches) el('detail').scrollIntoView({behavior:'smooth',block:'start'}); }
+function goStep(i){ const f=flow(); state.step=Math.max(0,Math.min(f.steps.length-1,i)); state.node=f.steps[state.step][1]; render(); }
+function renderSeq(){
+  const box = el('seq'), f = flow(); if (!f) { box.replaceChildren(); return; }
+  const parts = []; f.steps.forEach(s => { for (const id of [s[0],s[1]]) if (!parts.includes(id)) parts.push(id); });
+  const W = 112;
+  const head = $('div',{class:'seq-head'}, parts.map(id => { const d = $('div',{class:'seq-p'},nodes[id].name); d.style.width = W+'px'; return d; }));
+  const rows = f.steps.map((s,i) => { const a = parts.indexOf(s[0]), b = parts.indexOf(s[1]);
+    const arrow = $('span',{class:'seq-arrow '+(b>=a?'r':'l')}, $('span',{class:'seq-lab'}, (i+1)+' · '+s[3]));
+    arrow.style.left = ((Math.min(a,b)+.5)*W)+'px'; arrow.style.width = Math.max(Math.abs(a-b)*W, 24)+'px';
+    return $('button',{class:'seq-row'+(i===state.step?' is-cur':''),'aria-current':String(i===state.step),title:nodes[s[0]].name+' → '+nodes[s[1]].name+': '+s[2],onclick:()=>goStep(i)}, arrow); });
+  const inner = $('div',{class:'seq-in'}, head, rows); inner.style.width = (parts.length*W)+'px';
+  inner.style.backgroundImage = 'linear-gradient(to right,transparent calc(50% - .5px),var(--line) calc(50% - .5px),var(--line) calc(50% + .5px),transparent calc(50% + .5px))';
+  inner.style.backgroundSize = W+'px 100%';
+  box.replaceChildren($('div',{class:'card-box'}, $('div',{class:'eyebrow'},'Sequence · '+f.name), $('p',{class:'note'},'Each arrow is one call, top to bottom in time. Select an arrow to see that step.'), $('div',{class:'seq'}, inner)));
+}
+const bullets = a => $('ul',{}, (a||[]).map(t => typeof t==='string' ? $('li',{},rich(t)) :
+  $('li',{}, $('details',{class:'more'}, $('summary',{},rich(t.t)),
+    $('div',{class:'more-body'}, t.more.map(x => Array.isArray(x) ? $('ul',{}, x.map(y=>$('li',{},rich(y)))) : $('p',{},rich(x))),
+      t.code ? $('pre',{class:'code'},t.code) : null)))));
+const deepSecs = n => (n.deep||[]).map(d => $('div',{class:'sec'}, $('h3',{}, d.h), d.table
+  ? $('div',{class:'tw'}, $('table',{}, $('thead',{}, $('tr',{}, d.table.head.map(h=>$('th',{},h)))),
+      $('tbody',{}, d.table.rows.map(r => $('tr',{}, r.map((c,i) => i===0 ? $('th',{},c) : $('td',{},rich(c))))))))
+  : bullets(d.list)));
+function flowSection(f){
+  const ol = $('ol',{class:'steps'});
+  f.steps.forEach((s,i)=> ol.append($('li',{}, $('button',{'aria-current':String(i===state.step),onclick:()=>goStep(i)},
+    $('span',{class:'n'},String(i+1).padStart(2,'0')),
+    $('span',{}, $('span',{class:'hop'},nodes[s[0]].name+' → '+nodes[s[1]].name), $('br'), $('span',{class:'what'},s[2]),
+      i===state.step ? $('span',{},$('br'),$('span',{class:'payload'},s[3])) : null)))));
+  return [$('div',{class:'sec'}, $('h3',{},'Flow · '+f.name), f.intro ? $('p',{class:'note'},rich(f.intro)) : null, ol,
+    $('div',{class:'row'}, $('button',{class:'btn',disabled:state.step===0,onclick:()=>goStep(state.step-1)},'Previous'),
+      $('button',{class:'btn',disabled:state.step===f.steps.length-1,onclick:()=>goStep(state.step+1)},'Next step'),
+      $('span',{class:'note'},'Step '+(state.step+1)+' of '+f.steps.length))), $('hr',{class:'rule'})];
+}
+function nodeSection(n){
+  const lane = spec.lanes.find(l=>l.id===n.lane);
+  return [$('div',{class:'sec',id:'detail'}, $('div',{class:'eyebrow'},lane.name), $('h2',{},n.name), $('p',{},rich(n.role))),
+    n.details?.length ? $('div',{class:'sec'}, $('h3',{},'How it works'), bullets(n.details)) : null,
+    n.risks?.length ? $('div',{class:'sec'}, $('h3',{},'Where it breaks'), bullets(n.risks)) : null,
+    ...deepSecs(n), $('hr',{class:'rule'})];
+}
+function askSection(n){
+  const keep = el('ask-text'), ta = $('textarea',{id:'ask-text',placeholder:'Ask about '+n.name+'…','aria-label':'Your question'});
+  ta.value = keep ? keep.value : '';
+  const qs = $('div',{class:'qs'}, (n.qs||[]).map(q=>$('button',{class:'q',onclick:()=>{ ta.value=q; ta.focus(); }},q)));
+  const status = $('span',{class:'note'}, sample ? 'Answers come from Claude, in the context of this component.' : 'Copies the question with its context, to paste into your agent chat.');
+  const act = sample
+    ? $('button',{class:'btn primary',disabled:state.busy,onclick:()=>ask(ta.value)}, state.busy?'Answering…':'Ask Claude')
+    : $('button',{class:'btn primary',onclick:()=>copyQ(ta, status)},'Copy question');
+  const thread = $('div',{class:'thread',id:'thread'}, state.thread.map(t=>$('div',{class:t.role==='user'?'me':'ai'},
+    $('div',{class:'who'},t.role==='user'?'You · '+t.about:'Claude'), $('div',{class:'txt'},t.text||'Thinking…'))));
+  return $('div',{class:'sec'}, $('h3',{},'Dig deeper'), qs, ta,
+    $('div',{class:'row'}, act, state.thread.length ? $('button',{class:'btn',onclick:()=>{ if(abort) abort.abort(); abort=null; state.thread=[]; state.busy=false; render(); }},'Clear') : null, status), thread);
+}
+function renderPanel(){
+  const n = nodes[state.node], f = flow();
+  el('panel').replaceChildren(...[...(f ? flowSection(f) : []), ...nodeSection(n), askSection(n)].filter(Boolean));
+}
+const plain = x => typeof x==='string' ? x : x.t;
+function contextFor(n){
+  const f = flow(), s = f && f.steps[state.step];
+  return (spec.ask?.context || 'The reader is exploring an interactive reference diagram titled "'+spec.title+'".')
+    + ' Selected component: '+n.name+'. Role: '+n.role
+    + (n.details?.length ? ' Details: '+n.details.map(plain).join(' ') : '')
+    + (n.risks?.length ? ' Known risks: '+n.risks.map(plain).join(' ') : '')
+    + (s ? ' They are tracing the flow "'+f.name+'", step '+(state.step+1)+': '+nodes[s[0]].name+' to '+nodes[s[1]].name+', '+s[2]+'.' : '')
+    + ' Other components: '+Object.values(nodes).map(x=>x.name).join(', ')+'. '
+    + (spec.ask?.style || 'Answer with concrete mechanisms and tradeoffs. Say so when something varies or you are unsure. Plain text, short paragraphs, under 250 words.');
+}
+function copyQ(ta, status){
+  const n = nodes[state.node], q = ta.value.trim() || (n.qs||[])[0] || 'Explain '+n.name+'.';
+  const text = q + '\n\nContext: ' + contextFor(n);
+  const fallback = ()=>{ ta.value=text; ta.select(); status.textContent='Selected. Copy it and paste it into your agent chat.'; };
+  try { navigator.clipboard.writeText(text).then(()=>{ status.textContent='Copied. Paste it into your agent chat.'; }, fallback); } catch { fallback(); }
+}
+async function ask(q){
+  q=(q||'').trim(); if(!q||state.busy||!sample) return;
+  const n=nodes[state.node];
+  const history = state.thread.filter(t=>t.text).slice(-HISTORY_TURNS).map(t=>({role:t.role,content:t.text}));
+  const ans={role:'assistant',text:''};
+  state.thread.push({role:'user',text:q,about:n.name}, ans); state.busy=true; render(); el('ask-text').value='';
+  const ctl = abort = new AbortController();
+  const paint = ()=>{ const t=document.querySelector('#thread > :last-child .txt'); if(t) t.textContent=ans.text||'Thinking…'; };
+  try {
+    const r = await sample([...history,{role:'user',content:contextFor(n)+'\n\nQuestion: '+q}], {cache:false, signal:abort.signal, onText:({text})=>{ ans.text=text; paint(); }});
+    if (abort !== ctl) return;
+    ans.text = r.text || ans.text;
+  } catch(e) {
+    if (abort !== ctl) return; // cleared or superseded while awaiting: this answer no longer owns the thread
+    if (e && e.code==='not_granted') { sample=null; state.thread.splice(-2,2); }
+    else ans.text = (e && e.code==='rate_limited') ? 'Claude is busy right now. Try again in a moment.' : 'That answer did not come through. Ask again, or copy the question into your agent chat.';
+  }
+  state.busy=false; render();
+}
+function render(){ renderFlows(); renderLanes(); renderSeq(); renderPanel(); }
+
+/* ---------- timeline, topics, glossary ---------- */
+const topicLinks = (ids, label) => ids?.length ? $('div',{class:'jump'}, $('span',{},label), ids.map(id => $('button',{class:'link',onclick:()=>openTopic(id)}, topics.find(t=>t.id===id).title.split(':')[0]))) : null;
+const nodeLinks = ids => ids?.length ? $('div',{class:'jump'}, $('span',{},'On the map'), ids.map(id=>$('button',{class:'link',onclick:()=>jumpNode(id)},nodes[id].name))) : null;
+function openTopic(id){ go('topics'); const d = el('topic-'+id); if (d) { d.open = true; d.scrollIntoView({block:'start'}); } }
+function jumpNode(id){ state.node = id; state.flow = null; render(); go('map'); scrollTo(0,0); }
+function eventCard(e, trackName){
+  return $('details',{class:'card'}, $('summary',{},e.title),
+    $('div',{class:'body'}, $('div',{class:'trk eyebrow'},trackName), $('p',{},rich(e.what)), e.why ? $('p',{}, $('b',{},'Why it matters. '), rich(e.why)) : null,
+      topicLinks(e.topics,'Read more'), nodeLinks(e.nodes)));
+}
+function renderTimeline(){
+  const tl = spec.timeline, tracks = tl.tracks;
+  const g = $('div',{class:'tl'}, $('div',{class:'hd'}), tracks.map(t=>$('div',{class:'hd eyebrow'},t)));
+  g.style.gridTemplateColumns = 'minmax(56px,max-content) repeat('+tracks.length+',minmax(0,1fr))';
+  const whens = [...new Set(tl.events.map(e=>e.when))];
+  for (const w of whens) { const evs = tl.events.filter(e=>e.when===w);
+    g.append($('div',{class:'rowline'}), $('div',{class:'when'},w));
+    tracks.forEach((t,i) => g.append($('div',{class:'cell'}, evs.filter(e=>e.track===i).map(e => eventCard(e, t))))); }
+  el('view-timeline').replaceChildren(...[tl.intro ? $('p',{},rich(tl.intro)) : null, g].filter(Boolean));
+}
+function topicCard(t){
+  return $('details',{class:'card',id:'topic-'+t.id}, $('summary',{},t.title),
+    $('div',{class:'body'}, $('p',{},rich(t.summary)), t.points?.length ? $('ul',{}, t.points.map(p=>$('li',{},rich(p)))) : null,
+      (t.notes||[]).map(x => $('p',{}, $('b',{},x.label+'. '), rich(x.text))), nodeLinks(t.nodes)));
+}
+function renderTopics(){
+  const box = el('view-topics'); box.replaceChildren();
+  const groups = [...new Set(topics.map(t=>t.group||''))];
+  for (const gname of groups) box.append(...[gname ? $('h2',{},gname) : null, $('div',{class:'stack'}, topics.filter(t=>(t.group||'')===gname).map(topicCard))].filter(Boolean));
+}
+function renderGlossary(){
+  const dl = $('dl',{class:'gl'}), q = $('input',{id:'gl-q',type:'search',placeholder:'Filter terms','aria-label':'Filter terms'});
+  const keys = Object.keys(glossary).sort((a,b)=>glossary[a].t.localeCompare(glossary[b].t));
+  const fill = () => { const s = q.value.trim().toLowerCase(); dl.replaceChildren();
+    for (const k of keys) if (!s || (glossary[k].t+' '+glossary[k].d).toLowerCase().includes(s)) dl.append($('dt',{},glossary[k].t), $('dd',{},rich(glossary[k].d,k)));
+    if (!dl.children.length) dl.append($('dd',{},'No terms match.')); };
+  q.addEventListener('input', fill); fill();
+  el('view-glossary').replaceChildren(q, dl);
+}
+const ALL_VIEWS = [['map','Map',true], ['timeline','Timeline',!!spec.timeline?.events?.length], ['topics','Topics',topics.length>0], ['glossary','Glossary',Object.keys(glossary).length>0]];
+const VIEWS = ALL_VIEWS.filter(v=>v[2]);
+const RENDER = {timeline:renderTimeline, topics:renderTopics, glossary:renderGlossary}, rendered = {};
+function show(){
+  for (const [id] of ALL_VIEWS) el('view-'+id).hidden = id!==state.view;
+  el('tabs').hidden = VIEWS.length < 2;
+  el('tabs').replaceChildren(...VIEWS.map(([id,label]) => $('button',{class:'tab','aria-current':id===state.view?'page':false,onclick:()=>go(id)},label)));
+  if (RENDER[state.view] && !rendered[state.view]) { RENDER[state.view](); rendered[state.view] = 1; }
+}
+function go(v){ state.view = v; try { if (location.hash !== '#'+v) location.hash = v; } catch {} show(); }
+const fromHash = () => { const v = location.hash.slice(1); return VIEWS.some(x=>x[0]===v) ? v : null; };
+addEventListener('hashchange', () => { const v = fromHash(); if (v && v!==state.view) { state.view = v; show(); } });
+
+el('title').textContent = spec.title; el('eyebrow').textContent = spec.eyebrow || ''; el('lede').textContent = spec.lede || '';
+if (spec.start?.flow) setFlow(spec.start.flow); else render();
+state.view = fromHash() || 'map'; show();
+// Live Q&A only where the host grants it (a published claude.ai Artifact); everywhere else the copy-question fallback stays.
+(async()=>{ try { const s = await window.claude?.use?.('sample'); if (s) { sample=s; renderPanel(); } } catch {} })();
+</script>
+</body></html>

@@ -44,6 +44,11 @@ scripts/mermaid-render.test.ts
 scripts/mermaid-viewer.template.html
 scripts/mermaid-watch.ts
 scripts/mermaid-watch.test.ts
+scripts/explorer-spec.ts
+scripts/json-script.ts
+scripts/explorer-render.ts
+scripts/explorer-render.test.ts
+scripts/explorer.template.html
 scripts/queue-model.ts
 scripts/queue-io.ts
 scripts/queue-db.ts
@@ -273,6 +278,7 @@ skills/diagram.md
 .cursor/rules/diagram.mdc
 .agents/skills/diagram/SKILL.md
 .agent/workflows/diagram.md
+skills/diagram/explorer-example.explorer.json
 skills/voice-chat.md
 .claude/skills/voice-chat/SKILL.md
 .cursor/rules/voice-chat.mdc
