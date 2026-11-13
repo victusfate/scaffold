@@ -114,6 +114,14 @@ tuning pass so the user can adapt opinionated defaults without fighting them:
 3. Apply confirmed edits to `[configFile]`, show the diff, write on approval.
 4. Declining keeps scaffold's defaults. Tuning never changes the marker stamp
    (staleness tracks the template, not the user's tuned values).
+5. **Fixtures and sample repos.** The JS/TS templates already ignore `**/fixtures/**`.
+   If the repo keeps untrusted samples or deliberate-violation fixtures elsewhere,
+   add that path to the ESLint `ignores` and to a root `.quality-ignore` (exact
+   path, `dir/` prefix or `*` glob, one per line). The mechanical check skips
+   those paths. Never list hand-maintained source there.
+6. **Multi-package TypeScript.** For an npm-workspaces repo, offer the opt-in
+   template in `lib/linters/ts/workspaces/` (see its README). It has a shared
+   `packages/tsconfig.json`, per-package coverage floors and root aggregate scripts.
 
 ## Step 6 — report results
 

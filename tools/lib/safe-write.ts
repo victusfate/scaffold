@@ -22,13 +22,16 @@ export interface SafeWriteOpts {
 
 // Compile a list of .scaffold-keep patterns into a KeepMatcher.
 // Supports exact paths, dir prefixes, and * globs (where * spans separators).
+// Grammar: exact path, dir prefix (with or without a trailing /), or * glob
+// (* spans /). scripts/check-quality-mechanical.sh mirrors it for .quality-ignore.
 export function compileKeepMatcher(patterns: string[]): KeepMatcher {
   return (rel: string) => patterns.some(p => {
     if (p.includes('*')) {
       const re = new RegExp('^' + p.replace(/\./g, '\\.').replace(/\*/g, '.*') + '$');
       return re.test(rel);
     }
-    return rel === p || rel.startsWith(p + '/');
+    const dir = p.replace(/\/+$/, ''); // `packages/` and `packages` name the same directory
+    return rel === dir || rel.startsWith(dir + '/');
   });
 }
 

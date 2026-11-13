@@ -2,6 +2,11 @@
 # check-quality-mechanical.sh — mechanical code quality checks.
 # Usage: check-quality-mechanical.sh [--staged | file ...]
 #   (defaults to files changed vs main; --staged checks the git index, for pre-commit)
+# A `.quality-ignore` at the repo root (where this runs) lists paths to skip whole:
+# exact path, dir prefix (`fixtures/`), or * glob (`*.vendored.js`; * spans /), one
+# per line, `#` comments. Same grammar as tools/lib/safe-write.ts compileKeepMatcher
+# (.scaffold-keep, scaffold-internal.txt); use no glob syntax beyond `*`. For untrusted sample repos and test fixtures that carry
+# deliberate violations — never for hand-maintained source.
 # Exits non-zero if any violation is found. All violations include filename:line citations.
 set -euo pipefail
 
@@ -10,9 +15,38 @@ VIOLATIONS=0
 
 emit() { echo "$1"; VIOLATIONS=$((VIOLATIONS + 1)); }
 
+QUALITY_IGNORE=()
+if [ -f .quality-ignore ]; then
+  while IFS= read -r pat || [ -n "$pat" ]; do
+    pat="${pat%%#*}"; pat="${pat#"${pat%%[![:space:]]*}"}"; pat="${pat%"${pat##*[![:space:]]}"}"
+    [ -n "$pat" ] && QUALITY_IGNORE+=("${pat%/}")
+  done < .quality-ignore
+fi
+
+is_ignored() {
+  local f="${1#./}" pat
+  for pat in ${QUALITY_IGNORE[@]+"${QUALITY_IGNORE[@]}"}; do
+    if [[ "$pat" == *'*'* ]]; then
+      # shellcheck disable=SC2053 # the pattern is a deliberate glob
+      [[ "$f" == $pat ]] && return 0
+    else
+      [[ "$f" == "$pat" || "$f" == "$pat"/* ]] && return 0
+    fi
+  done
+  return 1
+}
+
+# Net count of opening minus closing brackets on a line, without a subshell.
+BRACKET_DELTA=0
+bracket_delta() {
+  local opens="${1//[^\{\[\(]/}" closes="${1//[^\}\]\)]/}"
+  BRACKET_DELTA=$(( ${#opens} - ${#closes} ))
+}
+
 check_file() {
   local file="$1"
   [ -f "$file" ] || return 0
+  is_ignored "$file" && return 0
   local ext="${file##*.}"
 
   # Generated / machine-authored files are skipped whole — the same convention
@@ -55,7 +89,8 @@ check_file() {
   local is_test=0
   [[ "$base" == *test* || "$base" == *spec* || "$base" == test-* ]] && is_test=1
 
-  local lineno=0 in_docstring=0 prev_quality_ok=0
+  local lineno=0 in_docstring=0 prev_quality_ok=0 const_depth=0
+  local opens_block_re='[{[(][[:space:]]*$' close_only_re='^[[:space:]]*[]})]+[[:space:]]*[;,]?[[:space:]]*$'
   while IFS= read -r line; do
     lineno=$((lineno + 1))
 
@@ -80,8 +115,28 @@ check_file() {
     # Skip comment lines and empty lines
     [[ "$line" =~ ^[[:space:]]*(//|#|\*|/\*) ]] && continue
     [[ -z "${line// }" ]] && continue
-    # Skip JS/TS const/let/var/readonly NAME = NUMBER (named constant definition)
-    [[ "$line" =~ ^[[:space:]]*(const|let|var|readonly)[[:space:]]+[A-Z_]+ ]] && continue
+    # Inside a multi-line UPPER_CASE const initializer: every line is a named
+    # value until the brackets the definition opened close again.
+    # The closing line is skipped only when it is nothing but the close
+    # (`};`); code after the close on the same line is scanned as usual.
+    if [ "$const_depth" -gt 0 ]; then
+      bracket_delta "$line"; const_depth=$(( const_depth + BRACKET_DELTA ))
+      [ "$const_depth" -gt 0 ] && continue
+      const_depth=0
+      [[ "$line" =~ $close_only_re ]] && continue
+    fi
+    # Skip JS/TS [export] const/let/var/readonly NAME = NUMBER (named constant
+    # definition). A fully UPPER_CASE name whose line ENDS with an opener
+    # (`export const LIMITS = {`) starts a multi-line initializer, tracked above.
+    # Requiring the opener at end of line keeps a bracket inside a string or
+    # regex (`const OPEN_RE = /\(/;`) from opening a phantom block.
+    if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?(const|let|var|readonly)[[:space:]]+[A-Z_]+ ]]; then
+      if [[ "$line" =~ ^[[:space:]]*(export[[:space:]]+)?(const|let|var|readonly)[[:space:]]+_*[A-Z][A-Z0-9_]*[[:space:]]*[:=] ]] \
+         && [[ "$line" =~ $opens_block_re ]]; then
+        bracket_delta "$line"; const_depth=$(( BRACKET_DELTA > 0 ? BRACKET_DELTA : 1 ))
+      fi
+      continue
+    fi
     # Skip shell/Python UPPER_CASE = <literal> — constant definitions in both languages.
     # Leading underscores (Python private constants like _PT_PER_INCH) are included.
     # Tuple form (A, B = 1, 2) is also covered. Excludes command substitutions ($(...)).
