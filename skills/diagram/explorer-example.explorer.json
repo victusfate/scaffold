@@ -1,0 +1,77 @@
+{
+  "title": "Checkout service explorer",
+  "eyebrow": "Example · /diagram explorer page",
+  "lede": "A small web checkout traced end to end. Pick a flow, select a component, or open the timeline. Dotted terms open a definition in place.",
+  "lanes": [
+    { "id": "client", "name": "Client", "sub": "what the shopper holds" },
+    { "id": "edge", "name": "Edge", "sub": "first hop" },
+    { "id": "services", "name": "Services", "sub": "the business logic" },
+    { "id": "data", "name": "Data", "sub": "state and events" }
+  ],
+  "nodes": {
+    "web": { "lane": "client", "name": "Web app", "role": "Cart, checkout form and order status page.",
+      "details": ["Sends an idempotency key with every payment request so a double click cannot charge twice."],
+      "qs": ["How should the client retry a payment request that timed out?"] },
+    "gateway": { "lane": "edge", "name": "API gateway", "role": "TLS, auth token validation, rate limits and routing.",
+      "risks": ["One shared gateway is one shared failure; config changes need code-level review."],
+      "qs": ["What belongs in the gateway versus the service?"] },
+    "orders": { "lane": "services", "name": "Order service", "role": "Creates orders, reserves stock and asks for payment.",
+      "details": [
+        { "t": "Uses an outbox table so the order row and its event commit together.",
+          "more": ["The event is written in the same transaction as the order, and a relay publishes it afterwards.", ["No lost events if the broker is down.", "Consumers must tolerate duplicates."]],
+          "code": "INSERT INTO orders ...;\nINSERT INTO outbox (topic, payload) VALUES ('order.created', ...);" }
+      ],
+      "risks": ["Stock reserved but payment never completes: needs a reservation expiry."],
+      "deep": [{ "h": "Order states", "table": { "head": ["", "Meaning", "Next"], "rows": [
+        ["pending", "Created, payment not confirmed", "paid, expired"],
+        ["paid", "Payment captured", "shipped, refunded"],
+        ["expired", "Reservation released", "none"]] } }],
+      "qs": ["Why an outbox instead of publishing directly?", "How long should a stock reservation last?"] },
+    "payments": { "lane": "services", "name": "Payment service", "role": "Talks to the payment processor; the only place card tokens are handled.",
+      "details": ["Calls are idempotent on the client's idempotency key."],
+      "qs": ["How do you reconcile with the processor's records?"] },
+    "db": { "lane": "data", "name": "Orders DB", "role": "System of record for orders and the outbox." },
+    "bus": { "lane": "data", "name": "Event bus", "role": "Carries order.created and payment.captured to other teams." }
+  },
+  "flows": [
+    { "id": "checkout", "name": "Place an order", "intro": "From pressing Buy to a confirmed order.", "steps": [
+      ["web", "gateway", "Submit checkout with an idempotency key", "POST /orders + token"],
+      ["gateway", "orders", "Token validated, routed to orders", "userId, cart"],
+      ["orders", "db", "Order row and outbox event written in one transaction", "order(pending), outbox row"],
+      ["orders", "payments", "Ask for payment", "orderId, amount, idempotency key"],
+      ["payments", "orders", "Payment captured", "paymentId"],
+      ["orders", "bus", "Outbox relay publishes the event", "order.paid"],
+      ["orders", "web", "Confirmation returned", "orderId, status=paid"]] },
+    { "id": "retry", "name": "Retry after timeout", "intro": "The client never saw a response and tries again.", "steps": [
+      ["web", "gateway", "Same request, same idempotency key", "POST /orders"],
+      ["gateway", "orders", "Routed", "userId, cart"],
+      ["orders", "db", "Key already seen: load the stored result", "existing orderId"],
+      ["orders", "web", "Original result returned, no second charge", "orderId, status=paid"]] }
+  ],
+  "glossary": {
+    "idem": { "t": "Idempotency key", "a": ["idempotency key", "idempotent"], "d": "A client-chosen id sent with a request so the server can recognise a repeat and return the first result instead of acting twice." },
+    "outbox": { "t": "Transactional outbox", "a": ["outbox"], "d": "Events are written to a table in the same transaction as the data change, then published by a relay. The event exists if and only if the change committed." }
+  },
+  "timeline": {
+    "intro": "A sample incident, minute by minute. Timelines work on any scale: years, quarters, sprints or seconds.",
+    "tracks": ["Symptoms", "Response", "Fix"],
+    "events": [
+      { "when": "T+0m", "track": 0, "title": "Checkout errors rise", "what": "5xx rate on POST /orders climbs past 2%.", "nodes": ["gateway", "orders"] },
+      { "when": "T+4m", "track": 1, "title": "On-call paged", "what": "Alert fires on the error budget burn rate.", "topics": ["retries"] },
+      { "when": "T+11m", "track": 0, "title": "Duplicate charge reports", "what": "Clients retried without an idempotency key.", "why": "Shows why every payment call needs one.", "topics": ["retries"], "nodes": ["web", "payments"] },
+      { "when": "T+30m", "track": 2, "title": "Key enforced at the gateway", "what": "Requests without an idempotency key are rejected.", "nodes": ["gateway"] }
+    ]
+  },
+  "topics": [
+    { "id": "retries", "group": "Reliability", "title": "Retries: safe repeats without double effects",
+      "summary": "Clients retry on timeouts, so every write must be idempotent.",
+      "points": ["Generate the idempotency key once per user intent, not per attempt.", "Store the first result keyed by the idempotency key."],
+      "notes": [{ "label": "Interview angle", "text": "Explain where the key is stored and for how long." }],
+      "nodes": ["web", "orders", "payments"] }
+  ],
+  "ask": {
+    "context": "The reader is learning how a web checkout handles orders and payments reliably.",
+    "style": "Answer as a senior engineer with concrete mechanisms and tradeoffs. Plain text, under 200 words."
+  },
+  "start": { "node": "orders" }
+}
