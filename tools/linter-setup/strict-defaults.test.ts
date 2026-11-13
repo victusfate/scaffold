@@ -18,6 +18,9 @@ try {
   assert.doesNotMatch(eslint, /\['warn'/);
   const config = JSON.parse(readFileSync(join(dir, 'tsconfig.json'), 'utf8')) as { compilerOptions: Record<string, unknown> };
   assert.equal(config.compilerOptions.strict, true);
+  // Node type-stripping rejects non-erasable syntax (enums, parameter properties) at runtime; tsc must catch it first.
+  assert.equal(config.compilerOptions.erasableSyntaxOnly, true);
+  assert.match(eslint, /'\*\*\/fixtures\/\*\*'/);
   assert.equal(readFileSync(join(dir, '.prettierrc.json'), 'utf8'), '{"semi": false}\n');
   assert.ok(existsSync(join(dir, '.prettierrc.json.scaffold-new')));
   assert.ok(result.sidecars.includes('.prettierrc.json'));

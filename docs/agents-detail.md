@@ -853,6 +853,11 @@ most important operational rule when fanning out; violating it silently splits t
 
 - **Lanes work in isolated git worktrees** (`isolation: "worktree"`), each branched off the
   ONE working branch, and gate their own diff.
+- **A lane starts from the orchestrator's HEAD, verified.** A harness may create the worktree at the
+  repo's default branch or even its first commit, not at the working branch. The lane's first step, before
+  any edit, is `git merge --ff-only <working-branch>`; or the lane brief records the base SHA and the lane
+  checks `git rev-parse HEAD` against it. A lane that cannot fast-forward stops and reports instead of
+  building on a stale base.
 - **The orchestrator merges each lane into the ONE working branch LOCALLY the moment that lane
   completes**, not into a separate "integration" branch and not batched "later". One completed lane →
   merge/rebase its worktree branch into the local one branch → resolve → delete the worktree → mark

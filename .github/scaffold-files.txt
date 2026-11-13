@@ -97,6 +97,7 @@ scripts/queue-lanes.test.ts
 scripts/queue-lifecycle.test.ts
 scripts/queue-elapsed.test.ts
 scripts/resolver-phases.ts
+scripts/resolver-phases.test.ts
 scripts/resolver-utils.ts
 scripts/update-skills-doc.ts
 scripts/voice/voice-loop.ts
@@ -267,6 +268,10 @@ lib/linters/shell/lint-shell.yml
 lib/linters/ts/eslint.config.mjs
 lib/linters/ts/lint-ts.yml
 lib/linters/ts/tsconfig.json
+lib/linters/ts/workspaces/README.md
+lib/linters/ts/workspaces/package.json
+lib/linters/ts/workspaces/packages/tsconfig.json
+lib/linters/ts/workspaces/packages/example/package.json
 lib/linters/zig/lint-zig.yml
 skills/ponytail.md
 .claude/skills/ponytail/SKILL.md
@@ -355,6 +360,7 @@ lib/linters/js/.prettierrc.json
 lib/linters/js/.prettierignore
 .pi/skills/mind-meld/SKILL.md
 tools/linter-setup/strict-defaults.test.ts
+tools/linter-setup/workspaces-template.test.ts
 skills/retro.md
 .claude/skills/retro/SKILL.md
 .cursor/rules/retro.mdc

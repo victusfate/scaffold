@@ -212,6 +212,19 @@ export function phaseScaffold(rows: ResolverRow[], { fail, warn, MANIFEST, liste
 
 const compileIgnore = compileKeepMatcher;
 
+// Unclassified files keyed by top-level directory (`packages/`), or by the file
+// itself at the root: a new directory of many files gets one error naming the
+// line that classifies it, not one error per file.
+function groupByTopDir(files: string[]): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
+  for (const f of files) {
+    const top = f.includes('/') ? f.slice(0, f.indexOf('/') + 1) : f;
+    const list = groups.get(top);
+    if (list) list.push(f); else groups.set(top, [f]);
+  }
+  return groups;
+}
+
 // Completeness guard for the sync manifest. Every tracked file must be either
 // shipped (scaffold-files.txt) or held back (scaffold-internal.txt); every
 // manifest entry must be a real tracked file and not also internal. This makes
@@ -228,8 +241,10 @@ export function phaseManifestCompleteness(_rows: ResolverRow[], { fail, MANIFEST
   const isInternal = compileIgnore(patterns);
   const tracked = new Set(trackedFiles);
 
-  for (const f of trackedFiles) {
-    if (!manifestSet.has(f) && !isInternal(f))
+  for (const [top, files] of groupByTopDir(trackedFiles.filter(f => !manifestSet.has(f) && !isInternal(f)))) {
+    if (files.length > 1) // only a directory key can hold more than one file
+      fail('Manifest', `${files.length} tracked files under ${top} are neither shipped nor held back — add \`${top}\` to ${rel(INTERNAL)} to hold back the directory, or list each file in ${rel(MANIFEST)}`);
+    else for (const f of files)
       fail('Manifest', `${f} is tracked but neither shipped (${rel(MANIFEST)}) nor held back (${rel(INTERNAL)}) — add it to one`);
   }
   for (const p of manifestSet) {

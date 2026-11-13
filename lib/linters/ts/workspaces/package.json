@@ -1,0 +1,14 @@
+{
+  "name": "my-monorepo",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=23.6.0" },
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
+    "typecheck": "tsc -p packages --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "check": "npm run typecheck && npm run lint && npm run test:coverage"
+  }
+}

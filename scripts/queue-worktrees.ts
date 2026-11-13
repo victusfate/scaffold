@@ -28,13 +28,16 @@ function cmdWorktreeAdd(q: Queue, id: string): number {
   const branch = `queue/${id}`;
   const rel = wtRel(id);
   const abs = join(ROOT, rel);
+  let baseSha: string;
   try {
     try { git(`worktree add ${abs} -b ${branch} ${base}`); }
     catch { git(`worktree add ${abs} ${branch}`); } // branch already exists
+    baseSha = git(`rev-parse ${base}`);
   } catch (e) { console.error(`worktree add failed: ${(e as Error).message}`); return 1; }
   save(setField(q, id, { branch, worktree: rel }));
-  log(`worktree add ${id} → ${rel} (${branch} off ${base})`);
-  console.log(`worktree ready: ${rel}  on ${branch}  (base ${base})\n`
+  log(`worktree add ${id} → ${rel} (${branch} off ${base} @ ${baseSha})`);
+  console.log(`worktree ready: ${rel}  on ${branch}  (base ${base} @ ${baseSha})\n`
+    + `First step in the lane: \`git merge --ff-only ${base}\` (a reused branch may be stale); stop if it cannot fast-forward. `
     + `cd ${rel} to work in isolation; commit locally and report the tip. `
     + `The root reviews, integrates into ${base}, finalizes the claim and removes the worktree.`);
   return 0;
