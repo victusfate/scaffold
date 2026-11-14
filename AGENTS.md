@@ -1,8 +1,8 @@
 # Agent Guidelines
 
 Each section is the binding rule; its full text is linked in [`docs/agents-detail.md`](docs/agents-detail.md).
-Keep this file under 16 KB so consumer repos can add sections and stay under the 24 KB rule-file limit some
-harnesses enforce (`scripts/check-agents-detail.ts` checks only the 24 KB one).
+Keep this file under 16,000 bytes so consumer repos can add sections and stay under the 24,000-byte rule-file
+limit some harnesses enforce.
 
 ## Harness capabilities
 
@@ -32,7 +32,8 @@ One orchestrator per session; other sessions and user-launched CLIs are independ
 - **Orchestrator:** one per session. Owns the plan, the working branch, integration, the PR, and merges
   (only with explicit authorization).
 - **Subagent:** started by the orchestrator for one task, in its own lane. Works only that task, commits
-  locally in that lane and reports evidence (commit, tests run, doubts).
+  locally in that lane and reports evidence (commit, tests run, doubts). It re-reads its task at each checkpoint
+  ([steering](docs/agents-detail.md#lane-steering)).
 - **Active agent:** whichever agent is running now. Every rule binds it in its current role; alone in a
   session, it is the orchestrator. A subagent that picks up a task from a skill or the queue follows that
   skill's subagent steps, never its orchestrator steps. A run started by an external driver (`agent-loop`) or a
@@ -50,7 +51,7 @@ iterations and escalate a real blocker with evidence; stage output, never merge 
 
 ## Session Start
 
-1. **Sync check:** warn and merge `origin/main` (pull on `main`) if behind (hook, or `git fetch` + `rev-list --count`).
+1. **Sync check:** warn and merge `origin/main` (pull on `main`) if behind.
 2. **PR watch:** subscribe to this branch's open PR, or snapshot it with `gh pr view` / `gh pr checks`.
 3. **Artifacts:** resume relevant `./docs/` `design.md` / `prd.md` / `plan.md`; none and it's feature work →
    start `/feature-chain` (collaborative planning resolves vague intent).
