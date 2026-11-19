@@ -42,16 +42,6 @@
       "count": 2
     }
   },
-  "scripts/voice/agent.ts": {
-    "complexity": {
-      "count": 2
-    }
-  },
-  "scripts/voice/voice-loop.ts": {
-    "complexity": {
-      "count": 2
-    }
-  },
   "tools/hoist-skill/emitters.ts": {
     "max-params": {
       "count": 7

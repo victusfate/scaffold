@@ -30,7 +30,6 @@ flowchart LR
   subgraph l_tools["Specialist tools"]
     n_council["Council"]
     n_mindmeld["Mind meld"]
-    n_voice["Voice chat"]
   end
   n_queue --> n_orchestration
   n_orchestration --> n_feature
@@ -49,7 +48,7 @@ flowchart LR
   class n_feature,n_tdd,n_pr lane1
   class n_gates,n_qa,n_investigate,n_prune,n_linter lane2
   class n_sync,n_skillify,n_retro lane3
-  class n_council,n_mindmeld,n_voice lane4
+  class n_council,n_mindmeld lane4
   style l_run fill:#f9fafb,stroke:#d1d5db,color:#374151
   style l_build fill:#f9fafb,stroke:#d1d5db,color:#374151
   style l_quality fill:#f9fafb,stroke:#d1d5db,color:#374151
@@ -74,7 +73,6 @@ flowchart LR
 - [Retro](retro.md): An evidence-backed look back at a session that proposes concrete fixes.
 - [Council](council.md): Five advisors, anonymous peer review and a chairman verdict for hard decisions.
 - [Mind meld](mind-meld.md): A repo-owned learning IDE built from code indexes and real runs.
-- [Voice chat](voice-chat.md): A hands-free voice loop with the coding agent.
 
 ## Ask your LLM
 
