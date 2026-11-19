@@ -57,10 +57,21 @@ function deepSection(section: DeepSection): string[] {
   return [`**${section.h}**`, '', ...(section.list ? bullets(section.list) : []), ...table, ''];
 }
 
-function nodeSection(node: ExplorerNode): string[] {
+// Navigation the page can't know on its own: the page above it, and the titles of pages it links to.
+export interface PageContext { up?: { title: string; link: string }; titles?: Record<string, string>; }
+
+const SKILL_FILE = /(?:^|\/)skills\/([^/]+)\.md$/;
+
+// A deeper link reads as where it goes: a page's title, or "/name skill" for a skill file.
+function linkLabel(link: string, titles: Record<string, string>): string {
+  const skill = SKILL_FILE.exec(link)?.[1];
+  return titles[link] ?? (skill ? `/${skill} skill` : link);
+}
+
+function nodeSection(node: ExplorerNode, titles: Record<string, string>): string[] {
   return [
     `## ${node.name}`, '', node.role, '',
-    ...(node.link ? [`Goes deeper: [${node.link}](${node.link})`, ''] : []),
+    ...(node.link ? [`Goes deeper: [${linkLabel(node.link, titles)}](${node.link})`, ''] : []),
     ...(node.details?.length ? [...bullets(node.details), ''] : []),
     ...(node.risks?.length ? ['**Where it breaks**', '', ...bullets(node.risks), ''] : []),
     ...(node.deep ?? []).flatMap(deepSection),
@@ -80,15 +91,16 @@ function askBlock(spec: ExplorerSpec): string[] {
     '```text', ...context, '```'];
 }
 
-export function renderMarkdown(spec: ExplorerSpec): string {
+export function renderMarkdown(spec: ExplorerSpec, context: PageContext = {}): string {
   const nodes = Object.values(spec.nodes);
   const glossary = Object.values(spec.glossary ?? {});
   return [
+    ...(context.up ? [`[← ${context.up.title}](${context.up.link})`, ''] : []),
     `# ${spec.title}`, '',
     ...(spec.lede ? [spec.lede, ''] : []),
     ...overview(spec), '',
     ...nodes.map(n => `- [${n.name}](#${githubAnchor(n.name)}): ${n.role}`), '',
-    ...nodes.flatMap(nodeSection),
+    ...nodes.flatMap(node => nodeSection(node, context.titles ?? {})),
     ...(spec.detail ? ['<details>', '<summary>Detailed flow</summary>', '',
       `![${spec.title}, detailed](${spec.detail})`, '', '</details>', ''] : []),
     ...(glossary.length ? ['## Glossary', '', ...glossary.map(g => `- **${g.t}**: ${g.d}`), ''] : []),

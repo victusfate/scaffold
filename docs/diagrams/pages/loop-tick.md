@@ -1,3 +1,5 @@
+[← Scaffold at a glance](system-map.md)
+
 # One loop tick
 
 What the orchestrator does each time its loop wakes: handle finished work, fill free slots, and make sure work is moving.
@@ -22,7 +24,7 @@ flowchart LR
 
 A native /loop or an external driver fires the tick.
 
-Goes deeper: [../../../skills/loop.md](../../../skills/loop.md)
+Goes deeper: [/loop skill](../../../skills/loop.md)
 
 - Timers are only for external gating, a usage-limit window or a crash re-arm.
 
@@ -41,7 +43,7 @@ The orchestrator reads which worker slots exist from topology.json.
 
 Review each finished slot's work, integrate or ship it, and set the task status.
 
-Goes deeper: [orchestration.md](orchestration.md)
+Goes deeper: [Orchestration](orchestration.md)
 
 - Integration and shipping stay within existing authorization.
 - Status becomes done, fail, or park --resume.
@@ -50,7 +52,7 @@ Goes deeper: [orchestration.md](orchestration.md)
 
 Give each free slot a suited task in a new worktree.
 
-Goes deeper: [queue-lifecycle.md](queue-lifecycle.md)
+Goes deeper: [Queue task lifecycle](queue-lifecycle.md)
 
 - A slot is free when no active task is owned by its id.
 - Order: create the worktree, claim the task for the slot, then start the slot's harness and model there.

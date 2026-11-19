@@ -1,3 +1,5 @@
+[← Scaffold at a glance](system-map.md)
+
 # Investigate
 
 How /investigate finds the root cause of a bug before changing any code, then proves the fix with fresh evidence.
@@ -49,7 +51,7 @@ Write down one guess about the cause and test it with the smallest change.
 
 Write a failing regression test, then make one fix at the root cause.
 
-Goes deeper: [tdd.md](tdd.md)
+Goes deeper: [TDD](tdd.md)
 
 - The test must fail for the named reason, not a bad fixture or import.
 - No bundled refactors or unrelated edits.

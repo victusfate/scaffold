@@ -57,4 +57,12 @@ void test('a map-like spec (nodes off every flow) groups all nodes by lane and d
   assert.match(renderMarkdown(map), /```mermaid\nflowchart LR\n {2}subgraph a\["Run"\]\n {4}q\["Queue"\]\n {4}solo\["Solo"\]\n {2}end\n {2}subgraph b\["Build"\]\n {4}f\["Feature"\]\n {4}x\["Extra"\]\n {2}end\n {2}q --> f\n {2}f --> x\n```/);
 });
 
+void test('navigation: a link back up, and deeper links named by their page title', () => {
+  const page = renderMarkdown(SPEC, { up: { title: 'Scaffold at a glance', link: 'system-map.md' }, titles: { 'co-plan.md': 'Co-plan' } });
+  assert.match(page, /^\[← Scaffold at a glance\]\(system-map\.md\)\n\n# Feature chain/);
+  assert.match(page, /Goes deeper: \[Co-plan\]\(co-plan\.md\)/);
+  assert.match(renderMarkdown({ ...SPEC, nodes: { d: { ...SPEC.nodes.design, link: '../../../skills/co-plan.md' } } }),
+    /Goes deeper: \[\/co-plan skill\]\(\.\.\/\.\.\/\.\.\/skills\/co-plan\.md\)/);
+});
+
 void test('deterministic', () => assert.equal(renderMarkdown(SPEC), md));

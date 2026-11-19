@@ -1,3 +1,5 @@
+[← Scaffold at a glance](system-map.md)
+
 # Review gates
 
 How a diff gets reviewed, fixed and verified before merge: two independent reviewers, one fixer, and a receipt so the same code is not checked twice.
@@ -29,7 +31,7 @@ Collect the branch's diff and the full text of every changed file.
 
 A correctness reviewer and a structure reviewer read the diff in parallel, without editing.
 
-Goes deeper: [../../../skills/code-refiner.md](../../../skills/code-refiner.md)
+Goes deeper: [/code-refiner skill](../../../skills/code-refiner.md)
 
 - Correctness: /validate
   - Finds correctness bugs.

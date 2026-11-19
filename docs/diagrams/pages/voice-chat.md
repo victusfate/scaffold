@@ -1,3 +1,5 @@
+[← Scaffold at a glance](system-map.md)
+
 # Voice chat
 
 How to talk to the coding agent hands-free through headphones. Audio stays on your machine; only the agent call goes out.
@@ -20,7 +22,7 @@ flowchart LR
 
 A built-in check reports what is missing; install it and re-run until clean.
 
-Goes deeper: [../../../skills/voice-chat.md](../../../skills/voice-chat.md)
+Goes deeper: [/voice-chat skill](../../../skills/voice-chat.md)
 
 - node scripts/voice/voice-loop.ts --check prints the speech model, voice backend, platform, recorder and player.
 - Install

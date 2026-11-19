@@ -1,3 +1,5 @@
+[← Scaffold at a glance](system-map.md)
+
 # Mind meld
 
 How a repo gets a learning tool that explains its code from real, recorded runs, viewable offline as a guided tour.
@@ -22,7 +24,7 @@ flowchart LR
 
 Name what a reader needs to understand and find the real code that answers it.
 
-Goes deeper: [../../../skills/mind-meld.md](../../../skills/mind-meld.md)
+Goes deeper: [/mind-meld skill](../../../skills/mind-meld.md)
 
 - Name the question and the observable result that answers it.
 - Find the actual user entry point, integration test and state owner in source.

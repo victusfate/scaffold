@@ -1,3 +1,5 @@
+[← Scaffold at a glance](system-map.md)
+
 # Council
 
 How a hard decision gets pressure-tested by five advisors with clashing views, then turned into one committed recommendation.
@@ -20,7 +22,7 @@ flowchart LR
 
 The owner brings a high-stakes decision with real tradeoffs.
 
-Goes deeper: [../../../skills/council.md](../../../skills/council.md)
+Goes deeper: [/council skill](../../../skills/council.md)
 
 - Triggers include "council this", "pressure-test this" or a real "should I X or Y" with stakes.
 - Not for every question

@@ -1,3 +1,5 @@
+[← Scaffold at a glance](system-map.md)
+
 # Retro
 
 How a session retrospective finds what slowed the agent down, backed by evidence, and proposes fixes to its environment. Nothing changes until the user picks.
@@ -20,7 +22,7 @@ flowchart LR
 
 On request, rebuild what happened from the conversation or a session log.
 
-Goes deeper: [../../../skills/retro.md](../../../skills/retro.md)
+Goes deeper: [/retro skill](../../../skills/retro.md)
 
 - Runs only when the user asks for /retro; the current session is the default.
 - Cites concrete turns, commands, failures, corrections and repeated searches.
@@ -71,7 +73,7 @@ A read-only table of findings with evidence and a recommended selection.
 
 The user picks remedies, and each goes to the skill that carries it out.
 
-Goes deeper: [skillify.md](skillify.md)
+Goes deeper: [Skillify](skillify.md)
 
 - Where work goes
   - skillify for a reusable procedure, add-linter for linter setup, feature-chain for a substantial change.

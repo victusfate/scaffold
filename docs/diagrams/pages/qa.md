@@ -1,3 +1,5 @@
+[← Scaffold at a glance](system-map.md)
+
 # QA
 
 How /qa runs the real app, uses the changed parts the way a user would, and fixes what breaks.
@@ -57,7 +59,7 @@ Sort issues by severity and pick the ones the fix tier covers.
 
 Fix each issue at its root cause with a failing regression test first, then re-run the probe.
 
-Goes deeper: [investigate.md](investigate.md)
+Goes deeper: [Investigate](investigate.md)
 
 - Each verified fix is committed with its test as fix(qa): QA-NNN.
 

@@ -13,6 +13,8 @@ import { fileURLToPath } from 'node:url';
 import { renderMarkdown } from './explorer-markdown.ts';
 import { validateSpec, type ExplorerSpec } from './explorer-spec.ts';
 
+// The landing page every other page links back up to.
+const MAP = 'system-map';
 const DIAGRAMS = join(dirname(fileURLToPath(import.meta.url)), '..', 'docs', 'diagrams');
 
 // Links resolve from the page's own directory; a #fragment is not part of the file.
@@ -44,8 +46,11 @@ export function buildPages(root: string, options: { check: boolean }): string[] 
   }));
   const invalid = specs.flatMap(({ slug, spec }) => validateSpec(spec).map(e => `${slug}: ${e}`));
   if (invalid.length) return invalid;
+  const titles = Object.fromEntries(specs.map(({ slug, spec }) => [`${slug}.md`, spec.title]));
+  const map = specs.find(({ slug }) => slug === MAP);
   const stale = specs.flatMap(({ slug, spec }) => {
-    const page = join(pagesDir, `${slug}.md`), markdown = renderMarkdown(spec);
+    const up = map && slug !== MAP ? { title: map.spec.title, link: `${MAP}.md` } : undefined;
+    const page = join(pagesDir, `${slug}.md`), markdown = renderMarkdown(spec, { up, titles });
     if (existsSync(page) && readFileSync(page, 'utf8') === markdown) return [];
     if (options.check) return [`pages/${slug}.md is stale: run npm run diagrams`];
     writeFileSync(page, markdown);

@@ -1,3 +1,5 @@
+[← Scaffold at a glance](system-map.md)
+
 # Add linter
 
 How /add-linter adds linter configs and CI workflows for the languages in a repo, without overwriting configs you already have.

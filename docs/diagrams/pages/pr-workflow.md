@@ -1,3 +1,5 @@
+[← Scaffold at a glance](system-map.md)
+
 # PR workflow
 
 How one task becomes one merged PR: local gates first, real checks on GitHub, and a merge only the owner authorizes.
@@ -26,7 +28,7 @@ Pull the latest main and cut a fresh branch for one independent task.
 
 Run the integration tests and make ci before opening anything.
 
-Goes deeper: [../../../skills/create-pr.md](../../../skills/create-pr.md)
+Goes deeper: [/create-pr skill](../../../skills/create-pr.md)
 
 - Start from a clean tree with commits ahead of main.
 - When a gate fails
@@ -38,7 +40,7 @@ Goes deeper: [../../../skills/create-pr.md](../../../skills/create-pr.md)
 
 /create-pr opens the PR with a structured body and starts watching its checks.
 
-Goes deeper: [review-gates.md](review-gates.md)
+Goes deeper: [Review gates](review-gates.md)
 
 - /simplify scores every file 10/10 before opening.
 - The body has a Summary, Critical changes, gate status and Quality Scores.
@@ -48,7 +50,7 @@ Goes deeper: [review-gates.md](review-gates.md)
 
 Read the actual check conclusions on the final head, not the merge button.
 
-Goes deeper: [session-continuity.md](session-continuity.md)
+Goes deeper: [Session continuity](session-continuity.md)
 
 - Remove the handoff file, push, and run check-handoff --pre-merge.
 - Capture the watch command's own exit code.
