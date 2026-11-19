@@ -86,12 +86,18 @@ function dockerfilePins(file: RepoFile): Pin[] {
   });
 }
 
+function parserFor(path: string): ((file: RepoFile) => Pin[]) | undefined {
+  const name = baseName(path);
+  const runtime = VERSION_FILES[name];
+  if (runtime) return file => versionFilePin(file, runtime);
+  if (name === '.tool-versions') return toolVersionsPins;
+  if (DOCKERFILE.test(name)) return dockerfilePins;
+  return undefined;
+}
+
+// Lets a caller read only the files that can hold pins.
+export const isPinFile = (path: string): boolean => parserFor(path) !== undefined;
+
 export function parsePins(files: RepoFile[]): Pin[] {
-  return files.flatMap(file => {
-    const name = baseName(file.path);
-    if (VERSION_FILES[name]) return versionFilePin(file, VERSION_FILES[name]);
-    if (name === '.tool-versions') return toolVersionsPins(file);
-    if (DOCKERFILE.test(name)) return dockerfilePins(file);
-    return [];
-  });
+  return files.flatMap(file => parserFor(file.path)?.(file) ?? []);
 }
