@@ -75,17 +75,6 @@ const describe = (f: Finding): string => f.kind === 'behind'
   ? `behind: latest patch is [${f.latest}](${releaseNotesUrl(f.runtime, f.latest)})`
   : `end of life${f.since ? ` since ${cell(f.since)}` : ''} ([schedule](${eolPageUrl(f.runtime)}))`;
 
-function patchSection(findings: Finding[], packages: number): string[] {
-  const bumps = findings.filter(f => f.kind === 'behind').length;
-  const eol = findings.length - bumps;
-  if (!bumps && !eol && !packages) return [];
-  const steps = [
-    ...(bumps ? [`Tell your agent \`/dependency-watch fix\`: it bumps ${bumps} runtime pin(s) to the latest patch and opens a PR for you to merge.`] : []),
-    ...(packages ? ['Dependabot opens security PRs for the packages.'] : []),
-    ...(eol ? [`${eol} end-of-life line(s) need a decision: move to a supported line in a normal PR.`] : []),
-  ];
-  return ['', '### To patch', '', ...steps.map(s => `- ${s}`)];
-}
 type Located = { file: string; line: number };
 const where = (s: Located): string => code(`${s.file}:${s.line}`);
 const byLocation = (a: Located, b: Located): number => byText(a.file, b.file) || a.line - b.line;
@@ -114,6 +103,18 @@ function notesSection(notes: Note[]): string[] {
   return ['', '### Not checked', '', ...lines];
 }
 
+function patchSection(findings: Finding[], packages: number): string[] {
+  const bumps = findings.filter(f => f.kind === 'behind').length;
+  const eol = findings.length - bumps;
+  if (!findings.length && !packages) return [];
+  const steps = [
+    ...(bumps ? [`Tell your agent \`/dependency-watch fix\`: it bumps ${bumps} runtime pin(s) to the latest patch and opens a PR for you to merge.`] : []),
+    ...(packages ? ['Dependabot opens security PRs for the packages.'] : []),
+    ...(eol ? [`${eol} end-of-life line(s) need a decision: move to a supported line in a normal PR.`] : []),
+  ];
+  return ['', '### To patch', '', ...steps.map(s => `- ${s}`)];
+}
+
 export function buildReport(input: ReportInput, options: ReportOptions): Report {
   const rows = packageRows(input.osv, options.root);
   const status = input.runtime.findings.length || rows.length ? 'findings' : 'clean';
@@ -127,7 +128,6 @@ export function buildReport(input: ReportInput, options: ReportOptions): Report 
     '',
     ...packageSection(rows),
     ...notesSection(input.runtime.unchecked),
-    '',
     ...patchSection(input.runtime.findings, rows.length),
     '',
     'Suppress a reviewed false positive in `osv-scanner.toml` with a reason.',

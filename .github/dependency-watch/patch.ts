@@ -18,9 +18,14 @@ function bumpLine(text: string, patch: Patch): string {
   return text.replace(token, (_match, before: string) => `${before}${patch.to}`);
 }
 
-// `patches` are for one file; line numbers are 1-based. Line endings are preserved.
-export function applyPatches(content: string, patches: Patch[]): string {
+// `patches` are for one file; line numbers are 1-based. Line endings are preserved. `applied` lists only
+// the patches that changed their line, so a pin that moved is never reported as patched.
+export function applyPatches(content: string, patches: Patch[]): { content: string; applied: Patch[] } {
   const lines = content.split('\n');
-  for (const patch of patches) lines[patch.line - 1] = bumpLine(lines[patch.line - 1] ?? '', patch);
-  return lines.join('\n');
+  const applied = patches.filter(patch => {
+    const before = lines[patch.line - 1] ?? '';
+    lines[patch.line - 1] = bumpLine(before, patch);
+    return lines[patch.line - 1] !== before;
+  });
+  return { content: lines.join('\n'), applied };
 }

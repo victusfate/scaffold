@@ -18,7 +18,7 @@ import { isEntryPoint, todayIso } from './cli.ts';
 import { applyPatches, planPatches, type Patch } from './patch.ts';
 import { isPinFile, parsePins, type Pin, type Runtime } from './pins.ts';
 import { ISO_DATE, RELEASE_URLS, eolUrl, parseEol, parseReleases } from './releases.ts';
-import { classify, type Releases } from './versions.ts';
+import { classify, type Finding, type Releases } from './versions.ts';
 
 const EXIT_FINDINGS = 1;
 const EXIT_ERROR = 2;
@@ -80,12 +80,14 @@ async function loadReleases(runtimes: Runtime[], options: Options): Promise<Rele
   return Object.fromEntries(entries);
 }
 
+// Writes the bumps and returns those that took effect.
 function writePatches(root: string, patches: Patch[]): Patch[] {
-  for (const file of new Set(patches.map(p => p.file))) {
+  return [...new Set(patches.map(p => p.file))].flatMap(file => {
     const path = join(root, file);
-    writeFileSync(path, applyPatches(readFileSync(path, 'utf8'), patches.filter(p => p.file === file)));
-  }
-  return patches;
+    const { content, applied } = applyPatches(readFileSync(path, 'utf8'), patches.filter(p => p.file === file));
+    writeFileSync(path, content);
+    return applied;
+  });
 }
 
 async function main(): Promise<number> {
@@ -93,11 +95,15 @@ async function main(): Promise<number> {
   const pins = trackedPins(options.root);
   const runtimes = [...new Set(pins.flatMap(pin => pin.runtime ? [pin.runtime] : []))];
   const result = classify(pins, await loadReleases(runtimes, options), options.today);
-  const patched = options.fix ? writePatches(options.root, planPatches(result.findings)) : [];
-  const remaining = result.findings.filter(f => !patched.some(p => p.file === f.file && p.line === f.line && f.kind === 'behind'));
-  const output = options.fix ? { ...result, findings: remaining, patched } : result;
-  process.stdout.write(JSON.stringify(output, null, 2) + '\n');
-  return remaining.length ? EXIT_FINDINGS : 0;
+  if (!options.fix) {
+    process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+    return result.findings.length ? EXIT_FINDINGS : 0;
+  }
+  const patched = writePatches(options.root, planPatches(result.findings));
+  const isPatched = (f: Finding): boolean => f.kind === 'behind' && patched.some(p => p.file === f.file && p.line === f.line);
+  const findings = result.findings.filter(f => !isPatched(f));
+  process.stdout.write(JSON.stringify({ ...result, findings, patched }, null, 2) + '\n');
+  return findings.length ? EXIT_FINDINGS : 0;
 }
 
 if (isEntryPoint(import.meta.url)) {

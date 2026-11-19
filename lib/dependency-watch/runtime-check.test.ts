@@ -4,25 +4,22 @@
 
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
-import { repoWith } from './test-helpers.ts';
+import { repoWith, tally } from './test-helpers.ts';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Patch } from './patch.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CLI = join(HERE, 'runtime-check.ts');
 const FIXTURES = join(HERE, 'fixtures');
 const TODAY = '2026-11-19';
 
-let passed = 0, failed = 0;
-function assert(label: string, cond: boolean, detail = ''): void {
-  if (cond) { console.error(`  pass  ${label}`); passed++; }
-  else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
-}
+const { assert, done } = tally();
 
 function run(args: string[]) {
   const r = spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8' });
-  let json: { findings?: { runtime: string; kind: string; file: string }[]; unchecked?: unknown[] } = {};
+  let json: { findings?: { runtime: string; kind: string; file: string }[]; unchecked?: unknown[]; patched?: Patch[] } = {};
   try { json = JSON.parse(r.stdout) as typeof json; } catch { /* asserted below via status */ }
   return { status: r.status, json, stderr: r.stderr };
 }
@@ -80,15 +77,13 @@ function run(args: string[]) {
     '.ruby-version': '3.4.12\n',
     'Dockerfile': 'FROM ruby:3.4.12-slim AS build\nFROM node:24.11.0\n',
   });
-  const r = spawnSync(process.execPath, [CLI, '--root', root, '--releases', FIXTURES, '--today', TODAY, '--fix'], { encoding: 'utf8' });
-  const out = JSON.parse(r.stdout || '{}') as { patched?: { file: string; line: number; from: string; to: string }[] };
+  const r = run(['--root', root, '--releases', FIXTURES, '--today', TODAY, '--fix']);
   const read = (p: string) => readFileSync(join(root, p), 'utf8');
   assert('--fix patches version file and Dockerfile tag', read('.ruby-version') === '3.4.13\n'
     && read('Dockerfile').startsWith('FROM ruby:3.4.13-slim AS build\n'), `${read('.ruby-version')} ${read('Dockerfile')}`);
-  assert('--fix reports what it patched', (out.patched ?? []).length === 3, r.stdout);
-  const again = spawnSync(process.execPath, [CLI, '--root', root, '--releases', FIXTURES, '--today', TODAY, '--fix'], { encoding: 'utf8' });
-  const left = JSON.parse(again.stdout || '{}') as { findings?: { kind: string }[] };
-  assert('after --fix only decisions remain', (left.findings ?? []).every(f => f.kind === 'eol'), again.stdout);
+  assert('--fix reports what it patched', r.json.patched?.length === 3, JSON.stringify(r.json));
+  const again = run(['--root', root, '--releases', FIXTURES, '--today', TODAY, '--fix']);
+  assert('after --fix only decisions remain', (again.json.findings ?? []).every(f => f.kind === 'eol') && again.json.patched?.length === 0, JSON.stringify(again.json));
 }
 
 // Bad arguments are errors.
@@ -99,5 +94,4 @@ function run(args: string[]) {
   assert('non-git root exit 2', run(['--root', notGit, '--releases', FIXTURES]).status === 2);
 }
 
-console.error(`\n${passed} passed, ${failed} failed`);
-if (failed) process.exit(1);
+done();

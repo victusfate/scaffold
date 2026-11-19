@@ -8,17 +8,13 @@ import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, readdirSync, copyF
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runBlocks } from './test-helpers.ts';
+import { runBlocks, tally } from './test-helpers.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const wf = readFileSync(join(HERE, 'dependency-watch.yml'), 'utf8');
 const [step] = runBlocks(wf);
 
-let passed = 0, failed = 0;
-function assert(label: string, cond: boolean, detail = ''): void {
-  if (cond) { console.error(`  pass  ${label}`); passed++; }
-  else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
-}
+const { assert, done } = tally();
 
 const OSV_FINDINGS = readFileSync(join(HERE, 'fixtures', 'osv-gems.json'), 'utf8');
 
@@ -96,5 +92,4 @@ const issueCalls = (calls: string[]) => calls.filter(c => c.startsWith('gh issue
   assert('osv-scanner error → job fails, issue untouched', r.status === 1 && issueCalls(r.calls).length === 0 && !r.calls.some(c => c.startsWith('gh issue list')), `${r.status} ${r.calls.join(' ; ')}`);
 }
 
-console.error(`\n${passed} passed, ${failed} failed`);
-if (failed) process.exit(1);
+done();

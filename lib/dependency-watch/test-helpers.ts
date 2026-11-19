@@ -20,3 +20,18 @@ export function repoWith(tracked: Record<string, string>, untracked: Record<stri
 // Every `run: |` block in a workflow, de-indented to the shell it runs.
 export const runBlocks = (workflow: string): string[] =>
   [...workflow.matchAll(/run: \|\n((?:\s{10}.*\n?|\n)+)/g)].map(m => m[1].replace(/^ {10}/gm, ''));
+
+// The pass/fail tally every dependency-watch test file reports with.
+export function tally(): { assert: (label: string, cond: boolean, detail?: string) => void; done: () => void } {
+  let passed = 0, failed = 0;
+  return {
+    assert(label, cond, detail = '') {
+      if (cond) { console.error(`  pass  ${label}`); passed++; }
+      else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
+    },
+    done() {
+      console.error(`\n${passed} passed, ${failed} failed`);
+      if (failed) process.exit(1);
+    },
+  };
+}

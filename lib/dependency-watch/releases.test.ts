@@ -7,13 +7,10 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseReleases, parseEol, releaseNotesUrl } from './releases.ts';
 import type { Runtime } from './pins.ts';
+import { tally } from './test-helpers.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
-let passed = 0, failed = 0;
-function assert(label: string, cond: boolean, detail = ''): void {
-  if (cond) { console.error(`  pass  ${label}`); passed++; }
-  else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
-}
+const { assert, done } = tally();
 const fixture = (name: string): string => readFileSync(join(FIXTURES, name), 'utf8');
 const releases = (runtime: Runtime, file: string): string[] => parseReleases(runtime, fixture(file));
 
@@ -66,5 +63,4 @@ const releases = (runtime: Runtime, file: string): string[] => parseReleases(run
   assert('empty release list throws', threw);
 }
 
-console.error(`\n${passed} passed, ${failed} failed`);
-if (failed) process.exit(1);
+done();

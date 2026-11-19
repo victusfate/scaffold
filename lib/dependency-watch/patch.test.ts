@@ -3,12 +3,9 @@
 
 import { planPatches, applyPatches } from './patch.ts';
 import type { Finding } from './versions.ts';
+import { tally } from './test-helpers.ts';
 
-let passed = 0, failed = 0;
-function assert(label: string, cond: boolean, detail = ''): void {
-  if (cond) { console.error(`  pass  ${label}`); passed++; }
-  else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
-}
+const { assert, done } = tally();
 const show = (v: unknown): string => JSON.stringify(v);
 const behind = (file: string, line: number, pinned: string, latest: string): Finding =>
   ({ runtime: 'ruby', file, line, pinned, kind: 'behind', latest });
@@ -24,7 +21,7 @@ const behind = (file: string, line: number, pinned: string, latest: string): Fin
 }
 
 const patchOne = (content: string, line: number, from: string, to: string): string =>
-  applyPatches(content, [{ file: 'f', line, from, to }]);
+  applyPatches(content, [{ file: 'f', line, from, to }]).content;
 
 assert('version file', patchOne('3.4.12\n', 1, '3.4.12', '3.4.13') === '3.4.13\n');
 assert('prefix kept', patchOne('ruby-3.4.12', 1, '3.4.12', '3.4.13') === 'ruby-3.4.13');
@@ -38,10 +35,10 @@ assert('whole version token only (3.4.1 does not match inside 3.4.12)',
   patchOne('FROM ruby:3.4.12\n', 1, '3.4.1', '3.4.9') === 'FROM ruby:3.4.12\n');
 assert('CRLF line endings kept', patchOne('3.4.12\r\n', 1, '3.4.12', '3.4.13') === '3.4.13\r\n');
 {
-  const twice = applyPatches('3.4.12\n', [{ file: 'f', line: 1, from: '3.4.12', to: '3.4.13' }]);
-  assert('idempotent: re-applying to the patched file changes nothing',
-    applyPatches(twice, [{ file: 'f', line: 1, from: '3.4.12', to: '3.4.13' }]) === twice);
+  const once = patchOne('3.4.12\n', 1, '3.4.12', '3.4.13');
+  assert('idempotent: re-applying to the patched file changes nothing', patchOne(once, 1, '3.4.12', '3.4.13') === once);
+  const moved = applyPatches('# moved\n3.4.12\n', [{ file: 'f', line: 1, from: '3.4.12', to: '3.4.13' }]);
+  assert('a pin no longer on its line is not reported as applied', moved.applied.length === 0 && moved.content === '# moved\n3.4.12\n');
 }
 
-console.error(`\n${passed} passed, ${failed} failed`);
-if (failed) process.exit(1);
+done();

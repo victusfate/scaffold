@@ -14,8 +14,9 @@ export const RELEASE_URLS: Record<Runtime, string> = {
 };
 
 const EOL_PRODUCTS: Record<Runtime, string> = { ruby: 'ruby', node: 'nodejs', python: 'python', go: 'go' };
-export const eolUrl = (runtime: Runtime): string => `https://endoflife.date/api/${EOL_PRODUCTS[runtime]}.json`;
-export const eolPageUrl = (runtime: Runtime): string => `https://endoflife.date/${EOL_PRODUCTS[runtime]}`;
+const EOL_SITE = 'https://endoflife.date';
+export const eolUrl = (runtime: Runtime): string => `${EOL_SITE}/api/${EOL_PRODUCTS[runtime]}.json`;
+export const eolPageUrl = (runtime: Runtime): string => `${EOL_SITE}/${EOL_PRODUCTS[runtime]}`;
 
 // Where an owner reads up on a release, built from fixed templates (no third-party text).
 const RELEASE_NOTES: Record<Runtime, (version: string) => string> = {

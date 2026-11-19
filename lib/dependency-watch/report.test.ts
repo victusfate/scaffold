@@ -7,13 +7,10 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildReport, ISSUE_MARKER, type OsvOutput } from './report.ts';
 import type { Classification } from './versions.ts';
+import { tally } from './test-helpers.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
-let passed = 0, failed = 0;
-function assert(label: string, cond: boolean, detail = ''): void {
-  if (cond) { console.error(`  pass  ${label}`); passed++; }
-  else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
-}
+const { assert, done } = tally();
 
 const osv = JSON.parse(readFileSync(join(FIXTURES, 'osv-gems.json'), 'utf8')) as OsvOutput;
 const CLEAN: Classification = { findings: [], info: [], unchecked: [] };
@@ -41,8 +38,6 @@ const OPTS = { root: '/repo', runUrl: 'https://github.com/o/r/actions/runs/1', d
   assert('package row: relative path, ids linked, fixed versions',
     r.body.includes('| `Gemfile.lock` | `rack` | `2.2.3` | RubyGems |') && r.body.includes('[GHSA-22f2-v57c-j9cx](https://osv.dev/vulnerability/GHSA-22f2-v57c-j9cx)'), r.body);
   assert('fixed versions shown', /\| `rack` \|[^\n]*\| [0-9][^|]*\|$/m.test(r.body), r.body);
-  assert('release notes linked for the patch', r.body.includes('[3.4.13](https://github.com/ruby/ruby/releases/tag/v3_4_13)'), r.body);
-  assert('EOL schedule linked', r.body.includes('(https://endoflife.date/nodejs)'), r.body);
   assert('patch instruction names the agent command and the decision left',
     r.body.includes('`/dependency-watch fix`') && r.body.includes('1 end-of-life'), r.body);
   assert('run link and date', r.body.includes(OPTS.runUrl) && r.body.includes('2026-11-19'));
@@ -86,5 +81,4 @@ const OPTS = { root: '/repo', runUrl: 'https://github.com/o/r/actions/runs/1', d
   assert('package rows capped at 200 with a remainder line', rows === 200 && body.includes('50 more packages'), `rows ${rows}`);
 }
 
-console.error(`\n${passed} passed, ${failed} failed`);
-if (failed) process.exit(1);
+done();

@@ -3,12 +3,9 @@
 
 import { parsePins } from './pins.ts';
 import { classify, type Releases } from './versions.ts';
+import { tally } from './test-helpers.ts';
 
-let passed = 0, failed = 0;
-function assert(label: string, cond: boolean, detail = ''): void {
-  if (cond) { console.error(`  pass  ${label}`); passed++; }
-  else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
-}
+const { assert, done } = tally();
 const show = (v: unknown): string => JSON.stringify(v);
 const NOW = '2026-11-19';
 
@@ -116,5 +113,4 @@ assert('.python-version', show(behind('.python-version', '3.13.8')) === show(['p
 // Files that are not pin files are ignored.
 assert('unrelated file ignored', parsePins([{ path: 'README.md', content: 'FROM ruby:3.4.12' }]).length === 0);
 
-console.error(`\n${passed} passed, ${failed} failed`);
-if (failed) process.exit(1);
+done();
