@@ -57,7 +57,7 @@ flowchart TB
 
   subgraph STOP["6 · Stop"]
     direction TB
-    S1{"Ctrl-C or exit phrase:<br/>'stop listening',<br/>'goodbye agent'"}:::gate
+    S1{"Ctrl-C or exit phrase:<br/>'stop listening',<br/>'goodbye agent',<br/>'that's all for now'"}:::gate
   end
 
   CHECK ==> INSTALL ==> TTS ==> LAUNCH ==> TURN ==> STOP

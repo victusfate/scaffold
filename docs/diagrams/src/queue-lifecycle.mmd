@@ -18,7 +18,7 @@ flowchart TB
   subgraph ADD["1 · Owner adds a task"]
     direction TB
     A1["Owner asks for the work"]:::owner
-    A2["queue add --requested<br/>title, accept, validate"]:::owner
+    A2["Agent: queue add --requested<br/>owner's words + title,<br/>accept, validate"]:::orch
     A3[("queue.db store<br/>queue.md view re-rendered")]:::state
     A1 --> A2 --> A3
   end
@@ -35,7 +35,7 @@ flowchart TB
     direction TB
     C1["tick or claim --worker<br/>owner = worker or slot"]:::orch
     C2["Lease clock runs<br/>(age of the claim)"]:::orch
-    C3["release or park --resume<br/>→ back to pending"]:::orch
+    C3["release --worker, or<br/>park --branch --resume [~]<br/>→ back to pending"]:::orch
     C1 --> C2 --> C3
   end
 
@@ -47,7 +47,7 @@ flowchart TB
     O1 ~~~ O2 ~~~ O3
   end
 
-  subgraph DELIVER["5 · Deliver (per-task mode)"]
+  subgraph DELIVER["6 · Deliver (per-task mode)"]
     direction TB
     D1["PR, real checks,<br/>owner approves merge"]:::git
     D2["Fresh branch, then<br/>advance --pr --branch"]:::git
@@ -55,16 +55,16 @@ flowchart TB
     D1 --> D2 --> D3
   end
 
-  subgraph ARCHIVE["6 · Archive"]
+  subgraph ARCHIVE["5 · Archive (at done)"]
     direction TB
-    R1["done [x] auto-archives<br/>to archive.md"]:::state
+    R1["done [x] auto-archives<br/>to archive.md, before<br/>delivery"]:::state
     R2["Kept while unfinished<br/>work depends on it"]:::state
     R3["failed tasks leave<br/>via archive sweep"]:::state
     R1 --> R2
     R2 ~~~ R3
   end
 
-  ADD ==> PENDING ==> ACTIVE ==> OUTCOME ==> DELIVER ==> ARCHIVE
+  ADD ==> PENDING ==> ACTIVE ==> OUTCOME ==> ARCHIVE ==> DELIVER
   end
   style FLOW fill:none,stroke:none
 

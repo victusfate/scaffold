@@ -18,7 +18,7 @@ flowchart TB
   subgraph OWNER["1 · Owner requests"]
     direction TB
     O1["Ask for the work<br/>only the owner creates tasks"]:::owner
-    O0["queue add --requested<br/>with accept criteria"]:::owner
+    O0["Agent records it:<br/>queue add --requested<br/>owner's words + accept"]:::orch
     O1 --> O0
   end
 
@@ -34,11 +34,11 @@ flowchart TB
   subgraph DISPATCH["3 · Orchestrator dispatches"]
     direction TB
     T["Loop tick<br/>reads topology.json slots"]:::orch
-    C["Claim top eligible task<br/>owner = slot id"]:::orch
-    W["Create worktree lane<br/>off working-branch HEAD"]:::orch
+    C["Claim top suited task<br/>--worker slot --branch b"]:::orch
+    W["Create worktree lane first<br/>off working-branch HEAD"]:::orch
     U["Steer later with<br/>ORCH UPDATE task notes"]:::orch
-    T --> C --> W
-    W -.-> U
+    T --> W --> C
+    C -.-> U
   end
 
   subgraph LANE["4 · Subagent works in its lane"]
@@ -63,7 +63,7 @@ flowchart TB
     direction TB
     O2{"Owner authorizes<br/>the merge?"}:::gate
     M["main · squash merge"]:::git
-    A["queue advance<br/>task archived"]:::state
+    A["queue advance --pr --branch<br/>records merge + fresh branch"]:::state
     O2 -->|yes| M --> A
   end
 
@@ -73,7 +73,7 @@ flowchart TB
 
   subgraph LEGEND["Legend"]
     direction LR
-    L1["ff-only<br/>fast-forward only:<br/>worker proves it starts from the<br/>latest code, else stops"]:::git
+    L1["ff-only<br/>fast-forward only:<br/>worker proves it starts from the<br/>working branch's HEAD, else stops"]:::git
     L2["PRD<br/>Product Requirements Doc:<br/>what to build + how we<br/>know it's done"]:::git
     L3["TDD<br/>Test-Driven Development:<br/>failing test first, then code,<br/>then clean up"]:::git
     L4["worktree<br/>isolated git checkout<br/>per worker, so workers<br/>never collide"]:::git

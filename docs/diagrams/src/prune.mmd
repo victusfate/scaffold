@@ -51,8 +51,9 @@ flowchart TB
     direction TB
     R1["/create-pr"]:::orch
     R2["Body lists findings<br/>and IDs addressed"]:::state
-    R3{"Owner says stop,<br/>pause or just answer?<br/>halt at once"}:::owner
-    R1 --> R2 --> R3
+    R3{"Any phase: owner says stop,<br/>pause or just answer?<br/>halt at once"}:::owner
+    R1 --> R2
+    R2 ~~~ R3
   end
 
   AUDIT ==> DESIGN ==> PRD ==> TDD ==> PR
@@ -69,7 +70,7 @@ flowchart TB
     L6["slice<br/>one thin end-to-end<br/>chunk of the work"]:::git
     L7["code-refiner<br/>validate + simplify review,<br/>then one fix pass"]:::git
     L8["PR<br/>pull request: a proposed<br/>change, reviewed before merge"]:::git
-    L9["BRANCH<br/>short name of the<br/>current git branch"]:::git
+    L9["BRANCH<br/>last path segment of<br/>the current branch name"]:::git
     L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9
   end
 

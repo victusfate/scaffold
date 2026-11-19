@@ -61,7 +61,7 @@ flowchart TB
     direction TB
     E1[("Receipt keyed to<br/>exact tree identity")]:::state
     E2["Merge step reuses<br/>a matching receipt"]:::git
-    E3{"Mismatch or corrupt?<br/>fail closed → re-run"}:::gate
+    E3{"Missing, mismatched<br/>or corrupt? fail closed<br/>→ re-run in full"}:::gate
     E4["Full suites only for<br/>shared core, else<br/>affected-delta checks"]:::orch
     E1 --> E2 --> E3
     E3 ~~~ E4
@@ -78,7 +78,7 @@ flowchart TB
     L3["DRY<br/>Don't Repeat Yourself:<br/>one canonical place<br/>per concept"]:::git
     L4["diff economy<br/>added lines must earn<br/>their place; deletions<br/>count as credit"]:::git
     L5["receipt<br/>record of a verified run,<br/>valid only for that<br/>exact code"]:::git
-    L6["tree identity<br/>HEAD, tree, index, diffs,<br/>untracked inputs, base,<br/>plan, gate + tool hashes"]:::git
+    L6["tree identity<br/>HEAD, tree, index, diffs,<br/>untracked inputs, base,<br/>plan, gate-script<br/>hashes, tool binaries"]:::git
     L7["fail closed<br/>when in doubt, block<br/>and re-run instead<br/>of passing"]:::git
     L8["shared core<br/>public API, save formats,<br/>networking, workspace<br/>build inputs"]:::git
     L9["affected-delta<br/>checks only for the<br/>parts the change<br/>touches"]:::git

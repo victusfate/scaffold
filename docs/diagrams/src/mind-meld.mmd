@@ -35,7 +35,7 @@ flowchart TB
     direction TB
     R1["Pinned image, no network,<br/>read-only source, time limits"]:::lane
     R2["Record a flow, an isolated<br/>piece, a contrasting run"]:::lane
-    R3["Reproduce a relevant failure<br/>keep it and its inputs"]:::lane
+    R3["Keep failed runs<br/>and their inputs"]:::lane
     R4{"Sandbox unavailable?<br/>static browsing only"}:::gate
     R1 --> R2 --> R3 --> R4
   end
@@ -54,7 +54,8 @@ flowchart TB
     T1["Tour: input → ownership<br/>→ mutations → output"]:::orch
     T2["Narration cites file:line<br/>and event ids"]:::orch
     T3["Never invent edges,<br/>values or successes"]:::gate
-    T1 --> T2 --> T3
+    T4["Reproduce a failure, explain<br/>diagnosis and repair"]:::orch
+    T1 --> T2 --> T4 --> T3
   end
 
   subgraph VIEW["6 · Verify and view offline"]

@@ -29,9 +29,9 @@ flowchart TB
     direction TB
     D1["One question at a time<br/>with a recommended answer"]:::owner
     D2["design.md: decisions,<br/>vocabulary, scenarios"]:::state
-    D3["/design-review<br/>auto-fix mode"]:::gate
-    D4["Commit design Q&A"]:::git
-    D1 --> D2 --> D3 --> D4
+    D4["Commit design.md"]:::git
+    D3["Then /design-review<br/>auto-fix mode"]:::gate
+    D1 --> D2 --> D4 --> D3
   end
 
   subgraph PRD["3 · PRD — /to-prd"]
@@ -57,7 +57,7 @@ flowchart TB
     R1{"Full suite green?"}:::gate
     R2["/code-refiner auto-fix<br/>correctness + structure"]:::gate
     R3["Commit refiner fixes"]:::git
-    R4["/qa drives real<br/>entry points<br/>→ qa-report.md"]:::lane
+    R4["/qa drives real<br/>entry points → qa-report.md<br/>(none? skip, record why)"]:::lane
     R1 -->|yes| R2 --> R3 --> R4
   end
 

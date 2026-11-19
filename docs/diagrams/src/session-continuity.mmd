@@ -36,7 +36,7 @@ flowchart TB
     direction TB
     P1["save: stage by explicit path<br/>pause: commit all, list dirty"]:::git
     P2["git push the branch<br/>pushed or stranded"]:::git
-    P3{"Near usage limit?<br/>memory pointer, then<br/>wake after reset"}:::orch
+    P3{"Near usage limit?<br/>memory pointer, then wake<br/>after reset (if scheduler)"}:::orch
     P1 --> P2 --> P3
   end
 

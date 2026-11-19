@@ -20,7 +20,7 @@ flowchart TB
     S1{"Clean tree?<br/>dirty → ask user<br/>to commit or stash"}:::gate
     S2["Pick surfaces from diff<br/>browser · API · CLI · job"]:::orch
     S3["Start app as documented<br/>poll for readiness"]:::orch
-    S4["Synthetic accounts only<br/>never production"]:::orch
+    S4["Seeded or synthetic test data<br/>never production"]:::orch
     S1 --> S2 --> S3 --> S4
   end
 
@@ -46,7 +46,7 @@ flowchart TB
     F1["/investigate: root cause<br/>failing regression test first"]:::lane
     F2["Re-run the probe<br/>+ adjacent happy path"]:::lane
     F3["Commit fix(qa): QA-NNN<br/>with its test"]:::git
-    F4{"2 reverts or 30 fixes?<br/>stop and report"}:::gate
+    F4{"2 reverts, off-issue edit,<br/>or 30 fixes? stop and report"}:::gate
     F1 --> F2 --> F3 --> F4
   end
 
@@ -77,7 +77,7 @@ flowchart TB
     L3["API<br/>application programming<br/>interface: HTTP endpoints"]:::git
     L4["CLI<br/>command-line interface:<br/>commands, flags, exit codes"]:::git
     L5["job<br/>background work: workers,<br/>queues, scheduled tasks"]:::git
-    L6["fix tier<br/>quick = critical + high,<br/>standard adds medium,<br/>exhaustive adds low"]:::git
+    L6["fix tier<br/>quick = critical + high,<br/>standard adds medium,<br/>exhaustive adds low + cosmetic"]:::git
     L7["blocked<br/>could not be reached;<br/>never counted as passed"]:::git
     L8["regression test<br/>an automated test that<br/>catches the bug coming back"]:::git
     L9["PR<br/>pull request: a proposed<br/>change, reviewed before merge"]:::git

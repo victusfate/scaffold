@@ -27,7 +27,7 @@ flowchart TB
     direction TB
     I1["Intent → Inputs →<br/>Steps → Edge cases"]:::owner
     I2["Agent recommends<br/>an answer each round"]:::orch
-    I3["Skip rounds already<br/>clear from context"]:::orch
+    I3["Stop early if all four<br/>are clear from context"]:::orch
     I1 ~~~ I2 ~~~ I3
   end
 

@@ -26,8 +26,8 @@ flowchart TB
   subgraph LOCAL["2 · Local gates"]
     direction TB
     G1["Clean tree, commits<br/>ahead of main"]:::gate
-    G2["Integration tests<br/>auto-correct ≤ 2 rounds"]:::gate
-    G3{"make ci green?<br/>no → DRAFT PR only"}:::gate
+    G2["Run integration<br/>tests"]:::gate
+    G3{"make ci green?<br/>no → auto-correct ≤ 2 rounds,<br/>still red → DRAFT PR"}:::gate
     G4["Version bump, push"]:::git
     G1 --> G2 --> G3 --> G4
   end
@@ -43,19 +43,19 @@ flowchart TB
 
   subgraph CHECKS["4 · Verify a real green"]
     direction TB
+    M1["git rm handoff, push<br/>check-handoff --pre-merge"]:::git
     C1["Read actual check<br/>conclusions, not the button"]:::gate
     C2{"Required check skipped?<br/>suspect, not a pass"}:::gate
     C3["Capture the watch<br/>command's own exit"]:::gate
     C4["Security scan<br/>must pass"]:::gate
-    C1 --> C2 --> C3 --> C4
+    M1 --> C1 --> C2 --> C3 --> C4
   end
 
   subgraph MERGE["5 · Owner-authorized merge"]
     direction TB
-    M1["git rm handoff<br/>check-handoff --pre-merge"]:::git
     M2{"Owner authorizes?<br/>a PR is not approval"}:::owner
     M3["Squash merge with<br/>--match-head-commit"]:::git
-    M1 --> M2 -->|yes| M3
+    M2 -->|yes| M3
   end
 
   subgraph NEXT["6 · Before the next task"]
