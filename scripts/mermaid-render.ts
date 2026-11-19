@@ -24,8 +24,9 @@
 //     --html        also write <input>.html — a self-contained interactive
 //                   viewer (inline SVG + dependency-free touch pan/zoom) that
 //                   opens in any mobile browser; no server, no CDN
-//     --portable    render labels as SVG <text> (htmlLabels:false) so text does
-//                   not clip in non-browser / mobile SVG viewers
+//     --portable    (default) labels as SVG <text> (htmlLabels:false): text does not clip in
+//                   GitHub, non-browser or mobile SVG viewers
+//     --html-labels HTML labels instead (richer text, but clipped or blank outside a browser)
 //     --scale <n>   PNG scale factor (default 3); higher = crisper + larger
 //     --no-render   skip the local SVG (use with --wrap, --local, or --publish)
 //     --out <file>  override the SVG output path (default: <input>.svg)
@@ -144,13 +145,14 @@ function die(msg: string): never {
 
 interface Opts { input?: string; out?: string; wrap: boolean; png: boolean; html: boolean; portable: boolean; scale: string; local: boolean; port: string; open: boolean; publish: boolean; short: boolean; noRender: boolean }
 
-function parseArgs(argv: string[]): Opts {
-  const opts: Opts = { wrap: false, png: false, html: false, portable: false, scale: '3', local: false, port: '8080', open: false, publish: false, short: false, noRender: false };
+export function parseArgs(argv: string[]): Opts {
+  const opts: Opts = { wrap: false, png: false, html: false, portable: true, scale: '3', local: false, port: '8080', open: false, publish: false, short: false, noRender: false };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--wrap') opts.wrap = true;
     else if (argv[i] === '--png') opts.png = true;
     else if (argv[i] === '--html') opts.html = true;
     else if (argv[i] === '--portable') opts.portable = true;
+    else if (argv[i] === '--html-labels') opts.portable = false;
     else if (argv[i] === '--scale') opts.scale = argv[++i];
     else if (argv[i] === '--local') opts.local = true;
     else if (argv[i] === '--port') opts.port = argv[++i];
@@ -167,7 +169,7 @@ function parseArgs(argv: string[]): Opts {
 
 async function main(argv: string[]): Promise<void> {
   const { input, out, wrap, png, html, portable, scale, local, port, open, publish, short, noRender } = parseArgs(argv);
-  if (!input) die('usage: node scripts/mermaid-render.ts <input.mmd> [--out <file.svg>] [--png] [--html] [--portable] [--scale <n>] [--wrap] [--local] [--open] [--publish] [--short] [--no-render]');
+  if (!input) die('usage: node scripts/mermaid-render.ts <input.mmd> [--out <file.svg>] [--png] [--html] [--html-labels] [--scale <n>] [--wrap] [--local] [--open] [--publish] [--short] [--no-render]');
   if (!existsSync(input)) die(`input not found: ${input}`);
   if (!input.endsWith('.mmd')) die(`input must be a .mmd file (output paths derive from it): ${input}`);
   if (png && !(Number(scale) > 0)) die(`--scale must be a positive number: ${scale}`);

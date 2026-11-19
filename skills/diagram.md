@@ -11,6 +11,10 @@ spec) is the single source of truth; the rendered image or page is a derived
 artifact. All edits happen in text and re-render.
 Never convert to a lossy shape format (excalidraw, draw.io, hand-tuned SVG).
 
+**SVG by default.** The default output is a GitHub-safe SVG (`<slug>.svg`, labels as SVG text), sharp at
+any zoom. Produce other formats (PNG, interactive HTML, explorer page, a mermaid.live link) only when the
+user asks for one.
+
 **Local by default.** Render and view locally; the diagram leaves the machine
 only when the user asks to **publish** (the one explicit remote action). View
 priority is the Step 4 order.

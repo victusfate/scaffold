@@ -24,7 +24,12 @@ function decode(url: string): { code: string; mermaid: { theme: string } } {
   return JSON.parse(json) as { code: string; mermaid: { theme: string } };
 }
 
-const { mermaidLiveUrl, wrapMarkdown, titleFromPath, openerArgs, interactiveHtml } = await import('./mermaid-render.ts');
+const { mermaidLiveUrl, wrapMarkdown, titleFromPath, openerArgs, interactiveHtml, parseArgs } = await import('./mermaid-render.ts');
+
+// Default output is a GitHub-safe SVG (labels as SVG text); --html-labels opts out.
+assert('SVG labels are GitHub-safe by default', parseArgs(['x.mmd']).portable === true);
+assert('--html-labels opts out', parseArgs(['x.mmd', '--html-labels']).portable === false);
+assert('PNG only on request', parseArgs(['x.mmd']).png === false);
 
 // OS default-viewer command per platform
 {
