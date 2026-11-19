@@ -49,3 +49,12 @@ void test('a term defined differently on two pages is a problem', () => {
   assert.deepEqual(buildPages(root, { check: false }).filter(p => p.includes('PRD')),
     ['glossary: "PRD" is defined differently in one and two']);
 });
+
+void test('text GitHub would hide as an HTML tag is a problem; code spans and details are fine', () => {
+  const root = site('x.md');
+  const spec = (role: string) => JSON.stringify({ title: 'T', lanes: [{ id: 'l', name: 'L' }], nodes: { a: { lane: 'l', name: 'A', role } } });
+  writeFileSync(join(root, 'explorer', 'bad.explorer.json'), spec('Writes docs/<slug>/design.md.'));
+  writeFileSync(join(root, 'explorer', 'ok.explorer.json'), spec('Writes `docs/<slug>/design.md`.'));
+  assert.deepEqual(buildPages(root, { check: false }).filter(p => p.includes('hidden')),
+    ['bad: "<slug>" would be hidden by GitHub as an HTML tag; wrap it in backticks']);
+});

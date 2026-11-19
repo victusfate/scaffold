@@ -15,7 +15,7 @@ flowchart LR
 - [Add](#add): The owner asks for work and the agent records it with the owner's words.
 - [Pending](#pending): The task waits its turn; the top eligible line runs first.
 - [Active](#active): A worker or slot claims the task and a lease clock starts.
-- [Outcome](#outcome): The task's validate command decides done, retry or failed.
+- [Outcome](#outcome): Running validate on done, or an explicit fail, decides done, retry or failed.
 - [Deliver](#deliver): In per-task mode, the task's PR must merge before the queue moves on.
 
 ## Add
@@ -34,7 +34,7 @@ The task waits its turn; the top eligible line runs first.
 - Three kinds of waiting
   - Eligible: its deps are done and it is not held.
   - Waiting: a dep or gate is unfinished.
-  - Held: parked; the drain skips it until unheld.
+  - Held: set aside; the drain skips it until unheld.
 
 ## Active
 
@@ -51,7 +51,7 @@ Goes deeper: [One loop tick](loop-tick.md)
 
 ## Outcome
 
-The task's validate command decides done, retry or failed.
+Running validate on done, or an explicit fail, decides done, retry or failed.
 
 - A failure below maxFailures goes back to pending for a retry.
 - At maxFailures it is marked failed and stays visible; requeue revives it.
@@ -62,6 +62,7 @@ The task's validate command decides done, retry or failed.
 | Marker | Meaning |
 |---|---|
 | [ ] | pending |
+| [>] | active (claimed) |
 | [~] | parked with a resume note |
 | [x] | done |
 | [!] | failed |
@@ -104,7 +105,7 @@ Queue task lifecycle: The states a queue task passes through, from the owner's r
 - Add: The owner asks for work and the agent records it with the owner's words.
 - Pending: The task waits its turn; the top eligible line runs first.
 - Active: A worker or slot claims the task and a lease clock starts.
-- Outcome: The task's validate command decides done, retry or failed.
+- Outcome: Running validate on done, or an explicit fail, decides done, retry or failed.
 - Deliver: In per-task mode, the task's PR must merge before the queue moves on.
 
 Questions worth asking:

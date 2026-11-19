@@ -2,7 +2,7 @@
 
 # Council
 
-How a hard decision gets pressure-tested by five advisors with clashing views, then turned into one committed recommendation.
+How a hard decision gets pressure-tested by five advisors with clashing views, then turned into one clear recommendation.
 
 ```mermaid
 flowchart LR
@@ -107,7 +107,7 @@ Copy this block into your own assistant to ask about anything on this page.
 ```text
 The reader wants to understand scaffold's /council skill: how an AI agent pressure-tests a hard decision with five persona advisors.
 
-Council: How a hard decision gets pressure-tested by five advisors with clashing views, then turned into one committed recommendation.
+Council: How a hard decision gets pressure-tested by five advisors with clashing views, then turned into one clear recommendation.
 - Owner asks: The owner brings a high-stakes decision with real tradeoffs.
 - Frame the brief: The main agent writes a neutral, self-contained brief grounded in the repo.
 - Five advisors: Five isolated subagents each argue from one fixed lens, all at once.

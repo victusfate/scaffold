@@ -13,7 +13,7 @@ flowchart LR
 ```
 
 - [Checkpoint](#checkpoint): Write where the work stands into one handoff file.
-- [Gate](#gate): A script checks the handoff is short and every fact says whether it was verified.
+- [Gate](#gate): /save and /pause run a script before committing: the handoff must be short and every fact must say whether it was verified.
 - [Commit and push](#commit-and-push): Commit the handoff and push the branch, because only pushed work reaches another device.
 - [Resume](#resume): The next session pulls, reads the handoff, re-checks its claims and starts the first next step.
 - [Clear before merge](#clear-before-merge): The branch's last commit removes the handoff, so main never carries one.
@@ -31,7 +31,7 @@ Goes deeper: [/save skill](../../../skills/save.md)
 
 ## Gate
 
-A script checks the handoff is short and every fact says whether it was verified.
+/save and /pause run a script before committing: the handoff must be short and every fact must say whether it was verified.
 
 - check-handoff.ts requires a verified or unverified tag on each State bullet.
 - It rejects correction lines left beside old facts, files over 80 lines, and commands inside a verified tag.
@@ -92,7 +92,7 @@ The reader wants to understand how scaffold lets an agent session stop and pick 
 
 Session continuity: How work survives a closed session: checkpoint into a handoff file, push it, and pick it up from any device.
 - Checkpoint: Write where the work stands into one handoff file.
-- Gate: A script checks the handoff is short and every fact says whether it was verified.
+- Gate: /save and /pause run a script before committing: the handoff must be short and every fact must say whether it was verified.
 - Commit and push: Commit the handoff and push the branch, because only pushed work reaches another device.
 - Resume: The next session pulls, reads the handoff, re-checks its claims and starts the first next step.
 - Clear before merge: The branch's last commit removes the handoff, so main never carries one.

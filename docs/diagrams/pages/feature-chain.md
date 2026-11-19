@@ -2,7 +2,7 @@
 
 # Feature chain
 
-How a feature idea becomes a reviewed, tested PR. The owner decides intent and merges; the agent does the rest.
+How a feature idea becomes a reviewed, tested PR. The owner decides intent and authorizes merges; the agent does the rest.
 
 ```mermaid
 flowchart LR
@@ -18,7 +18,7 @@ flowchart LR
 - [TDD slices](#tdd-slices): Build in thin vertical slices: failing test, minimal code, refactor, commit.
 - [Refine](#refine): Two independent reviewers (correctness, structure) report; one pass applies every fix.
 - [QA](#qa): Run the real app and drive the changed entry points the way a user would.
-- [Owner review](#owner-review): A summary and a PR; the owner reviews and merges.
+- [Owner review](#owner-review): A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.
 
 ## Design
 
@@ -27,6 +27,7 @@ Agree on what to build and why, one question at a time.
 Goes deeper: [/co-plan skill](../../../skills/co-plan.md)
 
 - The agent explores the code first and only asks what the code can't answer, each time with a recommended answer.
+- Resumes at the first missing artifact in `docs/<slug>/`; a supplied document is placed as design.md.
 - Output: design.md
   - Decisions with rationale, canonical vocabulary, edge cases.
   - Then /design-review patches structural gaps.
@@ -35,7 +36,7 @@ Goes deeper: [/co-plan skill](../../../skills/co-plan.md)
 
 Turn the design into user stories and testing decisions, without re-interviewing.
 
-- Cross-checks the design against the codebase and names which modules need tests.
+- Cross-checks the design against the codebase and confirms with the owner which modules need tests.
 
 ## TDD slices
 
@@ -43,7 +44,7 @@ Build in thin vertical slices: failing test, minimal code, refactor, commit.
 
 Goes deeper: [TDD](tdd.md)
 
-- Granularity is confirmed once with the owner; after that, slices run without pausing.
+- Granularity is confirmed once with the owner; after that, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.
 
 **Where it breaks**
 
@@ -63,9 +64,11 @@ Run the real app and drive the changed entry points the way a user would.
 
 Goes deeper: [QA](qa.md)
 
+- Skipped, with the reason recorded, when the change has no runtime entry point.
+
 ## Owner review
 
-A summary and a PR; the owner reviews and merges.
+A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.
 
 Goes deeper: [PR workflow](pr-workflow.md)
 
@@ -90,13 +93,13 @@ Copy this block into your own assistant to ask about anything on this page.
 ```text
 The reader wants to understand scaffold's feature chain: how an AI agent takes a feature from idea to reviewed PR.
 
-Feature chain: How a feature idea becomes a reviewed, tested PR. The owner decides intent and merges; the agent does the rest.
+Feature chain: How a feature idea becomes a reviewed, tested PR. The owner decides intent and authorizes merges; the agent does the rest.
 - Design: Agree on what to build and why, one question at a time.
 - PRD: Turn the design into user stories and testing decisions, without re-interviewing.
 - TDD slices: Build in thin vertical slices: failing test, minimal code, refactor, commit.
 - Refine: Two independent reviewers (correctness, structure) report; one pass applies every fix.
 - QA: Run the real app and drive the changed entry points the way a user would.
-- Owner review: A summary and a PR; the owner reviews and merges.
+- Owner review: A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.
 
 Questions worth asking:
 - What makes a design question worth asking the owner instead of deciding?

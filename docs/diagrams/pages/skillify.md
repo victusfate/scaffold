@@ -66,7 +66,7 @@ Write the skill body and its wrappers, register it, and validate.
 
 Open a pull request against scaffold so every repo inherits the skill, then stop for review.
 
-Goes deeper: [PR workflow](pr-workflow.md)
+Goes deeper: [Scaffold sync](scaffold-sync.md)
 
 - Branch `skillify/<slug>` off `scaffold/main`, push, and open a PR titled `feat(skill): <slug>`.
 - Do not merge; the summary lists slug, files, validator result and PR link.

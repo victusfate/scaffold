@@ -9,14 +9,14 @@ flowchart LR
   branch["Branch"] --> local["Local gates"]
   local["Local gates"] --> open["Open the PR"]
   open["Open the PR"] --> checks["Verify checks"]
-  checks["Verify checks"] --> merge["Owner merges"]
+  checks["Verify checks"] --> merge["Authorized merge"]
 ```
 
 - [Branch](#branch): Pull the latest main and cut a fresh branch for one independent task.
 - [Local gates](#local-gates): Run the integration tests and make ci before opening anything.
 - [Open the PR](#open-the-pr): /create-pr opens the PR with a structured body and starts watching its checks.
 - [Verify checks](#verify-checks): Read the actual check conclusions on the final head, not the merge button.
-- [Owner merges](#owner-merges): The owner authorizes the merge; it lands on main as one squash commit.
+- [Authorized merge](#authorized-merge): With the owner's explicit authorization, the orchestrator squash-merges it onto main as one commit.
 
 ## Branch
 
@@ -33,7 +33,7 @@ Goes deeper: [/create-pr skill](../../../skills/create-pr.md)
 - Start from a clean tree with commits ahead of main.
 - When a gate fails
   - Auto-correct up to 2 rounds.
-  - Still red: open the PR as a DRAFT and list the red gates.
+  - Still red: failing integration tests stop with no PR; a red make ci opens the PR as a DRAFT listing the red gates.
 - Then bump the version and push.
 
 ## Open the PR
@@ -42,7 +42,7 @@ Goes deeper: [/create-pr skill](../../../skills/create-pr.md)
 
 Goes deeper: [Review gates](review-gates.md)
 
-- /simplify scores every file 10/10 before opening.
+- /simplify must score every changed file 10/10 before the PR opens.
 - The body has a Summary, Critical changes, gate status and Quality Scores.
 - Subscribe to the PR, or run gh pr checks --watch.
 
@@ -52,7 +52,7 @@ Read the actual check conclusions on the final head, not the merge button.
 
 Goes deeper: [Session continuity](session-continuity.md)
 
-- Remove the handoff file, push, and run check-handoff --pre-merge.
+- First remove the handoff file, push, and run check-handoff --pre-merge, so the final CI run judges the cleared head.
 - Capture the watch command's own exit code.
 - The Security scan check must pass.
 
@@ -60,9 +60,9 @@ Goes deeper: [Session continuity](session-continuity.md)
 
 - GitHub counts a skipped required check as passing; treat a skip as suspect.
 
-## Owner merges
+## Authorized merge
 
-The owner authorizes the merge; it lands on main as one squash commit.
+With the owner's explicit authorization, the orchestrator squash-merges it onto main as one commit.
 
 - A PR is not approval.
 - The squash merge uses --match-head-commit, so only the commit whose checks were read can land.
@@ -93,7 +93,7 @@ PR workflow: How one task becomes one merged PR: local gates first, real checks 
 - Local gates: Run the integration tests and make ci before opening anything.
 - Open the PR: /create-pr opens the PR with a structured body and starts watching its checks.
 - Verify checks: Read the actual check conclusions on the final head, not the merge button.
-- Owner merges: The owner authorizes the merge; it lands on main as one squash commit.
+- Authorized merge: With the owner's explicit authorization, the orchestrator squash-merges it onto main as one commit.
 
 Questions worth asking:
 - Why isn't a green merge button enough?

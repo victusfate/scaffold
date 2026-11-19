@@ -27,7 +27,7 @@ Split the PRD into vertical slices and confirm their size once with the user.
 - If plan.md is missing, the agent writes it from prd.md first.
 - Each slice cuts through every layer
   - Data, logic, UI and tests together.
-  - After the size is confirmed, slices run without pausing.
+  - After the size is confirmed, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.
 
 ## Before code
 

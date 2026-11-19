@@ -14,7 +14,7 @@ flowchart LR
 ```
 
 - [Start with a question](#start-with-a-question): Name what a reader needs to understand and find the real code that answers it.
-- [Build adapters](#build-adapters): Repo-specific code indexes the source and runs it, one language and runtime at a time.
+- [Build adapters](#build-adapters): Repo-specific code indexes the source in its language and runs it in its runtime.
 - [Record real runs](#record-real-runs): Run the code in a locked-down sandbox and record what actually happened.
 - [Validated bundle](#validated-bundle): Index, source and runs go into one JSON file checked by an executable schema.
 - [Tour and narrate](#tour-and-narrate): A guided tour follows input through ownership and mutations to output, citing source lines.
@@ -29,10 +29,11 @@ Goes deeper: [/mind-meld skill](../../../skills/mind-meld.md)
 - Name the question and the observable result that answers it.
 - Find the actual user entry point, integration test and state owner in source.
 - Pick an existing test or a small flow that reaches that code.
+- Scaffold supplies the method, schema, viewer and a reference adapter; each repo writes its own adapters.
 
 ## Build adapters
 
-Repo-specific code indexes the source and runs it, one language and runtime at a time.
+Repo-specific code indexes the source in its language and runs it in its runtime.
 
 - An index adapter records nodes, static call edges, source bytes and hashes.
 - An execution adapter runs only targets it has registered.
@@ -118,7 +119,7 @@ The reader wants to understand scaffold's /mind-meld skill: a learning tool that
 
 Mind meld: How a repo gets a learning tool that explains its code from real, recorded runs, viewable offline as a guided tour.
 - Start with a question: Name what a reader needs to understand and find the real code that answers it.
-- Build adapters: Repo-specific code indexes the source and runs it, one language and runtime at a time.
+- Build adapters: Repo-specific code indexes the source in its language and runs it in its runtime.
 - Record real runs: Run the code in a locked-down sandbox and record what actually happened.
 - Validated bundle: Index, source and runs go into one JSON file checked by an executable schema.
 - Tour and narrate: A guided tour follows input through ownership and mutations to output, citing source lines.

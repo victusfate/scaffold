@@ -21,7 +21,7 @@
     "integrate": { "lane": "orch", "name": "Integrate", "role": "The orchestrator merges the target into the lane, re-runs the gates and merges green work into the one working branch.", "link": "review-gates.md",
       "details": ["Red gates send the work back to the lane.", "Then it opens a PR with Critical changes and real check results."],
       "risks": ["There is exactly one working branch per session; two long-lived branches split the work."] },
-    "ship": { "lane": "owner", "name": "Owner merges", "role": "The owner authorizes the merge; the task closes when the queue records it.", "link": "pr-workflow.md",
+    "ship": { "lane": "owner", "name": "Authorized merge", "role": "The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.", "link": "pr-workflow.md",
       "details": ["The PR lands on main as one squash commit.", "queue advance --pr --branch records the merge and the fresh branch."],
       "qs": ["Why can't the orchestrator merge to main on its own?"] }
   },

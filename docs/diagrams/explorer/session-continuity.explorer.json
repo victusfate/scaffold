@@ -12,7 +12,7 @@
       "details": [
         { "t": "Two ways to write it", "more": ["/save runs often: after each lane merge, each step, and near a usage limit.", "/pause runs once when stepping away, with richer prose and open questions."] },
         ".pause/handoff.md is one file, overwritten each time, holding only the current state."] },
-    "gate": { "lane": "save", "name": "Gate", "role": "A script checks the handoff is short and every fact says whether it was verified.",
+    "gate": { "lane": "save", "name": "Gate", "role": "/save and /pause run a script before committing: the handoff must be short and every fact must say whether it was verified.",
       "details": ["check-handoff.ts requires a verified or unverified tag on each State bullet.", "It rejects correction lines left beside old facts, files over 80 lines, and commands inside a verified tag."] },
     "push": { "lane": "save", "name": "Commit and push", "role": "Commit the handoff and push the branch, because only pushed work reaches another device.",
       "details": ["/save stages by explicit path; /pause commits everything and lists what was dirty.", "Near a usage limit: drop a memory pointer, then schedule a wake after the reset if the client has a scheduler."],

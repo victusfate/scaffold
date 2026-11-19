@@ -39,7 +39,7 @@
       ["gates", "qa", "Fixes applied and re-verified", "commits"]] },
     { "id": "learn", "name": "Learn from a session", "steps": [
       ["retro", "skillify", "A repeatable workflow found", "session"],
-      ["skillify", "sync", "New skill registered", "skill"]] }
+      ["skillify", "sync", "Skill PR to scaffold, merged by owner", "skill PR"]] }
   ],
   "ask": { "context": "The reader wants an overview of scaffold, a template that gives AI coding agents shared skills, rules and workflows, and how its skills fit together." }
 }

@@ -25,6 +25,7 @@ flowchart LR
 Pick the surfaces the diff touches and start the app as the repo documents it.
 
 - The working tree must be clean, so each fix can be its own commit.
+- Skipped, with a one-line reason, when the change has no runtime entry point.
 - Surfaces
   - Browser pages, API endpoints, CLI commands, background jobs.
 - Readiness is polled, never waited on with a fixed sleep.
@@ -44,7 +45,7 @@ Run each entry point like a user, including bad input, and capture evidence.
 
 Sort issues by severity and pick the ones the fix tier covers.
 
-- Third-party code and infrastructure changes are deferred.
+- Issues below the tier, in third-party code, or needing infrastructure changes are deferred.
 - With --report-only, it stops here and writes the report.
 
 **Fix tiers**
@@ -62,10 +63,11 @@ Fix each issue at its root cause with a failing regression test first, then re-r
 Goes deeper: [Investigate](investigate.md)
 
 - Each verified fix is committed with its test as fix(qa): QA-NNN.
+- A CSS-only defect may use a before/after screenshot instead of a test.
 
 **Where it breaks**
 
-- It stops and reports after two reverts, an edit to an unrelated file, or 30 fixes.
+- It stops and reports after two reverts, an edit to an unrelated file, 30 fixes, or when fixes keep spreading across many files.
 
 ## Final pass
 
@@ -109,5 +111,5 @@ QA: How /qa runs the real app, uses the changed parts the way a user would, and 
 - QA report: A table of issues with status and commit, plus one summary line for the PR.
 
 Questions worth asking:
-- Why does every QA fix need its own regression test?
+- Why does a QA fix need a failing regression test before the fix?
 ```

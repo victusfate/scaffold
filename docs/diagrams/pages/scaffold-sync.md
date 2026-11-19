@@ -67,6 +67,8 @@ Goes deeper: [PR workflow](pr-workflow.md)
 
 Run /sync-scaffold again on a project branch to pull the merged change back in.
 
+Goes deeper: [/upstream skill](../../../skills/upstream.md)
+
 - Keep .scaffold-keep paths and merge diverged files.
 - Put the project-specific half in the project's own policy file.
 - Then the project's own gates, PR and authorized merge.

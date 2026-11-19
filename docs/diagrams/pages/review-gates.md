@@ -71,7 +71,7 @@ A verified run writes a receipt for the exact code, so the merge step can reuse 
 
 - Fail closed
   - A missing, mismatched or corrupt receipt means the checks re-run in full.
-- Full suites run only for shared core; other changes run the checks for the parts they touch.
+- Full suites run only for shared core; other changes run the checks for the parts they touch, plus the task's own gates.
 
 **What the receipt is keyed to**
 
@@ -91,7 +91,7 @@ A verified run writes a receipt for the exact code, so the merge step can reuse 
 
 - **Rubric**: Four scores for code: Quality, Readability, Encapsulation, Clarity.
 - **Diff economy**: Added lines must earn their place; deletions count as credit.
-- **Shared core**: Public API, save formats, networking and workspace build inputs.
+- **Shared core**: Public API, save or codec formats, networking and workspace build inputs.
 - **Fail closed**: When in doubt, block and re-run instead of passing.
 
 ## Ask your LLM

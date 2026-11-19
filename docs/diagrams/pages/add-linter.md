@@ -2,7 +2,7 @@
 
 # Add linter
 
-How /add-linter adds linter configs and CI workflows for the languages in a repo, without overwriting configs you already have.
+How /add-linter adds linter configs and CI workflows for the languages in a repo, without changing a config you already have until you approve a merge.
 
 ```mermaid
 flowchart LR
@@ -47,14 +47,14 @@ A deterministic CLI writes new configs and workflows, and never edits an existin
 - For an existing config
   - It writes the template beside it as a .scaffold-new sidecar.
   - The original is left untouched.
-- Adopted configs also add the linter's packages to devDependencies; js/ts also get lint scripts.
+- Adopted configs (fresh or already current) add the linter's missing npm packages to package.json devDependencies; sidecars don't. js/ts also get lint and lint:fix scripts.
 
 ## Merge
 
 The agent merges the sidecar into your config, keeping your rules, and writes only on approval.
 
 - Missing scaffold thresholds are added and the marker line is carried over.
-- On approval the original is backed up to .bak and the sidecar removed.
+- On approval the original is backed up to .bak (an existing .bak is never overwritten) and the sidecar removed.
 
 **Where it breaks**
 
@@ -87,7 +87,7 @@ Copy this block into your own assistant to ask about anything on this page.
 ```text
 The reader wants to understand how scaffold's /add-linter skill sets up linting for a repo without clobbering existing configs.
 
-Add linter: How /add-linter adds linter configs and CI workflows for the languages in a repo, without overwriting configs you already have.
+Add linter: How /add-linter adds linter configs and CI workflows for the languages in a repo, without changing a config you already have until you approve a merge.
 - Detect: Find each language in the repo and whether it already has a linter config.
 - Ask once: One multi-select question covers every language that needs action.
 - Emit: A deterministic CLI writes new configs and workflows, and never edits an existing config.

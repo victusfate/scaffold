@@ -36,6 +36,16 @@ function glossaryProblems(specs: { slug: string; spec: ExplorerSpec }[]): string
   }));
 }
 
+// GitHub drops unknown HTML tags, so `docs/<slug>/` outside code would render as `docs//`. Code fences
+// and inline code are exempt; <details> and <summary> are the page's own folding.
+const HTML_LIKE = /<\/?[A-Za-z][^>\s]*[^>]*>/g;
+const ALLOWED_TAGS = /^<\/?(details|summary)>$/;
+function hiddenTextProblems(slug: string, markdown: string): string[] {
+  const prose = markdown.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
+  return [...new Set(prose.match(HTML_LIKE) ?? [])].filter(tag => !ALLOWED_TAGS.test(tag))
+    .map(tag => `${slug}: "${tag}" would be hidden by GitHub as an HTML tag; wrap it in backticks`);
+}
+
 // Returns every problem found. Writes pages unless `check`. Links are checked after every page is
 // written, so a link to a sibling page built in the same run resolves.
 export function buildPages(root: string, options: { check: boolean }): string[] {
@@ -48,15 +58,21 @@ export function buildPages(root: string, options: { check: boolean }): string[] 
   if (invalid.length) return invalid;
   const titles = Object.fromEntries(specs.map(({ slug, spec }) => [`${slug}.md`, spec.title]));
   const map = specs.find(({ slug }) => slug === MAP);
-  const stale = specs.flatMap(({ slug, spec }) => {
-    const up = map && slug !== MAP ? { title: map.spec.title, link: `${MAP}.md` } : undefined;
-    const page = join(pagesDir, `${slug}.md`), markdown = renderMarkdown(spec, { up, titles });
+  const pages = specs.map(({ slug, spec }) => ({ slug, spec, markdown: renderMarkdown(spec,
+    { titles, up: map && slug !== MAP ? { title: map.spec.title, link: `${MAP}.md` } : undefined }) }));
+  const stale = pages.flatMap(({ slug, markdown }) => {
+    const page = join(pagesDir, `${slug}.md`);
     if (existsSync(page) && readFileSync(page, 'utf8') === markdown) return [];
     if (options.check) return [`pages/${slug}.md is stale: run npm run diagrams`];
     writeFileSync(page, markdown);
     return [];
   });
-  return [...specs.flatMap(({ slug, spec }) => linkProblems(slug, spec, pagesDir)), ...glossaryProblems(specs), ...stale];
+  return [
+    ...pages.flatMap(({ slug, spec }) => linkProblems(slug, spec, pagesDir)),
+    ...glossaryProblems(specs),
+    ...pages.flatMap(({ slug, markdown }) => hiddenTextProblems(slug, markdown)),
+    ...stale,
+  ];
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

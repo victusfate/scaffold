@@ -9,14 +9,14 @@ flowchart LR
   request["Owner requests"] --> dispatch["Dispatch"]
   dispatch["Dispatch"] --> work["Subagent works"]
   work["Subagent works"] --> integrate["Integrate"]
-  integrate["Integrate"] --> ship["Owner merges"]
+  integrate["Integrate"] --> ship["Authorized merge"]
 ```
 
 - [Owner requests](#owner-requests): Only the owner creates tasks; the agent records the request in the queue.
 - [Dispatch](#dispatch): On each loop tick, the orchestrator gives the top suited task to a free worker slot.
 - [Subagent works](#subagent-works): The subagent builds its one task in its own worktree and commits locally.
 - [Integrate](#integrate): The orchestrator merges the target into the lane, re-runs the gates and merges green work into the one working branch.
-- [Owner merges](#owner-merges): The owner authorizes the merge; the task closes when the queue records it.
+- [Authorized merge](#authorized-merge): The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.
 
 ## Owner requests
 
@@ -73,9 +73,9 @@ Goes deeper: [Review gates](review-gates.md)
 
 - There is exactly one working branch per session; two long-lived branches split the work.
 
-## Owner merges
+## Authorized merge
 
-The owner authorizes the merge; the task closes when the queue records it.
+The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.
 
 Goes deeper: [PR workflow](pr-workflow.md)
 
@@ -108,7 +108,7 @@ Orchestration: How one orchestrator turns owner requests into merged work by han
 - Dispatch: On each loop tick, the orchestrator gives the top suited task to a free worker slot.
 - Subagent works: The subagent builds its one task in its own worktree and commits locally.
 - Integrate: The orchestrator merges the target into the lane, re-runs the gates and merges green work into the one working branch.
-- Owner merges: The owner authorizes the merge; the task closes when the queue records it.
+- Authorized merge: The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.
 
 Questions worth asking:
 - Why can't the orchestrator merge to main on its own?

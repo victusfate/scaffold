@@ -10,7 +10,7 @@
   "nodes": {
     "slices": { "lane": "plan", "name": "Plan the slices", "role": "Split the PRD into vertical slices and confirm their size once with the user.",
       "details": ["If plan.md is missing, the agent writes it from prd.md first.",
-        { "t": "Each slice cuts through every layer", "more": ["Data, logic, UI and tests together.", "After the size is confirmed, slices run without pausing."] }] },
+        { "t": "Each slice cuts through every layer", "more": ["Data, logic, UI and tests together.", "After the size is confirmed, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced."] }] },
     "prep": { "lane": "build", "name": "Before code", "role": "For each slice, decide the interface and list the behaviors to test.",
       "details": ["List behaviors, not implementation steps.",
         { "t": "Name the assumption the slice tests", "more": ["Use the design's evidence, or mark it unknown.", "If a probe contradicts the intent, revise the design, PRD and unfinished slices first."] }],
@@ -34,7 +34,7 @@
       ["slices", "prep", "Slice size confirmed", "plan.md"],
       ["prep", "loop", "Behaviors listed", "test list"],
       ["loop", "refactor", "Tests green", "code + tests"],
-      ["refactor", "commit", "All scores 10/10", "score table"],
+      ["refactor", "commit", "All 10/10 or surfaced", "score table"],
       ["commit", "done", "No slices left", "tdd-log.md"]] }
   ],
   "glossary": {

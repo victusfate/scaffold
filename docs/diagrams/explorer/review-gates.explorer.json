@@ -25,7 +25,7 @@
       "details": ["On a regression it fixes once more; if that still fails, it surfaces what remains and stops."] },
     "receipt": { "lane": "verify", "name": "Receipt", "role": "A verified run writes a receipt for the exact code, so the merge step can reuse it.",
       "details": [{ "t": "Fail closed", "more": ["A missing, mismatched or corrupt receipt means the checks re-run in full."] },
-        "Full suites run only for shared core; other changes run the checks for the parts they touch."],
+        "Full suites run only for shared core; other changes run the checks for the parts they touch, plus the task's own gates."],
       "deep": [{ "h": "What the receipt is keyed to", "list": ["HEAD, tree, index and diffs", "Untracked inputs and the base", "Plan and gate-script hashes", "Tool binaries"] }],
       "qs": ["What counts as shared core, and why does it get the full suite?"] }
   },
@@ -40,7 +40,7 @@
   "glossary": {
     "rubric": { "t": "Rubric", "a": ["rubric"], "d": "Four scores for code: Quality, Readability, Encapsulation, Clarity." },
     "economy": { "t": "Diff economy", "a": ["diff economy"], "d": "Added lines must earn their place; deletions count as credit." },
-    "shared": { "t": "Shared core", "a": ["shared core"], "d": "Public API, save formats, networking and workspace build inputs." },
+    "shared": { "t": "Shared core", "a": ["shared core"], "d": "Public API, save or codec formats, networking and workspace build inputs." },
     "failclosed": { "t": "Fail closed", "a": ["fail closed"], "d": "When in doubt, block and re-run instead of passing." }
   },
   "ask": { "context": "The reader wants to understand how scaffold reviews, fixes and verifies a code change before it merges." }

@@ -31,7 +31,7 @@ Run the correctness and structure reviews, read-only, and collect one findings t
 Write the findings and how each kind will be fixed into design.md.
 
 - Findings get IDs (F-01 and on) and are grouped by class, not handled one by one.
-- Written to docs/quality-BRANCH/design.md, committed, then /design-review auto-fixes it.
+- Written to `docs/quality-<branch-short>/design.md` (the last segment of the branch name), committed, then /design-review auto-fixes it.
 
 ## PRD
 

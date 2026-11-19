@@ -12,7 +12,7 @@
       "details": ["Correctness: /validate --effort max.", "Structure: the /simplify checklist, applied without auto-fix.", "Each finding is tagged [validate] or [quality]."],
       "qs": ["When is /prune worth it instead of running /simplify alone?"] },
     "design": { "lane": "plan", "name": "Design doc", "role": "Write the findings and how each kind will be fixed into design.md.",
-      "details": ["Findings get IDs (F-01 and on) and are grouped by class, not handled one by one.", "Written to docs/quality-BRANCH/design.md, committed, then /design-review auto-fixes it."] },
+      "details": ["Findings get IDs (F-01 and on) and are grouped by class, not handled one by one.", "Written to `docs/quality-<branch-short>/design.md` (the last segment of the branch name), committed, then /design-review auto-fixes it."] },
     "prd": { "lane": "plan", "name": "PRD", "role": "Turn the findings into user stories without re-interviewing.",
       "details": ["Stories cite finding IDs.", "It names which fixes are risky enough to need tests."] },
     "tdd": { "lane": "build", "name": "TDD", "role": "Build the fixes in slices, one group of fixes per slice, then refine.", "link": "tdd.md",

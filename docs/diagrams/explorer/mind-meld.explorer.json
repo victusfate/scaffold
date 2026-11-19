@@ -9,8 +9,8 @@
   ],
   "nodes": {
     "question": { "lane": "prepare", "name": "Start with a question", "role": "Name what a reader needs to understand and find the real code that answers it.", "link": "../../../skills/mind-meld.md",
-      "details": ["Name the question and the observable result that answers it.", "Find the actual user entry point, integration test and state owner in source.", "Pick an existing test or a small flow that reaches that code."] },
-    "adapters": { "lane": "prepare", "name": "Build adapters", "role": "Repo-specific code indexes the source and runs it, one language and runtime at a time.",
+      "details": ["Name the question and the observable result that answers it.", "Find the actual user entry point, integration test and state owner in source.", "Pick an existing test or a small flow that reaches that code.", "Scaffold supplies the method, schema, viewer and a reference adapter; each repo writes its own adapters."] },
+    "adapters": { "lane": "prepare", "name": "Build adapters", "role": "Repo-specific code indexes the source in its language and runs it in its runtime.",
       "details": ["An index adapter records nodes, static call edges, source bytes and hashes.", "An execution adapter runs only targets it has registered."],
       "risks": ["Never turn a natural-language question into an arbitrary shell command."],
       "deep": [{ "h": "Adapter contract", "table": { "head": ["Operation", "Result"], "rows": [
