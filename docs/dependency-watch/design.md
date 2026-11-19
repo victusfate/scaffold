@@ -47,18 +47,29 @@
 ## Decisions
 ### Patch bot: Dependabot, security updates only
 **Decision:** emit `.github/dependabot.yml` with one entry per detected ecosystem and
-`open-pull-requests-limit: 0` (disables version updates; security updates still use the config). The
-skill offers to enable the repo settings (`vulnerability-alerts`, `automated-security-fixes`) via
-`gh api`, and asks first because it is an outward change.
+`open-pull-requests-limit: 0` (disables version updates; security updates still use the config). Setup
+turns on the repo settings (`vulnerability-alerts`, `automated-security-fixes`) via `gh api` as part of
+its one setup confirmation, so the owner has no follow-up step.
 **Rationale:** owner choice (native, no app install, lowest PR volume).
 **Alternatives considered:** Renovate (bumps runtime files, needs app install); weekly grouped version
 updates (more PRs). Consequence accepted by the owner: runtime pins and Docker base images get no bot
 PR; the tracking issue is their only signal.
 
-### Runtime findings go to the tracking issue, not a PR
-**Decision:** the scheduled workflow writes runtime and package findings into one tracking issue.
-**Rationale:** a PR opened with `GITHUB_TOKEN` would not run CI; an unchecked bot PR is worse than an
-issue. The fix for a runtime pin is a normal human/agent PR.
+### Patch by one instruction to the owner's agent; the owner merges
+**Decision (revised 2026-11-19):** the workflow only informs (the tracking issue, with read-up links).
+Patching is one instruction to the owner's agent, `/dependency-watch fix`. It re-runs the check
+locally, applies deterministic patch bumps (`runtime-check.ts --fix`: version files, `.tool-versions`,
+exact Dockerfile runtime tags), runs the repo's tests and opens one PR as the owner, so CI runs. It
+stops at a green PR, and the owner clicks merge. Package fixes come from Dependabot security PRs, which
+setup turns on itself. End-of-life line jumps are never auto-applied.
+**Rationale:** owner direction 2026-11-19: "I don't want to create more homework for repo owners, I
+want them to be informed about potential vulnerabilities, be able to read up and then with a single
+click patch", and "can't an owner already tell their agent to merge an issue". A PR opened with the
+workflow's `GITHUB_TOKEN` would not run CI. A PR the owner's agent opens does. Merge stays with the owner
+(owner choice: "Green PR, owner merges").
+**Alternatives considered:** bot PR plus dispatched CI (needs edits to the repo's CI workflows), a token
+secret (setup homework), Renovate (app install), and Dependabot Docker updates (owner chose to fold
+Docker tags into the runtime patch instead).
 
 ### Latest patch from upstream, EOL from endoflife.date
 **Decision:** v1 supports Ruby, Node, Python and Go, each with an upstream release-list adapter.
@@ -151,3 +162,5 @@ flowchart LR
 **Q:** Which Dependabot PRs? **A:** Security only.
 **Q:** Cadence? **A:** Daily by default, owner-configurable.
 **Q:** Issue volume? **A:** One tracking issue per repo, updated in place.
+**Q:** How does an owner patch? **A:** Tell their agent `/dependency-watch fix`; the agent opens a green PR; the owner merges.
+**Q:** Docker base images? **A:** Folded into the runtime patch (exact runtime tags), not Dependabot.

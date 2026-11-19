@@ -15,3 +15,6 @@ and `tools/dependency-watch/test` (detect/emit in temp git repos). All are wired
 | 7 | Tool detect | ecosystems from tracked lockfiles/manifests with directories; runtime pins; file states none/foreign/scaffold/stale | done |
 | 8 | Tool emit | writes via safeWrite; `--schedule` substitution + 5-field validation; dependabot.yml security-only; sidecar on foreign; idempotent; unknown flag exit 1 | done |
 | 9 | Skill + dogfood | `skills/dependency-watch.md`, RESOLVER, generated wrappers, docs/skills.md, tools/README, package.json test entries; emit into scaffold itself | done |
+| 10 | `runtime-check --fix` | bump exact `behind` pins in place (version files, `.tool-versions`, Dockerfile tags keep variant suffix); never EOL, floating or unchecked; idempotent; JSON lists `patched` | todo |
+| 11 | Read-up links + patch section | advisory links (osv.dev), per-runtime release-notes and EOL links from fixed URL templates; "To patch" section lists planned bumps and the `/dependency-watch fix` instruction; EOL marked as needing a decision | todo |
+| 12 | Skill fix mode + no-homework setup | `/dependency-watch fix`: re-run locally, `--fix`, repo tests, one PR via normal flow, list Dependabot PRs, stop at green; setup enables Dependabot settings inside its one confirmation | todo |
