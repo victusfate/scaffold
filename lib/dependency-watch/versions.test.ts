@@ -10,13 +10,14 @@ function assert(label: string, cond: boolean, detail = ''): void {
   else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
 }
 const show = (v: unknown): string => JSON.stringify(v);
+const NOW = '2026-11-19';
 
 const RUBY: Releases = { ruby: { versions: ['3.3.13', '3.3.14', '3.4.12', '3.4.13', '4.0.9', '4.0.10'], eol: {} } };
 
 // Ruby2Shell: a pin one patch behind its line is a `behind` finding naming the line's latest patch.
 {
   const pins = parsePins([{ path: '.ruby-version', content: '3.4.12\n' }]);
-  const r = classify(pins, RUBY);
+  const r = classify(pins, RUBY, NOW);
   const f = r.findings[0];
   assert('3.4.12 is behind 3.4.13', r.findings.length === 1 && f.kind === 'behind' && f.runtime === 'ruby'
     && f.pinned === '3.4.12' && f.latest === '3.4.13' && f.file === '.ruby-version' && f.line === 1, show(r));
@@ -25,14 +26,14 @@ const RUBY: Releases = { ruby: { versions: ['3.3.13', '3.3.14', '3.4.12', '3.4.1
 // rbenv-style prefix is accepted.
 {
   const pins = parsePins([{ path: '.ruby-version', content: 'ruby-4.0.9' }]);
-  const r = classify(pins, RUBY);
+  const r = classify(pins, RUBY, NOW);
   assert('ruby- prefix parsed', r.findings[0]?.pinned === '4.0.9' && r.findings[0]?.latest === '4.0.10', show(r));
 }
 
 // A pin on its line's latest patch is clean.
 {
   const pins = parsePins([{ path: '.ruby-version', content: '3.3.14\n' }]);
-  const r = classify(pins, RUBY);
+  const r = classify(pins, RUBY, NOW);
   assert('latest patch is clean', r.findings.length === 0 && r.unchecked.length === 0, show(r));
 }
 
@@ -42,7 +43,7 @@ const ALL: Releases = {
   python: { versions: ['3.13.8', '3.13.9', '3.14.0'], eol: {} },
   go: { versions: ['1.27.3', '1.27.4'], eol: {} },
 };
-const one = (path: string, content: string) => classify(parsePins([{ path, content }]), ALL);
+const one = (path: string, content: string) => classify(parsePins([{ path, content }]), ALL, NOW);
 const behind = (path: string, content: string) => one(path, content).findings.map(f => `${f.runtime}@${f.pinned}->${f.latest}:${f.line}`);
 
 // Node, Python and Go pin files; Node's release line is its major.
@@ -66,7 +67,7 @@ assert('.tool-versions maps asdf names, keeps line numbers',
     'FROM alpine:3.22',
     'from golang:1.27.3 as gobuild',
   ].join('\n');
-  const r = classify(parsePins([{ path: 'deploy/Dockerfile.prod', content: dockerfile }]), ALL);
+  const r = classify(parsePins([{ path: 'deploy/Dockerfile.prod', content: dockerfile }]), ALL, NOW);
   assert('Dockerfile exact pins are findings',
     show(r.findings.map(f => `${f.runtime}@${f.pinned}:${f.line}`)) === show(['ruby@3.4.12:2', 'node@26.12.0:3', 'go@1.27.3:8']), show(r.findings));
   assert('floating tag is info', r.info.length === 1 && r.info[0].runtime === 'python' && r.info[0].line === 4, show(r.info));
@@ -79,8 +80,25 @@ assert('.tool-versions maps asdf names, keeps line numbers',
   assert('lts alias unchecked', lts.unchecked.length === 1 && lts.findings.length === 0, show(lts));
   const future = one('.ruby-version', '9.9.9');
   assert('version above every known release unchecked', future.unchecked.length === 1 && future.findings.length === 0, show(future));
-  const noData = classify(parsePins([{ path: '.ruby-version', content: '3.4.12' }]), {});
+  const noData = classify(parsePins([{ path: '.ruby-version', content: '3.4.12' }]), {}, NOW);
   assert('runtime with no release data unchecked', noData.unchecked.length === 1, show(noData));
+}
+
+// End of life: a pin (exact or floating) on a line whose EOL date has passed is an `eol` finding.
+{
+  const TODAY = '2026-11-19';
+  const withEol: Releases = {
+    ruby: { versions: ['3.2.10', '3.2.11', '3.4.13'], eol: { '3.2': '2026-03-31', '3.4': '2028-03-31' } },
+    node: { versions: ['20.19.0'], eol: { '20': true } },
+  };
+  const eolOf = (path: string, content: string) =>
+    classify(parsePins([{ path, content }]), withEol, TODAY).findings.map(f => f.kind === 'eol' ? `${f.runtime}@${f.pinned}:eol:${f.since}` : `${f.kind}`);
+  assert('EOL line with date', show(eolOf('.ruby-version', '3.2.11')) === show(['ruby@3.2.11:eol:2026-03-31']), show(eolOf('.ruby-version', '3.2.11')));
+  assert('behind and EOL are separate findings', show(eolOf('.ruby-version', '3.2.10')) === show(['behind', 'ruby@3.2.10:eol:2026-03-31']), show(eolOf('.ruby-version', '3.2.10')));
+  assert('floating pin on EOL line', show(eolOf('Dockerfile', 'FROM ruby:3.2-slim')) === show(['ruby@3.2:eol:2026-03-31']), show(eolOf('Dockerfile', 'FROM ruby:3.2-slim')));
+  assert('EOL without a date', show(eolOf('.nvmrc', '20.19.0')) === show(['node@20.19.0:eol:null']), show(eolOf('.nvmrc', '20.19.0')));
+  assert('supported line is clean', eolOf('.ruby-version', '3.4.13').length === 0);
+  assert('EOL date after today is clean', classify(parsePins([{ path: '.ruby-version', content: '3.2.11' }]), withEol, '2026-03-30').findings.length === 0);
 }
 
 // Files that are not pin files are ignored.
