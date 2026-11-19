@@ -68,6 +68,11 @@ function linkLabel(link: string, titles: Record<string, string>): string {
   return titles[link] ?? (skill ? `/${skill} skill` : link);
 }
 
+// A node with nothing beyond its role (a map entry) links straight to its own page: a section holding
+// only that sentence and a link would cost the reader an extra click for nothing.
+const hasSection = (node: ExplorerNode): boolean =>
+  !node.link || Boolean(node.details?.length || node.risks?.length || node.deep?.length || node.qs?.length);
+
 function nodeSection(node: ExplorerNode, titles: Record<string, string>): string[] {
   return [
     `## ${node.name}`, '', node.role, '',
@@ -99,8 +104,8 @@ export function renderMarkdown(spec: ExplorerSpec, context: PageContext = {}): s
     `# ${spec.title}`, '',
     ...(spec.lede ? [spec.lede, ''] : []),
     ...overview(spec), '',
-    ...nodes.map(n => `- [${n.name}](#${githubAnchor(n.name)}): ${n.role}`), '',
-    ...nodes.flatMap(node => nodeSection(node, context.titles ?? {})),
+    ...nodes.map(n => `- [${n.name}](${hasSection(n) ? `#${githubAnchor(n.name)}` : n.link}): ${n.role}`), '',
+    ...nodes.filter(hasSection).flatMap(node => nodeSection(node, context.titles ?? {})),
     ...(spec.detail ? ['<details>', '<summary>Detailed flow</summary>', '',
       `![${spec.title}, detailed](${spec.detail})`, '', '</details>', ''] : []),
     ...(glossary.length ? ['## Glossary', '', ...glossary.map(g => `- **${g.t}**: ${g.d}`), ''] : []),

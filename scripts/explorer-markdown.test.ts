@@ -65,4 +65,12 @@ void test('navigation: a link back up, and deeper links named by their page titl
     /Goes deeper: \[\/co-plan skill\]\(\.\.\/\.\.\/\.\.\/skills\/co-plan\.md\)/);
 });
 
+void test('a node with no detail of its own links straight to its page and gets no section', () => {
+  const page = renderMarkdown({ title: 'Map', lanes: [{ id: 'l', name: 'L' }],
+    nodes: { o: { lane: 'l', name: 'Orchestration', role: 'One orchestrator per session.', link: 'orchestration.md' } } },
+  { titles: { 'orchestration.md': 'Orchestration' } });
+  assert.match(page, /- \[Orchestration\]\(orchestration\.md\): One orchestrator per session\./);
+  assert.doesNotMatch(page, /## Orchestration/);
+});
+
 void test('deterministic', () => assert.equal(renderMarkdown(SPEC), md));
