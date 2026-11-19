@@ -39,3 +39,13 @@ void test('broken links and a missing detail image are problems', () => {
   assert.ok(problems.some(p => p.includes('map: node a links to missing nope.md')), problems.join('\n'));
   assert.ok(problems.some(p => p.includes('detail image missing ../generated/missing.svg')), problems.join('\n'));
 });
+
+void test('a term defined differently on two pages is a problem', () => {
+  const root = site('x.md');
+  const withTerm = (title: string, d: string) => JSON.stringify({ title, lanes: [{ id: 'l', name: 'L' }],
+    nodes: { a: { lane: 'l', name: 'A', role: 'Does a.' } }, glossary: { prd: { t: 'PRD', a: ['PRD'], d } } });
+  writeFileSync(join(root, 'explorer', 'one.explorer.json'), withTerm('One', 'Product requirements document.'));
+  writeFileSync(join(root, 'explorer', 'two.explorer.json'), withTerm('Two', 'Product requirements doc.'));
+  assert.deepEqual(buildPages(root, { check: false }).filter(p => p.includes('PRD')),
+    ['glossary: "PRD" is defined differently in one and two']);
+});

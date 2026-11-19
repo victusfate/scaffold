@@ -34,7 +34,7 @@
   ],
   "glossary": {
     "worktree": { "t": "Worktree", "a": ["worktree"], "d": "An isolated git checkout per worker, so workers never collide." },
-    "slot": { "t": "Slot", "a": ["slot"], "d": "A worker seat (model plus tool) the orchestrator hands tasks to." },
+    "slot": { "t": "Slot", "a": ["slot"], "d": "A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner." },
     "ffonly": { "t": "ff-only", "a": ["ff-only"], "d": "Fast-forward only: the worker proves it starts from the working branch's HEAD, or stops." },
     "orchupdate": { "t": "ORCH UPDATE", "a": ["ORCH UPDATE"], "d": "The orchestrator's steering note on a running worker's task." }
   },

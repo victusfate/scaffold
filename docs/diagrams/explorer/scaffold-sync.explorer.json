@@ -32,7 +32,7 @@
   "glossary": {
     "consumer": { "t": "Consumer", "a": ["consumer"], "d": "A project repo that syncs from scaffold." },
     "manifest": { "t": "Manifest", "a": ["manifest"], "d": "The list of files scaffold ships to consumers." },
-    "sidecar": { "t": "Sidecar", "a": ["sidecar"], "d": "An incoming .scaffold-new copy saved beside the file for review." },
+    "sidecar": { "t": "Sidecar", "a": ["sidecar"], "d": "A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten." },
     "keep": { "t": ".scaffold-keep", "a": [".scaffold-keep"], "d": "The consumer's list of paths the sync never touches." }
   },
   "ask": { "context": "The reader wants to understand how scaffold's shared agent rules and skills sync into project repos and how fixes flow back." }

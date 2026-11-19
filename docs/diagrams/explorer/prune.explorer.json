@@ -29,7 +29,7 @@
   ],
   "glossary": {
     "lens": { "t": "Lens", "a": ["lens"], "d": "One review angle: correctness or structure." },
-    "prd": { "t": "PRD", "a": ["PRD"], "d": "Product requirements document: what to build and how we know it's done." }
+    "prd": { "t": "PRD", "a": ["PRD"], "d": "Product requirements document: the problem, the solution and the user stories." }
   },
   "ask": { "context": "The reader wants to understand how scaffold's /prune skill turns a quality audit into a planned, tested cleanup PR." }
 }

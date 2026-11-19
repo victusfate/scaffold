@@ -90,7 +90,7 @@ Goes deeper: [pr-workflow.md](pr-workflow.md)
 ## Glossary
 
 - **Worktree**: An isolated git checkout per worker, so workers never collide.
-- **Slot**: A worker seat (model plus tool) the orchestrator hands tasks to.
+- **Slot**: A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner.
 - **ff-only**: Fast-forward only: the worker proves it starts from the working branch's HEAD, or stops.
 - **ORCH UPDATE**: The orchestrator's steering note on a running worker's task.
 

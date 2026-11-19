@@ -67,7 +67,7 @@ Goes deeper: [pr-workflow.md](pr-workflow.md)
 ## Glossary
 
 - **Lens**: One review angle: correctness or structure.
-- **PRD**: Product requirements document: what to build and how we know it's done.
+- **PRD**: Product requirements document: the problem, the solution and the user stories.
 
 ## Ask your LLM
 

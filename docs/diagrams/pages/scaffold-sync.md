@@ -83,7 +83,7 @@ Run /sync-scaffold again on a project branch to pull the merged change back in.
 
 - **Consumer**: A project repo that syncs from scaffold.
 - **Manifest**: The list of files scaffold ships to consumers.
-- **Sidecar**: An incoming .scaffold-new copy saved beside the file for review.
+- **Sidecar**: A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten.
 - **.scaffold-keep**: The consumer's list of paths the sync never touches.
 
 ## Ask your LLM

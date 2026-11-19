@@ -78,8 +78,8 @@ Goes deeper: [pr-workflow.md](pr-workflow.md)
 
 ## Glossary
 
-- **PRD**: Product requirements document: the problem, solution and user stories.
-- **Vertical slice**: A thin piece of a feature that cuts through every layer and ships working on its own.
+- **PRD**: Product requirements document: the problem, the solution and the user stories.
+- **Vertical slice**: A thin piece of a feature that cuts through every layer and works on its own.
 
 ## Ask your LLM
 

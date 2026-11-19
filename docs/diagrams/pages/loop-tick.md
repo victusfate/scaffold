@@ -85,7 +85,7 @@ Check that each job advanced since the last tick, not just that it is running.
 
 ## Glossary
 
-- **Slot**: A worker seat (model plus tool); its id is the task owner.
+- **Slot**: A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner.
 - **Harness**: The agent tool a slot runs: claude, codex, agy or pi.
 - **Zombie worktree**: A checkout with no task and no running subagent.
 - **Park**: Return a task to pending, keeping its branch and a resume note.

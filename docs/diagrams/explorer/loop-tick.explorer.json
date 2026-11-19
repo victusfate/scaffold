@@ -33,7 +33,7 @@
       ["reconcile", "supervise", "Tasks match subagents", "live handles"]] }
   ],
   "glossary": {
-    "slot": { "t": "Slot", "a": ["slot"], "d": "A worker seat (model plus tool); its id is the task owner." },
+    "slot": { "t": "Slot", "a": ["slot"], "d": "A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner." },
     "harness": { "t": "Harness", "a": ["harness"], "d": "The agent tool a slot runs: claude, codex, agy or pi." },
     "zombie": { "t": "Zombie worktree", "a": ["Zombie worktree"], "d": "A checkout with no task and no running subagent." },
     "park": { "t": "Park", "a": ["park"], "d": "Return a task to pending, keeping its branch and a resume note." }

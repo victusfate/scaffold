@@ -74,7 +74,7 @@ Optionally match settings to your existing code, report per language, and offer 
 
 ## Glossary
 
-- **Sidecar**: A .scaffold-new copy of the template next to your config, for merging.
+- **Sidecar**: A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten.
 - **Marker**: A hash-stamped line that tags a config as scaffold's.
 - **Threshold**: A rule limit, such as max line length.
 

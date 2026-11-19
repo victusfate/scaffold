@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // render-explorer-pages — build docs/diagrams/pages/<slug>.md from docs/diagrams/explorer/<slug>.explorer.json.
 // Why: the markdown pages are derived output (like docs/diagrams/generated); the specs are what anyone
-// edits. --check fails on a stale page, a link to a missing page and a missing detail image, so a
-// visitor never clicks into nothing.
+// edits. --check fails on a stale page, a link to a missing page, a missing detail image and a term
+// defined two ways, so a visitor never clicks into nothing or reads two meanings.
 // Usage:
 //   node scripts/render-explorer-pages.ts          write every page (run by npm run diagrams)
 //   node scripts/render-explorer-pages.ts --check  report problems, write nothing; exit 1 on any
@@ -24,6 +24,16 @@ function linkProblems(slug: string, spec: ExplorerSpec, pagesDir: string): strin
   ];
 }
 
+// Pages are read side by side, so a term must mean the same thing everywhere (case-insensitive).
+function glossaryProblems(specs: { slug: string; spec: ExplorerSpec }[]): string[] {
+  const first = new Map<string, { slug: string; d: string }>();
+  return specs.flatMap(({ slug, spec }) => Object.values(spec.glossary ?? {}).flatMap(term => {
+    const key = term.t.toLowerCase(), seen = first.get(key);
+    if (!seen) { first.set(key, { slug, d: term.d }); return []; }
+    return seen.d === term.d ? [] : [`glossary: "${term.t}" is defined differently in ${seen.slug} and ${slug}`];
+  }));
+}
+
 // Returns every problem found. Writes pages unless `check`. Links are checked after every page is
 // written, so a link to a sibling page built in the same run resolves.
 export function buildPages(root: string, options: { check: boolean }): string[] {
@@ -41,7 +51,7 @@ export function buildPages(root: string, options: { check: boolean }): string[] 
     writeFileSync(page, markdown);
     return [];
   });
-  return [...specs.flatMap(({ slug, spec }) => linkProblems(slug, spec, pagesDir)), ...stale];
+  return [...specs.flatMap(({ slug, spec }) => linkProblems(slug, spec, pagesDir)), ...glossaryProblems(specs), ...stale];
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

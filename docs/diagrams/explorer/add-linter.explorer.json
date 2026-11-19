@@ -35,7 +35,7 @@
       ["merge", "finish", "Merges approved or declined", "merged configs"]] }
   ],
   "glossary": {
-    "sidecar": { "t": "Sidecar", "a": ["sidecar"], "d": "A .scaffold-new copy of the template next to your config, for merging." },
+    "sidecar": { "t": "Sidecar", "a": ["sidecar"], "d": "A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten." },
     "marker": { "t": "Marker", "a": ["marker"], "d": "A hash-stamped line that tags a config as scaffold's." },
     "threshold": { "t": "Threshold", "a": ["thresholds"], "d": "A rule limit, such as max line length." }
   },
