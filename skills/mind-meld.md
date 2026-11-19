@@ -1,12 +1,63 @@
 # Mind Meld
 
-Build a repo-owned **learning IDE** that explains code by indexing it and running it.
-Use this skill for Mind Meld, a visual code walkthrough, a learning REPL, or a tool
-for understanding a repo's structure, control flow and data flow.
+Explain a repo's code: first a static map of the whole repo, then, where it pays off, recorded runs
+that show what actually executes. Use this skill for Mind Meld, a visual code walkthrough, a learning
+REPL, or understanding a repo's structure, control flow and data flow.
+
+## Map the repo (default)
+
+```sh
+node scripts/mind-meld.ts map . docs/map    # no execution, no Docker
+```
+
+`docs/map/index.md` shows the repo's areas (top-level folders) and the imports between them. Each area
+page lists its source files, their definitions with line links, and the imports between them, plus a
+block to copy into an LLM. Arrows are imports declared in source, never inferred calls, and every file
+says how its facts were found. A folder with more than 12 files splits automatically into groups, by
+subfolder and by shared name prefix (`queue-*`), each with its own page. Write the map inside the repo,
+or its source links won't work on GitHub.
+
+| Language | How | Needs |
+|---|---|---|
+| TypeScript | compiler API | the `typescript` package |
+| Python | stdlib `ast` | `python3` |
+| Rust | item lines by pattern; `mod` and `use crate::` by module rules | nothing |
+| Ruby | `def`/`class`/`module` lines by pattern; `require_relative`/`require` | nothing |
+
+A missing tool leaves its files on the map with the reason, never a guess.
+
+## Add a language
+
+Add any language in **your repo**, not scaffold: put an adapter at `.mind-meld/languages/<name>.ts`.
+It is loaded automatically and can also replace a built-in for an extension.
+
+```ts
+export default {
+  name: 'Elixir',
+  extensions: ['.ex', '.exs'],
+  // files: repo-relative paths. ctx: { root, has(f), read(f), resolve([candidate paths]) }.
+  facts: (files, ctx) => files.map(file => ({
+    file,
+    definitions: [/* { name, kind, line } */],
+    imports: [/* repo files it imports, e.g. ...ctx.resolve(['lib/x.ex']) */],
+    method: 'how these facts were found',
+  })),
+};
+```
+
+Prefer the language's own parser when it is installed, and fall back to line patterns otherwise.
+Report only what the source states. The built-in adapters in `scripts/mind-meld-langs.ts` are worked
+examples, and the contract is `LanguageAdapter` there.
+
+## Dive deeper: record a run
+
+The map shows what may run. To see what actually runs (values, state changes, timing), record a flow.
+This needs an execution adapter for the stack and Docker for isolation. It is easy for scripted apps,
+harder for large compiled ones, and optional everywhere.
 Scaffold supplies the method, exchange schema, offline viewer and reference adapter.
 The child repo owns its stack adapters and its runnable instance.
 
-## Start with a question and a real entry point
+### Start with a question and a real entry point
 
 1. Name the question a reader needs to answer and the observable result that answers it.
 2. Find the actual user entry point, integration test and state owner in source.
@@ -23,7 +74,7 @@ Link to source rather than copying implementation descriptions into another know
 A narrated happy path does not prove a customer outcome or an untested assumption.
 A failed run is useful evidence; retain the failure and its inputs instead of hiding it.
 
-## Reference entry points
+### Reference entry points
 
 The reference is a tiny TypeScript combat flow with a pure damage function and
 an in-memory save boundary. It demonstrates actual execution, not a mocked trace.
@@ -49,7 +100,13 @@ node scripts/mind-meld.ts diff "$meld_dir/flow.json" "$meld_dir/piece.json"
 node scripts/mind-meld.ts demo > "$meld_dir/tour.json"
 node scripts/mind-meld.ts verify "$meld_dir/tour.json"
 node scripts/mind-meld.ts view "$meld_dir/tour.json" > "$meld_dir/tour.html"
+node scripts/mind-meld.ts pages "$meld_dir/tour.json" > docs/tour.md   # source links default to ../
 ```
+
+`pages` writes the same evidence as a GitHub markdown page anyone can read: the recorded call path,
+then each function's source link and excerpt, static calls and recorded calls, and a block to copy
+into an LLM. It holds only indexed and recorded facts, and states its snapshot: run `verify`
+before trusting a committed page against today's checkout.
 
 Open `$meld_dir/tour.html` directly in a browser. It needs no server or network.
 Use its structure map, source-cited static dependencies, observed call arrows,
@@ -68,7 +125,7 @@ The second command must pass before claiming that an execution adapter works.
 It checks real flow and piece execution, read-only source, isolated saves,
 blocked external network, bounded execution, and timeout cleanup.
 
-## Adapter contract
+### Execution adapter contract
 
 Keep indexing, execution, narration and presentation separate.
 Use the reference exports in `scripts/mind-meld.ts` as the minimal callable contract:
@@ -92,7 +149,7 @@ expressions. A static call edge means a possible dependency, not an observed cal
 A production module indexer can extend the graph with import edges under a new
 schema version; never mislabel an import as a call to fit version 1.
 
-## Exchange schema, version 1
+### Exchange schema, version 1
 
 Use `scripts/mind-meld-schema.ts` as the executable schema and validator.
 Validate imported bundles before rendering, diffing, or narrating them.
@@ -111,7 +168,7 @@ Keep large payloads bounded and redact secrets before a recording leaves the san
 Do not place credentials, production saves, or personal data in tours.
 Never synthesize a missing edge, timing, value, mutation or successful run with an LLM.
 
-## Execution isolation
+### Execution isolation
 
 Use `scripts/mind-meld-sandbox.ts` as the reference launcher and fail closed.
 It snapshots only the sample source outside the repo and mounts it read-only.
@@ -132,7 +189,7 @@ Require sandbox and timeout probes for each adapter. An unavailable sandbox bloc
 execution; retain static browsing and state the limitation without an unsafe fallback.
 Treat imported repo code as untrusted, and do not confuse a language VM with OS isolation.
 
-## Cache and evidence freshness
+### Cache and evidence freshness
 
 Key recordings by source content, transitive runtime dependencies, adapter and
 instrumentation versions, compiler/runtime/image identity, sandbox policy, entry,
@@ -145,7 +202,7 @@ Re-index/re-run only changed dependencies; never reuse a recording under a new h
 stale or escaping paths. A valid offline bundle proves its internal snapshot, not
 that a current checkout or production environment still matches it.
 
-## Narration and questions
+### Narration and questions
 
 Give the model a question plus validated nodes, cited source spans and event ids.
 Use this narration prompt:

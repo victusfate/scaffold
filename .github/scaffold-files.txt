@@ -372,6 +372,11 @@ scripts/mind-meld-schema.ts
 scripts/mind-meld-sandbox.ts
 scripts/mind-meld-example.ts
 scripts/mind-meld-viewer.ts
+scripts/mind-meld-pages.ts
+scripts/mind-meld-pages.test.ts
+scripts/mind-meld-map.ts
+scripts/mind-meld-map.test.ts
+scripts/mind-meld-langs.ts
 scripts/mind-meld.test.ts
 skills/mind-meld.md
 .claude/skills/mind-meld/SKILL.md

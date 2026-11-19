@@ -12,17 +12,34 @@ import type { Bullet, DeepSection, ExplorerNode, ExplorerSpec } from './explorer
 
 // Quoted mermaid labels: `#quot;` is mermaid's entity for a double quote inside one.
 const mermaidLabel = (text: string): string => `"${mermaidText(text).replace(/"/g, '#quot;')}"`;
-const box = (spec: ExplorerSpec, id: string): string => `${mermaidId(id)}[${mermaidLabel(spec.nodes[id].name)}]`;
+// Mermaid ids per spec: sanitized, then suffixed so ids that sanitize alike (`a.b`, `a_b`) stay two boxes.
+function diagramIds(spec: ExplorerSpec): Map<string, string> {
+  const ids = new Map<string, string>(), used = new Set<string>();
+  for (const key of Object.keys(spec.nodes)) {
+    const base = mermaidId(key);
+    let id = base;
+    for (let n = 2; used.has(id); n++) id = `${base}_${n}`;
+    used.add(id); ids.set(key, id);
+  }
+  return ids;
+}
+
+// A fence or code-span delimiter longer than any backtick run in the text, so the text is shown as is.
+const longerThanBackticks = (text: string, min: number): string =>
+  '`'.repeat(Math.max(min, ...[...text.matchAll(/`+/g)].map(m => m[0].length + 1)));
+export function codeSpan(text: string): string {
+  const tick = longerThanBackticks(text, 1);
+  const pad = text.startsWith('`') || text.endsWith('`') ? ' ' : '';
+  return `${tick}${pad}${text}${pad}${tick}`;
+}
 // Lanes get their own prefix so a lane and a node may share an id.
 const laneId = (id: string): string => `l_${id.replace(/[^A-Za-z0-9_]/g, '_')}`;
 // A markdown table cell: `|` would end the cell.
 const cell = (text: string): string => text.replace(/\|/g, '\\|');
 
-// Every flow's hops, once each, in the order they first appear. Without flows, nodes chain in lane order.
+// Every flow's hops, once each, in the order they first appear. No flows, no arrows: an arrow is a claim.
 function overviewEdges(spec: ExplorerSpec): [string, string][] {
-  const ordered = spec.lanes.flatMap(lane => Object.keys(spec.nodes).filter(id => spec.nodes[id].lane === lane.id));
-  if (!spec.flows?.length) return ordered.slice(1).map((id, i) => [ordered[i], id]);
-  const hops = spec.flows.flatMap(f => f.steps.map(([from, to]): [string, string] => [from, to]));
+  const hops = (spec.flows ?? []).flatMap(f => f.steps.map(([from, to]): [string, string] => [from, to]));
   return [...new Map(hops.map(hop => [hop.join('>'), hop])).values()];
 }
 
@@ -35,12 +52,12 @@ const PALETTE = [
 const TEXT = 'color:#1f2937';
 const MAP_LANE = 'fill:#f9fafb,stroke:#d1d5db,color:#374151';
 
-function laneColors(spec: ExplorerSpec, isMap: boolean): string[] {
+function laneColors(spec: ExplorerSpec, isMap: boolean, ids: Map<string, string>): string[] {
   const lanes = spec.lanes.map((lane, i) => ({ lane, i, ids: Object.keys(spec.nodes).filter(id => spec.nodes[id].lane === lane.id) }))
     .filter(({ ids }) => ids.length);
   return [
     ...lanes.map(({ i }) => `  classDef lane${i} ${PALETTE[i % PALETTE.length]},${TEXT}`),
-    ...lanes.map(({ i, ids }) => `  class ${ids.map(mermaidId).join(',')} lane${i}`),
+    ...lanes.map(({ i, ids: keys }) => `  class ${keys.map(k => ids.get(k)).join(',')} lane${i}`),
     ...(isMap ? lanes.map(({ lane }) => `  style ${laneId(lane.id)} ${MAP_LANE}`) : []),
   ];
 }
@@ -49,14 +66,16 @@ function laneColors(spec: ExplorerSpec, isMap: boolean): string[] {
 // lane subgraphs so none is left out, then draws the flows between them.
 function overview(spec: ExplorerSpec): string[] {
   const edges = overviewEdges(spec);
+  const ids = diagramIds(spec);
+  const box = (key: string): string => `${ids.get(key)}[${mermaidLabel(spec.nodes[key].name)}]`;
   const onEdge = new Set(edges.flat());
   const isMap = Object.keys(spec.nodes).some(id => !onEdge.has(id));
   const lines = isMap
     ? [...spec.lanes.flatMap(lane => [`  subgraph ${laneId(lane.id)}[${mermaidLabel(lane.name)}]`,
-      ...Object.keys(spec.nodes).filter(id => spec.nodes[id].lane === lane.id).map(id => `    ${box(spec, id)}`), '  end']),
-      ...edges.map(([from, to]) => `  ${mermaidId(from)} --> ${mermaidId(to)}`)]
-    : edges.map(([from, to]) => `  ${box(spec, from)} --> ${box(spec, to)}`);
-  return ['```mermaid', 'flowchart LR', ...lines, ...laneColors(spec, isMap), '```'];
+      ...Object.keys(spec.nodes).filter(key => spec.nodes[key].lane === lane.id).map(key => `    ${box(key)}`), '  end']),
+      ...edges.map(([from, to]) => `  ${ids.get(from)} --> ${ids.get(to)}`)]
+    : edges.map(([from, to]) => `  ${box(from)} --> ${box(to)}`);
+  return ['```mermaid', 'flowchart LR', ...lines, ...laneColors(spec, isMap, ids), '```'];
 }
 
 function bullets(items: (string | string[])[] | Bullet[], depth = 0): string[] {
@@ -64,7 +83,8 @@ function bullets(items: (string | string[])[] | Bullet[], depth = 0): string[] {
   return items.flatMap((item): string[] => {
     if (Array.isArray(item)) return bullets(item, depth + 1);
     if (typeof item === 'string') return [`${pad}- ${item}`];
-    return [`${pad}- ${item.t}`, ...bullets(item.more, depth + 1), ...(item.code ? ['', '```', item.code, '```'] : [])];
+    const fence = item.code ? longerThanBackticks(item.code, 3) : '';
+    return [`${pad}- ${item.t}`, ...bullets(item.more, depth + 1), ...(item.code ? ['', fence, item.code, fence] : [])];
   });
 }
 

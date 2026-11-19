@@ -2,7 +2,7 @@
 
 # Mind meld
 
-How a repo gets a learning tool that explains its code from real, recorded runs, viewable offline as a guided tour.
+How a repo gets explained: by default a static map of every source file (`mind-meld.ts map`, any language, no execution), then recorded runs for the flows where real behavior matters. This page covers the recorded dive.
 
 ```mermaid
 flowchart LR
@@ -101,6 +101,7 @@ Check the recording still matches the source, then open the tour as one offline 
 - verify fails if any recorded source differs from the checkout or escapes it.
 - view writes tour.html, which needs no server or network.
 - The page shows its snapshot hash and says freshness is unknown offline.
+- pages writes the same evidence as a GitHub markdown page (call path, source links, recorded calls, an LLM block), facts only.
 
 ## Detailed flow
 

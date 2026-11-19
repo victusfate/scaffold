@@ -76,7 +76,8 @@ void test('a node with no detail of its own links straight to its page and gets 
 
 void test('a mermaid keyword as an id cannot break the overview', () => {
   const page = renderMarkdown({ title: 'K', lanes: [{ id: 'end', name: 'End' }],
-    nodes: { end: { lane: 'end', name: 'End', role: 'r' }, start: { lane: 'end', name: 'Start', role: 'r' } } });
+    nodes: { end: { lane: 'end', name: 'End', role: 'r' }, start: { lane: 'end', name: 'Start', role: 'r' } },
+    flows: [{ id: 'f', name: 'F', steps: [['end', 'start', 'w', 'p']] }] });
   assert.match(page, /n_end\["End"\] --> n_start\["Start"\]/);
 });
 
@@ -105,6 +106,25 @@ void test('every line of the LLM block fits in 80 characters, wrapped on words; 
   assert.match(ask, /^The reader wants an overview of scaffold, a template that gives AI coding agents\nshared skills/);
   assert.match(ask, /\n- The reader wants an overview of scaffold, a template that gives AI coding\n {2}agents shared/);
   assert.match(ask, /Read this page:\nhttps:\/\/github\.com\/o\/r\/blob\/main\/docs\/diagrams\/pages\/a-very-long-page-name-for-wrapping\.md\n/);
+});
+
+void test('no flows means no arrows: boxes grouped by lane, nothing invented', () => {
+  const page = renderMarkdown({ title: 'N', lanes: [{ id: 'a', name: 'A' }], nodes: { x: { lane: 'a', name: 'X', role: 'r' }, y: { lane: 'a', name: 'Y', role: 'r' } } });
+  assert.doesNotMatch(page, /-->/);
+  assert.match(page, /subgraph l_a\["A"\]\n {4}n_x\["X"\]\n {4}n_y\["Y"\]/);
+});
+
+void test('distinct ids that sanitize alike stay distinct boxes', () => {
+  const page = renderMarkdown({ title: 'D', lanes: [{ id: 'l', name: 'L' }],
+    nodes: { 'a.b': { lane: 'l', name: 'Dot', role: 'r' }, a_b: { lane: 'l', name: 'Under', role: 'r' } },
+    flows: [{ id: 'f', name: 'F', steps: [['a.b', 'a_b', 'w', 'p']] }] });
+  assert.match(page, /n_a_b\["Dot"\] --> n_a_b_2\["Under"\]/);
+});
+
+void test('a code sample containing a fence gets a longer fence', () => {
+  const page = renderMarkdown({ title: 'C', lanes: [{ id: 'l', name: 'L' }],
+    nodes: { a: { lane: 'l', name: 'A', role: 'r', details: [{ t: 'Code', more: [], code: '```js\nx\n```' }] } } });
+  assert.match(page, /\n````\n```js\nx\n```\n````\n/);
 });
 
 void test('deterministic', () => assert.equal(renderMarkdown(SPEC), md));

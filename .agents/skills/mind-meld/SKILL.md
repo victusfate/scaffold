@@ -1,7 +1,7 @@
 ---
 name: mind-meld
 description: |
-  Build a repo-owned learning IDE from source indexes, real sandboxed runs and offline code-flow tours
+  Map a whole repo as drill-down pages (any language, no execution), then record real runs where behavior matters
 license: MIT
 metadata:
   version: "1.0"
