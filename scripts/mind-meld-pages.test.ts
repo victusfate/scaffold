@@ -67,3 +67,10 @@ void test('CLI: mind-meld.ts pages <bundle> [source-prefix] prints the page', pa
   assert.match(page.stdout, /\]\(docs\/\.\.\/scripts\/mind-meld-example\.ts#L/);
   assert.match(cli().stdout, /\]\(\.\.\/scripts\/mind-meld-example\.ts#L/, 'default prefix is ../');
 });
+
+void test('an index-only bundle says no runs were recorded and draws only static calls', parses, () => {
+  const spec = bundleToSpec(index(), { sourcePrefix: '../' });
+  assert.match(String(spec.lede), /^Indexed from this repo's source at snapshot [0-9a-f]+\. No runs were recorded/);
+  assert.deepEqual(spec.flows?.map(f => f.name), ['Static calls (possible, not observed)']);
+  assert.deepEqual(spec.flows?.[0].steps.map(s => [s[0], s[1]]).sort(), [['combat', 'damage'], ['combat', 'save']]);
+});

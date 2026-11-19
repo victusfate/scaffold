@@ -55,6 +55,13 @@ function flowOf(run: MeldRun): Flow[] {
   return steps.length ? [{ id: run.key, name: `${run.mode} ${run.entry} returned ${value(run.output)}`, steps }] : [];
 }
 
+// Without recorded runs the only true arrows are the indexed static calls, named as possible, not
+// observed; nothing else may be drawn (an invented chain would be a claim the bundle never made).
+function staticFlow(bundle: MeldBundle): Flow[] {
+  const steps = bundle.edges.map((e): FlowStep => [e.from, e.to, `may call (static, ${e.file}:${e.line})`, 'not observed']);
+  return steps.length ? [{ id: 'static', name: 'Static calls (possible, not observed)', steps }] : [];
+}
+
 // Lanes in the order a reader meets them: along the first recorded path, then any other indexed layer.
 function laneOrder(bundle: MeldBundle): string[] {
   const nodeLayer = new Map(bundle.nodes.map(n => [n.id, n.layer]));
@@ -68,12 +75,14 @@ export function bundleToSpec(bundle: MeldBundle, options: PageOptions): Explorer
   const lanes = laneOrder(bundle);
   return {
     title: options.title ?? `Mind meld: ${entries.join(', ') || 'index'}`,
-    lede: `Recorded from real runs of this repo's code at source snapshot ${bundle.snapshotHash}. Whether that matches today's checkout is unknown until \`mind-meld.ts verify\` passes.`,
+    lede: `${bundle.runs.length
+      ? `Recorded from real runs of this repo's code at source snapshot ${bundle.snapshotHash}.`
+      : `Indexed from this repo's source at snapshot ${bundle.snapshotHash}. No runs were recorded, so arrows are static calls that may happen, not observed ones.`} Whether that matches today's checkout is unknown until \`mind-meld.ts verify\` passes.`,
     lanes: lanes.map(id => ({ id, name: id })),
     // Stages follow lane order so a reader meets the entry point first.
     nodes: Object.fromEntries(lanes.flatMap(lane => bundle.nodes.filter(n => n.layer === lane))
       .map(n => [n.id, stage(bundle, n, options.sourcePrefix)])),
-    flows: bundle.runs.flatMap(flowOf),
+    flows: bundle.runs.length ? bundle.runs.flatMap(flowOf) : staticFlow(bundle),
     ask: { context: `The reader is learning how ${entries.join(', ') || 'this code'} works in this repo from recorded runs (snapshot ${bundle.snapshotHash}).` },
   };
 }
