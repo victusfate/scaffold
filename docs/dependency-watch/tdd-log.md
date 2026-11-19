@@ -21,3 +21,9 @@
   `--today` injectable. `isPinFile` shares the parser dispatch in `pins.ts`.
 - Live probe 2026-11-19 [verified: ran against a scratch repo]: `.ruby-version 3.4.12` → behind 3.4.13
   (Ruby2Shell, disclosure day), `python:3.13.8` → behind 3.13.18, `node:20` → eol 2026-04-30.
+
+## Slice 5 — tracking-issue report
+- Status: done
+- Notes: one row per (file, package), ids linked to osv.dev, fixed versions highest-first (display only).
+  Summaries/details never read; ids/versions outside a safe charset dropped; cells escaped. Fixture
+  `osv-gems.json` is real osv-scanner 2.7.0 output (trimmed) with an injected prompt in summary/details.
