@@ -1,0 +1,37 @@
+#!/usr/bin/env node
+// dependency-watch — detect a repo's ecosystems and runtime pins, and install the scheduled
+// dependency watch (workflow + runtime-check scripts + security-only dependabot.yml).
+// Usage:
+//   run --detect-only [--into <repo>]
+//   run [--into <repo>] [--schedule "<cron>"] [--force]
+// stdout: JSON. Exit 0 ok, 1 bad input or failure. No network.
+
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseArgs } from 'node:util';
+import { detect, emit, validateSchedule } from './setup.ts';
+
+const SCAFFOLD_ROOT = process.env.DEPENDENCY_WATCH_SCAFFOLD_ROOT ?? join(dirname(fileURLToPath(import.meta.url)), '../..');
+
+try {
+  const { values } = parseArgs({
+    strict: true,
+    options: {
+      'detect-only': { type: 'boolean', default: false },
+      into: { type: 'string', default: '.' },
+      schedule: { type: 'string' },
+      force: { type: 'boolean', default: false },
+    },
+  });
+  const repo = resolve(values.into);
+  const result = values['detect-only']
+    ? detect(repo, SCAFFOLD_ROOT)
+    : emit(repo, SCAFFOLD_ROOT, {
+      schedule: values.schedule === undefined ? undefined : validateSchedule(values.schedule),
+      force: values.force,
+    });
+  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
+} catch (error) {
+  console.error(`dependency-watch: ${error.message}`);
+  process.exit(1);
+}

@@ -34,3 +34,9 @@
   with stubbed gh/curl/osv-scanner: create / edit-oldest / close / untouched-on-error. Findings do not
   fail the job (no daily failure mail). `report.ts` now writes `--body-out` and prints the status, so
   the step needs no jq. zizmor 1.30.1 (pinned): no findings [verified: local run].
+
+## Slice 7 — tool detect
+- Status: done
+- Notes: `tools/dependency-watch/setup.ts` renders the exact files emit would write; a file's state is
+  none / scaffold (identical) / stale (has marker, differs) / foreign (no marker). Pins come from the
+  shipped `pins.ts` (one parser). Fixtures/testdata/vendor trees excluded.
