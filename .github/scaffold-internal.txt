@@ -86,3 +86,4 @@ scripts/check-agents-detail.test.ts
 tools/hoist-skill/notices.test.ts
 tools/hoist-skill/rename.test.ts
 tools/hoist-skill/references.test.ts
+scripts/render-diagrams.ts
