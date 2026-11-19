@@ -1,6 +1,6 @@
 {
   "title": "Scaffold at a glance",
-  "lede": "Scaffold gives AI coding agents shared skills, rules and workflows. Click any skill for its own page; each page starts high level and drills down to the full detail.",
+  "lede": "Scaffold gives AI coding agents shared skills, rules and workflows. Click any skill link below the map for its own page; each page starts high level and drills down to the full detail.",
   "lanes": [
     { "id": "run", "name": "Run the work", "sub": "who does what, and how work keeps moving" },
     { "id": "build", "name": "Build", "sub": "from idea to merged PR" },

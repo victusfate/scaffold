@@ -1,6 +1,6 @@
 # Skill and process diagrams
 
-**Start here: [Scaffold at a glance](pages/system-map.md).** It maps every skill. Click one for its own page,
+**Start here: [Scaffold at a glance](pages/system-map.md).** It maps every skill; click a skill link under the map for its own page,
 which starts with a one-line overview and drills down: each stage, where it breaks, the full detailed
 diagram (folded), a glossary, and a block you can copy into your own LLM to ask follow-up questions.
 

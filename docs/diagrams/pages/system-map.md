@@ -1,6 +1,6 @@
 # Scaffold at a glance
 
-Scaffold gives AI coding agents shared skills, rules and workflows. Click any skill for its own page; each page starts high level and drills down to the full detail.
+Scaffold gives AI coding agents shared skills, rules and workflows. Click any skill link below the map for its own page; each page starts high level and drills down to the full detail.
 
 ```mermaid
 flowchart LR
@@ -176,7 +176,7 @@ Copy this block into your own assistant to ask about anything on this page.
 ```text
 The reader wants an overview of scaffold, a template that gives AI coding agents shared skills, rules and workflows, and how its skills fit together.
 
-Scaffold at a glance: Scaffold gives AI coding agents shared skills, rules and workflows. Click any skill for its own page; each page starts high level and drills down to the full detail.
+Scaffold at a glance: Scaffold gives AI coding agents shared skills, rules and workflows. Click any skill link below the map for its own page; each page starts high level and drills down to the full detail.
 - Orchestration: One orchestrator per session owns the plan and the branch; subagents do one task each in their own worktree.
 - Queue: A visible, editable task list that agents drain one task at a time or in parallel.
 - Loop tick: The heartbeat that picks the next queue task and keeps work moving.
