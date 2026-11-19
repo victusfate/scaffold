@@ -100,4 +100,7 @@ Skillify: How finished work becomes a reusable skill that every agent and every 
 
 Questions worth asking:
 - Why only one skill per run?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/skillify.md
 ```

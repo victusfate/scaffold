@@ -112,4 +112,7 @@ Review gates: How a diff gets reviewed, fixed and verified before merge: two ind
 Questions worth asking:
 - Why run two separate reviewers instead of one?
 - What counts as shared core, and why does it get the full suite?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/review-gates.md
 ```

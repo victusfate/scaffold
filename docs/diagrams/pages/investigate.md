@@ -99,4 +99,7 @@ Investigate: How /investigate finds the root cause of a bug before changing any 
 Questions worth asking:
 - Why stop after three failed fixes instead of trying a fourth?
 - What counts as fresh evidence?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/investigate.md
 ```

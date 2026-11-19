@@ -108,4 +108,7 @@ Retro: How a session retrospective finds what slowed the agent down, backed by e
 
 Questions worth asking:
 - Why look for a cause in the environment instead of blaming the agent's mistake?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/retro.md
 ```

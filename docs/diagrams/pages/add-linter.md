@@ -96,4 +96,7 @@ Add linter: How /add-linter adds linter configs and CI workflows for the languag
 
 Questions worth asking:
 - Why does the CLI write a sidecar instead of editing my config?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/add-linter.md
 ```

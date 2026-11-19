@@ -87,4 +87,7 @@ Prune: How /prune runs every quality lens on a branch, then fixes the findings t
 
 Questions worth asking:
 - When is /prune worth it instead of running /simplify alone?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/prune.md
 ```

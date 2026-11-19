@@ -73,4 +73,10 @@ void test('a node with no detail of its own links straight to its page and gets 
   assert.doesNotMatch(page, /## Orchestration/);
 });
 
+void test('the LLM block names the repo and the page, so an assistant can read the sources', () => {
+  const page = renderMarkdown(SPEC, { source: { repo: 'https://github.com/o/r', page: 'https://github.com/o/r/blob/main/p.md' } });
+  const ask = /```text\n([\s\S]*?)```/.exec(page.slice(page.indexOf('## Ask your LLM')))?.[1] ?? '';
+  assert.match(ask, /\nScaffold: https:\/\/github\.com\/o\/r\nThis page: https:\/\/github\.com\/o\/r\/blob\/main\/p\.md\n$/);
+});
+
 void test('deterministic', () => assert.equal(renderMarkdown(SPEC), md));

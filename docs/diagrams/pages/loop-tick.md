@@ -109,4 +109,7 @@ One loop tick: What the orchestrator does each time its loop wakes: handle finis
 
 Questions worth asking:
 - How does the orchestrator tell a stuck subagent from a slow one?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/loop-tick.md
 ```

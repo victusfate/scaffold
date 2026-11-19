@@ -58,7 +58,12 @@ function deepSection(section: DeepSection): string[] {
 }
 
 // Navigation the page can't know on its own: the page above it, and the titles of pages it links to.
-export interface PageContext { up?: { title: string; link: string }; titles?: Record<string, string>; }
+// `source` puts the repo and this page's URL in the LLM block, so an assistant can read the real files.
+export interface PageContext {
+  up?: { title: string; link: string };
+  titles?: Record<string, string>;
+  source?: { repo: string; page: string };
+}
 
 const SKILL_FILE = /(?:^|\/)skills\/([^/]+)\.md$/;
 
@@ -83,7 +88,7 @@ function nodeSection(node: ExplorerNode, titles: Record<string, string>): string
   ];
 }
 
-function askBlock(spec: ExplorerSpec): string[] {
+function askBlock(spec: ExplorerSpec, source?: PageContext['source']): string[] {
   const nodes = Object.values(spec.nodes);
   const questions = nodes.flatMap(n => n.qs ?? []);
   const context = [
@@ -91,6 +96,7 @@ function askBlock(spec: ExplorerSpec): string[] {
     `${spec.title}${spec.lede ? `: ${spec.lede}` : ''}`,
     ...nodes.map(n => `- ${n.name}: ${n.role}`),
     ...(questions.length ? ['', 'Questions worth asking:', ...questions.map(q => `- ${q}`)] : []),
+    ...(source ? ['', `Scaffold: ${source.repo}`, `This page: ${source.page}`] : []),
   ];
   return ['## Ask your LLM', '', 'Copy this block into your own assistant to ask about anything on this page.', '',
     '```text', ...context, '```'];
@@ -109,6 +115,6 @@ export function renderMarkdown(spec: ExplorerSpec, context: PageContext = {}): s
     ...(spec.detail ? ['<details>', '<summary>Detailed flow</summary>', '',
       `![${spec.title}, detailed](${spec.detail})`, '', '</details>', ''] : []),
     ...(glossary.length ? ['## Glossary', '', ...glossary.map(g => `- **${g.t}**: ${g.d}`), ''] : []),
-    ...askBlock(spec),
+    ...askBlock(spec, context.source),
   ].join('\n') + '\n';
 }

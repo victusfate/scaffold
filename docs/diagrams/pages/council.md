@@ -117,4 +117,7 @@ Council: How a hard decision gets pressure-tested by five advisors with clashing
 Questions worth asking:
 - When is a council worth the cost instead of just asking the agent once?
 - How does the chairman decide between two advisors who flatly disagree?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/council.md
 ```

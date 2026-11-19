@@ -110,4 +110,7 @@ Queue task lifecycle: The states a queue task passes through, from the owner's r
 
 Questions worth asking:
 - Why does a done task still hold up the queue until its PR merges?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/queue-lifecycle.md
 ```

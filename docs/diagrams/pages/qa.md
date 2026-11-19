@@ -112,4 +112,7 @@ QA: How /qa runs the real app, uses the changed parts the way a user would, and 
 
 Questions worth asking:
 - Why does a QA fix need a failing regression test before the fix?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/qa.md
 ```

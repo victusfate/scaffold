@@ -108,4 +108,7 @@ Voice chat: How to talk to the coding agent hands-free through headphones. Audio
 
 Questions worth asking:
 - Which account and billing does the agent call use?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/voice-chat.md
 ```

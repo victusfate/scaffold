@@ -15,6 +15,9 @@ import { validateSpec, type ExplorerSpec } from './explorer-spec.ts';
 
 // The landing page every other page links back up to.
 const MAP = 'system-map';
+// Named in each page's LLM block so a reader's assistant can open the sources (this script is scaffold-only).
+const REPO_URL = 'https://github.com/victusfate/scaffold';
+const PAGES_URL = `${REPO_URL}/blob/main/docs/diagrams/pages`;
 const DIAGRAMS = join(dirname(fileURLToPath(import.meta.url)), '..', 'docs', 'diagrams');
 
 // Links resolve from the page's own directory; a #fragment is not part of the file.
@@ -59,7 +62,8 @@ export function buildPages(root: string, options: { check: boolean }): string[] 
   const titles = Object.fromEntries(specs.map(({ slug, spec }) => [`${slug}.md`, spec.title]));
   const map = specs.find(({ slug }) => slug === MAP);
   const pages = specs.map(({ slug, spec }) => ({ slug, spec, markdown: renderMarkdown(spec,
-    { titles, up: map && slug !== MAP ? { title: map.spec.title, link: `${MAP}.md` } : undefined }) }));
+    { titles, up: map && slug !== MAP ? { title: map.spec.title, link: `${MAP}.md` } : undefined,
+      source: { repo: REPO_URL, page: `${PAGES_URL}/${slug}.md` } }) }));
   const stale = pages.flatMap(({ slug, markdown }) => {
     const page = join(pagesDir, `${slug}.md`);
     if (existsSync(page) && readFileSync(page, 'utf8') === markdown) return [];

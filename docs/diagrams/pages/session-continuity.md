@@ -99,4 +99,7 @@ Session continuity: How work survives a closed session: checkpoint into a handof
 
 Questions worth asking:
 - When should I use claude -c instead of /resume?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/session-continuity.md
 ```

@@ -97,4 +97,7 @@ PR workflow: How one task becomes one merged PR: local gates first, real checks 
 
 Questions worth asking:
 - Why isn't a green merge button enough?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/pr-workflow.md
 ```

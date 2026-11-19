@@ -87,4 +87,7 @@ Scaffold at a glance: Scaffold gives AI coding agents shared skills, rules and w
 - Council: Five advisors, anonymous peer review and a chairman verdict for hard decisions.
 - Mind meld: A repo-owned learning IDE built from code indexes and real runs.
 - Voice chat: A hands-free voice loop with the coding agent.
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/system-map.md
 ```

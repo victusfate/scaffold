@@ -106,4 +106,7 @@ Scaffold sync: How shared rules and skills flow from the scaffold repo into proj
 
 Questions worth asking:
 - What decides whether a change belongs in scaffold or stays in the project?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/scaffold-sync.md
 ```

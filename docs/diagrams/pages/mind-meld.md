@@ -127,4 +127,7 @@ Mind meld: How a repo gets a learning tool that explains its code from real, rec
 
 Questions worth asking:
 - What is the difference between a static edge and an observed call?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/mind-meld.md
 ```

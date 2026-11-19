@@ -112,4 +112,7 @@ Orchestration: How one orchestrator turns owner requests into merged work by han
 
 Questions worth asking:
 - Why can't the orchestrator merge to main on its own?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/orchestration.md
 ```

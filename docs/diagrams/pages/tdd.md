@@ -112,4 +112,7 @@ TDD: How a feature gets built one thin slice at a time: a failing test, the leas
 Questions worth asking:
 - Why list behaviors to test instead of implementation steps?
 - What goes wrong if you write all the tests before any code?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/tdd.md
 ```

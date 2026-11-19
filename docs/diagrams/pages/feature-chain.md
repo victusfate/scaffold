@@ -103,4 +103,7 @@ Feature chain: How a feature idea becomes a reviewed, tested PR. The owner decid
 
 Questions worth asking:
 - What makes a design question worth asking the owner instead of deciding?
+
+Scaffold: https://github.com/victusfate/scaffold
+This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/feature-chain.md
 ```
