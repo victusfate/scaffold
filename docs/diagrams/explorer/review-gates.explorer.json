@@ -1,0 +1,47 @@
+{
+  "title": "Review gates",
+  "lede": "How a diff gets reviewed, fixed and verified before merge: two independent reviewers, one fixer, and a receipt so the same code is not checked twice.",
+  "detail": "../generated/review-gates.svg",
+  "lanes": [
+    { "id": "review", "name": "Review" },
+    { "id": "fix", "name": "Fix" },
+    { "id": "verify", "name": "Verify" }
+  ],
+  "nodes": {
+    "gather": { "lane": "review", "name": "Gather the diff", "role": "Collect the branch's diff and the full text of every changed file.",
+      "details": ["The diff is git diff main...HEAD.", "For the whole repo instead of a diff, /audit ranks the worst files first."] },
+    "reviewers": { "lane": "review", "name": "Two reviewers", "role": "A correctness reviewer and a structure reviewer read the diff in parallel, without editing.", "link": "../../../skills/code-refiner.md",
+      "details": [{ "t": "Correctness: /validate", "more": ["Finds correctness bugs.", "A test weakened to pass counts as a defect."] },
+        { "t": "Structure: /simplify", "more": ["Scores the rubric and lists cleanups.", "Checks diff economy and repeated code across files."] },
+        "Each reviewer starts fresh, with no session context."],
+      "qs": ["Why run two separate reviewers instead of one?"] },
+    "merge": { "lane": "fix", "name": "Merge findings", "role": "Combine both reports into one ordered work list, correctness first.",
+      "details": ["Findings on the same lines become one item.", "If both reviews are clean, the fix step is skipped.",
+        "Run standalone without --fix, it presents the list and waits for approval."] },
+    "fixer": { "lane": "fix", "name": "One fixer", "role": "A single agent applies the whole list, then re-runs the tests.",
+      "details": ["Only one agent edits, so two agents never change the same files at once."],
+      "risks": ["If a fix needs a test changed, it is surfaced, never weakened to pass."] },
+    "reverify": { "lane": "verify", "name": "Re-verify", "role": "A fresh check confirms correctness is clear and every rubric score is 10/10.",
+      "details": ["On a regression it fixes once more; if that still fails, it surfaces what remains and stops."] },
+    "receipt": { "lane": "verify", "name": "Receipt", "role": "A verified run writes a receipt for the exact code, so the merge step can reuse it.",
+      "details": [{ "t": "Fail closed", "more": ["A missing, mismatched or corrupt receipt means the checks re-run in full."] },
+        "Full suites run only for shared core; other changes run the checks for the parts they touch."],
+      "deep": [{ "h": "What the receipt is keyed to", "list": ["HEAD, tree, index and diffs", "Untracked inputs and the base", "Plan and gate-script hashes", "Tool binaries"] }],
+      "qs": ["What counts as shared core, and why does it get the full suite?"] }
+  },
+  "flows": [
+    { "id": "main", "name": "Diff to verified commit", "steps": [
+      ["gather", "reviewers", "Diff collected", "diff + changed files"],
+      ["reviewers", "merge", "Both reports in", "findings + scores"],
+      ["merge", "fixer", "Work list ordered", "work list"],
+      ["fixer", "reverify", "Fixes applied, tests re-run", "new diff"],
+      ["reverify", "receipt", "Correctness clear, all 10/10", "verified run"]] }
+  ],
+  "glossary": {
+    "rubric": { "t": "Rubric", "a": ["rubric"], "d": "Four scores for code: Quality, Readability, Encapsulation, Clarity." },
+    "economy": { "t": "Diff economy", "a": ["diff economy"], "d": "Added lines must earn their place; deletions count as credit." },
+    "shared": { "t": "Shared core", "a": ["shared core"], "d": "Public API, save formats, networking and workspace build inputs." },
+    "failclosed": { "t": "Fail closed", "a": ["fail closed"], "d": "When in doubt, block and re-run instead of passing." }
+  },
+  "ask": { "context": "The reader wants to understand how scaffold reviews, fixes and verifies a code change before it merges." }
+}
