@@ -3,7 +3,7 @@
 // Offline: --releases points at recorded fixtures; --today pins the clock.
 
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, readFileSync, symlinkSync } from 'node:fs';
 import { repoWith } from './test-helpers.ts';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -72,6 +72,23 @@ function run(args: string[]) {
   symlinkSync(CLI, link);
   const r = spawnSync(process.execPath, [link, '--root', root, '--releases', FIXTURES, '--today', TODAY], { encoding: 'utf8' });
   assert('runs when started through a symlink', r.status === 1 && r.stdout.includes('"behind"'), `${r.status} ${r.stderr}`);
+}
+
+// --fix bumps behind pins in place; EOL findings remain (they need a decision), so exit reflects them.
+{
+  const root = repoWith({
+    '.ruby-version': '3.4.12\n',
+    'Dockerfile': 'FROM ruby:3.4.12-slim AS build\nFROM node:24.11.0\n',
+  });
+  const r = spawnSync(process.execPath, [CLI, '--root', root, '--releases', FIXTURES, '--today', TODAY, '--fix'], { encoding: 'utf8' });
+  const out = JSON.parse(r.stdout || '{}') as { patched?: { file: string; line: number; from: string; to: string }[] };
+  const read = (p: string) => readFileSync(join(root, p), 'utf8');
+  assert('--fix patches version file and Dockerfile tag', read('.ruby-version') === '3.4.13\n'
+    && read('Dockerfile').startsWith('FROM ruby:3.4.13-slim AS build\n'), `${read('.ruby-version')} ${read('Dockerfile')}`);
+  assert('--fix reports what it patched', (out.patched ?? []).length === 3, r.stdout);
+  const again = spawnSync(process.execPath, [CLI, '--root', root, '--releases', FIXTURES, '--today', TODAY, '--fix'], { encoding: 'utf8' });
+  const left = JSON.parse(again.stdout || '{}') as { findings?: { kind: string }[] };
+  assert('after --fix only decisions remain', (left.findings ?? []).every(f => f.kind === 'eol'), again.stdout);
 }
 
 // Bad arguments are errors.
