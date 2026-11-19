@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // Acceptance tests for tools/dependency-watch/run — detect and emit in temp git repos.
 
-import { spawnSync, execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { repoWith } from '../../lib/dependency-watch/test-repo.ts';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -17,16 +17,6 @@ function assert(label, cond, detail = '') {
 }
 const show = v => JSON.stringify(v);
 
-function repoWith(files) {
-  const dir = mkdtempSync(join(tmpdir(), 'dependency-watch-'));
-  execFileSync('git', ['init', '-q'], { cwd: dir });
-  for (const [path, content] of Object.entries(files)) {
-    mkdirSync(dirname(join(dir, path)), { recursive: true });
-    writeFileSync(join(dir, path), content);
-  }
-  if (Object.keys(files).length) execFileSync('git', ['add', ...Object.keys(files)], { cwd: dir });
-  return dir;
-}
 function run(args) {
   const r = spawnSync(process.execPath, [RUN, ...args], { encoding: 'utf8' });
   let json = null;
@@ -95,7 +85,9 @@ const byStatus = (json, status) => json.filter(r => r.status === status).map(r =
       && dependabot.includes('package-ecosystem: npm\n    directories: ["/web"]')
       && dependabot.includes('package-ecosystem: gomod\n    directories: ["/svc"]')
       && !dependabot.includes('cargo'), dependabot);
-  assert('shipped check runs in the consumer repo', spawnSync(process.execPath, [join(repo, CHECK), '--today', '2026-11-19', '--releases', join(HERE, '../../lib/dependency-watch/fixtures')], { cwd: repo, encoding: 'utf8' }).status === 1);
+  const fixtures = join(HERE, '../../lib/dependency-watch/fixtures');
+  const check = spawnSync(process.execPath, [join(repo, CHECK), '--today', '2026-11-19', '--releases', fixtures], { cwd: repo, encoding: 'utf8' });
+  assert('shipped check runs in the consumer repo (finds .ruby-version 3.4.12)', check.status === 1, `${check.status} ${check.stderr}`);
 
   const again = run(['--into', repo]);
   assert('re-run is idempotent', again.status === 0 && again.json.every(x => x.status === 'unchanged'), show(again.json));
@@ -110,6 +102,18 @@ const byStatus = (json, status) => json.filter(r => r.status === status).map(r =
   assert('re-run keeps a customized schedule', again.json.every(x => x.status === 'unchanged') && read(repo, WORKFLOW).includes("- cron: '0 */6 * * 1-5'"), show(again.json));
   const detected = run(['--detect-only', '--into', repo]).json;
   assert('customized schedule is still scaffold state', stateOf(detected, WORKFLOW) === 'scaffold', show(detected.files));
+}
+{
+  const repo = repoWith(APP);
+  run(['--into', repo]);
+  writeFileSync(join(repo, WORKFLOW), read(repo, WORKFLOW).replace("- cron: '17 6 * * *'", '- cron: "0 5 * * 1"'));
+  run(['--into', repo, '--force']);
+  assert('re-run keeps a double-quoted owner cron', read(repo, WORKFLOW).includes("- cron: '0 5 * * 1'"), read(repo, WORKFLOW).match(/cron.*/)?.[0]);
+}
+{
+  const repo = repoWith({ 'bun.lock': '{}\n' });
+  run(['--into', repo]);
+  assert('bun.lock maps to the bun ecosystem', read(repo, DEPENDABOT).includes('package-ecosystem: bun'));
 }
 {
   const repo = repoWith({ ...APP, [DEPENDABOT]: 'version: 2\nupdates: []\n' });

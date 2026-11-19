@@ -4,7 +4,7 @@
 // (endoflife.date lagged the Ruby2Shell fix on disclosure day); endoflife.date supplies only EOL dates.
 // Pure: parsers throw on malformed input so a bad payload is an error, never "no releases".
 
-import type { Runtime } from './pins.ts';
+import { EXACT_VERSION, type Runtime } from './pins.ts';
 
 export const RELEASE_URLS: Record<Runtime, string> = {
   ruby: 'https://cache.ruby-lang.org/pub/ruby/index.txt',
@@ -16,9 +16,8 @@ export const RELEASE_URLS: Record<Runtime, string> = {
 const EOL_PRODUCTS: Record<Runtime, string> = { ruby: 'ruby', node: 'nodejs', python: 'python', go: 'go' };
 export const eolUrl = (runtime: Runtime): string => `https://endoflife.date/api/${EOL_PRODUCTS[runtime]}.json`;
 
-const FINAL_RELEASE = /^\d+\.\d+\.\d+$/;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-// Each extractor maps one raw entry name to a candidate version; non-final ones are filtered after.
 const RUBY_TARBALL = /^ruby-(.+)$/;
 const PYTHON_RELEASE = /^Python (.+)$/;
 
@@ -33,6 +32,7 @@ const field = (entry: Record<string, unknown>, key: string): string => {
   return typeof value === 'string' ? value : '';
 };
 
+// Each extractor maps one raw entry name to a candidate version; non-final ones are filtered after.
 const EXTRACTORS: Record<Runtime, (text: string) => string[]> = {
   ruby: text => text.split('\n').slice(1).map(line => RUBY_TARBALL.exec(line.split('\t')[0])?.[1] ?? ''),
   node: text => jsonArray(text).map(e => field(e, 'version').replace(/^v/, '')),
@@ -43,15 +43,19 @@ const EXTRACTORS: Record<Runtime, (text: string) => string[]> = {
 };
 
 export function parseReleases(runtime: Runtime, text: string): string[] {
-  const versions = [...new Set(EXTRACTORS[runtime](text).filter(v => FINAL_RELEASE.test(v)))];
+  const versions = [...new Set(EXTRACTORS[runtime](text).filter(v => EXACT_VERSION.test(v)))];
   if (versions.length === 0) throw new Error(`${runtime}: no final releases in upstream payload`);
   return versions;
 }
 
-// endoflife.date `eol` is a date string, or a boolean when the line has no date.
+// endoflife.date `eol` is an ISO date, or a boolean when the line has no date. Anything else is a
+// malformed payload: it throws rather than becoming a false (or missed) end-of-life finding.
 export function parseEol(text: string): Record<string, string | boolean> {
   return Object.fromEntries(jsonArray(text).map(e => {
     const eol = e.eol;
-    return [field(e, 'cycle'), typeof eol === 'boolean' ? eol : field(e, 'eol')];
+    if (typeof eol !== 'boolean' && !(typeof eol === 'string' && ISO_DATE.test(eol))) {
+      throw new Error(`endoflife.date: unexpected eol ${JSON.stringify(eol)} for cycle ${field(e, 'cycle')}`);
+    }
+    return [field(e, 'cycle'), eol];
   }));
 }

@@ -43,6 +43,13 @@ const releases = (runtime: Runtime, file: string): string[] => parseReleases(run
   assert('supported line without date is false', parseEol(fixture('eol-go.json'))['1.27'] === false);
 }
 {
+  for (const bad of [null, '', 'soon', 2027, '2026-03-31\n## x']) {
+    let threw = false;
+    try { parseEol(JSON.stringify([{ cycle: '3.4', eol: bad }])); } catch { threw = true; }
+    assert(`eol ${JSON.stringify(bad)} is malformed, not end-of-life`, threw);
+  }
+}
+{
   let threw = false;
   try { parseReleases('node', '<html>maintenance</html>'); } catch { threw = true; }
   assert('malformed payload throws (never parsed as "no releases")', threw);

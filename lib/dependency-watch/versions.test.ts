@@ -47,13 +47,20 @@ const one = (path: string, content: string) => classify(parsePins([{ path, conte
 const behind = (path: string, content: string) => one(path, content).findings.map(f => f.kind === 'behind' ? `${f.runtime}@${f.pinned}->${f.latest}:${f.line}` : f.kind);
 
 // Node, Python and Go pin files; Node's release line is its major.
-assert('.node-version', show(behind('.node-version', '26.12.0\n')) === show(['node@26.12.0->26.13.1:1']), show(behind('.node-version', '26.12.0\n')));
+{
+  const got = behind('.node-version', '26.12.0\n');
+  assert('.node-version', show(got) === show(['node@26.12.0->26.13.1:1']), show(got));
+}
 assert('.nvmrc v-prefix', show(behind('web/.nvmrc', 'v24.11.0')) === show(['node@24.11.0->24.11.1:1']));
 assert('.python-version', show(behind('.python-version', '3.13.8')) === show(['python@3.13.8->3.13.9:1']));
-assert('.tool-versions maps asdf names, keeps line numbers',
-  show(behind('.tool-versions', '# tools\nnodejs 26.12.0\nruby 3.4.13\ngolang 1.27.3\nterraform 1.9.0\n'))
-    === show(['node@26.12.0->26.13.1:2', 'go@1.27.3->1.27.4:4']),
-  show(behind('.tool-versions', '# tools\nnodejs 26.12.0\nruby 3.4.13\ngolang 1.27.3\nterraform 1.9.0\n')));
+{
+  const asdf = behind('.tool-versions', '# tools\nnodejs 26.12.0\nruby 3.4.13\ngolang 1.27.3\nterraform 1.9.0\n');
+  assert('.tool-versions maps asdf names, keeps line numbers', show(asdf) === show(['node@26.12.0->26.13.1:2', 'go@1.27.3->1.27.4:4']), show(asdf));
+  const mise = behind('.tool-versions', 'node 26.12.0\ngo 1.27.3\n');
+  assert('.tool-versions accepts mise names', show(mise) === show(['node@26.12.0->26.13.1:1', 'go@1.27.3->1.27.4:2']), show(mise));
+  const pyenv = behind('.python-version', '3.13.8\n3.13.9\n');
+  assert('multi-line .python-version pins each line', show(pyenv) === show(['python@3.13.8->3.13.9:1']), show(pyenv));
+}
 
 // Dockerfile FROM lines for official runtime images.
 {
@@ -86,17 +93,22 @@ assert('.tool-versions maps asdf names, keeps line numbers',
 
 // End of life: a pin (exact or floating) on a line whose EOL date has passed is an `eol` finding.
 {
-  const TODAY = '2026-11-19';
   const withEol: Releases = {
     ruby: { versions: ['3.2.10', '3.2.11', '3.4.13'], eol: { '3.2': '2026-03-31', '3.4': '2028-03-31' } },
     node: { versions: ['20.19.0'], eol: { '20': true } },
   };
   const eolOf = (path: string, content: string) =>
-    classify(parsePins([{ path, content }]), withEol, TODAY).findings.map(f => f.kind === 'eol' ? `${f.runtime}@${f.pinned}:eol:${f.since}` : `${f.kind}`);
-  assert('EOL line with date', show(eolOf('.ruby-version', '3.2.11')) === show(['ruby@3.2.11:eol:2026-03-31']), show(eolOf('.ruby-version', '3.2.11')));
-  assert('behind and EOL are separate findings', show(eolOf('.ruby-version', '3.2.10')) === show(['behind', 'ruby@3.2.10:eol:2026-03-31']), show(eolOf('.ruby-version', '3.2.10')));
-  assert('floating pin on EOL line', show(eolOf('Dockerfile', 'FROM ruby:3.2-slim')) === show(['ruby@3.2:eol:2026-03-31']), show(eolOf('Dockerfile', 'FROM ruby:3.2-slim')));
-  assert('EOL without a date', show(eolOf('.nvmrc', '20.19.0')) === show(['node@20.19.0:eol:null']), show(eolOf('.nvmrc', '20.19.0')));
+    classify(parsePins([{ path, content }]), withEol, NOW).findings.map(f => f.kind === 'eol' ? `${f.runtime}@${f.pinned}:eol:${f.since}` : `${f.kind}`);
+  const cases: [string, string, string, string[]][] = [
+    ['EOL line with date', '.ruby-version', '3.2.11', ['ruby@3.2.11:eol:2026-03-31']],
+    ['behind and EOL are separate findings', '.ruby-version', '3.2.10', ['behind', 'ruby@3.2.10:eol:2026-03-31']],
+    ['floating pin on EOL line', 'Dockerfile', 'FROM ruby:3.2-slim', ['ruby@3.2:eol:2026-03-31']],
+    ['EOL without a date', '.nvmrc', '20.19.0', ['node@20.19.0:eol:null']],
+  ];
+  for (const [label, path, content, expected] of cases) {
+    const got = eolOf(path, content);
+    assert(label, show(got) === show(expected), show(got));
+  }
   assert('supported line is clean', eolOf('.ruby-version', '3.4.13').length === 0);
   assert('EOL date after today is clean', classify(parsePins([{ path: '.ruby-version', content: '3.2.11' }]), withEol, '2026-03-30').findings.length === 0);
 }

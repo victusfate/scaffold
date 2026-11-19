@@ -6,6 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runBlock } from './test-repo.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '../..');
@@ -34,7 +35,7 @@ assert('osv-scanner pin matches security.yml',
   `${pinOf(wf, 'OSV_VERSION')} ${pinOf(wf, 'OSV_SHA256')}`);
 assert('osv-scanner binary checksum verified', /sha256sum -c/.test(wf));
 
-const runBlocks = [...wf.matchAll(/run: \|\n((?:\s{10}.*\n?)+)/g)].map(m => m[1]).join('\n');
+const runBlocks = runBlock(wf);
 assert('no expressions interpolated into shell (template injection)', runBlocks.length > 0 && !runBlocks.includes('${{'));
 assert('runtime check and report run from the shipped copy',
   runBlocks.includes('.github/dependency-watch/runtime-check.ts') && runBlocks.includes('.github/dependency-watch/report.ts'));

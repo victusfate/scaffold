@@ -8,10 +8,11 @@ import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, readdirSync, copyF
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runBlock } from './test-repo.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const wf = readFileSync(join(HERE, 'dependency-watch.yml'), 'utf8');
-const step = /run: \|\n((?:\s{10}.*\n?|\n)+)/.exec(wf)![1].replace(/^ {10}/gm, '');
+const step = runBlock(wf);
 
 let passed = 0, failed = 0;
 function assert(label: string, cond: boolean, detail = ''): void {

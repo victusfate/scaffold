@@ -15,6 +15,7 @@ import type { Classification, Finding, Note } from './versions.ts';
 
 // The workflow finds its one tracking issue by label; the marker identifies the body as generated.
 export const ISSUE_MARKER = '<!-- dependency-watch -->';
+const EXIT_ERROR = 2;
 const MAX_PACKAGE_ROWS = 200;
 const MAX_IDS_PER_ROW = 10;
 const MAX_FIXED_PER_ROW = 5;
@@ -37,7 +38,8 @@ export interface Report { status: 'clean' | 'findings'; body: string; }
 
 interface PackageRow { file: string; pkg: OsvPackage; ids: string[]; fixed: string[]; }
 
-// Repo-controlled text (paths, package names) goes in a table cell: keep it on one line and inert.
+// Text goes in a table cell: keep it on one line and inert. Names and versions are wrapped in code
+// spans too, so scoped packages (`@org/pkg`) cannot become mentions and nothing renders as a link.
 const cell = (text: string): string =>
   text.replace(/[\r\n]+/g, ' ').replace(/`/g, "'").replace(/</g, '&lt;').replace(/\|/g, '\\|');
 const code = (text: string): string => `\`${cell(text)}\``;
@@ -67,15 +69,15 @@ function packageRows(osv: OsvOutput, root: string): PackageRow[] {
 }
 
 const describe = (f: Finding): string =>
-  f.kind === 'behind' ? `behind: latest patch is ${f.latest}` : `end of life${f.since ? ` since ${f.since}` : ''}`;
-const site = (s: { file: string; line: number }): string => code(`${s.file}:${s.line}`);
-const bySite = (a: { file: string; line: number }, b: { file: string; line: number }): number =>
-  byText(`${a.file}:${String(a.line).padStart(6, '0')}`, `${b.file}:${String(b.line).padStart(6, '0')}`);
+  f.kind === 'behind' ? `behind: latest patch is ${cell(f.latest)}` : `end of life${f.since ? ` since ${cell(f.since)}` : ''}`;
+type Located = { file: string; line: number };
+const where = (s: Located): string => code(`${s.file}:${s.line}`);
+const byLocation = (a: Located, b: Located): number => byText(a.file, b.file) || a.line - b.line;
 
 function runtimeSection(findings: Finding[]): string[] {
   if (!findings.length) return ['### Runtime pins', '', 'No findings.'];
-  const rows = [...findings].sort((a, b) => bySite(a, b) || byText(a.kind, b.kind))
-    .map(f => `| ${site(f)} | ${f.runtime} | ${cell(f.pinned)} | ${describe(f)} |`);
+  const rows = [...findings].sort((a, b) => byLocation(a, b) || byText(a.kind, b.kind))
+    .map(f => `| ${where(f)} | ${f.runtime} | ${cell(f.pinned)} | ${describe(f)} |`);
   return [`### Runtime pins (${findings.length})`, '', '| Where | Runtime | Pinned | Finding |', '|---|---|---|---|', ...rows];
 }
 
@@ -83,7 +85,7 @@ function packageSection(rows: PackageRow[]): string[] {
   if (!rows.length) return ['### Packages', '', 'No known vulnerabilities.'];
   const shown = rows.slice(0, MAX_PACKAGE_ROWS).map(r => {
     const ids = capped(r.ids.map(id => `[${id}](${OSV_LINK}${id})`), MAX_IDS_PER_ROW);
-    return `| ${code(r.file)} | ${cell(r.pkg.name)} | ${cell(r.pkg.version)} | ${cell(r.pkg.ecosystem)} | ${ids} | ${capped(r.fixed, MAX_FIXED_PER_ROW) || '—'} |`;
+    return `| ${code(r.file)} | ${code(r.pkg.name)} | ${code(r.pkg.version)} | ${cell(r.pkg.ecosystem)} | ${ids} | ${capped(r.fixed, MAX_FIXED_PER_ROW) || '—'} |`;
   });
   const rest = rows.length - shown.length;
   return [`### Packages (${rows.length})`, '', '| File | Package | Version | Ecosystem | Advisories | Fixed in |',
@@ -92,7 +94,7 @@ function packageSection(rows: PackageRow[]): string[] {
 
 function notesSection(notes: Note[]): string[] {
   if (!notes.length) return [];
-  const lines = [...notes].sort(bySite).map(n => `- ${site(n)}${n.runtime ? ` ${n.runtime}` : ''}: ${cell(n.reason)}`);
+  const lines = [...notes].sort(byLocation).map(n => `- ${where(n)}${n.runtime ? ` ${n.runtime}` : ''}: ${cell(n.reason)}`);
   return ['', '### Not checked', '', ...lines];
 }
 
@@ -134,5 +136,5 @@ function main(): void {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  try { main(); } catch (error) { console.error(`report: ${(error as Error).message}`); process.exitCode = 2; }
+  try { main(); } catch (error) { console.error(`report: ${(error as Error).message}`); process.exitCode = EXIT_ERROR; }
 }

@@ -39,8 +39,8 @@ const OPTS = { root: '/repo', runUrl: 'https://github.com/o/r/actions/runs/1', d
   assert('runtime eol row', r.body.includes('| `Dockerfile:3` | node | 20 | end of life since 2026-04-30 |'), r.body);
   assert('unchecked pin listed', r.body.includes('`Dockerfile:5`') && r.body.includes('pinned by digest'));
   assert('package row: relative path, ids linked, fixed versions',
-    r.body.includes('| `Gemfile.lock` | rack | 2.2.3 | RubyGems |') && r.body.includes('[GHSA-22f2-v57c-j9cx](https://osv.dev/vulnerability/GHSA-22f2-v57c-j9cx)'), r.body);
-  assert('fixed versions shown', /\| rack \|[^\n]*\| [0-9][^|]*\|$/m.test(r.body), r.body);
+    r.body.includes('| `Gemfile.lock` | `rack` | `2.2.3` | RubyGems |') && r.body.includes('[GHSA-22f2-v57c-j9cx](https://osv.dev/vulnerability/GHSA-22f2-v57c-j9cx)'), r.body);
+  assert('fixed versions shown', /\| `rack` \|[^\n]*\| [0-9][^|]*\|$/m.test(r.body), r.body);
   assert('run link and date', r.body.includes(OPTS.runUrl) && r.body.includes('2026-11-19'));
   assert('advisory prose never reaches the body',
     !/IGNORE PREVIOUS|attacker\.example|SYSTEM:|approve and merge/.test(r.body) && r.body.split(ISSUE_MARKER).length === 2, r.body);
@@ -58,7 +58,19 @@ const OPTS = { root: '/repo', runUrl: 'https://github.com/o/r/actions/runs/1', d
     vulnerabilities: [{ id: 'GHSA-aaaa-bbbb-cccc](javascript:x)', affected: [] }, { id: 'GHSA-real-real-real', affected: [] }],
   }] }] };
   const body = buildReport({ runtime: CLEAN, osv: hostile }, OPTS).body;
-  assert('unsafe id dropped, pipe escaped', !body.includes('javascript:') && body.includes('GHSA-real-real-real') && body.includes('evil\\|pkg'), body);
+  assert('unsafe id dropped, pipe escaped', !body.includes('javascript:') && body.includes('GHSA-real-real-real') && body.includes('`evil\\|pkg`'), body);
+}
+{
+  // Scoped package names render as code, never as an @mention or a link.
+  const scoped: OsvOutput = { results: [{ source: { path: '/repo/package-lock.json' }, packages: [{
+    package: { name: '@babel/core [x](http://evil.example)', version: '7.0.0', ecosystem: 'npm' },
+    vulnerabilities: [{ id: 'GHSA-aaaa-bbbb-cccc', affected: [] }],
+  }] }] };
+  const body = buildReport({ runtime: CLEAN, osv: scoped }, OPTS).body;
+  assert('package name in a code span', body.includes('| `@babel/core [x](http://evil.example)` |'), body);
+  const eol: Classification = { findings: [{ runtime: 'ruby', file: '.ruby-version', line: 1, pinned: '3.2.0', kind: 'eol', since: '2026-03-31\n\n## injected' }], info: [], unchecked: [] };
+  const eolBody = buildReport({ runtime: eol, osv: { results: [] } }, OPTS).body;
+  assert('eol date cannot break out of its row', !eolBody.includes('\n## injected'), eolBody);
 }
 {
   const many: OsvOutput = { results: [{ source: { path: '/repo/package-lock.json' }, packages: Array.from({ length: 250 }, (_, i) => ({

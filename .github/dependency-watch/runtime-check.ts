@@ -11,9 +11,10 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { isPinFile, parsePins, type Pin, type Runtime } from './pins.ts';
+import { isPinFile, isShippedPath, parsePins, type Pin, type Runtime } from './pins.ts';
 import { RELEASE_URLS, eolUrl, parseEol, parseReleases } from './releases.ts';
 import { classify, type Releases } from './versions.ts';
 
@@ -37,9 +38,16 @@ function parseOptions(argv: string[]): Options {
   return { root: values.root ?? '.', releasesDir: values.releases, today };
 }
 
-function trackedPins(root: string): Pin[] {
-  const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
-    .split('\0').filter(path => path && isPinFile(path));
+export const trackedFiles = (root: string): string[] =>
+  execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+    .split('\0').filter(path => path && isShippedPath(path));
+
+// The one pin loader: the scheduled check and setup's detect report the same pins.
+export function trackedPins(root: string, tracked = trackedFiles(root)): Pin[] {
+  return parsePinFiles(root, tracked.filter(isPinFile));
+}
+
+function parsePinFiles(root: string, tracked: string[]): Pin[] {
   return parsePins(tracked.map(path => ({ path, content: readFileSync(join(root, path), 'utf8') })));
 }
 
@@ -82,7 +90,9 @@ async function main(): Promise<number> {
   return result.findings.length ? EXIT_FINDINGS : 0;
 }
 
-main().then(
-  code => { process.exitCode = code; },
-  (error: Error) => { console.error(`runtime-check: ${error.message}`); process.exitCode = EXIT_ERROR; },
-);
+if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+  main().then(
+    code => { process.exitCode = code; },
+    (error: Error) => { console.error(`runtime-check: ${error.message}`); process.exitCode = EXIT_ERROR; },
+  );
+}
