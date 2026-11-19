@@ -1,16 +1,7 @@
-// Runtime pins: parse them from repo files and classify them against upstream release data.
-// Pure: no I/O, no clock. Imports only node: builtins (shipped verbatim into consumer repos).
+// Classify runtime pins against upstream release data: behind its line's latest patch, or unevaluable.
+// Pure: no I/O, no clock. Imports only sibling modules (shipped verbatim into consumer repos).
 
-export type Runtime = 'ruby';
-
-export interface RepoFile { path: string; content: string; }
-
-export interface Pin {
-  runtime: Runtime;
-  file: string;
-  line: number;
-  version: string;
-}
+import type { Pin, Runtime } from './pins.ts';
 
 export interface RuntimeReleases {
   versions: string[];
@@ -31,19 +22,6 @@ export interface Note { runtime?: Runtime; file: string; line: number; raw: stri
 
 export interface Classification { findings: Finding[]; info: Note[]; unchecked: Note[]; }
 
-const RUBY_VERSION_FILE = /(^|\/)\.ruby-version$/;
-const RUBY_PREFIX = /^ruby-/;
-
-export function parsePins(files: RepoFile[]): Pin[] {
-  const pins: Pin[] = [];
-  for (const file of files) {
-    if (!RUBY_VERSION_FILE.test(file.path)) continue;
-    const version = file.content.trim().replace(RUBY_PREFIX, '');
-    pins.push({ runtime: 'ruby', file: file.path, line: 1, version });
-  }
-  return pins;
-}
-
 const parts = (v: string): number[] => v.split('.').map(Number);
 
 function compareVersions(a: string, b: string): number {
@@ -55,25 +33,35 @@ function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-// A release line is major.minor (Ruby, Python, Go).
-const releaseLine = (v: string): string => parts(v).slice(0, 2).join('.');
+// Node's release line is its major (26.x); Ruby, Python and Go lines are major.minor.
+const LINE_PARTS: Record<Runtime, number> = { node: 1, ruby: 2, python: 2, go: 2 };
+const releaseLine = (runtime: Runtime, v: string): string => parts(v).slice(0, LINE_PARTS[runtime]).join('.');
 
-function latestInLine(version: string, versions: string[]): string | undefined {
-  const line = releaseLine(version);
-  return versions.filter(v => releaseLine(v) === line).sort(compareVersions).at(-1);
+function latestInLine(runtime: Runtime, version: string, versions: string[]): string | undefined {
+  const line = releaseLine(runtime, version);
+  return versions.filter(v => releaseLine(runtime, v) === line).sort(compareVersions).at(-1);
+}
+
+const note = (pin: Pin, reason: string): Note =>
+  ({ runtime: pin.runtime, file: pin.file, line: pin.line, raw: pin.raw, reason });
+
+function classifyExact(pin: Extract<Pin, { state: 'exact' }>, releases: Releases, result: Classification): void {
+  const known = releases[pin.runtime];
+  if (!known) { result.unchecked.push(note(pin, 'no release data')); return; }
+  const latest = latestInLine(pin.runtime, pin.version, known.versions);
+  const order = latest === undefined ? 1 : compareVersions(pin.version, latest);
+  if (order > 0) result.unchecked.push(note(pin, 'version not in upstream releases'));
+  else if (order < 0) {
+    result.findings.push({ runtime: pin.runtime, file: pin.file, line: pin.line, pinned: pin.version, kind: 'behind', latest: latest! });
+  }
 }
 
 export function classify(pins: Pin[], releases: Releases): Classification {
   const result: Classification = { findings: [], info: [], unchecked: [] };
   for (const pin of pins) {
-    const known = releases[pin.runtime];
-    if (!known) continue;
-    const latest = latestInLine(pin.version, known.versions);
-    if (latest && compareVersions(pin.version, latest) < 0) {
-      result.findings.push({ ...locate(pin), pinned: pin.version, kind: 'behind', latest });
-    }
+    if (pin.state === 'exact') classifyExact(pin, releases, result);
+    else if (pin.state === 'floating') result.info.push(note(pin, 'floating version; a rebuild picks up the latest patch'));
+    else result.unchecked.push(note(pin, pin.reason));
   }
   return result;
 }
-
-const locate = (pin: Pin) => ({ runtime: pin.runtime, file: pin.file, line: pin.line });

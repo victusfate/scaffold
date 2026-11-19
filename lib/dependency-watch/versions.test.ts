@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Tests for lib/dependency-watch/versions.ts — runtime pin parsing and classification.
+// Tests for lib/dependency-watch/pins.ts + versions.ts — runtime pin parsing and classification.
 
 import { parsePins } from './pins.ts';
 import { classify, type Releases } from './versions.ts';
