@@ -271,6 +271,8 @@ lib/dependency-watch/runtime-check.test.ts
 lib/dependency-watch/runtime-check.ts
 lib/dependency-watch/test-helpers.ts
 lib/dependency-watch/cli.ts
+lib/dependency-watch/patch.ts
+lib/dependency-watch/patch.test.ts
 lib/dependency-watch/versions.test.ts
 lib/dependency-watch/versions.ts
 lib/dependency-watch/workflow-run.test.ts

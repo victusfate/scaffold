@@ -72,9 +72,9 @@ const byStatus = (json, status) => json.filter(r => r.status === status).map(r =
   const repo = repoWith(APP);
   const r = run(['--into', repo]);
   assert('emit exits 0', r.status === 0 && Array.isArray(r.json), `${r.status} ${r.stderr}`);
-  assert('writes workflow, six scripts and dependabot.yml', show(byStatus(r.json, 'written')) === show([
+  assert('writes workflow, seven scripts and dependabot.yml', show(byStatus(r.json, 'written')) === show([
     '.github/dependabot.yml',
-    '.github/dependency-watch/cli.ts', '.github/dependency-watch/pins.ts', '.github/dependency-watch/releases.ts', '.github/dependency-watch/report.ts',
+    '.github/dependency-watch/cli.ts', '.github/dependency-watch/patch.ts', '.github/dependency-watch/pins.ts', '.github/dependency-watch/releases.ts', '.github/dependency-watch/report.ts',
     '.github/dependency-watch/runtime-check.ts', '.github/dependency-watch/versions.ts',
     WORKFLOW,
   ]), show(r.json));

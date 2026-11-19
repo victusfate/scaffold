@@ -3,17 +3,19 @@
 // Runtime check: report tracked runtime pins that are behind their line's latest patch or on an
 // end-of-life line. Run by the scheduled dependency-watch workflow; also runnable by hand.
 //
-//   node runtime-check.ts [--root <dir>] [--releases <fixture-dir>] [--today YYYY-MM-DD]
+//   node runtime-check.ts [--root <dir>] [--releases <fixture-dir>] [--today YYYY-MM-DD] [--fix]
 //
-// stdout: JSON { findings, info, unchecked }. Exit 0 clean, 1 findings, 2 error.
+// stdout: JSON { findings, info, unchecked[, patched] }. Exit 0 clean, 1 findings, 2 error.
+// --fix bumps `behind` pins in place (see patch.ts); the exit then reflects what is left (EOL).
 // Network: fetches only the release lists of runtimes the repo pins, unless --releases is given.
 // An error is never reported as clean: missing or malformed release data exits 2.
 
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { isEntryPoint, todayIso } from './cli.ts';
+import { applyPatches, planPatches, type Patch } from './patch.ts';
 import { isPinFile, parsePins, type Pin, type Runtime } from './pins.ts';
 import { ISO_DATE, RELEASE_URLS, eolUrl, parseEol, parseReleases } from './releases.ts';
 import { classify, type Releases } from './versions.ts';
@@ -26,17 +28,17 @@ const NOT_SHIPPED = /(^|\/)(fixtures|testdata|vendor|node_modules)\//;
 // Recorded payload names under --releases (ruby's index is tab-separated text, the rest JSON).
 const RELEASE_FIXTURES: Record<Runtime, string> = { ruby: 'ruby.txt', node: 'node.json', python: 'python.json', go: 'go.json' };
 
-interface Options { root: string; releasesDir?: string; today: string; }
+interface Options { root: string; releasesDir?: string; today: string; fix: boolean; }
 
 function parseOptions(argv: string[]): Options {
   const { values } = parseArgs({
     args: argv,
     strict: true,
-    options: { root: { type: 'string' }, releases: { type: 'string' }, today: { type: 'string' } },
+    options: { root: { type: 'string' }, releases: { type: 'string' }, today: { type: 'string' }, fix: { type: 'boolean', default: false } },
   });
   const today = values.today ?? todayIso();
   if (!ISO_DATE.test(today)) throw new Error(`--today must be YYYY-MM-DD, got "${today}"`);
-  return { root: values.root ?? '.', releasesDir: values.releases, today };
+  return { root: values.root ?? '.', releasesDir: values.releases, today, fix: values.fix };
 }
 
 export const trackedFiles = (root: string): string[] =>
@@ -78,13 +80,24 @@ async function loadReleases(runtimes: Runtime[], options: Options): Promise<Rele
   return Object.fromEntries(entries);
 }
 
+function writePatches(root: string, patches: Patch[]): Patch[] {
+  for (const file of new Set(patches.map(p => p.file))) {
+    const path = join(root, file);
+    writeFileSync(path, applyPatches(readFileSync(path, 'utf8'), patches.filter(p => p.file === file)));
+  }
+  return patches;
+}
+
 async function main(): Promise<number> {
   const options = parseOptions(process.argv.slice(2));
   const pins = trackedPins(options.root);
   const runtimes = [...new Set(pins.flatMap(pin => pin.runtime ? [pin.runtime] : []))];
   const result = classify(pins, await loadReleases(runtimes, options), options.today);
-  process.stdout.write(JSON.stringify(result, null, 2) + '\n');
-  return result.findings.length ? EXIT_FINDINGS : 0;
+  const patched = options.fix ? writePatches(options.root, planPatches(result.findings)) : [];
+  const remaining = result.findings.filter(f => !patched.some(p => p.file === f.file && p.line === f.line && f.kind === 'behind'));
+  const output = options.fix ? { ...result, findings: remaining, patched } : result;
+  process.stdout.write(JSON.stringify(output, null, 2) + '\n');
+  return remaining.length ? EXIT_FINDINGS : 0;
 }
 
 if (isEntryPoint(import.meta.url)) {

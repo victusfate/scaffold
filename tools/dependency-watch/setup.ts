@@ -14,7 +14,7 @@ const WORKFLOW = '.github/workflows/dependency-watch.yml';
 const DEPENDABOT = '.github/dependabot.yml';
 const SCRIPT_DIR = '.github/dependency-watch';
 // The workflow's runtime check imports these; they ship together and import only node: builtins.
-const SCRIPTS = ['cli.ts', 'pins.ts', 'releases.ts', 'versions.ts', 'runtime-check.ts', 'report.ts'];
+const SCRIPTS = ['cli.ts', 'patch.ts', 'pins.ts', 'releases.ts', 'versions.ts', 'runtime-check.ts', 'report.ts'];
 
 const DEFAULT_SCHEDULE = '17 6 * * *';
 // The template uses single quotes; an owner's hand edit may use double quotes or none.
