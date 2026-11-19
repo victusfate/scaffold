@@ -24,7 +24,7 @@ flowchart LR
 
 Name what a reader needs to understand and find the real code that answers it.
 
-Goes deeper: [/mind-meld skill](../../../skills/mind-meld.md)
+Details: [/mind-meld skill](../../../skills/mind-meld.md)
 
 - Name the question and the observable result that answers it.
 - Find the actual user entry point, integration test and state owner in source.

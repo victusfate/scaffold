@@ -44,7 +44,7 @@ Turn the findings into user stories without re-interviewing.
 
 Build the fixes in slices, one group of fixes per slice, then refine.
 
-Goes deeper: [TDD](tdd.md)
+Details: [TDD](tdd.md)
 
 - /tdd runs /code-refiner when all slices pass.
 - The review at the end of this step is the only pause.
@@ -53,7 +53,7 @@ Goes deeper: [TDD](tdd.md)
 
 Open a PR whose body lists the findings and which IDs were addressed.
 
-Goes deeper: [PR workflow](pr-workflow.md)
+Details: [PR workflow](pr-workflow.md)
 
 **Where it breaks**
 

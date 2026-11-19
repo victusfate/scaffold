@@ -33,7 +33,7 @@ void test('title, lede and an overview diagram in flow order', () => {
 
 void test('each node is a linked section with role, nested detail, risks and tables', () => {
   assert.match(md, /- \[Design\]\(#design\): Resolve intent with the owner\./);
-  assert.match(md, /## Design\n\nResolve intent with the owner\.\n\nGoes deeper: \[co-plan\.md\]\(co-plan\.md\)/);
+  assert.match(md, /## Design\n\nResolve intent with the owner\.\n\nDetails: \[co-plan\.md\]\(co-plan\.md\)/);
   assert.match(md, /- Writes design\.md\n {2}- Decisions and vocabulary\.\n {4}- commit\n {4}- review/);
   assert.match(md, /\*\*Where it breaks\*\*\n\n- Tests written in bulk/);
   assert.match(md, /\| Step \| Message \|\n\|---\|---\|\n\| red \| test: … \|/);
@@ -60,9 +60,9 @@ void test('a map-like spec (nodes off every flow) groups all nodes by lane and d
 void test('navigation: a link back up, and deeper links named by their page title', () => {
   const page = renderMarkdown(SPEC, { up: { title: 'Scaffold at a glance', link: 'system-map.md' }, titles: { 'co-plan.md': 'Co-plan' } });
   assert.match(page, /^\[← Scaffold at a glance\]\(system-map\.md\)\n\n# Feature chain/);
-  assert.match(page, /Goes deeper: \[Co-plan\]\(co-plan\.md\)/);
+  assert.match(page, /Details: \[Co-plan\]\(co-plan\.md\)/);
   assert.match(renderMarkdown({ ...SPEC, nodes: { d: { ...SPEC.nodes.design, link: '../../../skills/co-plan.md' } } }),
-    /Goes deeper: \[\/co-plan skill\]\(\.\.\/\.\.\/\.\.\/skills\/co-plan\.md\)/);
+    /Details: \[\/co-plan skill\]\(\.\.\/\.\.\/\.\.\/skills\/co-plan\.md\)/);
 });
 
 void test('a node with no detail of its own links straight to its page and gets no section', () => {

@@ -42,7 +42,7 @@ For each slice, decide the interface and list the behaviors to test.
 
 Write one failing test, then the least code that makes it pass, and repeat.
 
-Goes deeper: [Investigate](investigate.md)
+Details: [Investigate](investigate.md)
 
 - The first test is a tracer bullet: one behavior, proving the path works end to end.
 - Tests use the public interface only, so they survive an internal refactor.
@@ -75,7 +75,7 @@ Commit the red, green and refactor steps, log the slice, then start the next one
 
 Run the full suite, then /code-refiner, then stop for the user's review.
 
-Goes deeper: [Review gates](review-gates.md)
+Details: [Review gates](review-gates.md)
 
 - /code-refiner runs in auto-fix mode: correctness and structure reviews, then one fix pass.
 - A summary lists what was built, the tests and any deviation from the plan.

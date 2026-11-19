@@ -22,7 +22,7 @@ flowchart LR
 
 The owner brings a high-stakes decision with real tradeoffs.
 
-Goes deeper: [/council skill](../../../skills/council.md)
+Details: [/council skill](../../../skills/council.md)
 
 - Triggers include "council this", "pressure-test this" or a real "should I X or Y" with stakes.
 - Not for every question

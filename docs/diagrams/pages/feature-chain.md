@@ -24,7 +24,7 @@ flowchart LR
 
 Agree on what to build and why, one question at a time.
 
-Goes deeper: [/co-plan skill](../../../skills/co-plan.md)
+Details: [/co-plan skill](../../../skills/co-plan.md)
 
 - The agent explores the code first and only asks what the code can't answer, each time with a recommended answer.
 - Resumes at the first missing artifact in `docs/<slug>/`; a supplied document is placed as design.md.
@@ -42,7 +42,7 @@ Turn the design into user stories and testing decisions, without re-interviewing
 
 Build in thin vertical slices: failing test, minimal code, refactor, commit.
 
-Goes deeper: [TDD](tdd.md)
+Details: [TDD](tdd.md)
 
 - Granularity is confirmed once with the owner; after that, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.
 
@@ -54,7 +54,7 @@ Goes deeper: [TDD](tdd.md)
 
 Two independent reviewers (correctness, structure) report; one pass applies every fix.
 
-Goes deeper: [Review gates](review-gates.md)
+Details: [Review gates](review-gates.md)
 
 - A test weakened to pass counts as a defect, not a fix.
 
@@ -62,7 +62,7 @@ Goes deeper: [Review gates](review-gates.md)
 
 Run the real app and drive the changed entry points the way a user would.
 
-Goes deeper: [QA](qa.md)
+Details: [QA](qa.md)
 
 - Skipped, with the reason recorded, when the change has no runtime entry point.
 
@@ -70,7 +70,7 @@ Goes deeper: [QA](qa.md)
 
 A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.
 
-Goes deeper: [PR workflow](pr-workflow.md)
+Details: [PR workflow](pr-workflow.md)
 
 - Merging needs explicit owner authorization; a PR is not approval.
 

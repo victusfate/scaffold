@@ -22,7 +22,7 @@ flowchart LR
 
 Only the owner creates tasks; the agent records the request in the queue.
 
-Goes deeper: [Queue task lifecycle](queue-lifecycle.md)
+Details: [Queue task lifecycle](queue-lifecycle.md)
 
 - The agent runs queue add --requested with the owner's words and an acceptance check.
 - One shared record
@@ -38,7 +38,7 @@ Goes deeper: [Queue task lifecycle](queue-lifecycle.md)
 
 On each loop tick, the orchestrator gives the top suited task to a free worker slot.
 
-Goes deeper: [One loop tick](loop-tick.md)
+Details: [One loop tick](loop-tick.md)
 
 - It reads the slots from topology.json.
 - It creates the worktree lane first, off the working branch's HEAD, then claims the task for that slot.
@@ -50,7 +50,7 @@ Goes deeper: [One loop tick](loop-tick.md)
 
 The subagent builds its one task in its own worktree and commits locally.
 
-Goes deeper: [Feature chain](feature-chain.md)
+Details: [Feature chain](feature-chain.md)
 
 - It starts with an ff-only check that it is on the working branch's HEAD.
 - A chore is built directly; a feature runs design, PRD, plan, TDD, refine.
@@ -64,7 +64,7 @@ Goes deeper: [Feature chain](feature-chain.md)
 
 The orchestrator merges the target into the lane, re-runs the gates and merges green work into the one working branch.
 
-Goes deeper: [Review gates](review-gates.md)
+Details: [Review gates](review-gates.md)
 
 - Red gates send the work back to the lane.
 - Then it opens a PR with Critical changes and real check results.
@@ -77,7 +77,7 @@ Goes deeper: [Review gates](review-gates.md)
 
 The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.
 
-Goes deeper: [PR workflow](pr-workflow.md)
+Details: [PR workflow](pr-workflow.md)
 
 - The PR lands on main as one squash commit.
 - queue advance --pr --branch records the merge and the fresh branch.

@@ -22,7 +22,7 @@ flowchart LR
 
 Write where the work stands into one handoff file.
 
-Goes deeper: [/save skill](../../../skills/save.md)
+Details: [/save skill](../../../skills/save.md)
 
 - Two ways to write it
   - /save runs often: after each lane merge, each step, and near a usage limit.
@@ -51,7 +51,7 @@ Commit the handoff and push the branch, because only pushed work reaches another
 
 The next session pulls, reads the handoff, re-checks its claims and starts the first next step.
 
-Goes deeper: [/resume skill](../../../skills/resume.md)
+Details: [/resume skill](../../../skills/resume.md)
 
 - Session start first merges origin/main if behind and watches the branch's PR.
 - On the same machine, claude -c keeps the full chat history and is richer.
@@ -65,7 +65,7 @@ Goes deeper: [/resume skill](../../../skills/resume.md)
 
 The branch's last commit removes the handoff, so main never carries one.
 
-Goes deeper: [PR workflow](pr-workflow.md)
+Details: [PR workflow](pr-workflow.md)
 
 - Remove .pause/handoff.md with git rm, then check-handoff --pre-merge must pass on the merged head.
 - The PR then lands on main as one squash commit.

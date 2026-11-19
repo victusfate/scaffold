@@ -22,7 +22,7 @@ flowchart LR
 
 A built-in check reports what is missing; install it and re-run until clean.
 
-Goes deeper: [/voice-chat skill](../../../skills/voice-chat.md)
+Details: [/voice-chat skill](../../../skills/voice-chat.md)
 
 - node scripts/voice/voice-loop.ts --check prints the speech model, voice backend, platform, recorder and player.
 - Install

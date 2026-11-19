@@ -22,7 +22,7 @@ flowchart LR
 
 Rebuild what the session did without asking the user to re-explain.
 
-Goes deeper: [/skillify skill](../../../skills/skillify.md)
+Details: [/skillify skill](../../../skills/skillify.md)
 
 - Reads the conversation, project manifests, git diff --stat and git log.
 - Writes a one-paragraph recap that the user confirms in one line.
@@ -66,7 +66,7 @@ Write the skill body and its wrappers, register it, and validate.
 
 Open a pull request against scaffold so every repo inherits the skill, then stop for review.
 
-Goes deeper: [Scaffold sync](scaffold-sync.md)
+Details: [Scaffold sync](scaffold-sync.md)
 
 - Branch `skillify/<slug>` off `scaffold/main`, push, and open a PR titled `feat(skill): <slug>`.
 - Do not merge; the summary lists slug, files, validator result and PR link.

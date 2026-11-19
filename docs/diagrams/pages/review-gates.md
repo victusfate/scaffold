@@ -31,7 +31,7 @@ Collect the branch's diff and the full text of every changed file.
 
 A correctness reviewer and a structure reviewer read the diff in parallel, without editing.
 
-Goes deeper: [/code-refiner skill](../../../skills/code-refiner.md)
+Details: [/code-refiner skill](../../../skills/code-refiner.md)
 
 - Correctness: /validate
   - Finds correctness bugs.

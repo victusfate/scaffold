@@ -51,7 +51,7 @@ Write down one guess about the cause and test it with the smallest change.
 
 Write a failing regression test, then make one fix at the root cause.
 
-Goes deeper: [TDD](tdd.md)
+Details: [TDD](tdd.md)
 
 - The test must fail for the named reason, not a bad fixture or import.
 - No bundled refactors or unrelated edits.

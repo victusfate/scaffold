@@ -76,7 +76,7 @@ const hasSection = (node: ExplorerNode): boolean =>
 function nodeSection(node: ExplorerNode, titles: Record<string, string>): string[] {
   return [
     `## ${node.name}`, '', node.role, '',
-    ...(node.link ? [`Goes deeper: [${linkLabel(node.link, titles)}](${node.link})`, ''] : []),
+    ...(node.link ? [`Details: [${linkLabel(node.link, titles)}](${node.link})`, ''] : []),
     ...(node.details?.length ? [...bullets(node.details), ''] : []),
     ...(node.risks?.length ? ['**Where it breaks**', '', ...bullets(node.risks), ''] : []),
     ...(node.deep ?? []).flatMap(deepSection),

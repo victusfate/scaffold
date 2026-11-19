@@ -28,7 +28,7 @@ Pull the latest main and cut a fresh branch for one independent task.
 
 Run the integration tests and make ci before opening anything.
 
-Goes deeper: [/create-pr skill](../../../skills/create-pr.md)
+Details: [/create-pr skill](../../../skills/create-pr.md)
 
 - Start from a clean tree with commits ahead of main.
 - When a gate fails
@@ -40,7 +40,7 @@ Goes deeper: [/create-pr skill](../../../skills/create-pr.md)
 
 /create-pr opens the PR with a structured body and starts watching its checks.
 
-Goes deeper: [Review gates](review-gates.md)
+Details: [Review gates](review-gates.md)
 
 - /simplify must score every changed file 10/10 before the PR opens.
 - The body has a Summary, Critical changes, gate status and Quality Scores.
@@ -50,7 +50,7 @@ Goes deeper: [Review gates](review-gates.md)
 
 Read the actual check conclusions on the final head, not the merge button.
 
-Goes deeper: [Session continuity](session-continuity.md)
+Details: [Session continuity](session-continuity.md)
 
 - First remove the handoff file, push, and run check-handoff --pre-merge, so the final CI run judges the cleared head.
 - Capture the watch command's own exit code.

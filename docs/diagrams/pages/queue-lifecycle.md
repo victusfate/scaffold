@@ -22,7 +22,7 @@ flowchart LR
 
 The owner asks for work and the agent records it with the owner's words.
 
-Goes deeper: [/queue skill](../../../skills/queue.md)
+Details: [/queue skill](../../../skills/queue.md)
 
 - queue add --requested stores the owner's words with a title, an accept note and a validate command.
 - queue.db is the store; queue.md is its committed, readable view, re-rendered on each change.
@@ -40,7 +40,7 @@ The task waits its turn; the top eligible line runs first.
 
 A worker or slot claims the task and a lease clock starts.
 
-Goes deeper: [One loop tick](loop-tick.md)
+Details: [One loop tick](loop-tick.md)
 
 - A tick or claim --worker sets the task's owner to the worker or slot.
 - release, or park --resume, returns it to pending.
@@ -71,7 +71,7 @@ Running validate on done, or an explicit fail, decides done, retry or failed.
 
 In per-task mode, the task's PR must merge before the queue moves on.
 
-Goes deeper: [PR workflow](pr-workflow.md)
+Details: [PR workflow](pr-workflow.md)
 
 - PR, real checks, and the owner approves the merge.
 - Then a fresh branch and queue advance --pr --branch.

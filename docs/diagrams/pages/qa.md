@@ -60,7 +60,7 @@ Sort issues by severity and pick the ones the fix tier covers.
 
 Fix each issue at its root cause with a failing regression test first, then re-run the probe.
 
-Goes deeper: [Investigate](investigate.md)
+Details: [Investigate](investigate.md)
 
 - Each verified fix is committed with its test as fix(qa): QA-NNN.
 - A CSS-only defect may use a before/after screenshot instead of a test.

@@ -22,7 +22,7 @@ flowchart LR
 
 The first time, install the sync script, then run it once the user confirms.
 
-Goes deeper: [/sync-scaffold skill](../../../skills/sync-scaffold.md)
+Details: [/sync-scaffold skill](../../../skills/sync-scaffold.md)
 
 - If bin/sync-from-scaffold.sh is missing, a curl of bootstrap.sh installs the script only.
 
@@ -30,7 +30,7 @@ Goes deeper: [/sync-scaffold skill](../../../skills/sync-scaffold.md)
 
 /sync-scaffold merges scaffold's files into the project on the current branch.
 
-Goes deeper: [/sync-scaffold skill](../../../skills/sync-scaffold.md)
+Details: [/sync-scaffold skill](../../../skills/sync-scaffold.md)
 
 - The manifest, scaffold-files.txt, lists the files scaffold ships.
 - Each file gets a 3-way merge from the last synced commit.
@@ -47,7 +47,7 @@ Goes deeper: [/sync-scaffold skill](../../../skills/sync-scaffold.md)
 
 /upstream splits a project change into its universal half and moves that half into scaffold.
 
-Goes deeper: [/upstream skill](../../../skills/upstream.md)
+Details: [/upstream skill](../../../skills/upstream.md)
 
 - Work in a scaffold worktree off origin/main, never its main checkout.
 - Make the change the scaffold way: skill, wrappers, RESOLVER, manifest, test.
@@ -57,7 +57,7 @@ Goes deeper: [/upstream skill](../../../skills/upstream.md)
 
 Open a scaffold PR that says why the change is universal, and merge it only if authorized.
 
-Goes deeper: [PR workflow](pr-workflow.md)
+Details: [PR workflow](pr-workflow.md)
 
 - The PR names the consumer that needed it.
 - Read the real check conclusions; a skipped check is not a pass.
@@ -67,7 +67,7 @@ Goes deeper: [PR workflow](pr-workflow.md)
 
 Run /sync-scaffold again on a project branch to pull the merged change back in.
 
-Goes deeper: [/upstream skill](../../../skills/upstream.md)
+Details: [/upstream skill](../../../skills/upstream.md)
 
 - Keep .scaffold-keep paths and merge diverged files.
 - Put the project-specific half in the project's own policy file.
