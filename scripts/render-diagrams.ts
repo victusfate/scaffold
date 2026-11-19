@@ -2,7 +2,7 @@
 // render-diagrams — regenerate every committed diagram image from its mermaid source.
 // Why: docs/diagrams/src/*.mmd is the only thing anyone edits; docs/diagrams/generated/ is derived
 // output, rebuilt in full by this one command so the images can be refreshed at any time and never
-// drift from hand edits. Each source renders to generated/<slug>.svg and generated/<slug>.png.
+// drift from hand edits. Each source renders to generated/<slug>.svg; --portable keeps labels GitHub-safe.
 // Usage:
 //   node scripts/render-diagrams.ts            (or: npm run diagrams)
 //   node scripts/render-diagrams.ts <slug>...  render only these sources
@@ -28,7 +28,7 @@ for (const slug of slugs) {
   const input = join(SRC, `${slug}.mmd`);
   if (!existsSync(input)) { process.stderr.write(`render-diagrams: no source ${input}\n`); failed++; continue; }
   try {
-    execFileSync('node', [RENDER, input, '--png', '--portable', '--out', join(OUT, `${slug}.svg`)], { stdio: 'inherit' });
+    execFileSync('node', [RENDER, input, '--portable', '--out', join(OUT, `${slug}.svg`)], { stdio: 'inherit' });
   } catch {
     failed++;
   }

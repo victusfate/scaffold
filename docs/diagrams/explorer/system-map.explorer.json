@@ -1,0 +1,23 @@
+{
+  "title": "Scaffold at a glance",
+  "lede": "How scaffold's skills fit together. Click a skill for its own page; each page starts high level and drills down.",
+  "lanes": [
+    { "id": "build", "name": "Build" },
+    { "id": "run", "name": "Run" },
+    { "id": "share", "name": "Share" }
+  ],
+  "nodes": {
+    "feature": { "lane": "build", "name": "Feature chain", "role": "Idea → design → PRD → TDD → refine → QA → PR.", "link": "feature-chain.md" },
+    "pr": { "lane": "build", "name": "PR workflow", "role": "One task per PR, real CI checks, owner merges.", "link": "pr-workflow.md" },
+    "queue": { "lane": "run", "name": "Queue and loop", "role": "A visible task queue drained by the orchestrator and its subagents.", "link": "queue-lifecycle.md" },
+    "continuity": { "lane": "run", "name": "Save, pause, resume", "role": "Keep a long session alive across closes and devices.", "link": "session-continuity.md" },
+    "sync": { "lane": "share", "name": "Scaffold sync", "role": "Move skills and rules between scaffold and the repos that use it.", "link": "scaffold-sync.md" }
+  },
+  "flows": [
+    { "id": "build", "name": "Build a feature", "steps": [
+      ["queue", "feature", "Task picked up", "task"],
+      ["feature", "pr", "Feature ready for review", "branch"],
+      ["pr", "sync", "Merged; consumers pull it", "main"]] }
+  ],
+  "ask": { "context": "The reader wants an overview of scaffold, a template that gives AI coding agents shared skills, rules and workflows." }
+}

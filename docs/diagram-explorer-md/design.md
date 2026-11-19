@@ -38,6 +38,12 @@ page per skill".
 **Decision:** each page ends with a fenced text block holding `ask.context`, the page summary, stage
 roles and suggested questions. Nothing calls a model. Owner: "leave that up to them".
 
+### SVG, not PNG
+**Decision:** diagrams are generated only as SVG; the committed PNGs and the PNG step are removed.
+**Rationale:** owner, after comparing them side by side: "I like that svg its superior, lets go with it". `--portable`
+renders labels as plain SVG text, so GitHub displays them correctly, and they stay sharp at any zoom
+for about the same size.
+
 ## Edge cases
 - A node `link` to a missing page → the spec check fails.
 - A spec with no flow → the overview is drawn from lanes in order.
