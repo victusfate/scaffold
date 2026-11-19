@@ -49,6 +49,8 @@ Trace each struggle to a cause in the agent's environment.
 Sort findings into categories and rank them by impact and cost.
 
 - Prefers repairing an existing mechanism over adding a new one.
+- Keeps a remedy only if it would hold on a different task in the same repo; one remedy per finding.
+- A missing hook or CI check counts only when an error escaped or went undetected in this session, and a proposed check must be able to fire in the agent's normal workflow.
 - Ranks by impact and recurrence risk, weighed against cost and the upkeep of a new rule or check.
 
 **Categories**
@@ -68,7 +70,7 @@ Sort findings into categories and rank them by impact and cost.
 A read-only table of findings with evidence and a recommended selection.
 
 - One row per finding (R-01, R-02 and so on)
-  - Severity, session evidence, cause, proposed change and where it goes, cost, and how to verify it.
+  - Severity, session evidence, cause, proposed change and where it goes, cost, how to verify it, and when to remove it.
 - An empty result is valid after a smooth run.
 
 **Where it breaks**
