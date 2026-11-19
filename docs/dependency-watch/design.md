@@ -107,6 +107,12 @@ instructions.
   `{ findings[], info[], unchecked[] }` on stdout. Exit 0 clean, 1 findings, 2 error (network/parse).
   Network only for fetching release lists; `--releases` makes it offline for tests. A fetch error is
   exit 2 and the issue says "check failed", never "clean".
+  Finding shape: `{ runtime, file, line, pinned, kind: 'behind' | 'eol', latest?, eol? }`; info and
+  unchecked entries carry `{ runtime?, file, line, raw, reason }`.
+- **Report contract** (`report.ts`, pure, same template dir): `node report.ts --runtime <json> --osv <json>`
+  → stdout `{ status: 'clean' | 'findings', body }`, where `body` is the issue markdown built from
+  structured fields only. The workflow's one shell step owns the `gh issue` find/edit/create/close; the
+  report owns content. Splitting them keeps the content testable offline.
 - **Skill:** triggers "dependency watch", "scan dependencies on a schedule", "auto patch vulnerabilities",
   "set up dependabot". Calls the tool; asks once which files to write; offers the `gh api` settings step.
   Does not reimplement detection or emission.
