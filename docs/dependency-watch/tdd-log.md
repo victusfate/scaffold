@@ -46,3 +46,13 @@
 - Notes: emit was written in slice 7 together with `render` (detect compares against the same render),
   so most slice 8 tests passed on first run; the one RED was a test counting the header comment.
   Re-run keeps a customized cron; stale/foreign files get sidecars unless `--force`.
+
+## Slice 9 — skill, registration, dogfood
+- Status: done
+- Notes: `skills/dependency-watch.md` + four harness wrappers + RESOLVER row; tool and templates in the
+  sync manifest; scaffold's own install held back in `scaffold-internal.txt`. ESLint ignores the
+  installed copies (`.github/dependency-watch/**`); the skill tells consumers to do the same if their
+  type-aware config flags them.
+- Dogfood [verified: local run]: runtime check clean (`.node-version` 26 is floating, info only);
+  full-repo osv-scanner finds 4 vulnerable packages in `scripts/voice/requirements.txt` (aiohttp,
+  certifi, pillow, transformers). Left for the owner; the first scheduled run reports them in one issue.

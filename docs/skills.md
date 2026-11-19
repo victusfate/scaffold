@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/loop`, `/feature-chain`, `/co-plan`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/mind-meld`, `/modern-web`, `/audit`, `/add-linter`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`, `/deslop`, `/upstream`, `/investigate`, `/qa`, `/gmail-automation`, `/retro`.
+Skills can be invoked individually: `/loop`, `/feature-chain`, `/co-plan`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/mind-meld`, `/modern-web`, `/audit`, `/add-linter`, `/dependency-watch`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`, `/deslop`, `/upstream`, `/investigate`, `/qa`, `/gmail-automation`, `/retro`.
 
 In Codex, use `$skill-name` or `/skills` to select these workflows from `.agents/skills`. See [Codex support](codex.md) for setup and client-specific behavior.
 
@@ -62,6 +62,7 @@ tools/
     modern-web/SKILL.md        # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit/SKILL.md             # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md        # Add linter configs and GitHub Actions workflows for languages detected in the current repo
+    dependency-watch/SKILL.md  # Install a scheduled dependency and runtime vulnerability watch: osv-scanner + runtime-pin check (behind latest patch or EOL) into one tracking issue, plus security-only Dependabot PRs
     ponytail/SKILL.md          # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
     diagram/SKILL.md           # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, or a standalone interactive explorer page from an `.explorer.json` spec (flows, drill-downs, glossary, timeline, topics, Q&A); defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council/SKILL.md           # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
@@ -108,6 +109,7 @@ tools/
     modern-web.mdc        # mirrors modern-web for Cursor
     audit.mdc             # mirrors audit for Cursor
     add-linter.mdc        # mirrors add-linter for Cursor
+    dependency-watch.mdc  # mirrors dependency-watch for Cursor
     ponytail.mdc          # mirrors ponytail for Cursor
     diagram.mdc           # mirrors diagram for Cursor
     council.mdc           # mirrors council for Cursor
@@ -146,6 +148,7 @@ tools/
     modern-web/SKILL.md        # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit/SKILL.md             # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md        # Add linter configs and GitHub Actions workflows for languages detected in the current repo
+    dependency-watch/SKILL.md  # Install a scheduled dependency and runtime vulnerability watch: osv-scanner + runtime-pin check (behind latest patch or EOL) into one tracking issue, plus security-only Dependabot PRs
     ponytail/SKILL.md          # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
     diagram/SKILL.md           # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, or a standalone interactive explorer page from an `.explorer.json` spec (flows, drill-downs, glossary, timeline, topics, Q&A); defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council/SKILL.md           # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
@@ -187,6 +190,7 @@ tools/
     modern-web.md        # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit.md             # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter.md        # Add linter configs and GitHub Actions workflows for languages detected in the current repo
+    dependency-watch.md  # Install a scheduled dependency and runtime vulnerability watch: osv-scanner + runtime-pin check (behind latest patch or EOL) into one tracking issue, plus security-only Dependabot PRs
     ponytail.md          # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
     diagram.md           # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, or a standalone interactive explorer page from an `.explorer.json` spec (flows, drill-downs, glossary, timeline, topics, Q&A); defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council.md           # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step

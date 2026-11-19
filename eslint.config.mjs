@@ -21,7 +21,8 @@ const MAX_PARAMS = 4;
 export default tseslint.config(
   // .tooling/** is untracked machine-local tooling; .claude/worktrees/**
   // holds subagent worktrees, which are other checkouts of this repo.
-  { ignores: ['lib/linters/**', '**/*.scaffold-new', 'node_modules/**', '.tooling/**', '.claude/worktrees/**'] },
+  // .github/dependency-watch/** is the installed copy of lib/dependency-watch (linted there).
+  { ignores: ['lib/linters/**', '**/*.scaffold-new', 'node_modules/**', '.tooling/**', '.claude/worktrees/**', '.github/dependency-watch/**'] },
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
