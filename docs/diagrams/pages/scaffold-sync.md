@@ -10,6 +10,10 @@ flowchart LR
   n_down["Sync down"] --> n_upstream["Upstream"]
   n_upstream["Upstream"] --> n_pr["Scaffold PR"]
   n_pr["Scaffold PR"] --> n_back["Sync back"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  class n_bootstrap,n_down,n_back lane0
+  class n_upstream,n_pr lane1
 ```
 
 - [Bootstrap](#bootstrap): The first time, install the sync script, then run it once the user confirms.
@@ -93,17 +97,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand how scaffold's shared agent rules and skills sync into project repos and how fixes flow back.
-
-Scaffold sync: How shared rules and skills flow from the scaffold repo into project repos, and how a project's generic fix flows back up.
-- Bootstrap: The first time, install the sync script, then run it once the user confirms.
-- Sync down: /sync-scaffold merges scaffold's files into the project on the current branch.
-- Upstream: /upstream splits a project change into its universal half and moves that half into scaffold.
-- Scaffold PR: Open a scaffold PR that says why the change is universal, and merge it only if authorized.
-- Sync back: Run /sync-scaffold again on a project branch to pull the merged change back in.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/scaffold-sync.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - What decides whether a change belongs in scaffold or stays in the project?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/scaffold-sync.md
 ```

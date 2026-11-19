@@ -28,7 +28,7 @@ const md = renderMarkdown(SPEC);
 
 void test('title, lede and an overview diagram in flow order', () => {
   assert.match(md, /^# Feature chain\n\nFrom an idea to a reviewed PR\./);
-  assert.match(md, /```mermaid\nflowchart LR\n {2}n_design\["Design"\] --> n_tdd\["TDD #quot;slices#quot;"\]\n```/);
+  assert.match(md, /```mermaid\nflowchart LR\n {2}n_design\["Design"\] --> n_tdd\["TDD #quot;slices#quot;"\]\n/);
 });
 
 void test('each node is a linked section with role, nested detail, risks and tables', () => {
@@ -55,7 +55,7 @@ void test('a map-like spec (nodes off every flow) groups all nodes by lane and d
     nodes: { q: { lane: 'a', name: 'Queue', role: 'r' }, solo: { lane: 'a', name: 'Solo', role: 'r' }, f: { lane: 'b', name: 'Feature', role: 'r' }, x: { lane: 'b', name: 'Extra', role: 'r' } },
     flows: [{ id: 'one', name: 'One', steps: [['q', 'f', 'w', 'p']] }, { id: 'two', name: 'Two', steps: [['f', 'x', 'w', 'p'], ['q', 'f', 'w', 'p']] }],
   };
-  assert.match(renderMarkdown(map), /```mermaid\nflowchart LR\n {2}subgraph l_a\["Run"\]\n {4}n_q\["Queue"\]\n {4}n_solo\["Solo"\]\n {2}end\n {2}subgraph l_b\["Build"\]\n {4}n_f\["Feature"\]\n {4}n_x\["Extra"\]\n {2}end\n {2}n_q --> n_f\n {2}n_f --> n_x\n```/);
+  assert.match(renderMarkdown(map), /```mermaid\nflowchart LR\n {2}subgraph l_a\["Run"\]\n {4}n_q\["Queue"\]\n {4}n_solo\["Solo"\]\n {2}end\n {2}subgraph l_b\["Build"\]\n {4}n_f\["Feature"\]\n {4}n_x\["Extra"\]\n {2}end\n {2}n_q --> n_f\n {2}n_f --> n_x\n/);
 });
 
 void test('navigation: a link back up, and deeper links named by their page title', () => {
@@ -74,16 +74,25 @@ void test('a node with no detail of its own links straight to its page and gets 
   assert.doesNotMatch(page, /## Orchestration/);
 });
 
-void test('the LLM block names the repo and the page, so an assistant can read the sources', () => {
-  const page = renderMarkdown(SPEC, { source: { name: 'Scaffold', repo: 'https://github.com/o/r', page: 'https://github.com/o/r/blob/main/p.md' } });
-  const ask = /```text\n([\s\S]*?)```/.exec(page.slice(page.indexOf('## Ask your LLM')))?.[1] ?? '';
-  assert.match(ask, /\nScaffold: https:\/\/github\.com\/o\/r\nThis page: https:\/\/github\.com\/o\/r\/blob\/main\/p\.md\n$/);
-});
-
 void test('a mermaid keyword as an id cannot break the overview', () => {
   const page = renderMarkdown({ title: 'K', lanes: [{ id: 'end', name: 'End' }],
     nodes: { end: { lane: 'end', name: 'End', role: 'r' }, start: { lane: 'end', name: 'Start', role: 'r' } } });
   assert.match(page, /n_end\["End"\] --> n_start\["Start"\]/);
+});
+
+void test('boxes are colored by lane with the shared diagram palette; map lanes get a neutral background', () => {
+  assert.match(md, /classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937\n {2}classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937\n {2}class n_design lane0\n {2}class n_tdd lane1\n```/);
+  const map = renderMarkdown({ title: 'M', lanes: [{ id: 'a', name: 'A' }],
+    nodes: { x: { lane: 'a', name: 'X', role: 'r' }, y: { lane: 'a', name: 'Y', role: 'r' }, z: { lane: 'a', name: 'Z', role: 'r' } },
+    flows: [{ id: 'f', name: 'F', steps: [['x', 'y', 'w', 'p']] }] });
+  assert.match(map, /```text\nM\n/, 'offline block starts with the page, no blank line');
+  assert.match(map, /style l_a fill:#f9fafb,stroke:#d1d5db,color:#374151/);
+});
+
+void test('with a page URL the LLM block stays short: context, URLs and questions only', () => {
+  const page = renderMarkdown(SPEC, { source: { name: 'Scaffold', repo: 'https://github.com/o/r', page: 'https://github.com/o/r/blob/main/p.md' } });
+  const ask = /```text\n([\s\S]*?)```/.exec(page.slice(page.indexOf('## Ask your LLM')))?.[1] ?? '';
+  assert.equal(ask, 'The reader is learning the scaffold feature chain.\nRead this page: https://github.com/o/r/blob/main/p.md\nScaffold: https://github.com/o/r\n\nQuestions worth asking:\n- When is a design "done"?\n');
 });
 
 void test('deterministic', () => assert.equal(renderMarkdown(SPEC), md));

@@ -10,6 +10,12 @@ flowchart LR
   n_interview["Interview"] --> n_name["Name and dedupe"]
   n_name["Name and dedupe"] --> n_generate["Generate and register"]
   n_generate["Generate and register"] --> n_upstream["PR to scaffold"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_context,n_interview lane0
+  class n_name,n_generate lane1
+  class n_upstream lane2
 ```
 
 - [Reconstruct context](#reconstruct-context): Rebuild what the session did without asking the user to re-explain.
@@ -87,17 +93,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand scaffold's /skillify skill: how an AI agent turns a finished session into a registered, reusable skill.
-
-Skillify: How finished work becomes a reusable skill that every agent and every downstream repo can invoke.
-- Reconstruct context: Rebuild what the session did without asking the user to re-explain.
-- Interview: Four short rounds, one question at a time, each with a recommended answer.
-- Name and dedupe: Pick one skill, give it a short name, and check it isn't a duplicate.
-- Generate and register: Write the skill body and its wrappers, register it, and validate.
-- PR to scaffold: Open a pull request against scaffold so every repo inherits the skill, then stop for review.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/skillify.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - Why only one skill per run?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/skillify.md
 ```

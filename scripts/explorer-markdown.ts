@@ -26,6 +26,25 @@ function overviewEdges(spec: ExplorerSpec): [string, string][] {
   return [...new Map(hops.map(hop => [hop.join('>'), hop])).values()];
 }
 
+// The palette the detailed diagrams in docs/diagrams/src use (light fill, darker border, dark text), so
+// an overview and its detailed flow read as one set. Boxes take their lane's color, in lane order.
+const PALETTE = [
+  'fill:#bfdbfe,stroke:#1d4ed8', 'fill:#bbf7d0,stroke:#15803d', 'fill:#ddd6fe,stroke:#6d28d9',
+  'fill:#fde68a,stroke:#b45309', 'fill:#fecaca,stroke:#b91c1c', 'fill:#e5e7eb,stroke:#374151',
+];
+const TEXT = 'color:#1f2937';
+const MAP_LANE = 'fill:#f9fafb,stroke:#d1d5db,color:#374151';
+
+function laneColors(spec: ExplorerSpec, isMap: boolean): string[] {
+  const lanes = spec.lanes.map((lane, i) => ({ lane, i, ids: Object.keys(spec.nodes).filter(id => spec.nodes[id].lane === lane.id) }))
+    .filter(({ ids }) => ids.length);
+  return [
+    ...lanes.map(({ i }) => `  classDef lane${i} ${PALETTE[i % PALETTE.length]},${TEXT}`),
+    ...lanes.map(({ i, ids }) => `  class ${ids.map(mermaidId).join(',')} lane${i}`),
+    ...(isMap ? lanes.map(({ lane }) => `  style ${laneId(lane.id)} ${MAP_LANE}`) : []),
+  ];
+}
+
 // A skill page is one chain of labelled boxes. A map (some nodes on no flow) groups every node in
 // lane subgraphs so none is left out, then draws the flows between them.
 function overview(spec: ExplorerSpec): string[] {
@@ -37,7 +56,7 @@ function overview(spec: ExplorerSpec): string[] {
       ...Object.keys(spec.nodes).filter(id => spec.nodes[id].lane === lane.id).map(id => `    ${box(spec, id)}`), '  end']),
       ...edges.map(([from, to]) => `  ${mermaidId(from)} --> ${mermaidId(to)}`)]
     : edges.map(([from, to]) => `  ${box(spec, from)} --> ${box(spec, to)}`);
-  return ['```mermaid', 'flowchart LR', ...lines, '```'];
+  return ['```mermaid', 'flowchart LR', ...lines, ...laneColors(spec, isMap), '```'];
 }
 
 function bullets(items: (string | string[])[] | Bullet[], depth = 0): string[] {
@@ -89,15 +108,18 @@ function nodeSection(node: ExplorerNode, titles: Record<string, string>): string
   ];
 }
 
+// With a page URL the block stays short: a network-capable assistant reads the page itself. Without one
+// (an offline copy), the block carries the page summary instead.
 function askBlock(spec: ExplorerSpec, source?: PageContext['source']): string[] {
   const nodes = Object.values(spec.nodes);
   const questions = nodes.flatMap(n => n.qs ?? []);
+  const where = source
+    ? [`Read this page: ${source.page}`, `${source.name}: ${source.repo}`]
+    : [...(spec.ask?.context ? [''] : []), `${spec.title}${spec.lede ? `: ${spec.lede}` : ''}`, ...nodes.map(n => `- ${n.name}: ${n.role}`)];
   const context = [
-    ...(spec.ask?.context ? [spec.ask.context, ''] : []),
-    `${spec.title}${spec.lede ? `: ${spec.lede}` : ''}`,
-    ...nodes.map(n => `- ${n.name}: ${n.role}`),
+    ...(spec.ask?.context ? [spec.ask.context] : []),
+    ...where,
     ...(questions.length ? ['', 'Questions worth asking:', ...questions.map(q => `- ${q}`)] : []),
-    ...(source ? ['', `${source.name}: ${source.repo}`, `This page: ${source.page}`] : []),
   ];
   return ['## Ask your LLM', '', 'Copy this block into your own assistant to ask about anything on this page.', '',
     '```text', ...context, '```'];

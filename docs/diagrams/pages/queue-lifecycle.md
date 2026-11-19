@@ -10,6 +10,12 @@ flowchart LR
   n_pending["Pending"] --> n_active["Active"]
   n_active["Active"] --> n_outcome["Outcome"]
   n_outcome["Outcome"] --> n_deliver["Deliver"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_add lane0
+  class n_pending,n_active,n_outcome lane1
+  class n_deliver lane2
 ```
 
 - [Add](#add): The owner asks for work and the agent records it with the owner's words.
@@ -97,17 +103,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand how a task moves through scaffold's work queue, from request to merged PR.
-
-Queue task lifecycle: The states a queue task passes through, from the owner's request to a merged PR.
-- Add: The owner asks for work and the agent records it with the owner's words.
-- Pending: The task waits its turn; the top eligible line runs first.
-- Active: A worker or slot claims the task and a lease clock starts.
-- Outcome: Running validate on done, or an explicit fail, decides done, retry or failed.
-- Deliver: In per-task mode, the task's PR must merge before the queue moves on.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/queue-lifecycle.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - Why does a done task still hold up the queue until its PR merges?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/queue-lifecycle.md
 ```

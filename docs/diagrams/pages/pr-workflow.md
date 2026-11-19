@@ -10,6 +10,12 @@ flowchart LR
   n_local["Local gates"] --> n_open["Open the PR"]
   n_open["Open the PR"] --> n_checks["Verify checks"]
   n_checks["Verify checks"] --> n_merge["Authorized merge"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_branch,n_local,n_open lane0
+  class n_checks lane1
+  class n_merge lane2
 ```
 
 - [Branch](#branch): Pull the latest main and cut a fresh branch for one independent task.
@@ -84,17 +90,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand how scaffold's agents take a task from branch to a merged PR safely.
-
-PR workflow: How one task becomes one merged PR: local gates first, real checks on GitHub, and a merge only the owner authorizes.
-- Branch: Pull the latest main and cut a fresh branch for one independent task.
-- Local gates: Run the integration tests and make ci before opening anything.
-- Open the PR: /create-pr opens the PR with a structured body and starts watching its checks.
-- Verify checks: Read the actual check conclusions on the final head, not the merge button.
-- Authorized merge: With the owner's explicit authorization, the orchestrator squash-merges it onto main as one commit.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/pr-workflow.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - Why isn't a green merge button enough?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/pr-workflow.md
 ```

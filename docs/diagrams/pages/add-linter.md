@@ -10,6 +10,10 @@ flowchart LR
   n_ask["Ask once"] --> n_emit["Emit"]
   n_emit["Emit"] --> n_merge["Merge"]
   n_merge["Merge"] --> n_finish["Tune and commit"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  class n_detect,n_ask lane0
+  class n_emit,n_merge,n_finish lane1
 ```
 
 - [Detect](#detect): Find each language in the repo and whether it already has a linter config.
@@ -83,17 +87,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand how scaffold's /add-linter skill sets up linting for a repo without clobbering existing configs.
-
-Add linter: How /add-linter adds linter configs and CI workflows for the languages in a repo, without changing a config you already have until you approve a merge.
-- Detect: Find each language in the repo and whether it already has a linter config.
-- Ask once: One multi-select question covers every language that needs action.
-- Emit: A deterministic CLI writes new configs and workflows, and never edits an existing config.
-- Merge: The agent merges the sidecar into your config, keeping your rules, and writes only on approval.
-- Tune and commit: Optionally match settings to your existing code, report per language, and offer to commit.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/add-linter.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - Why does the CLI write a sidecar instead of editing my config?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/add-linter.md
 ```

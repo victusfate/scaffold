@@ -10,6 +10,10 @@ flowchart LR
   n_compare["Compare"] --> n_hypothesis["Hypothesis"]
   n_hypothesis["Hypothesis"] --> n_fix["Fix"]
   n_fix["Fix"] --> n_verify["Verify"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  class n_repro,n_compare,n_hypothesis lane0
+  class n_fix,n_verify lane1
 ```
 
 - [Reproduce](#reproduce): Read the whole error, reproduce it on demand, and trace back to where it first goes wrong.
@@ -85,18 +89,10 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand how scaffold's /investigate skill debugs a failure before fixing it.
-
-Investigate: How /investigate finds the root cause of a bug before changing any code, then proves the fix with fresh evidence.
-- Reproduce: Read the whole error, reproduce it on demand, and trace back to where it first goes wrong.
-- Compare: Find similar code that works and list every difference.
-- Hypothesis: Write down one guess about the cause and test it with the smallest change.
-- Fix: Write a failing regression test, then make one fix at the root cause.
-- Verify: Re-run the new test, the original command and nearby tests, then report.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/investigate.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - Why stop after three failed fixes instead of trying a fourth?
 - What counts as fresh evidence?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/investigate.md
 ```

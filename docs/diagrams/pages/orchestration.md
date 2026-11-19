@@ -10,6 +10,12 @@ flowchart LR
   n_dispatch["Dispatch"] --> n_work["Subagent works"]
   n_work["Subagent works"] --> n_integrate["Integrate"]
   n_integrate["Integrate"] --> n_ship["Authorized merge"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_request,n_ship lane0
+  class n_dispatch,n_integrate lane1
+  class n_work lane2
 ```
 
 - [Owner requests](#owner-requests): Only the owner creates tasks; the agent records the request in the queue.
@@ -99,17 +105,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand how scaffold's orchestrator splits work across subagents and lands it on main.
-
-Orchestration: How one orchestrator turns owner requests into merged work by handing tasks to subagents in their own lanes.
-- Owner requests: Only the owner creates tasks; the agent records the request in the queue.
-- Dispatch: On each loop tick, the orchestrator gives the top suited task to a free worker slot.
-- Subagent works: The subagent builds its one task in its own worktree and commits locally.
-- Integrate: The orchestrator merges the target into the lane, re-runs the gates and merges green work into the one working branch.
-- Authorized merge: The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/orchestration.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - Why can't the orchestrator merge to main on its own?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/orchestration.md
 ```

@@ -11,6 +11,12 @@ flowchart LR
   n_triage["Triage"] --> n_fixloop["Fix loop"]
   n_fixloop["Fix loop"] --> n_final["Final pass"]
   n_final["Final pass"] --> n_report["QA report"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_setup,n_probe,n_triage lane0
+  class n_fixloop,n_final lane1
+  class n_report lane2
 ```
 
 - [Set up](#set-up): Pick the surfaces the diff touches and start the app as the repo documents it.
@@ -98,18 +104,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand how scaffold's /qa skill checks that a change really works for a user.
-
-QA: How /qa runs the real app, uses the changed parts the way a user would, and fixes what breaks.
-- Set up: Pick the surfaces the diff touches and start the app as the repo documents it.
-- Probe: Run each entry point like a user, including bad input, and capture evidence.
-- Triage: Sort issues by severity and pick the ones the fix tier covers.
-- Fix loop: Fix each issue at its root cause with a failing regression test first, then re-run the probe.
-- Final pass: Re-run every probe near a fix, plus the happy path on each surface.
-- QA report: A table of issues with status and commit, plus one summary line for the PR.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/qa.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - Why does a QA fix need a failing regression test before the fix?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/qa.md
 ```

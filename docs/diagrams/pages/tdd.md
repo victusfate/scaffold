@@ -11,6 +11,12 @@ flowchart LR
   n_loop["Red, then green"] --> n_refactor["Refactor check"]
   n_refactor["Refactor check"] --> n_commit["Commit and log"]
   n_commit["Commit and log"] --> n_done["All slices pass"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_slices lane0
+  class n_prep,n_loop,n_refactor,n_commit lane1
+  class n_done lane2
 ```
 
 - [Plan the slices](#plan-the-slices): Split the PRD into vertical slices and confirm their size once with the user.
@@ -97,19 +103,10 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand how scaffold's /tdd skill builds a feature test-first, one slice at a time.
-
-TDD: How a feature gets built one thin slice at a time: a failing test, the least code that passes it, a quality check, a commit.
-- Plan the slices: Split the PRD into vertical slices and confirm their size once with the user.
-- Before code: For each slice, decide the interface and list the behaviors to test.
-- Red, then green: Write one failing test, then the least code that makes it pass, and repeat.
-- Refactor check: Score each touched file on the four-part rubric and audit the tests before committing.
-- Commit and log: Commit the red, green and refactor steps, log the slice, then start the next one.
-- All slices pass: Run the full suite, then /code-refiner, then stop for the user's review.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/tdd.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - Why list behaviors to test instead of implementation steps?
 - What goes wrong if you write all the tests before any code?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/tdd.md
 ```

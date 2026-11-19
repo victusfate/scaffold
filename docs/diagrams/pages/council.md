@@ -10,6 +10,12 @@ flowchart LR
   n_brief["Frame the brief"] --> n_advisors["Five advisors"]
   n_advisors["Five advisors"] --> n_review["Peer review"]
   n_review["Peer review"] --> n_chair["Chairman verdict"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_ask,n_brief lane0
+  class n_advisors,n_review lane1
+  class n_chair lane2
 ```
 
 - [Owner asks](#owner-asks): The owner brings a high-stakes decision with real tradeoffs.
@@ -103,18 +109,10 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand scaffold's /council skill: how an AI agent pressure-tests a hard decision with five persona advisors.
-
-Council: How a hard decision gets pressure-tested by five advisors with clashing views, then turned into one clear recommendation.
-- Owner asks: The owner brings a high-stakes decision with real tradeoffs.
-- Frame the brief: The main agent writes a neutral, self-contained brief grounded in the repo.
-- Five advisors: Five isolated subagents each argue from one fixed lens, all at once.
-- Peer review: Each advisor reviews all five answers with the authors hidden.
-- Chairman verdict: The main agent weighs the advisors and commits to one recommendation and a first step.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/council.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - When is a council worth the cost instead of just asking the agent once?
 - How does the chairman decide between two advisors who flatly disagree?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/council.md
 ```

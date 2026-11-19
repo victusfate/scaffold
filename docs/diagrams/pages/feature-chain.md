@@ -11,6 +11,12 @@ flowchart LR
   n_tdd["TDD slices"] --> n_refine["Refine"]
   n_refine["Refine"] --> n_qa["QA"]
   n_qa["QA"] --> n_review["Owner review"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_design,n_prd lane0
+  class n_tdd,n_refine,n_qa lane1
+  class n_review lane2
 ```
 
 - [Design](#design): Agree on what to build and why, one question at a time.
@@ -89,18 +95,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand scaffold's feature chain: how an AI agent takes a feature from idea to reviewed PR.
-
-Feature chain: How a feature idea becomes a reviewed, tested PR. The owner decides intent and authorizes merges; the agent does the rest.
-- Design: Agree on what to build and why, one question at a time.
-- PRD: Turn the design into user stories and testing decisions, without re-interviewing.
-- TDD slices: Build in thin vertical slices: failing test, minimal code, refactor, commit.
-- Refine: Two independent reviewers (correctness, structure) report; one pass applies every fix.
-- QA: Run the real app and drive the changed entry points the way a user would.
-- Owner review: A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/feature-chain.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - What makes a design question worth asking the owner instead of deciding?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/feature-chain.md
 ```

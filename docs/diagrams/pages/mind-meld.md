@@ -11,6 +11,12 @@ flowchart LR
   n_run["Record real runs"] --> n_bundle["Validated bundle"]
   n_bundle["Validated bundle"] --> n_tour["Tour and narrate"]
   n_tour["Tour and narrate"] --> n_view["Verify and view offline"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_question,n_adapters lane0
+  class n_run,n_bundle lane1
+  class n_tour,n_view lane2
 ```
 
 - [Start with a question](#start-with-a-question): Name what a reader needs to understand and find the real code that answers it.
@@ -113,18 +119,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand scaffold's /mind-meld skill: a learning tool that explains a repo's code from indexes and real sandboxed runs.
-
-Mind meld: How a repo gets a learning tool that explains its code from real, recorded runs, viewable offline as a guided tour.
-- Start with a question: Name what a reader needs to understand and find the real code that answers it.
-- Build adapters: Repo-specific code indexes the source in its language and runs it in its runtime.
-- Record real runs: Run the code in a locked-down sandbox and record what actually happened.
-- Validated bundle: Index, source and runs go into one JSON file checked by an executable schema.
-- Tour and narrate: A guided tour follows input through ownership and mutations to output, citing source lines.
-- Verify and view offline: Check the recording still matches the source, then open the tour as one offline page.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/mind-meld.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - What is the difference between a static edge and an observed call?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/mind-meld.md
 ```

@@ -10,6 +10,12 @@ flowchart LR
   n_trace["Trace causes"] --> n_classify["Classify and rank"]
   n_classify["Classify and rank"] --> n_report["Report"]
   n_report["Report"] --> n_route["Route selected work"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_reconstruct lane0
+  class n_trace,n_classify lane1
+  class n_report,n_route lane2
 ```
 
 - [Reconstruct the session](#reconstruct-the-session): On request, rebuild what happened from the conversation or a session log.
@@ -95,17 +101,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand scaffold's /retro skill: how an AI agent reviews a session for friction and proposes environment fixes.
-
-Retro: How a session retrospective finds what slowed the agent down, backed by evidence, and proposes fixes to its environment. Nothing changes until the user picks.
-- Reconstruct the session: On request, rebuild what happened from the conversation or a session log.
-- Trace causes: Trace each struggle to a cause in the agent's environment.
-- Classify and rank: Sort findings into categories and rank them by impact and cost.
-- Report: A read-only table of findings with evidence and a recommended selection.
-- Route selected work: The user picks remedies, and each goes to the skill that carries it out.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/retro.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - Why look for a cause in the environment instead of blaming the agent's mistake?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/retro.md
 ```

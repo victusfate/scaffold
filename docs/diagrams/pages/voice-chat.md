@@ -10,6 +10,10 @@ flowchart LR
   n_voice["Pick a voice"] --> n_launch["Launch"]
   n_launch["Launch"] --> n_turn["Each turn"]
   n_turn["Each turn"] --> n_stop["Stop"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  class n_check,n_voice lane0
+  class n_launch,n_turn,n_stop lane1
 ```
 
 - [Check and install](#check-and-install): A built-in check reports what is missing; install it and re-run until clean.
@@ -95,17 +99,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand scaffold's /voice-chat skill: a hands-free voice loop for talking to a coding agent.
-
-Voice chat: How to talk to the coding agent hands-free through headphones. Audio stays on your machine; only the agent call goes out.
-- Check and install: A built-in check reports what is missing; install it and re-run until clean.
-- Pick a voice: Choose how replies are spoken, or leave it on auto.
-- Launch: Start the loop with Claude by default, or Codex.
-- Each turn: Your speech is recorded, transcribed, answered by the agent, and read back aloud.
-- Stop: Quit with Ctrl-C or by saying an exit phrase.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/voice-chat.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - Which account and billing does the agent call use?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/voice-chat.md
 ```

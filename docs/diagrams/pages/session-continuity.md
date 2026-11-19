@@ -10,6 +10,12 @@ flowchart LR
   n_gate["Gate"] --> n_push["Commit and push"]
   n_push["Commit and push"] --> n_resume["Resume"]
   n_resume["Resume"] --> n_merge["Clear before merge"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_checkpoint,n_gate,n_push lane0
+  class n_resume lane1
+  class n_merge lane2
 ```
 
 - [Checkpoint](#checkpoint): Write where the work stands into one handoff file.
@@ -86,17 +92,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand how scaffold lets an agent session stop and pick up later, on any device.
-
-Session continuity: How work survives a closed session: checkpoint into a handoff file, push it, and pick it up from any device.
-- Checkpoint: Write where the work stands into one handoff file.
-- Gate: /save and /pause run a script before committing: the handoff must be short and every fact must say whether it was verified.
-- Commit and push: Commit the handoff and push the branch, because only pushed work reaches another device.
-- Resume: The next session pulls, reads the handoff, re-checks its claims and starts the first next step.
-- Clear before merge: The branch's last commit removes the handoff, so main never carries one.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/session-continuity.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - When should I use claude -c instead of /resume?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/session-continuity.md
 ```

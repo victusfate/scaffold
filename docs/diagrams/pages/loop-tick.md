@@ -11,6 +11,12 @@ flowchart LR
   n_review["Finished slots"] --> n_dispatch["Free slots"]
   n_dispatch["Free slots"] --> n_reconcile["Reconcile"]
   n_reconcile["Reconcile"] --> n_supervise["Supervise"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_wake,n_topology lane0
+  class n_review,n_dispatch lane1
+  class n_reconcile,n_supervise lane2
 ```
 
 - [Wake](#wake): A native /loop or an external driver fires the tick.
@@ -95,18 +101,9 @@ Copy this block into your own assistant to ask about anything on this page.
 
 ```text
 The reader wants to understand what scaffold's orchestrator does on each tick of its autonomous loop.
-
-One loop tick: What the orchestrator does each time its loop wakes: handle finished work, fill free slots, and make sure work is moving.
-- Wake: A native /loop or an external driver fires the tick.
-- Read topology: The orchestrator reads which worker slots exist from topology.json.
-- Finished slots: Review each finished slot's work, integrate or ship it, and set the task status.
-- Free slots: Give each free slot a suited task in a new worktree.
-- Reconcile: Make active tasks match live subagents, then clean up leftovers.
-- Supervise: Check that each job advanced since the last tick, not just that it is running.
+Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/loop-tick.md
+Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
 - How does the orchestrator tell a stuck subagent from a slow one?
-
-Scaffold: https://github.com/victusfate/scaffold
-This page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/loop-tick.md
 ```
