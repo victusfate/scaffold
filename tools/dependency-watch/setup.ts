@@ -75,6 +75,10 @@ function renderDependabot(ecosystems: Ecosystem[]): string {
     '    schedule:',
     '      interval: daily',
     '    open-pull-requests-limit: 0',
+    // Required by zizmor (dependabot-cooldown). Cooldown only delays version updates, which are
+    // off; security updates ignore it.
+    '    cooldown:',
+    '      default-days: 7',
   ]);
   return [
     `# ${MARKER}`,

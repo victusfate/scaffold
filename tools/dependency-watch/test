@@ -84,6 +84,7 @@ const byStatus = (json, status) => json.filter(r => r.status === status).map(r =
     (dependabot.match(/^    open-pull-requests-limit: 0$/gm) ?? []).length === 5
       && dependabot.includes('package-ecosystem: npm\n    directories: ["/web"]')
       && dependabot.includes('package-ecosystem: gomod\n    directories: ["/svc"]')
+      && (dependabot.match(/^    cooldown:\n      default-days: 7$/gm) ?? []).length === 5
       && !dependabot.includes('cargo'), dependabot);
   const fixtures = join(HERE, '../../lib/dependency-watch/fixtures');
   const check = spawnSync(process.execPath, [join(repo, CHECK), '--today', '2026-11-19', '--releases', fixtures], { cwd: repo, encoding: 'utf8' });
