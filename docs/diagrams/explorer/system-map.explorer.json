@@ -25,8 +25,7 @@
     "skillify": { "lane": "share", "name": "Skillify", "role": "Turn finished work into a reusable, registered skill.", "link": "skillify.md" },
     "retro": { "lane": "share", "name": "Retro", "role": "An evidence-backed look back at a session that proposes concrete fixes.", "link": "retro.md" },
     "council": { "lane": "tools", "name": "Council", "role": "Five advisors, anonymous peer review and a chairman verdict for hard decisions.", "link": "council.md" },
-    "mindmeld": { "lane": "tools", "name": "Mind meld", "role": "A repo-owned learning IDE built from code indexes and real runs.", "link": "mind-meld.md" },
-    "voice": { "lane": "tools", "name": "Voice chat", "role": "A hands-free voice loop with the coding agent.", "link": "voice-chat.md" }
+    "mindmeld": { "lane": "tools", "name": "Mind meld", "role": "A repo-owned learning IDE built from code indexes and real runs.", "link": "mind-meld.md" }
   },
   "flows": [
     { "id": "build", "name": "Build a feature", "intro": "The usual path for a piece of work.", "steps": [

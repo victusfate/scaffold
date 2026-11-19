@@ -18,10 +18,3 @@ updates:
     open-pull-requests-limit: 0
     cooldown:
       default-days: 7
-  - package-ecosystem: pip
-    directories: ["/scripts/voice"]
-    schedule:
-      interval: daily
-    open-pull-requests-limit: 0
-    cooldown:
-      default-days: 7

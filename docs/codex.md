@@ -63,7 +63,6 @@ supported complete Codex installation path.
 | Loop | External recurrence uses `agent-loop.ts`; `agent-loop-codex.ts` captures the exact cold thread ID and resumes it explicitly |
 | Statusline | Codex CLI `/statusline` picker; `/status` for a snapshot; app clients use their status UI |
 | File delivery | Available attachment tool or clickable file link |
-| Voice | `VOICE_AGENT=codex`; see [voice setup](../scripts/voice/README.md) |
 
 A CI watch is not a review/merge webhook subscription. A saved queue does not
 restart itself when the client closes. Report which integration is active.
@@ -80,13 +79,11 @@ documents the current skill, resume, status, and statusline commands.
 
 ## Verification
 
-`npm test` exercises real exporter and voice-loop CLI entry points in temporary
-directories, with fixture processes replacing model/audio calls. It also runs
+`npm test` exercises real exporter CLI entry points in temporary
+directories, with fixture processes replacing model calls. It also runs
 the existing sync/bootstrap, queue, and skill-resolution suites. `npm run
 test:integration`, `npm run typecheck`, and `npm run lint` cover the surrounding
-toolchain. The new voice protocol follows Codex's documented
-[noninteractive JSONL format](https://learn.chatgpt.com/docs/non-interactive-mode).
-The loop suite uses a fixture Codex executable to verify cold JSONL thread capture,
+toolchain. The loop suite uses a fixture Codex executable to verify cold JSONL thread capture,
 structured status output, and exact-ID warm resume without `--last`.
 
 An authenticated model response, physical microphone/TTS playback, and a

@@ -5,7 +5,7 @@
 > changing skills. Do not edit the generated blocks below by hand.
 
 <!-- BEGIN_SKILLS_INVOCATION -->
-Skills can be invoked individually: `/loop`, `/feature-chain`, `/co-plan`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/mind-meld`, `/modern-web`, `/audit`, `/add-linter`, `/dependency-watch`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/voice-chat`, `/deslop`, `/upstream`, `/investigate`, `/qa`, `/gmail-automation`, `/retro`.
+Skills can be invoked individually: `/loop`, `/feature-chain`, `/co-plan`, `/to-prd`, `/tdd`, `/design-review`, `/skillify`, `/sync-scaffold`, `/create-pr`, `/validate`, `/simplify`, `/code-refiner`, `/prune`, `/pause`, `/resume`, `/save`, `/hoist-skill`, `/protect-branch`, `/frontend-design`, `/mind-meld`, `/modern-web`, `/audit`, `/add-linter`, `/dependency-watch`, `/ponytail`, `/diagram`, `/council`, `/statusline`, `/jev-typesafe`, `/queue`, `/deslop`, `/upstream`, `/investigate`, `/qa`, `/gmail-automation`, `/retro`.
 
 In Codex, use `$skill-name` or `/skills` to select these workflows from `.agents/skills`. See [Codex support](codex.md) for setup and client-specific behavior.
 
@@ -69,7 +69,6 @@ tools/
     statusline/SKILL.md        # Configure model, context, and usage status display: Codex uses its built-in statusline picker; Claude Code uses bin/install-statusline.sh. Turn the status line on or off without clobbering other settings.
     jev-typesafe/SKILL.md      # Add Jev (System 1) judgments to pi via OpenRouter: install pi-typesafe, drop the jev-openrouter.ts extension, and route micro-decisions to typesafe/jev-1.13 through jev_evaluate
     queue/SKILL.md             # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
-    voice-chat/SKILL.md        # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
     deslop/SKILL.md            # Rewrite user-facing prose in plain language that keeps the author's voice, and strip filler from engineering docs without losing any technical content; or list findings only
     upstream/SKILL.md          # Move a generic change into scaffold via PR, merge on green CI, then sync scaffold back into this repo
     investigate/SKILL.md       # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
@@ -116,7 +115,6 @@ tools/
     statusline.mdc        # mirrors statusline for Cursor
     jev-typesafe.mdc      # mirrors jev-typesafe for Cursor
     queue.mdc             # mirrors queue for Cursor
-    voice-chat.mdc        # mirrors voice-chat for Cursor
     deslop.mdc            # mirrors deslop for Cursor
     upstream.mdc          # mirrors upstream for Cursor
     investigate.mdc       # mirrors investigate for Cursor
@@ -155,7 +153,6 @@ tools/
     statusline/SKILL.md        # Configure model, context, and usage status display: Codex uses its built-in statusline picker; Claude Code uses bin/install-statusline.sh. Turn the status line on or off without clobbering other settings.
     jev-typesafe/SKILL.md      # Add Jev (System 1) judgments to pi via OpenRouter: install pi-typesafe, drop the jev-openrouter.ts extension, and route micro-decisions to typesafe/jev-1.13 through jev_evaluate
     queue/SKILL.md             # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
-    voice-chat/SKILL.md        # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
     deslop/SKILL.md            # Rewrite user-facing prose in plain language that keeps the author's voice, and strip filler from engineering docs without losing any technical content; or list findings only
     upstream/SKILL.md          # Move a generic change into scaffold via PR, merge on green CI, then sync scaffold back into this repo
     investigate/SKILL.md       # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim
@@ -197,7 +194,6 @@ tools/
     statusline.md        # Configure model, context, and usage status display: Codex uses its built-in statusline picker; Claude Code uses bin/install-statusline.sh. Turn the status line on or off without clobbering other settings.
     jev-typesafe.md      # Add Jev (System 1) judgments to pi via OpenRouter: install pi-typesafe, drop the jev-openrouter.ts extension, and route micro-decisions to typesafe/jev-1.13 through jev_evaluate
     queue.md             # Manage a visible, editable Markdown work queue that agents drain autonomously — serially or fanned out across parallel git worktrees, as direct chores or full feature-chain runs — with dependencies, retries, validation gating, and usage-limit pause/resume
-    voice-chat.md        # Hands-free voice chat via Claude Code or Codex CLI, whisper.cpp transcription, and local TTS (say, espeak, Piper, XTTS). Set up or run the headphones-only voice loop on macOS, Linux, or WSL.
     deslop.md            # Rewrite user-facing prose in plain language that keeps the author's voice, and strip filler from engineering docs without losing any technical content; or list findings only
     upstream.md          # Move a generic change into scaffold via PR, merge on green CI, then sync scaffold back into this repo
     investigate.md       # Root-cause a bug or failing test before changing code — reproduce, compare, one hypothesis at a time, failing test first, stop after three failed fixes, evidence before any success claim

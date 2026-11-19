@@ -145,7 +145,7 @@ node tools/hoist-skill/run --names feature-chain,tdd --harness codex --into ../m
 
 Selective hoisting does not install a skill’s transitive runtime dependencies;
 use full sync for a complete development harness. See [Codex support](docs/codex.md)
-for setup, verified paths, optional integrations, and voice configuration.
+for setup, verified paths and optional integrations.
 
 ## Feature artifacts
 
