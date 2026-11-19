@@ -40,3 +40,9 @@
 - Notes: `tools/dependency-watch/setup.ts` renders the exact files emit would write; a file's state is
   none / scaffold (identical) / stale (has marker, differs) / foreign (no marker). Pins come from the
   shipped `pins.ts` (one parser). Fixtures/testdata/vendor trees excluded.
+
+## Slice 8 — tool emit
+- Status: done
+- Notes: emit was written in slice 7 together with `render` (detect compares against the same render),
+  so most slice 8 tests passed on first run; the one RED was a test counting the header comment.
+  Re-run keeps a customized cron; stale/foreign files get sidecars unless `--force`.

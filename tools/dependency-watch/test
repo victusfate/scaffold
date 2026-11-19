@@ -76,6 +76,70 @@ const APP = {
 }
 
 // ── Slice 8: emit ───────────────────────────────────────────────────────────
+const read = (repo, path) => readFileSync(join(repo, path), 'utf8');
+const byStatus = (json, status) => json.filter(r => r.status === status).map(r => r.path).sort();
+{
+  const repo = repoWith(APP);
+  const r = run(['--into', repo]);
+  assert('emit exits 0', r.status === 0 && Array.isArray(r.json), `${r.status} ${r.stderr}`);
+  assert('writes workflow, five scripts and dependabot.yml', show(byStatus(r.json, 'written')) === show([
+    '.github/dependabot.yml',
+    '.github/dependency-watch/pins.ts', '.github/dependency-watch/releases.ts', '.github/dependency-watch/report.ts',
+    '.github/dependency-watch/runtime-check.ts', '.github/dependency-watch/versions.ts',
+    WORKFLOW,
+  ]), show(r.json));
+  assert('default schedule is daily', read(repo, WORKFLOW).includes("- cron: '17 6 * * *'"));
+  const dependabot = read(repo, DEPENDABOT);
+  assert('dependabot: security only, every ecosystem and directory',
+    (dependabot.match(/^    open-pull-requests-limit: 0$/gm) ?? []).length === 5
+      && dependabot.includes('package-ecosystem: npm\n    directories: ["/web"]')
+      && dependabot.includes('package-ecosystem: gomod\n    directories: ["/svc"]')
+      && !dependabot.includes('cargo'), dependabot);
+  assert('shipped check runs in the consumer repo', spawnSync(process.execPath, [join(repo, CHECK), '--today', '2026-11-19', '--releases', join(HERE, '../../lib/dependency-watch/fixtures')], { cwd: repo, encoding: 'utf8' }).status === 1);
+
+  const again = run(['--into', repo]);
+  assert('re-run is idempotent', again.status === 0 && again.json.every(x => x.status === 'unchanged'), show(again.json));
+  const detected = run(['--detect-only', '--into', repo]).json;
+  assert('after emit every file is scaffold', detected.files.every(f => f.state === 'scaffold'), show(detected.files));
+}
+{
+  const repo = repoWith(APP);
+  run(['--into', repo, '--schedule', '0 */6 * * 1-5']);
+  assert('--schedule sets the cron', read(repo, WORKFLOW).includes("- cron: '0 */6 * * 1-5'"));
+  const again = run(['--into', repo]);
+  assert('re-run keeps a customized schedule', again.json.every(x => x.status === 'unchanged') && read(repo, WORKFLOW).includes("- cron: '0 */6 * * 1-5'"), show(again.json));
+  const detected = run(['--detect-only', '--into', repo]).json;
+  assert('customized schedule is still scaffold state', stateOf(detected, WORKFLOW) === 'scaffold', show(detected.files));
+}
+{
+  const repo = repoWith({ ...APP, [DEPENDABOT]: 'version: 2\nupdates: []\n' });
+  const r = run(['--into', repo]);
+  assert('foreign dependabot.yml kept; sidecar written', read(repo, DEPENDABOT) === 'version: 2\nupdates: []\n'
+    && existsSync(join(repo, `${DEPENDABOT}.scaffold-new`)) && byStatus(r.json, 'sidecar').includes(DEPENDABOT), show(r.json));
+}
+{
+  const repo = repoWith(APP);
+  run(['--into', repo]);
+  writeFileSync(join(repo, CHECK), read(repo, CHECK) + '\n// local edit\n');
+  assert('edited shipped file detected as stale', stateOf(run(['--detect-only', '--into', repo]).json, CHECK) === 'stale');
+  run(['--into', repo]);
+  assert('stale file gets a sidecar without --force', read(repo, CHECK).includes('// local edit') && existsSync(join(repo, `${CHECK}.scaffold-new`)));
+  run(['--into', repo, '--force']);
+  assert('--force replaces it', !read(repo, CHECK).includes('// local edit'));
+}
+{
+  const repo = repoWith({ 'README.md': 'docs only\n' });
+  const r = run(['--into', repo]);
+  assert('no ecosystems → no dependabot.yml', r.status === 0 && !existsSync(join(repo, DEPENDABOT)) && existsSync(join(repo, WORKFLOW)), show(r.json));
+}
+{
+  const repo = repoWith(APP);
+  for (const bad of ['daily', '* * * *', "17 6 * * *'; rm -rf /"]) {
+    const r = run(['--into', repo, '--schedule', bad]);
+    assert(`invalid --schedule rejected: ${bad}`, r.status === 1 && !existsSync(join(repo, WORKFLOW)), `${r.status} ${r.stderr}`);
+  }
+  assert('unknown flag rejected', run(['--into', repo, '--nope']).status === 1);
+}
 
 console.error(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
