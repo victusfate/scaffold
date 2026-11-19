@@ -2,6 +2,8 @@
   "title": "Mind meld",
   "lede": "How a repo gets a learning tool that explains its code from real, recorded runs, viewable offline as a guided tour.",
   "detail": "../generated/mind-meld.svg",
+  "sources": ["docs/diagrams/src/mind-meld.mmd", "skills/mind-meld.md"],
+  "reviewed": "dbd985298684",
   "lanes": [
     { "id": "prepare", "name": "Prepare" },
     { "id": "record", "name": "Record" },

@@ -2,6 +2,8 @@
   "title": "Investigate",
   "lede": "How /investigate finds the root cause of a bug before changing any code, then proves the fix with fresh evidence.",
   "detail": "../generated/investigate.svg",
+  "sources": ["docs/diagrams/src/investigate.mmd", "skills/investigate.md"],
+  "reviewed": "3abca9aae49c",
   "lanes": [
     { "id": "find", "name": "Find the cause" },
     { "id": "fix", "name": "Fix and prove" }

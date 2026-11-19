@@ -18,7 +18,18 @@ npm run diagrams                 # every SVG and page
 npm run diagrams -- tdd qa       # only these SVGs (pages always rebuild)
 ```
 
-`npm test` fails if a page is stale, a link goes nowhere, or a term is defined two ways.
+## Keeping them current
+
+`npm test` fails when any of these drift, and says what to run:
+
+| You changed | npm test says | You run |
+|---|---|---|
+| a `src/<slug>.mmd` | `generated/<slug>.svg is stale` | `npm run diagrams -- <slug>` |
+| a spec in `explorer/` | `pages/<slug>.md is stale` | `npm run diagrams` |
+| a skill (or `AGENTS.md`) a page summarizes | `<slug>: its sources changed since the page was last reviewed` | check the page still matches, update the spec if not, then `npm run diagrams:ack -- <slug>` |
+
+It also fails on a link that goes nowhere, a term defined two ways, and `<...>` text GitHub would hide.
+Each spec's `sources` lists the files its page summarizes.
 
 ## Adding a diagram
 
@@ -26,4 +37,6 @@ npm run diagrams -- tdd qa       # only these SVGs (pages always rebuild)
    image stays landscape, and define every acronym in its legend.
 2. Write `explorer/<slug>.explorer.json` (copy `explorer/feature-chain.explorer.json`): 4–6 stages, one
    flow through them, detail in `details`/`risks`, and `"detail": "../generated/<slug>.svg"`.
-3. Add the skill to `explorer/system-map.explorer.json` with `"link": "<slug>.md"`, then run `npm run diagrams`.
+3. List the files the page summarizes in `"sources"` (with `"reviewed": ""`), add the skill to
+   `explorer/system-map.explorer.json` with `"link": "<slug>.md"`, then run `npm run diagrams` and
+   `npm run diagrams:ack -- <slug>`.

@@ -2,6 +2,8 @@
   "title": "Voice chat",
   "lede": "How to talk to the coding agent hands-free through headphones. Audio stays on your machine; only the agent call goes out.",
   "detail": "../generated/voice-chat.svg",
+  "sources": ["docs/diagrams/src/voice-chat.mmd", "skills/voice-chat.md"],
+  "reviewed": "9926f30d4d28",
   "lanes": [
     { "id": "setup", "name": "Set up" },
     { "id": "talk", "name": "Talk" }

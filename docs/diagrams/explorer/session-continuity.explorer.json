@@ -2,6 +2,8 @@
   "title": "Session continuity",
   "lede": "How work survives a closed session: checkpoint into a handoff file, push it, and pick it up from any device.",
   "detail": "../generated/session-continuity.svg",
+  "sources": ["docs/diagrams/src/session-continuity.mmd", "skills/save.md", "skills/pause.md", "skills/resume.md"],
+  "reviewed": "f0cf618720f7",
   "lanes": [
     { "id": "save", "name": "Save" },
     { "id": "resume", "name": "Resume" },

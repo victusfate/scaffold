@@ -6,7 +6,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
-import { buildPages } from './render-explorer-pages.ts';
+import { ackPages, buildPages } from './render-explorer-pages.ts';
 
 function site(nodeLink: string, detail = '../generated/x.svg'): string {
   const root = mkdtempSync(join(tmpdir(), 'explorer-pages-'));
@@ -65,4 +65,26 @@ void test('a stage named like a page heading, or two stages with one name, is a 
     nodes: { a: { lane: 'l', name: 'Glossary', role: 'r' }, b: { lane: 'l', name: 'Fix', role: 'r' }, c: { lane: 'l', name: 'Fix', role: 'r' } } }));
   assert.deepEqual(buildPages(root, { check: false }).filter(p => p.startsWith('clash')).sort(),
     ['clash: two headings share the anchor #fix; rename the stage', 'clash: two headings share the anchor #glossary; rename the stage']);
+});
+
+void test('a page whose sources changed since review is flagged until acknowledged', () => {
+  const root = site('x.md');
+  writeFileSync(join(root, 'tdd.md'), 'v1');
+  const spec = (reviewed: string) => JSON.stringify({ title: 'T', sources: ['tdd.md'], reviewed,
+    lanes: [{ id: 'l', name: 'L' }], nodes: { a: { lane: 'l', name: 'A', role: 'r' } } }, null, 2);
+  writeFileSync(join(root, 'explorer', 't.explorer.json'), spec('000000000000'));
+  const options = { check: false, repoRoot: root };
+  assert.deepEqual(buildPages(root, options).filter(p => p.startsWith('t:')),
+    ['t: its sources changed since the page was last reviewed (tdd.md): review it, then run npm run diagrams:ack -- t']);
+  assert.deepEqual(ackPages(root, ['t'], root), ['t']);
+  assert.deepEqual(buildPages(root, options).filter(p => p.startsWith('t:')), []);
+  writeFileSync(join(root, 'tdd.md'), 'v2');
+  assert.equal(buildPages(root, options).filter(p => p.startsWith('t:')).length, 1);
+});
+
+void test('a listed source that does not exist is a problem', () => {
+  const root = site('x.md');
+  writeFileSync(join(root, 'explorer', 'g.explorer.json'), JSON.stringify({ title: 'G', sources: ['gone.md'], reviewed: 'x',
+    lanes: [{ id: 'l', name: 'L' }], nodes: { a: { lane: 'l', name: 'A', role: 'r' } } }));
+  assert.ok(buildPages(root, { check: false, repoRoot: root }).includes('g: source gone.md does not exist'));
 });

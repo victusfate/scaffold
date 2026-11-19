@@ -3,14 +3,19 @@
 // Why: the markdown pages are derived output (like docs/diagrams/generated); the specs are what anyone
 // edits. --check fails on a stale page, a link to a missing page, a missing detail image and a term
 // defined two ways, so a visitor never clicks into nothing or reads two meanings.
+// A spec that lists `sources` (the skill text and diagram it summarizes) is flagged when any of them
+// changes after its last review, so a skill edit can't leave its page describing old behavior.
 // Usage:
-//   node scripts/render-explorer-pages.ts          write every page (run by npm run diagrams)
-//   node scripts/render-explorer-pages.ts --check  report problems, write nothing; exit 1 on any
+//   node scripts/render-explorer-pages.ts               write every page (run by npm run diagrams)
+//   node scripts/render-explorer-pages.ts --check       report problems, write nothing; exit 1 on any
+//   node scripts/render-explorer-pages.ts --ack <slug>  record that these pages were reviewed against
+//                                                       their current sources (npm run diagrams:ack)
 
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { anchor } from './check-agents-detail.ts';
+import { sourceHash } from './render-diagrams.ts';
 import { renderMarkdown } from './explorer-markdown.ts';
 import { validateSpec, type ExplorerSpec } from './explorer-spec.ts';
 
@@ -58,9 +63,35 @@ function headingProblems(slug: string, spec: ExplorerSpec): string[] {
     .map(name => `${slug}: two headings share the anchor #${name}; rename the stage`);
 }
 
+const reviewHash = (spec: ExplorerSpec, repoRoot: string): string =>
+  sourceHash((spec.sources ?? []).map(path => `${path}\0${readFileSync(join(repoRoot, path), 'utf8')}`).join('\0'));
+
+function reviewProblems(slug: string, spec: ExplorerSpec, repoRoot: string): string[] {
+  if (!spec.sources) return [];
+  const missing = spec.sources.filter(path => !existsSync(join(repoRoot, path)));
+  if (missing.length) return missing.map(path => `${slug}: source ${path} does not exist`);
+  return reviewHash(spec, repoRoot) === spec.reviewed ? []
+    : [`${slug}: its sources changed since the page was last reviewed (${spec.sources.join(', ')}): review it, then run npm run diagrams:ack -- ${slug}`];
+}
+
+const specPath = (root: string, slug: string): string => join(root, 'explorer', `${slug}.explorer.json`);
+
+// Records the current source hash in each spec's `reviewed` field (a text edit, so the file keeps its
+// layout). Returns the slugs acknowledged.
+export function ackPages(root: string, slugs: string[], repoRoot: string): string[] {
+  return slugs.map(slug => {
+    const text = readFileSync(specPath(root, slug), 'utf8');
+    const spec = JSON.parse(text) as ExplorerSpec;
+    if (!spec.sources || spec.reviewed === undefined) throw new Error(`${slug}: no sources/reviewed fields to acknowledge`);
+    writeFileSync(specPath(root, slug), text.replace(`"reviewed": ${JSON.stringify(spec.reviewed)}`, `"reviewed": ${JSON.stringify(reviewHash(spec, repoRoot))}`));
+    return slug;
+  });
+}
+
 // Returns every problem found. Writes pages unless `check`. Links are checked after every page is
 // written, so a link to a sibling page built in the same run resolves.
-export function buildPages(root: string, options: { check: boolean }): string[] {
+export function buildPages(root: string, options: { check: boolean; repoRoot?: string }): string[] {
+  const repoRoot = options.repoRoot ?? join(root, '..', '..');
   const specDir = join(root, 'explorer'), pagesDir = join(root, 'pages');
   const specs = readdirSync(specDir).filter(f => f.endsWith('.explorer.json')).sort().map(file => ({
     slug: file.replace(/\.explorer\.json$/, ''),
@@ -81,12 +112,17 @@ export function buildPages(root: string, options: { check: boolean }): string[] 
     ...glossaryProblems(specs),
     ...pages.flatMap(({ slug, markdown }) => hiddenTextProblems(slug, markdown)),
     ...specs.flatMap(({ slug, spec }) => headingProblems(slug, spec)),
+    ...specs.flatMap(({ slug, spec }) => reviewProblems(slug, spec, repoRoot)),
     ...(options.check ? changed.map(({ slug }) => `pages/${slug}.md is stale: run npm run diagrams`) : []),
   ];
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const problems = buildPages(DIAGRAMS, { check: process.argv.includes('--check') });
+  const args = process.argv.slice(2);
+  if (args[0] === '--ack') {
+    for (const slug of ackPages(DIAGRAMS, args.slice(1), join(DIAGRAMS, '..', '..'))) console.log(`acknowledged ${slug}`);
+  }
+  const problems = buildPages(DIAGRAMS, { check: args.includes('--check') });
   for (const p of problems) process.stderr.write(`render-explorer-pages: ${p}\n`);
   process.exit(problems.length ? 1 : 0);
 }

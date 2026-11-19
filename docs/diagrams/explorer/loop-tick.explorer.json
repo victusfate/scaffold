@@ -2,6 +2,8 @@
   "title": "One loop tick",
   "lede": "What the orchestrator does each time its loop wakes: handle finished work, fill free slots, and make sure work is moving.",
   "detail": "../generated/loop-tick.svg",
+  "sources": ["docs/diagrams/src/loop-tick.mmd", "skills/loop.md"],
+  "reviewed": "1360b4e2769b",
   "lanes": [
     { "id": "wake", "name": "Wake" },
     { "id": "slots", "name": "Slots" },

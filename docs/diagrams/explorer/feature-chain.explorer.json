@@ -2,6 +2,8 @@
   "title": "Feature chain",
   "lede": "How a feature idea becomes a reviewed, tested PR. The owner decides intent and authorizes merges; the agent does the rest.",
   "detail": "../generated/feature-chain.svg",
+  "sources": ["docs/diagrams/src/feature-chain.mmd", "skills/feature-chain.md"],
+  "reviewed": "e75f4688d357",
   "lanes": [
     { "id": "plan", "name": "Plan" },
     { "id": "build", "name": "Build" },

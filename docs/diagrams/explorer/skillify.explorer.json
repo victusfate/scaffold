@@ -2,6 +2,8 @@
   "title": "Skillify",
   "lede": "How finished work becomes a reusable skill that every agent and every downstream repo can invoke.",
   "detail": "../generated/skillify.svg",
+  "sources": ["docs/diagrams/src/skillify.mmd", "skills/skillify.md"],
+  "reviewed": "f381c15f2741",
   "lanes": [
     { "id": "capture", "name": "Capture" },
     { "id": "build", "name": "Build" },

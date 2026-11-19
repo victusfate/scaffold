@@ -2,6 +2,8 @@
   "title": "Council",
   "lede": "How a hard decision gets pressure-tested by five advisors with clashing views, then turned into one clear recommendation.",
   "detail": "../generated/council.svg",
+  "sources": ["docs/diagrams/src/council.mmd", "skills/council.md"],
+  "reviewed": "6f94750bdc50",
   "lanes": [
     { "id": "frame", "name": "Frame" },
     { "id": "debate", "name": "Debate" },

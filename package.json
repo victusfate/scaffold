@@ -16,7 +16,8 @@
     "lint": "eslint . --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "diagrams": "node scripts/render-diagrams.ts && node scripts/render-explorer-pages.ts",
-    "test:mind-meld:sandbox": "RUN_MIND_MELD_SANDBOX=1 node scripts/mind-meld.test.ts"
+    "test:mind-meld:sandbox": "RUN_MIND_MELD_SANDBOX=1 node scripts/mind-meld.test.ts",
+    "diagrams:ack": "node scripts/render-explorer-pages.ts --ack"
   },
   "bin": {
     "scaffold": "./bin/sync"

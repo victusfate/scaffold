@@ -2,6 +2,8 @@
   "title": "Prune",
   "lede": "How /prune runs every quality lens on a branch, then fixes the findings through the full feature chain instead of a one-shot patch.",
   "detail": "../generated/prune.svg",
+  "sources": ["docs/diagrams/src/prune.mmd", "skills/prune.md"],
+  "reviewed": "5bb18baae459",
   "lanes": [
     { "id": "find", "name": "Find" },
     { "id": "plan", "name": "Plan" },

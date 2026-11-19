@@ -2,6 +2,8 @@
   "title": "Scaffold sync",
   "lede": "How shared rules and skills flow from the scaffold repo into project repos, and how a project's generic fix flows back up.",
   "detail": "../generated/scaffold-sync.svg",
+  "sources": ["docs/diagrams/src/scaffold-sync.mmd", "skills/sync-scaffold.md", "skills/upstream.md", "skills/hoist-skill.md"],
+  "reviewed": "0008053bc3e6",
   "lanes": [
     { "id": "consumer", "name": "Consumer repo" },
     { "id": "scaffold", "name": "Scaffold repo" }

@@ -2,6 +2,8 @@
   "title": "Add linter",
   "lede": "How /add-linter adds linter configs and CI workflows for the languages in a repo, without changing a config you already have until you approve a merge.",
   "detail": "../generated/add-linter.svg",
+  "sources": ["docs/diagrams/src/add-linter.mmd", "skills/add-linter.md"],
+  "reviewed": "71c5ce175e88",
   "lanes": [
     { "id": "choose", "name": "Choose" },
     { "id": "write", "name": "Write" }

@@ -62,6 +62,10 @@ export type ExplorerSpec = {
   start?: { node?: string; flow?: string };
   // Relative path to the full detailed diagram image, shown after the stages on the markdown page.
   detail?: string;
+  // Repo-relative files the page summarizes, and their hash when the page was last reviewed. A source
+  // edit flags the page for review (render-explorer-pages); the hash is refreshed by acknowledging it.
+  sources?: string[];
+  reviewed?: string;
 };
 
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
@@ -134,6 +138,7 @@ function checkStart(s: ExplorerSpec, refs: Refs, errs: string[]): void {
 
 function checkRequired(s: ExplorerSpec): string[] {
   const errs: string[] = [];
+  if (s.sources && !isStr(s.reviewed)) errs.push('reviewed: required with sources (run the ack step)');
   if (!isStr(s.title)) errs.push('title is required');
   if (!s.lanes?.length) errs.push('lanes: at least one lane is required');
   if (!s.nodes || !Object.keys(s.nodes).length) errs.push('nodes: at least one node is required');

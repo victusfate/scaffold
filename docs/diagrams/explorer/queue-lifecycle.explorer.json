@@ -2,6 +2,8 @@
   "title": "Queue task lifecycle",
   "lede": "The states a queue task passes through, from the owner's request to a merged PR.",
   "detail": "../generated/queue-lifecycle.svg",
+  "sources": ["docs/diagrams/src/queue-lifecycle.mmd", "skills/queue.md"],
+  "reviewed": "3b6e6a00a212",
   "lanes": [
     { "id": "owner", "name": "Owner" },
     { "id": "queue", "name": "Queue" },

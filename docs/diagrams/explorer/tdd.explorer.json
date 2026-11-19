@@ -2,6 +2,8 @@
   "title": "TDD",
   "lede": "How a feature gets built one thin slice at a time: a failing test, the least code that passes it, a quality check, a commit.",
   "detail": "../generated/tdd.svg",
+  "sources": ["docs/diagrams/src/tdd.mmd", "skills/tdd.md"],
+  "reviewed": "f1538a4302da",
   "lanes": [
     { "id": "plan", "name": "Plan" },
     { "id": "build", "name": "Build" },

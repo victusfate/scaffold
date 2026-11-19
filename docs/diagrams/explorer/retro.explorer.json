@@ -2,6 +2,8 @@
   "title": "Retro",
   "lede": "How a session retrospective finds what slowed the agent down, backed by evidence, and proposes fixes to its environment. Nothing changes until the user picks.",
   "detail": "../generated/retro.svg",
+  "sources": ["docs/diagrams/src/retro.mmd", "skills/retro.md"],
+  "reviewed": "9ffa946c59d8",
   "lanes": [
     { "id": "gather", "name": "Gather" },
     { "id": "analyze", "name": "Analyze" },

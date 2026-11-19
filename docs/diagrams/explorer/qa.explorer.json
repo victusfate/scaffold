@@ -2,6 +2,8 @@
   "title": "QA",
   "lede": "How /qa runs the real app, uses the changed parts the way a user would, and fixes what breaks.",
   "detail": "../generated/qa.svg",
+  "sources": ["docs/diagrams/src/qa.mmd", "skills/qa.md"],
+  "reviewed": "5400a3c6703d",
   "lanes": [
     { "id": "test", "name": "Test" },
     { "id": "fix", "name": "Fix" },
