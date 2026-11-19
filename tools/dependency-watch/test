@@ -3,7 +3,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { writeFileSync, readFileSync, existsSync } from 'node:fs';
-import { repoWith } from '../../lib/dependency-watch/test-repo.ts';
+import { repoWith } from '../../lib/dependency-watch/test-helpers.ts';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -72,9 +72,9 @@ const byStatus = (json, status) => json.filter(r => r.status === status).map(r =
   const repo = repoWith(APP);
   const r = run(['--into', repo]);
   assert('emit exits 0', r.status === 0 && Array.isArray(r.json), `${r.status} ${r.stderr}`);
-  assert('writes workflow, five scripts and dependabot.yml', show(byStatus(r.json, 'written')) === show([
+  assert('writes workflow, six scripts and dependabot.yml', show(byStatus(r.json, 'written')) === show([
     '.github/dependabot.yml',
-    '.github/dependency-watch/pins.ts', '.github/dependency-watch/releases.ts', '.github/dependency-watch/report.ts',
+    '.github/dependency-watch/cli.ts', '.github/dependency-watch/pins.ts', '.github/dependency-watch/releases.ts', '.github/dependency-watch/report.ts',
     '.github/dependency-watch/runtime-check.ts', '.github/dependency-watch/versions.ts',
     WORKFLOW,
   ]), show(r.json));
@@ -109,6 +109,16 @@ const byStatus = (json, status) => json.filter(r => r.status === status).map(r =
   writeFileSync(join(repo, WORKFLOW), read(repo, WORKFLOW).replace("- cron: '17 6 * * *'", '- cron: "0 5 * * 1"'));
   run(['--into', repo, '--force']);
   assert('re-run keeps a double-quoted owner cron', read(repo, WORKFLOW).includes("- cron: '0 5 * * 1'"), read(repo, WORKFLOW).match(/cron.*/)?.[0]);
+}
+{
+  const repo = repoWith(APP);
+  run(['--into', repo]);
+  writeFileSync(join(repo, WORKFLOW), read(repo, WORKFLOW).replace("- cron: '17 6 * * *'", '- cron: 0 5 * * 1  # mondays'));
+  run(['--into', repo, '--force']);
+  assert('re-run keeps an unquoted owner cron', read(repo, WORKFLOW).includes("- cron: '0 5 * * 1'"), read(repo, WORKFLOW).match(/cron.*/)?.[0]);
+  writeFileSync(join(repo, WORKFLOW), read(repo, WORKFLOW).replace("- cron: '0 5 * * 1'", "- cron: 'weekly'"));
+  const bad = run(['--into', repo]);
+  assert('bad cron in the workflow file is named as such', bad.status === 1 && bad.stderr.includes('the cron in .github/workflows/dependency-watch.yml'), bad.stderr);
 }
 {
   const repo = repoWith({ 'bun.lock': '{}\n' });

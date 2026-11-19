@@ -269,7 +269,8 @@ lib/dependency-watch/report.test.ts
 lib/dependency-watch/report.ts
 lib/dependency-watch/runtime-check.test.ts
 lib/dependency-watch/runtime-check.ts
-lib/dependency-watch/test-repo.ts
+lib/dependency-watch/test-helpers.ts
+lib/dependency-watch/cli.ts
 lib/dependency-watch/versions.test.ts
 lib/dependency-watch/versions.ts
 lib/dependency-watch/workflow-run.test.ts

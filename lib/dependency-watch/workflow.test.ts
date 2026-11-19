@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { runBlock } from './test-repo.ts';
+import { runBlocks } from './test-helpers.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '../..');
@@ -35,17 +35,17 @@ assert('osv-scanner pin matches security.yml',
   `${pinOf(wf, 'OSV_VERSION')} ${pinOf(wf, 'OSV_SHA256')}`);
 assert('osv-scanner binary checksum verified', /sha256sum -c/.test(wf));
 
-const runBlocks = runBlock(wf);
-assert('no expressions interpolated into shell (template injection)', runBlocks.length > 0 && !runBlocks.includes('${{'));
+const shell = runBlocks(wf).join('\n');
+assert('no expressions interpolated into shell (template injection)', shell.length > 0 && !shell.includes('${{'));
 assert('runtime check and report run from the shipped copy',
-  runBlocks.includes('.github/dependency-watch/runtime-check.ts') && runBlocks.includes('.github/dependency-watch/report.ts'));
+  shell.includes('.github/dependency-watch/runtime-check.ts') && shell.includes('.github/dependency-watch/report.ts'));
 assert('runtime-check error fails the job before touching the issue',
-  /rc" -ge 2[\s\S]*exit 1[\s\S]*gh issue/.test(runBlocks));
-assert('osv exit 128 means no packages; other non-zero, non-1 exits fail', /128\)/.test(runBlocks) && /\*\)[^\n]*exit 1/.test(runBlocks));
+  /rc" -ge 2[\s\S]*exit 1[\s\S]*gh issue/.test(shell));
+assert('osv exit 128 means no packages; other non-zero, non-1 exits fail', /128\)/.test(shell) && /\*\)[^\n]*exit 1/.test(shell));
 assert('one tracking issue: oldest open labeled issue is edited, else created',
-  /gh issue list --label "\$LABEL" --state open/.test(runBlocks) && /gh issue edit/.test(runBlocks) && /gh issue create/.test(runBlocks));
-assert('clean run closes the issue', /gh issue close/.test(runBlocks));
-assert('findings do not fail the job (no daily failure mail)', !/status" = findings[^\n]*\n[^\n]*exit 1/.test(runBlocks));
+  /gh issue list --label "\$LABEL" --state open/.test(shell) && /gh issue edit/.test(shell) && /gh issue create/.test(shell));
+assert('clean run closes the issue', /gh issue close/.test(shell));
+assert('findings do not fail the job (no daily failure mail)', !/status" = findings[^\n]*\n[^\n]*exit 1/.test(shell));
 
 console.error(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);

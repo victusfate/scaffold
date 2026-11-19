@@ -1,4 +1,5 @@
-// Test helper (not shipped to run): a temp git repo with the given tracked and untracked files.
+// Test helpers for dependency-watch (not part of the installed check): temp git repos and the
+// workflow template's shell steps.
 
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -16,6 +17,6 @@ export function repoWith(tracked: Record<string, string>, untracked: Record<stri
   return dir;
 }
 
-// The workflow template's one `run: |` block, de-indented to the shell it runs.
-export const runBlock = (workflow: string): string =>
-  /run: \|\n((?:\s{10}.*\n?|\n)+)/.exec(workflow)?.[1].replace(/^ {10}/gm, '') ?? '';
+// Every `run: |` block in a workflow, de-indented to the shell it runs.
+export const runBlocks = (workflow: string): string[] =>
+  [...workflow.matchAll(/run: \|\n((?:\s{10}.*\n?|\n)+)/g)].map(m => m[1].replace(/^ {10}/gm, ''));

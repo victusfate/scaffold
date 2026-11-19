@@ -16,7 +16,7 @@ export const RELEASE_URLS: Record<Runtime, string> = {
 const EOL_PRODUCTS: Record<Runtime, string> = { ruby: 'ruby', node: 'nodejs', python: 'python', go: 'go' };
 export const eolUrl = (runtime: Runtime): string => `https://endoflife.date/api/${EOL_PRODUCTS[runtime]}.json`;
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+export const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 const RUBY_TARBALL = /^ruby-(.+)$/;
 const PYTHON_RELEASE = /^Python (.+)$/;

@@ -14,11 +14,11 @@ const WORKFLOW = '.github/workflows/dependency-watch.yml';
 const DEPENDABOT = '.github/dependabot.yml';
 const SCRIPT_DIR = '.github/dependency-watch';
 // The workflow's runtime check imports these; they ship together and import only node: builtins.
-const SCRIPTS = ['pins.ts', 'releases.ts', 'versions.ts', 'runtime-check.ts', 'report.ts'];
+const SCRIPTS = ['cli.ts', 'pins.ts', 'releases.ts', 'versions.ts', 'runtime-check.ts', 'report.ts'];
 
 const DEFAULT_SCHEDULE = '17 6 * * *';
-// The template uses single quotes; an owner's hand edit may use double quotes.
-const CRON_LINE = /- cron:\s*(['"])(.*?)\1/;
+// The template uses single quotes; an owner's hand edit may use double quotes or none.
+const CRON_LINE = /- cron:[ \t]*(['"]?)([^'"#\n]*?)\1[ \t]*(#.*)?$/m;
 const CRON_FIELD = /^[0-9A-Za-z*/,-]+$/;
 const CRON_FIELDS = 5;
 
@@ -41,10 +41,10 @@ export interface Detection {
 }
 interface Rendered { path: string; content: string; }
 
-export function validateSchedule(cron: string): string {
+export function validateSchedule(cron: string, source = '--schedule'): string {
   const fields = cron.trim().split(/\s+/);
   if (fields.length !== CRON_FIELDS || !fields.every(f => CRON_FIELD.test(f))) {
-    throw new Error(`--schedule must be a 5-field cron expression, got "${cron}"`);
+    throw new Error(`${source} must be a 5-field cron expression, got "${cron}"`);
   }
   return fields.join(' ');
 }
@@ -93,7 +93,7 @@ const readIfExists = (path: string): string | undefined => existsSync(path) ? re
 // The cadence the repo already runs, so re-running setup never resets a customized schedule.
 function currentSchedule(repo: string): string | undefined {
   const cron = CRON_LINE.exec(readIfExists(join(repo, WORKFLOW)) ?? '')?.[2];
-  return cron === undefined ? undefined : validateSchedule(cron);
+  return cron === undefined ? undefined : validateSchedule(cron, `the cron in ${WORKFLOW}`);
 }
 
 function render(repo: string, srcRoot: string, ecosystems: Ecosystem[], schedule?: string): Rendered[] {

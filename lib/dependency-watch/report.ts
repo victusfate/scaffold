@@ -9,8 +9,8 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
+import { isEntryPoint, todayIso } from './cli.ts';
 import type { Classification, Finding, Note } from './versions.ts';
 
 // The workflow finds its one tracking issue by label; the marker identifies the body as generated.
@@ -42,7 +42,8 @@ interface PackageRow { file: string; pkg: OsvPackage; ids: string[]; fixed: stri
 // spans too, so scoped packages (`@org/pkg`) cannot become mentions and nothing renders as a link.
 const cell = (text: string): string =>
   text.replace(/[\r\n]+/g, ' ').replace(/`/g, "'").replace(/</g, '&lt;').replace(/\|/g, '\\|');
-const code = (text: string): string => `\`${cell(text)}\``;
+// Inside a code span markdown and HTML do not render, so only the span and the row need guarding.
+const code = (text: string): string => `\`${text.replace(/[\r\n]+/g, ' ').replace(/`/g, "'").replace(/\|/g, '\\|')}\``;
 const byText = (a: string, b: string): number => a.localeCompare(b, 'en', { numeric: true });
 const capped = (items: string[], max: number): string =>
   items.slice(0, max).join(', ') + (items.length > max ? `, +${items.length - max} more` : '');
@@ -129,12 +130,12 @@ function main(): void {
   const readJson = <T>(path: string): T => JSON.parse(readFileSync(path, 'utf8')) as T;
   const report = buildReport(
     { runtime: readJson<Classification>(values.runtime), osv: values.osv ? readJson<OsvOutput>(values.osv) : { results: [] } },
-    { root: values.root ?? '.', runUrl: values['run-url'] ?? '', date: new Date().toISOString().slice(0, 10) },
+    { root: values.root ?? '.', runUrl: values['run-url'] ?? '', date: todayIso() },
   );
   writeFileSync(values['body-out'], report.body + '\n');
   process.stdout.write(report.status + '\n');
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (isEntryPoint(import.meta.url)) {
   try { main(); } catch (error) { console.error(`report: ${(error as Error).message}`); process.exitCode = EXIT_ERROR; }
 }

@@ -11,17 +11,18 @@
 
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { isPinFile, isShippedPath, parsePins, type Pin, type Runtime } from './pins.ts';
-import { RELEASE_URLS, eolUrl, parseEol, parseReleases } from './releases.ts';
+import { isEntryPoint, todayIso } from './cli.ts';
+import { isPinFile, parsePins, type Pin, type Runtime } from './pins.ts';
+import { ISO_DATE, RELEASE_URLS, eolUrl, parseEol, parseReleases } from './releases.ts';
 import { classify, type Releases } from './versions.ts';
 
 const EXIT_FINDINGS = 1;
 const EXIT_ERROR = 2;
 const FETCH_TIMEOUT_MS = 30_000;
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+// Test data and vendored trees are not what the repo ships.
+const NOT_SHIPPED = /(^|\/)(fixtures|testdata|vendor|node_modules)\//;
 // Recorded payload names under --releases (ruby's index is tab-separated text, the rest JSON).
 const RELEASE_FIXTURES: Record<Runtime, string> = { ruby: 'ruby.txt', node: 'node.json', python: 'python.json', go: 'go.json' };
 
@@ -33,22 +34,18 @@ function parseOptions(argv: string[]): Options {
     strict: true,
     options: { root: { type: 'string' }, releases: { type: 'string' }, today: { type: 'string' } },
   });
-  const today = values.today ?? new Date().toISOString().slice(0, 10);
+  const today = values.today ?? todayIso();
   if (!ISO_DATE.test(today)) throw new Error(`--today must be YYYY-MM-DD, got "${today}"`);
   return { root: values.root ?? '.', releasesDir: values.releases, today };
 }
 
 export const trackedFiles = (root: string): string[] =>
   execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
-    .split('\0').filter(path => path && isShippedPath(path));
+    .split('\0').filter(path => path && !NOT_SHIPPED.test(path));
 
 // The one pin loader: the scheduled check and setup's detect report the same pins.
 export function trackedPins(root: string, tracked = trackedFiles(root)): Pin[] {
-  return parsePinFiles(root, tracked.filter(isPinFile));
-}
-
-function parsePinFiles(root: string, tracked: string[]): Pin[] {
-  return parsePins(tracked.map(path => ({ path, content: readFileSync(join(root, path), 'utf8') })));
+  return parsePins(tracked.filter(isPinFile).map(path => ({ path, content: readFileSync(join(root, path), 'utf8') })));
 }
 
 async function fetchText(url: string): Promise<string> {
@@ -90,7 +87,7 @@ async function main(): Promise<number> {
   return result.findings.length ? EXIT_FINDINGS : 0;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+if (isEntryPoint(import.meta.url)) {
   main().then(
     code => { process.exitCode = code; },
     (error: Error) => { console.error(`runtime-check: ${error.message}`); process.exitCode = EXIT_ERROR; },

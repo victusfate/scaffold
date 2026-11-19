@@ -3,8 +3,8 @@
 // Offline: --releases points at recorded fixtures; --today pins the clock.
 
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync } from 'node:fs';
-import { repoWith } from './test-repo.ts';
+import { mkdtempSync, symlinkSync } from 'node:fs';
+import { repoWith } from './test-helpers.ts';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -63,6 +63,15 @@ function run(args: string[]) {
   const empty = mkdtempSync(join(tmpdir(), 'no-releases-'));
   const r = run(['--root', root, '--releases', empty, '--today', TODAY]);
   assert('missing release data exit 2', r.status === 2 && /go/.test(r.stderr), `status ${r.status} ${r.stderr}`);
+}
+
+// Started through a symlink (Node resolves it for import.meta.url, not argv[1]) the check still runs.
+{
+  const root = repoWith({ '.ruby-version': '3.4.12\n' });
+  const link = join(mkdtempSync(join(tmpdir(), 'link-')), 'runtime-check.ts');
+  symlinkSync(CLI, link);
+  const r = spawnSync(process.execPath, [link, '--root', root, '--releases', FIXTURES, '--today', TODAY], { encoding: 'utf8' });
+  assert('runs when started through a symlink', r.status === 1 && r.stdout.includes('"behind"'), `${r.status} ${r.stderr}`);
 }
 
 // Bad arguments are errors.

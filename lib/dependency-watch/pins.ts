@@ -40,10 +40,6 @@ const OFFICIAL_IMAGE_PREFIX = /^(docker\.io\/)?(library\/)?/;
 const DOCKERFILE = /^Dockerfile([.-].*)?$|\.Dockerfile$/;
 const FROM_LINE = /^\s*FROM\s+(.+)$/i;
 const COMMENT = /^#/;
-// Test data and vendored trees are not what the repo ships.
-const NOT_SHIPPED = /(^|\/)(fixtures|testdata|vendor|node_modules)\//;
-
-export const isShippedPath = (path: string): boolean => !NOT_SHIPPED.test(path);
 
 function pinFromVersion(site: PinSite, runtime: Runtime, text: string): Pin {
   const version = text.replace(VERSION_PREFIX, '');
@@ -52,22 +48,24 @@ function pinFromVersion(site: PinSite, runtime: Runtime, text: string): Pin {
   return { ...site, state: 'unchecked', runtime, reason: 'not a version number' };
 }
 
-// One version per line; pyenv's .python-version may list several.
-function versionFilePins(file: RepoFile, runtime: Runtime): Pin[] {
+// Every pin file is read line by line; `pinOf` turns one trimmed, non-comment line into a pin.
+function linePins(file: RepoFile, pinOf: (site: PinSite) => Pin | undefined): Pin[] {
   return file.content.split('\n').flatMap((text, i): Pin[] => {
     const raw = text.trim();
     if (!raw || COMMENT.test(raw)) return [];
-    return [pinFromVersion({ file: file.path, line: i + 1, raw }, runtime, raw)];
+    const pin = pinOf({ file: file.path, line: i + 1, raw });
+    return pin ? [pin] : [];
   });
 }
 
-function toolVersionsPins(file: RepoFile): Pin[] {
-  return file.content.split('\n').flatMap((text, i): Pin[] => {
-    const [tool, version] = text.trim().split(/\s+/);
-    const runtime = TOOL_NAMES[tool];
-    if (!runtime || !version) return [];
-    return [pinFromVersion({ file: file.path, line: i + 1, raw: text.trim() }, runtime, version)];
-  });
+// One version per line; pyenv's .python-version may list several.
+const versionFilePins = (file: RepoFile, runtime: Runtime): Pin[] =>
+  linePins(file, site => pinFromVersion(site, runtime, site.raw));
+
+function toolVersionsPin(site: PinSite): Pin | undefined {
+  const [tool, version] = site.raw.split(/\s+/);
+  const runtime = TOOL_NAMES[tool];
+  return runtime && version ? pinFromVersion(site, runtime, version) : undefined;
 }
 
 // `FROM [--flag=value ...] image[:tag|@digest] [AS stage]` → the image reference.
@@ -87,21 +85,17 @@ function dockerfilePin(site: PinSite, image: string): Pin | undefined {
   return pinFromVersion(site, runtime, tag.split('-')[0]);
 }
 
-function dockerfilePins(file: RepoFile): Pin[] {
-  return file.content.split('\n').flatMap((text, i): Pin[] => {
-    const from = FROM_LINE.exec(text);
-    if (!from) return [];
-    const pin = dockerfilePin({ file: file.path, line: i + 1, raw: text.trim() }, imageOf(from[1]));
-    return pin ? [pin] : [];
-  });
+function dockerfileLinePin(site: PinSite): Pin | undefined {
+  const from = FROM_LINE.exec(site.raw);
+  return from ? dockerfilePin(site, imageOf(from[1])) : undefined;
 }
 
 function parserFor(path: string): ((file: RepoFile) => Pin[]) | undefined {
   const name = basename(path);
   const runtime = VERSION_FILES[name];
   if (runtime) return file => versionFilePins(file, runtime);
-  if (name === '.tool-versions') return toolVersionsPins;
-  if (DOCKERFILE.test(name)) return dockerfilePins;
+  if (name === '.tool-versions') return file => linePins(file, toolVersionsPin);
+  if (DOCKERFILE.test(name)) return file => linePins(file, dockerfileLinePin);
   return undefined;
 }
 
