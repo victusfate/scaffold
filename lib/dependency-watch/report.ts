@@ -3,10 +3,10 @@
 // Only structured fields reach the body (ids, packages, versions, files, links). Advisory summaries
 // and details are untrusted prose and are never read, so they cannot become agent instructions.
 //
-//   node report.ts --runtime <json> [--osv <json>] [--root <dir>] [--run-url <url>]
-//   stdout: JSON { status: 'clean' | 'findings', body }
+//   node report.ts --runtime <json> --body-out <md> [--osv <json>] [--root <dir>] [--run-url <url>]
+//   writes the issue body to --body-out; stdout: the status, `clean` or `findings`
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -117,15 +117,19 @@ export function buildReport(input: ReportInput, options: ReportOptions): Report 
 function main(): void {
   const { values } = parseArgs({
     strict: true,
-    options: { runtime: { type: 'string' }, osv: { type: 'string' }, root: { type: 'string' }, 'run-url': { type: 'string' } },
+    options: {
+      runtime: { type: 'string' }, osv: { type: 'string' }, root: { type: 'string' },
+      'run-url': { type: 'string' }, 'body-out': { type: 'string' },
+    },
   });
-  if (!values.runtime) throw new Error('--runtime <json> is required');
+  if (!values.runtime || !values['body-out']) throw new Error('--runtime <json> and --body-out <md> are required');
   const readJson = <T>(path: string): T => JSON.parse(readFileSync(path, 'utf8')) as T;
   const report = buildReport(
     { runtime: readJson<Classification>(values.runtime), osv: values.osv ? readJson<OsvOutput>(values.osv) : { results: [] } },
     { root: values.root ?? '.', runUrl: values['run-url'] ?? '', date: new Date().toISOString().slice(0, 10) },
   );
-  process.stdout.write(JSON.stringify(report) + '\n');
+  writeFileSync(values['body-out'], report.body + '\n');
+  process.stdout.write(report.status + '\n');
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

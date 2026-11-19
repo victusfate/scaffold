@@ -27,3 +27,10 @@
 - Notes: one row per (file, package), ids linked to osv.dev, fixed versions highest-first (display only).
   Summaries/details never read; ids/versions outside a safe charset dropped; cells escaped. Fixture
   `osv-gems.json` is real osv-scanner 2.7.0 output (trimmed) with an injected prompt in summary/details.
+
+## Slice 6 — scheduled workflow template
+- Status: done
+- Notes: structural test (`workflow.test.ts`) plus `workflow-run.test.ts`, which runs the real shell step
+  with stubbed gh/curl/osv-scanner: create / edit-oldest / close / untouched-on-error. Findings do not
+  fail the job (no daily failure mail). `report.ts` now writes `--body-out` and prints the status, so
+  the step needs no jq. zizmor 1.30.1 (pinned): no findings [verified: local run].

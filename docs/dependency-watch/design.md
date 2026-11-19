@@ -109,8 +109,9 @@ instructions.
   exit 2 and the issue says "check failed", never "clean".
   Finding shape: `{ runtime, file, line, pinned, kind: 'behind' | 'eol', latest?, eol? }`; info and
   unchecked entries carry `{ runtime?, file, line, raw, reason }`.
-- **Report contract** (`report.ts`, pure, same template dir): `node report.ts --runtime <json> --osv <json>`
-  → stdout `{ status: 'clean' | 'findings', body }`, where `body` is the issue markdown built from
+- **Report contract** (`report.ts`, pure core + thin CLI, same template dir):
+  `node report.ts --runtime <json> --osv <json> --body-out <md>` → stdout `clean | findings`, and the
+  issue markdown in `--body-out` (no jq needed in the workflow), built from
   structured fields only. The workflow's one shell step owns the `gh issue` find/edit/create/close; the
   report owns content. Splitting them keeps the content testable offline.
 - **Skill:** triggers "dependency watch", "scan dependencies on a schedule", "auto patch vulnerabilities",
