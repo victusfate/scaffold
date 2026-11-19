@@ -29,3 +29,6 @@ coverage/
 
 # Subagent git worktrees (Claude Code isolation: worktree); local only, never committed.
 .claude/worktrees/
+
+# Diagram renders: only the PNGs are committed; SVGs are local intermediates of `npm run diagrams`
+docs/diagrams/generated/*.svg
