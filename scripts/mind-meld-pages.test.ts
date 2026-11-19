@@ -3,6 +3,10 @@
 // No Docker: the reference index plus a synthetic run shaped like a real recording.
 
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 import { index } from './mind-meld.ts';
 import type { MeldBundle, MeldRun } from './mind-meld-schema.ts';
@@ -51,4 +55,15 @@ void test('the page holds only indexed and recorded facts, including single-call
 void test('an invalid bundle is rejected before rendering', parses, () => {
   const bad = recorded(); bad.runs[0].snapshotHash = 'other';
   assert.throws(() => renderPage(bad, { sourcePrefix: '../' }), /snapshot/);
+});
+
+void test('CLI: mind-meld.ts pages <bundle> [source-prefix] prints the page', parses, () => {
+  const file = join(mkdtempSync(join(tmpdir(), 'meld-pages-')), 'bundle.json');
+  writeFileSync(file, JSON.stringify(recorded()));
+  const cli = (...args: string[]) => spawnSync(process.execPath, ['scripts/mind-meld.ts', 'pages', file, ...args], { encoding: 'utf8' });
+  const page = cli('docs/../');
+  assert.equal(page.status, 0, page.stderr);
+  assert.match(page.stdout, /^# Mind meld: combat, damage/);
+  assert.match(page.stdout, /\]\(docs\/\.\.\/scripts\/mind-meld-example\.ts#L/);
+  assert.match(cli().stdout, /\]\(\.\.\/scripts\/mind-meld-example\.ts#L/, 'default prefix is ../');
 });

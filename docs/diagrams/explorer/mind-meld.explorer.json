@@ -3,7 +3,7 @@
   "lede": "How a repo gets a learning tool that explains its code from real, recorded runs, viewable offline as a guided tour.",
   "detail": "../generated/mind-meld.svg",
   "sources": ["docs/diagrams/src/mind-meld.mmd", "skills/mind-meld.md"],
-  "reviewed": "dbd985298684",
+  "reviewed": "01c0f0d2ecb4",
   "lanes": [
     { "id": "prepare", "name": "Prepare" },
     { "id": "record", "name": "Record" },
@@ -33,7 +33,7 @@
       "details": ["Narration cites file:line and event ids, and separates a possible dependency from an observed call.", "Reproduce a relevant failure and explain how to diagnose and repair it."],
       "risks": ["The model must never invent an edge, value, timing, mutation or successful run."] },
     "view": { "lane": "explain", "name": "Verify and view offline", "role": "Check the recording still matches the source, then open the tour as one offline page.",
-      "details": ["verify fails if any recorded source differs from the checkout or escapes it.", "view writes tour.html, which needs no server or network.", "The page shows its snapshot hash and says freshness is unknown offline."] }
+      "details": ["verify fails if any recorded source differs from the checkout or escapes it.", "view writes tour.html, which needs no server or network.", "The page shows its snapshot hash and says freshness is unknown offline.", "pages writes the same evidence as a GitHub markdown page (call path, source links, recorded calls, an LLM block), facts only."] }
   },
   "flows": [
     { "id": "main", "name": "Question to tour", "steps": [

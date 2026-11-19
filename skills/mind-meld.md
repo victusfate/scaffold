@@ -49,7 +49,13 @@ node scripts/mind-meld.ts diff "$meld_dir/flow.json" "$meld_dir/piece.json"
 node scripts/mind-meld.ts demo > "$meld_dir/tour.json"
 node scripts/mind-meld.ts verify "$meld_dir/tour.json"
 node scripts/mind-meld.ts view "$meld_dir/tour.json" > "$meld_dir/tour.html"
+node scripts/mind-meld.ts pages "$meld_dir/tour.json" > docs/tour.md   # source links default to ../
 ```
+
+`pages` writes the same evidence as a GitHub markdown page anyone can read: the recorded call path,
+then each function's source link and excerpt, static calls and recorded calls, and a block to copy
+into an LLM. It holds only indexed and recorded facts, and states its snapshot: run `verify`
+before trusting a committed page against today's checkout.
 
 Open `$meld_dir/tour.html` directly in a browser. It needs no server or network.
 Use its structure map, source-cited static dependencies, observed call arrows,

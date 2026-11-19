@@ -101,6 +101,7 @@ Check the recording still matches the source, then open the tour as one offline 
 - verify fails if any recorded source differs from the checkout or escapes it.
 - view writes tour.html, which needs no server or network.
 - The page shows its snapshot hash and says freshness is unknown offline.
+- pages writes the same evidence as a GitHub markdown page (call path, source links, recorded calls, an LLM block), facts only.
 
 ## Detailed flow
 
