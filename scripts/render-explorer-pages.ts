@@ -10,6 +10,7 @@
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { anchor } from './check-agents-detail.ts';
 import { renderMarkdown } from './explorer-markdown.ts';
 import { validateSpec, type ExplorerSpec } from './explorer-spec.ts';
 
@@ -40,13 +41,21 @@ function glossaryProblems(specs: { slug: string; spec: ExplorerSpec }[]): string
 }
 
 // GitHub drops unknown HTML tags, so `docs/<slug>/` outside code would render as `docs//`. Code fences
-// and inline code are exempt; <details> and <summary> are the page's own folding.
-const HTML_LIKE = /<\/?[A-Za-z][^>\s]*[^>]*>/g;
-const ALLOWED_TAGS = /^<\/?(details|summary)>$/;
+// and inline code are exempt.
+const HTML_LIKE = /<\/?[A-Za-z][^>]*>/g;
 function hiddenTextProblems(slug: string, markdown: string): string[] {
   const prose = markdown.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
-  return [...new Set(prose.match(HTML_LIKE) ?? [])].filter(tag => !ALLOWED_TAGS.test(tag))
+  return [...new Set(prose.match(HTML_LIKE) ?? [])]
     .map(tag => `${slug}: "${tag}" would be hidden by GitHub as an HTML tag; wrap it in backticks`);
+}
+
+// The page's own headings; a stage with one of these names (or a repeated name) gets GitHub's
+// `-1` anchor suffix, so its link in the stage list would land on the wrong section.
+const PAGE_HEADINGS = ['Detailed flow', 'Glossary', 'Ask your LLM'];
+function headingProblems(slug: string, spec: ExplorerSpec): string[] {
+  const names = [...Object.values(spec.nodes).map(n => n.name), ...PAGE_HEADINGS].map(anchor);
+  return [...new Set(names.filter((name, i) => names.indexOf(name) !== i))]
+    .map(name => `${slug}: two headings share the anchor #${name}; rename the stage`);
 }
 
 // Returns every problem found. Writes pages unless `check`. Links are checked after every page is
@@ -63,19 +72,16 @@ export function buildPages(root: string, options: { check: boolean }): string[] 
   const map = specs.find(({ slug }) => slug === MAP);
   const pages = specs.map(({ slug, spec }) => ({ slug, spec, markdown: renderMarkdown(spec,
     { titles, up: map && slug !== MAP ? { title: map.spec.title, link: `${MAP}.md` } : undefined,
-      source: { repo: REPO_URL, page: `${PAGES_URL}/${slug}.md` } }) }));
-  const stale = pages.flatMap(({ slug, markdown }) => {
-    const page = join(pagesDir, `${slug}.md`);
-    if (existsSync(page) && readFileSync(page, 'utf8') === markdown) return [];
-    if (options.check) return [`pages/${slug}.md is stale: run npm run diagrams`];
-    writeFileSync(page, markdown);
-    return [];
-  });
+      source: { name: 'Scaffold', repo: REPO_URL, page: `${PAGES_URL}/${slug}.md` } }) }));
+  const pagePath = (slug: string): string => join(pagesDir, `${slug}.md`);
+  const changed = pages.filter(({ slug, markdown }) => !existsSync(pagePath(slug)) || readFileSync(pagePath(slug), 'utf8') !== markdown);
+  if (!options.check) for (const { slug, markdown } of changed) writeFileSync(pagePath(slug), markdown);
   return [
     ...pages.flatMap(({ slug, spec }) => linkProblems(slug, spec, pagesDir)),
     ...glossaryProblems(specs),
     ...pages.flatMap(({ slug, markdown }) => hiddenTextProblems(slug, markdown)),
-    ...stale,
+    ...specs.flatMap(({ slug, spec }) => headingProblems(slug, spec)),
+    ...(options.check ? changed.map(({ slug }) => `pages/${slug}.md is stale: run npm run diagrams`) : []),
   ];
 }
 

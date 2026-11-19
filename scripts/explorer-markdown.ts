@@ -6,24 +6,24 @@
 // button on code blocks hands the context to the reader's own LLM. Nothing here calls a model.
 // Deterministic: the same spec renders the same page.
 
+import { anchor } from './check-agents-detail.ts';
+import { mermaidId, mermaidText } from './explorer-render.ts';
 import type { Bullet, DeepSection, ExplorerNode, ExplorerSpec } from './explorer-spec.ts';
 
-// GitHub's heading anchor: lowercase, punctuation dropped, spaces to hyphens.
-export const githubAnchor = (heading: string): string =>
-  heading.toLowerCase().replace(/[^\p{L}\p{N}\s-]/gu, '').trim().replace(/\s/g, '-');
-
-const mermaidId = (id: string): string => id.replace(/[^A-Za-z0-9_]/g, '_');
 // Quoted mermaid labels: `#quot;` is mermaid's entity for a double quote inside one.
-const mermaidLabel = (text: string): string => `"${text.replace(/"/g, '#quot;').replace(/\s+/g, ' ')}"`;
+const mermaidLabel = (text: string): string => `"${mermaidText(text).replace(/"/g, '#quot;')}"`;
 const box = (spec: ExplorerSpec, id: string): string => `${mermaidId(id)}[${mermaidLabel(spec.nodes[id].name)}]`;
+// Lanes get their own prefix so a lane and a node may share an id.
+const laneId = (id: string): string => `l_${id.replace(/[^A-Za-z0-9_]/g, '_')}`;
+// A markdown table cell: `|` would end the cell.
+const cell = (text: string): string => text.replace(/\|/g, '\\|');
 
 // Every flow's hops, once each, in the order they first appear. Without flows, nodes chain in lane order.
 function overviewEdges(spec: ExplorerSpec): [string, string][] {
   const ordered = spec.lanes.flatMap(lane => Object.keys(spec.nodes).filter(id => spec.nodes[id].lane === lane.id));
   if (!spec.flows?.length) return ordered.slice(1).map((id, i) => [ordered[i], id]);
-  const seen = new Set<string>();
-  return spec.flows.flatMap(f => f.steps.map(([from, to]): [string, string] => [from, to]))
-    .filter(([from, to]) => !seen.has(`${from}>${to}`) && seen.add(`${from}>${to}`));
+  const hops = spec.flows.flatMap(f => f.steps.map(([from, to]): [string, string] => [from, to]));
+  return [...new Map(hops.map(hop => [hop.join('>'), hop])).values()];
 }
 
 // A skill page is one chain of labelled boxes. A map (some nodes on no flow) groups every node in
@@ -33,7 +33,7 @@ function overview(spec: ExplorerSpec): string[] {
   const onEdge = new Set(edges.flat());
   const isMap = Object.keys(spec.nodes).some(id => !onEdge.has(id));
   const lines = isMap
-    ? [...spec.lanes.flatMap(lane => [`  subgraph ${mermaidId(lane.id)}[${mermaidLabel(lane.name)}]`,
+    ? [...spec.lanes.flatMap(lane => [`  subgraph ${laneId(lane.id)}[${mermaidLabel(lane.name)}]`,
       ...Object.keys(spec.nodes).filter(id => spec.nodes[id].lane === lane.id).map(id => `    ${box(spec, id)}`), '  end']),
       ...edges.map(([from, to]) => `  ${mermaidId(from)} --> ${mermaidId(to)}`)]
     : edges.map(([from, to]) => `  ${box(spec, from)} --> ${box(spec, to)}`);
@@ -51,18 +51,19 @@ function bullets(items: (string | string[])[] | Bullet[], depth = 0): string[] {
 
 function deepSection(section: DeepSection): string[] {
   const table = section.table
-    ? [`| ${section.table.head.join(' | ')} |`, `|${section.table.head.map(() => '---').join('|')}|`,
-      ...section.table.rows.map(row => `| ${row.join(' | ')} |`)]
+    ? [`| ${section.table.head.map(cell).join(' | ')} |`, `|${section.table.head.map(() => '---').join('|')}|`,
+      ...section.table.rows.map(row => `| ${row.map(cell).join(' | ')} |`)]
     : [];
   return [`**${section.h}**`, '', ...(section.list ? bullets(section.list) : []), ...table, ''];
 }
 
 // Navigation the page can't know on its own: the page above it, and the titles of pages it links to.
-// `source` puts the repo and this page's URL in the LLM block, so an assistant can read the real files.
+// `source` puts the repo (under its name) and this page's URL in the LLM block, so an assistant can
+// read the real files.
 export interface PageContext {
   up?: { title: string; link: string };
   titles?: Record<string, string>;
-  source?: { repo: string; page: string };
+  source?: { name: string; repo: string; page: string };
 }
 
 const SKILL_FILE = /(?:^|\/)skills\/([^/]+)\.md$/;
@@ -96,7 +97,7 @@ function askBlock(spec: ExplorerSpec, source?: PageContext['source']): string[] 
     `${spec.title}${spec.lede ? `: ${spec.lede}` : ''}`,
     ...nodes.map(n => `- ${n.name}: ${n.role}`),
     ...(questions.length ? ['', 'Questions worth asking:', ...questions.map(q => `- ${q}`)] : []),
-    ...(source ? ['', `Scaffold: ${source.repo}`, `This page: ${source.page}`] : []),
+    ...(source ? ['', `${source.name}: ${source.repo}`, `This page: ${source.page}`] : []),
   ];
   return ['## Ask your LLM', '', 'Copy this block into your own assistant to ask about anything on this page.', '',
     '```text', ...context, '```'];
@@ -110,7 +111,7 @@ export function renderMarkdown(spec: ExplorerSpec, context: PageContext = {}): s
     `# ${spec.title}`, '',
     ...(spec.lede ? [spec.lede, ''] : []),
     ...overview(spec), '',
-    ...nodes.map(n => `- [${n.name}](${hasSection(n) ? `#${githubAnchor(n.name)}` : n.link}): ${n.role}`), '',
+    ...nodes.map(n => `- [${n.name}](${hasSection(n) ? `#${anchor(n.name)}` : n.link}): ${n.role}`), '',
     ...nodes.filter(hasSection).flatMap(node => nodeSection(node, context.titles ?? {})),
     ...(spec.detail ? ['## Detailed flow', '', `![${spec.title}, detailed](${spec.detail})`, ''] : []),
     ...(glossary.length ? ['## Glossary', '', ...glossary.map(g => `- **${g.t}**: ${g.d}`), ''] : []),

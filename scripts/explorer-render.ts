@@ -34,8 +34,9 @@ export function renderHtml(spec: ExplorerSpec, template = readFileSync(TEMPLATE,
 
 // Mermaid participant ids must be plain identifiers; message text must not
 // carry `;` or `#` (statement separator / entity prefix).
-const mermaidId = (id: string): string => 'n_' + id.replace(/[^A-Za-z0-9_]/g, '_');
-const mermaidText = (s: string): string => s.replace(/[#;]/g, c => (c === '#' ? '#35;' : '#59;')).replace(/\s+/g, ' ').trim();
+// The `n_` prefix also keeps ids clear of mermaid keywords such as `end`.
+export const mermaidId = (id: string): string => 'n_' + id.replace(/[^A-Za-z0-9_]/g, '_');
+export const mermaidText = (s: string): string => s.replace(/[#;]/g, c => (c === '#' ? '#35;' : '#59;')).replace(/\s+/g, ' ').trim();
 
 export function flowToMermaid(spec: ExplorerSpec, flow: Flow): string {
   const parts: string[] = [];

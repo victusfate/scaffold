@@ -6,11 +6,11 @@ How a repo gets a learning tool that explains its code from real, recorded runs,
 
 ```mermaid
 flowchart LR
-  question["Start with a question"] --> adapters["Build adapters"]
-  adapters["Build adapters"] --> run["Record real runs"]
-  run["Record real runs"] --> bundle["Validated bundle"]
-  bundle["Validated bundle"] --> tour["Tour and narrate"]
-  tour["Tour and narrate"] --> view["Verify and view offline"]
+  n_question["Start with a question"] --> n_adapters["Build adapters"]
+  n_adapters["Build adapters"] --> n_run["Record real runs"]
+  n_run["Record real runs"] --> n_bundle["Validated bundle"]
+  n_bundle["Validated bundle"] --> n_tour["Tour and narrate"]
+  n_tour["Tour and narrate"] --> n_view["Verify and view offline"]
 ```
 
 - [Start with a question](#start-with-a-question): Name what a reader needs to understand and find the real code that answers it.

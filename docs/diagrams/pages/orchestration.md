@@ -6,10 +6,10 @@ How one orchestrator turns owner requests into merged work by handing tasks to s
 
 ```mermaid
 flowchart LR
-  request["Owner requests"] --> dispatch["Dispatch"]
-  dispatch["Dispatch"] --> work["Subagent works"]
-  work["Subagent works"] --> integrate["Integrate"]
-  integrate["Integrate"] --> ship["Authorized merge"]
+  n_request["Owner requests"] --> n_dispatch["Dispatch"]
+  n_dispatch["Dispatch"] --> n_work["Subagent works"]
+  n_work["Subagent works"] --> n_integrate["Integrate"]
+  n_integrate["Integrate"] --> n_ship["Authorized merge"]
 ```
 
 - [Owner requests](#owner-requests): Only the owner creates tasks; the agent records the request in the queue.

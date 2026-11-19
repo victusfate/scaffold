@@ -6,11 +6,11 @@ How a diff gets reviewed, fixed and verified before merge: two independent revie
 
 ```mermaid
 flowchart LR
-  gather["Gather the diff"] --> reviewers["Two reviewers"]
-  reviewers["Two reviewers"] --> merge["Merge findings"]
-  merge["Merge findings"] --> fixer["One fixer"]
-  fixer["One fixer"] --> reverify["Re-verify"]
-  reverify["Re-verify"] --> receipt["Receipt"]
+  n_gather["Gather the diff"] --> n_reviewers["Two reviewers"]
+  n_reviewers["Two reviewers"] --> n_merge["Merge findings"]
+  n_merge["Merge findings"] --> n_fixer["One fixer"]
+  n_fixer["One fixer"] --> n_reverify["Re-verify"]
+  n_reverify["Re-verify"] --> n_receipt["Receipt"]
 ```
 
 - [Gather the diff](#gather-the-diff): Collect the branch's diff and the full text of every changed file.

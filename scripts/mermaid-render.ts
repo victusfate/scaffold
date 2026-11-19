@@ -24,9 +24,9 @@
 //     --html        also write <input>.html — a self-contained interactive
 //                   viewer (inline SVG + dependency-free touch pan/zoom) that
 //                   opens in any mobile browser; no server, no CDN
-//     --portable    (default) labels as SVG <text> (htmlLabels:false): text does not clip in
-//                   GitHub, non-browser or mobile SVG viewers
-//     --html-labels HTML labels instead (richer text, but clipped or blank outside a browser)
+//     --html-labels HTML labels instead of the default SVG <text> labels. The default keeps text
+//                   from clipping in GitHub, non-browser and mobile SVG viewers; HTML labels are
+//                   richer but clip or go blank outside a browser
 //     --scale <n>   PNG scale factor (default 3); higher = crisper + larger
 //     --no-render   skip the local SVG (use with --wrap, --local, or --publish)
 //     --out <file>  override the SVG output path (default: <input>.svg)
@@ -112,7 +112,7 @@ export function interactiveHtml(svg: string, title: string, template: string): s
 
 // mmdc launches headless Chromium via puppeteer. Two portability concerns are
 // handled here so callers never have to: (1) running as root (containers/CI)
-// needs --no-sandbox, passed via a temp puppeteer config; (2) --portable emits
+// needs --no-sandbox, passed via a temp puppeteer config; (2) portable mode (the default) emits
 // SVG-text labels (htmlLabels:false) via a temp mermaid config. Temp files are
 // cleaned up after the run.
 function runMmdc(input: string, output: string, opts: { portable?: boolean; scale?: number; background?: string } = {}): void {
@@ -151,7 +151,6 @@ export function parseArgs(argv: string[]): Opts {
     if (argv[i] === '--wrap') opts.wrap = true;
     else if (argv[i] === '--png') opts.png = true;
     else if (argv[i] === '--html') opts.html = true;
-    else if (argv[i] === '--portable') opts.portable = true;
     else if (argv[i] === '--html-labels') opts.portable = false;
     else if (argv[i] === '--scale') opts.scale = argv[++i];
     else if (argv[i] === '--local') opts.local = true;
@@ -190,7 +189,7 @@ async function main(argv: string[]): Promise<void> {
 
   if (!noRender) {
     // mmdc launches headless Chromium via puppeteer; first run pulls it (one
-    // time, heavy). runMmdc auto-handles root/--no-sandbox and --portable.
+    // time, heavy). runMmdc auto-handles root/--no-sandbox and portable labels.
     try {
       runMmdc(input, svg, { portable });
     } catch {

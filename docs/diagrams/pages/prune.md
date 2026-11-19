@@ -6,10 +6,10 @@ How /prune runs every quality lens on a branch, then fixes the findings through 
 
 ```mermaid
 flowchart LR
-  audit["Audit"] --> design["Design doc"]
-  design["Design doc"] --> prd["PRD"]
-  prd["PRD"] --> tdd["TDD"]
-  tdd["TDD"] --> pr["Pull request"]
+  n_audit["Audit"] --> n_design["Design doc"]
+  n_design["Design doc"] --> n_prd["PRD"]
+  n_prd["PRD"] --> n_tdd["TDD"]
+  n_tdd["TDD"] --> n_pr["Pull request"]
 ```
 
 - [Audit](#audit): Run the correctness and structure reviews, read-only, and collect one findings table.

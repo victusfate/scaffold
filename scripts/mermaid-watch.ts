@@ -7,7 +7,7 @@
 // so what you watch is what you'd open offline. TypeScript, like the rest of the
 // tooling; built-ins only (http + fs.watchFile + Server-Sent Events).
 // Usage:
-//   node scripts/mermaid-watch.ts <file.mmd> [--port 8080] [--portable]
+//   node scripts/mermaid-watch.ts <file.mmd> [--port 8080] [--html-labels]
 // Then open http://localhost:<port> and edit the file; the tab re-renders.
 
 import http from 'node:http';
@@ -33,10 +33,10 @@ function die(msg: string): never {
 }
 
 export function parseArgs(argv: string[]): WatchOpts {
-  const opts: WatchOpts = { port: DEFAULT_PORT, portable: false };
+  const opts: WatchOpts = { port: DEFAULT_PORT, portable: true };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--port') opts.port = Number(argv[++i]);
-    else if (argv[i] === '--portable') opts.portable = true;
+    else if (argv[i] === '--html-labels') opts.portable = false;
     else if (argv[i].startsWith('--')) die(`unknown option: ${argv[i]}`);
     else opts.file = argv[i];
   }
@@ -55,14 +55,14 @@ export function injectReload(html: string): string {
 // the live-reload snippet injected. Delegates rendering — does not reimplement it.
 function renderPage(file: string, portable: boolean): string {
   const args = [RENDER, file, '--html'];
-  if (portable) args.push('--portable');
+  if (!portable) args.push('--html-labels');
   execFileSync('node', args, { stdio: ['ignore', 'ignore', 'inherit'] });
   return injectReload(readFileSync(file.replace(/\.mmd$/, '.html'), 'utf8'));
 }
 
 function main(argv: string[]): void {
   const { file, port, portable } = parseArgs(argv);
-  if (!file) die('usage: node scripts/mermaid-watch.ts <file.mmd> [--port 8080] [--portable]');
+  if (!file) die('usage: node scripts/mermaid-watch.ts <file.mmd> [--port 8080] [--html-labels]');
   if (!existsSync(file)) die(`file not found: ${file}`);
 
   let page: string;

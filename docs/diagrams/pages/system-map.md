@@ -4,42 +4,42 @@ Scaffold gives AI coding agents shared skills, rules and workflows. Click any sk
 
 ```mermaid
 flowchart LR
-  subgraph run["Run the work"]
-    orchestration["Orchestration"]
-    queue["Queue"]
-    loop["Loop tick"]
-    continuity["Save, pause, resume"]
+  subgraph l_run["Run the work"]
+    n_orchestration["Orchestration"]
+    n_queue["Queue"]
+    n_loop["Loop tick"]
+    n_continuity["Save, pause, resume"]
   end
-  subgraph build["Build"]
-    feature["Feature chain"]
-    tdd["TDD"]
-    pr["PR workflow"]
+  subgraph l_build["Build"]
+    n_feature["Feature chain"]
+    n_tdd["TDD"]
+    n_pr["PR workflow"]
   end
-  subgraph quality["Quality"]
-    gates["Review gates"]
-    qa["QA"]
-    investigate["Investigate"]
-    prune["Prune"]
-    linter["Add linter"]
+  subgraph l_quality["Quality"]
+    n_gates["Review gates"]
+    n_qa["QA"]
+    n_investigate["Investigate"]
+    n_prune["Prune"]
+    n_linter["Add linter"]
   end
-  subgraph share["Share and improve"]
-    sync["Scaffold sync"]
-    skillify["Skillify"]
-    retro["Retro"]
+  subgraph l_share["Share and improve"]
+    n_sync["Scaffold sync"]
+    n_skillify["Skillify"]
+    n_retro["Retro"]
   end
-  subgraph tools["Specialist tools"]
-    council["Council"]
-    mindmeld["Mind meld"]
-    voice["Voice chat"]
+  subgraph l_tools["Specialist tools"]
+    n_council["Council"]
+    n_mindmeld["Mind meld"]
+    n_voice["Voice chat"]
   end
-  queue --> orchestration
-  orchestration --> feature
-  feature --> pr
-  pr --> sync
-  tdd --> gates
-  gates --> qa
-  retro --> skillify
-  skillify --> sync
+  n_queue --> n_orchestration
+  n_orchestration --> n_feature
+  n_feature --> n_pr
+  n_pr --> n_sync
+  n_tdd --> n_gates
+  n_gates --> n_qa
+  n_retro --> n_skillify
+  n_skillify --> n_sync
 ```
 
 - [Orchestration](orchestration.md): One orchestrator per session owns the plan and the branch; subagents do one task each in their own worktree.

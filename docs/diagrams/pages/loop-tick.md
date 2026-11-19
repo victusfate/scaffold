@@ -6,11 +6,11 @@ What the orchestrator does each time its loop wakes: handle finished work, fill 
 
 ```mermaid
 flowchart LR
-  wake["Wake"] --> topology["Read topology"]
-  topology["Read topology"] --> review["Finished slots"]
-  review["Finished slots"] --> dispatch["Free slots"]
-  dispatch["Free slots"] --> reconcile["Reconcile"]
-  reconcile["Reconcile"] --> supervise["Supervise"]
+  n_wake["Wake"] --> n_topology["Read topology"]
+  n_topology["Read topology"] --> n_review["Finished slots"]
+  n_review["Finished slots"] --> n_dispatch["Free slots"]
+  n_dispatch["Free slots"] --> n_reconcile["Reconcile"]
+  n_reconcile["Reconcile"] --> n_supervise["Supervise"]
 ```
 
 - [Wake](#wake): A native /loop or an external driver fires the tick.

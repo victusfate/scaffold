@@ -26,7 +26,7 @@ void test('writes one page per spec, then check passes', () => {
   assert.deepEqual(buildPages(root, { check: true }), []);
 });
 
-void test('check reports stale and missing pages without writing', () => {
+void test('check reports a stale page without writing', () => {
   const root = site('x.md');
   buildPages(root, { check: false });
   writeFileSync(join(root, 'pages', 'x.md'), 'edited by hand\n');
@@ -50,11 +50,19 @@ void test('a term defined differently on two pages is a problem', () => {
     ['glossary: "PRD" is defined differently in one and two']);
 });
 
-void test('text GitHub would hide as an HTML tag is a problem; code spans and details are fine', () => {
+void test('text GitHub would hide as an HTML tag is a problem; code spans are fine', () => {
   const root = site('x.md');
   const spec = (role: string) => JSON.stringify({ title: 'T', lanes: [{ id: 'l', name: 'L' }], nodes: { a: { lane: 'l', name: 'A', role } } });
   writeFileSync(join(root, 'explorer', 'bad.explorer.json'), spec('Writes docs/<slug>/design.md.'));
   writeFileSync(join(root, 'explorer', 'ok.explorer.json'), spec('Writes `docs/<slug>/design.md`.'));
   assert.deepEqual(buildPages(root, { check: false }).filter(p => p.includes('hidden')),
     ['bad: "<slug>" would be hidden by GitHub as an HTML tag; wrap it in backticks']);
+});
+
+void test('a stage named like a page heading, or two stages with one name, is a problem', () => {
+  const root = site('x.md');
+  writeFileSync(join(root, 'explorer', 'clash.explorer.json'), JSON.stringify({ title: 'C', lanes: [{ id: 'l', name: 'L' }],
+    nodes: { a: { lane: 'l', name: 'Glossary', role: 'r' }, b: { lane: 'l', name: 'Fix', role: 'r' }, c: { lane: 'l', name: 'Fix', role: 'r' } } }));
+  assert.deepEqual(buildPages(root, { check: false }).filter(p => p.startsWith('clash')).sort(),
+    ['clash: two headings share the anchor #fix; rename the stage', 'clash: two headings share the anchor #glossary; rename the stage']);
 });

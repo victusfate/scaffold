@@ -6,10 +6,10 @@ How shared rules and skills flow from the scaffold repo into project repos, and 
 
 ```mermaid
 flowchart LR
-  bootstrap["Bootstrap"] --> down["Sync down"]
-  down["Sync down"] --> upstream["Upstream"]
-  upstream["Upstream"] --> pr["Scaffold PR"]
-  pr["Scaffold PR"] --> back["Sync back"]
+  n_bootstrap["Bootstrap"] --> n_down["Sync down"]
+  n_down["Sync down"] --> n_upstream["Upstream"]
+  n_upstream["Upstream"] --> n_pr["Scaffold PR"]
+  n_pr["Scaffold PR"] --> n_back["Sync back"]
 ```
 
 - [Bootstrap](#bootstrap): The first time, install the sync script, then run it once the user confirms.

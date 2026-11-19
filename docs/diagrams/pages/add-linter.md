@@ -6,10 +6,10 @@ How /add-linter adds linter configs and CI workflows for the languages in a repo
 
 ```mermaid
 flowchart LR
-  detect["Detect"] --> ask["Ask once"]
-  ask["Ask once"] --> emit["Emit"]
-  emit["Emit"] --> merge["Merge"]
-  merge["Merge"] --> finish["Tune and commit"]
+  n_detect["Detect"] --> n_ask["Ask once"]
+  n_ask["Ask once"] --> n_emit["Emit"]
+  n_emit["Emit"] --> n_merge["Merge"]
+  n_merge["Merge"] --> n_finish["Tune and commit"]
 ```
 
 - [Detect](#detect): Find each language in the repo and whether it already has a linter config.

@@ -40,8 +40,8 @@ roles and suggested questions. Nothing calls a model. Owner: "leave that up to t
 
 ### SVG, not PNG
 **Decision:** diagrams are generated only as SVG; the committed PNGs and the PNG step are removed.
-**Rationale:** owner, after comparing them side by side: "I like that svg its superior, lets go with it". `--portable`
-renders labels as plain SVG text, so GitHub displays them correctly, and they stay sharp at any zoom
+**Rationale:** owner, after comparing them side by side: "I like that svg its superior, lets go with it". SVG-text labels (now the default; `--html-labels` opts out)
+render as plain SVG text, so GitHub displays them correctly, and they stay sharp at any zoom
 for about the same size.
 
 ## Edge cases

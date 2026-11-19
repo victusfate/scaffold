@@ -6,11 +6,11 @@ How /qa runs the real app, uses the changed parts the way a user would, and fixe
 
 ```mermaid
 flowchart LR
-  setup["Set up"] --> probe["Probe"]
-  probe["Probe"] --> triage["Triage"]
-  triage["Triage"] --> fixloop["Fix loop"]
-  fixloop["Fix loop"] --> final["Final pass"]
-  final["Final pass"] --> report["QA report"]
+  n_setup["Set up"] --> n_probe["Probe"]
+  n_probe["Probe"] --> n_triage["Triage"]
+  n_triage["Triage"] --> n_fixloop["Fix loop"]
+  n_fixloop["Fix loop"] --> n_final["Final pass"]
+  n_final["Final pass"] --> n_report["QA report"]
 ```
 
 - [Set up](#set-up): Pick the surfaces the diff touches and start the app as the repo documents it.

@@ -6,10 +6,10 @@ How a hard decision gets pressure-tested by five advisors with clashing views, t
 
 ```mermaid
 flowchart LR
-  ask["Owner asks"] --> brief["Frame the brief"]
-  brief["Frame the brief"] --> advisors["Five advisors"]
-  advisors["Five advisors"] --> review["Peer review"]
-  review["Peer review"] --> chair["Chairman verdict"]
+  n_ask["Owner asks"] --> n_brief["Frame the brief"]
+  n_brief["Frame the brief"] --> n_advisors["Five advisors"]
+  n_advisors["Five advisors"] --> n_review["Peer review"]
+  n_review["Peer review"] --> n_chair["Chairman verdict"]
 ```
 
 - [Owner asks](#owner-asks): The owner brings a high-stakes decision with real tradeoffs.

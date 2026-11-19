@@ -6,10 +6,10 @@ How work survives a closed session: checkpoint into a handoff file, push it, and
 
 ```mermaid
 flowchart LR
-  checkpoint["Checkpoint"] --> gate["Gate"]
-  gate["Gate"] --> push["Commit and push"]
-  push["Commit and push"] --> resume["Resume"]
-  resume["Resume"] --> merge["Clear before merge"]
+  n_checkpoint["Checkpoint"] --> n_gate["Gate"]
+  n_gate["Gate"] --> n_push["Commit and push"]
+  n_push["Commit and push"] --> n_resume["Resume"]
+  n_resume["Resume"] --> n_merge["Clear before merge"]
 ```
 
 - [Checkpoint](#checkpoint): Write where the work stands into one handoff file.

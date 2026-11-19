@@ -6,10 +6,10 @@ How one task becomes one merged PR: local gates first, real checks on GitHub, an
 
 ```mermaid
 flowchart LR
-  branch["Branch"] --> local["Local gates"]
-  local["Local gates"] --> open["Open the PR"]
-  open["Open the PR"] --> checks["Verify checks"]
-  checks["Verify checks"] --> merge["Authorized merge"]
+  n_branch["Branch"] --> n_local["Local gates"]
+  n_local["Local gates"] --> n_open["Open the PR"]
+  n_open["Open the PR"] --> n_checks["Verify checks"]
+  n_checks["Verify checks"] --> n_merge["Authorized merge"]
 ```
 
 - [Branch](#branch): Pull the latest main and cut a fresh branch for one independent task.

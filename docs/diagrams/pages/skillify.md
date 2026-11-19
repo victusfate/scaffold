@@ -6,10 +6,10 @@ How finished work becomes a reusable skill that every agent and every downstream
 
 ```mermaid
 flowchart LR
-  context["Reconstruct context"] --> interview["Interview"]
-  interview["Interview"] --> name["Name and dedupe"]
-  name["Name and dedupe"] --> generate["Generate and register"]
-  generate["Generate and register"] --> upstream["PR to scaffold"]
+  n_context["Reconstruct context"] --> n_interview["Interview"]
+  n_interview["Interview"] --> n_name["Name and dedupe"]
+  n_name["Name and dedupe"] --> n_generate["Generate and register"]
+  n_generate["Generate and register"] --> n_upstream["PR to scaffold"]
 ```
 
 - [Reconstruct context](#reconstruct-context): Rebuild what the session did without asking the user to re-explain.

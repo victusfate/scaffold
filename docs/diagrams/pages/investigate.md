@@ -6,10 +6,10 @@ How /investigate finds the root cause of a bug before changing any code, then pr
 
 ```mermaid
 flowchart LR
-  repro["Reproduce"] --> compare["Compare"]
-  compare["Compare"] --> hypothesis["Hypothesis"]
-  hypothesis["Hypothesis"] --> fix["Fix"]
-  fix["Fix"] --> verify["Verify"]
+  n_repro["Reproduce"] --> n_compare["Compare"]
+  n_compare["Compare"] --> n_hypothesis["Hypothesis"]
+  n_hypothesis["Hypothesis"] --> n_fix["Fix"]
+  n_fix["Fix"] --> n_verify["Verify"]
 ```
 
 - [Reproduce](#reproduce): Read the whole error, reproduce it on demand, and trace back to where it first goes wrong.

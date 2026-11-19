@@ -6,11 +6,11 @@ How a feature idea becomes a reviewed, tested PR. The owner decides intent and a
 
 ```mermaid
 flowchart LR
-  design["Design"] --> prd["PRD"]
-  prd["PRD"] --> tdd["TDD slices"]
-  tdd["TDD slices"] --> refine["Refine"]
-  refine["Refine"] --> qa["QA"]
-  qa["QA"] --> review["Owner review"]
+  n_design["Design"] --> n_prd["PRD"]
+  n_prd["PRD"] --> n_tdd["TDD slices"]
+  n_tdd["TDD slices"] --> n_refine["Refine"]
+  n_refine["Refine"] --> n_qa["QA"]
+  n_qa["QA"] --> n_review["Owner review"]
 ```
 
 - [Design](#design): Agree on what to build and why, one question at a time.

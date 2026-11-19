@@ -17,7 +17,7 @@ const SPEC: ExplorerSpec = {
       qs: ['When is a design "done"?'] },
     tdd: { lane: 'build', name: 'TDD "slices"', role: 'Red, green, refactor.',
       risks: ['Tests written in bulk verify imagined behavior.'],
-      deep: [{ h: 'Commits', table: { head: ['Step', 'Message'], rows: [['red', 'test: …'], ['green', 'feat: …']] } }] },
+      deep: [{ h: 'Commits', table: { head: ['Step', 'Message'], rows: [['red', 'test: …'], ['green', 'feat: a | b']] } }] },
   },
   flows: [{ id: 'main', name: 'Main path', steps: [['design', 'tdd', 'Plan approved', 'plan.md']] }],
   glossary: { prd: { t: 'PRD', a: ['PRD'], d: 'Product requirements document.' } },
@@ -28,7 +28,7 @@ const md = renderMarkdown(SPEC);
 
 void test('title, lede and an overview diagram in flow order', () => {
   assert.match(md, /^# Feature chain\n\nFrom an idea to a reviewed PR\./);
-  assert.match(md, /```mermaid\nflowchart LR\n {2}design\["Design"\] --> tdd\["TDD #quot;slices#quot;"\]\n```/);
+  assert.match(md, /```mermaid\nflowchart LR\n {2}n_design\["Design"\] --> n_tdd\["TDD #quot;slices#quot;"\]\n```/);
 });
 
 void test('each node is a linked section with role, nested detail, risks and tables', () => {
@@ -36,7 +36,7 @@ void test('each node is a linked section with role, nested detail, risks and tab
   assert.match(md, /## Design\n\nResolve intent with the owner\.\n\nDetails: \[co-plan\.md\]\(co-plan\.md\)/);
   assert.match(md, /- Writes design\.md\n {2}- Decisions and vocabulary\.\n {4}- commit\n {4}- review/);
   assert.match(md, /\*\*Where it breaks\*\*\n\n- Tests written in bulk/);
-  assert.match(md, /\| Step \| Message \|\n\|---\|---\|\n\| red \| test: … \|/);
+  assert.match(md, /\| Step \| Message \|\n\|---\|---\|\n\| red \| test: … \|\n\| green \| feat: a \\\| b \|/);
 });
 
 void test('detailed diagram shown under its own heading, glossary, copyable LLM context', () => {
@@ -55,7 +55,7 @@ void test('a map-like spec (nodes off every flow) groups all nodes by lane and d
     nodes: { q: { lane: 'a', name: 'Queue', role: 'r' }, solo: { lane: 'a', name: 'Solo', role: 'r' }, f: { lane: 'b', name: 'Feature', role: 'r' }, x: { lane: 'b', name: 'Extra', role: 'r' } },
     flows: [{ id: 'one', name: 'One', steps: [['q', 'f', 'w', 'p']] }, { id: 'two', name: 'Two', steps: [['f', 'x', 'w', 'p'], ['q', 'f', 'w', 'p']] }],
   };
-  assert.match(renderMarkdown(map), /```mermaid\nflowchart LR\n {2}subgraph a\["Run"\]\n {4}q\["Queue"\]\n {4}solo\["Solo"\]\n {2}end\n {2}subgraph b\["Build"\]\n {4}f\["Feature"\]\n {4}x\["Extra"\]\n {2}end\n {2}q --> f\n {2}f --> x\n```/);
+  assert.match(renderMarkdown(map), /```mermaid\nflowchart LR\n {2}subgraph l_a\["Run"\]\n {4}n_q\["Queue"\]\n {4}n_solo\["Solo"\]\n {2}end\n {2}subgraph l_b\["Build"\]\n {4}n_f\["Feature"\]\n {4}n_x\["Extra"\]\n {2}end\n {2}n_q --> n_f\n {2}n_f --> n_x\n```/);
 });
 
 void test('navigation: a link back up, and deeper links named by their page title', () => {
@@ -75,9 +75,15 @@ void test('a node with no detail of its own links straight to its page and gets 
 });
 
 void test('the LLM block names the repo and the page, so an assistant can read the sources', () => {
-  const page = renderMarkdown(SPEC, { source: { repo: 'https://github.com/o/r', page: 'https://github.com/o/r/blob/main/p.md' } });
+  const page = renderMarkdown(SPEC, { source: { name: 'Scaffold', repo: 'https://github.com/o/r', page: 'https://github.com/o/r/blob/main/p.md' } });
   const ask = /```text\n([\s\S]*?)```/.exec(page.slice(page.indexOf('## Ask your LLM')))?.[1] ?? '';
   assert.match(ask, /\nScaffold: https:\/\/github\.com\/o\/r\nThis page: https:\/\/github\.com\/o\/r\/blob\/main\/p\.md\n$/);
+});
+
+void test('a mermaid keyword as an id cannot break the overview', () => {
+  const page = renderMarkdown({ title: 'K', lanes: [{ id: 'end', name: 'End' }],
+    nodes: { end: { lane: 'end', name: 'End', role: 'r' }, start: { lane: 'end', name: 'Start', role: 'r' } } });
+  assert.match(page, /n_end\["End"\] --> n_start\["Start"\]/);
 });
 
 void test('deterministic', () => assert.equal(renderMarkdown(SPEC), md));

@@ -78,12 +78,11 @@ the watcher regenerates the **same self-contained artifact `--html` produces**
 Built-ins only (`http` + `fs.watchFile` + SSE).
 
 ```bash
-node scripts/mermaid-watch.ts diagrams/<slug>.mmd [--port 8080] [--portable]
+node scripts/mermaid-watch.ts diagrams/<slug>.mmd [--port 8080] [--html-labels]
 ```
 
 Run it in the background, open the printed `http://localhost:<port>`, and keep
-editing the `.mmd`. `--portable` renders SVG-text labels (see Mode F) so nothing
-clips.
+editing the `.mmd`. Labels are SVG text by default (see Mode F) so nothing clips.
 
 - Each save re-renders via `mmdc` (a couple seconds), the cost of producing the
   real offline artifact rather than a CDN client render. No network after the
@@ -218,10 +217,10 @@ node scripts/mermaid-render.ts diagrams/<slug>.mmd --png --html
 - `--png` renders `<slug>.png` at `--scale 3` by default (crisp when zoomed).
 - `--html` writes `<slug>.html` with the SVG inlined and a few lines of pointer/
   wheel/pinch handling — deliver it, open it in a browser, pinch to zoom.
-- **`--portable`** renders labels as SVG `<text>` instead of HTML labels, so text
-  does not clip in non-browser / mobile SVG viewers (mermaid's default HTML
-  labels reflow to the viewer's fonts and overflow their boxes). Add it whenever
-  the artifact will be viewed outside a browser. Authors can still opt back into
+- **Labels are SVG `<text>` by default**, so text does not clip on GitHub or in
+  non-browser / mobile SVG viewers (mermaid's HTML labels reflow to the viewer's
+  fonts and overflow their boxes). Pass `--html-labels` only when the artifact is
+  viewed in a browser and a label needs rich HTML. Authors can still opt back into
   HTML labels via the `.mmd` init block when a node needs rich HTML.
 
 #### Mode G — interactive explorer page (flows + drill-down + Q&A)

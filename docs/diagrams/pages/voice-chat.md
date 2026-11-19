@@ -6,10 +6,10 @@ How to talk to the coding agent hands-free through headphones. Audio stays on yo
 
 ```mermaid
 flowchart LR
-  check["Check and install"] --> voice["Pick a voice"]
-  voice["Pick a voice"] --> launch["Launch"]
-  launch["Launch"] --> turn["Each turn"]
-  turn["Each turn"] --> stop["Stop"]
+  n_check["Check and install"] --> n_voice["Pick a voice"]
+  n_voice["Pick a voice"] --> n_launch["Launch"]
+  n_launch["Launch"] --> n_turn["Each turn"]
+  n_turn["Each turn"] --> n_stop["Stop"]
 ```
 
 - [Check and install](#check-and-install): A built-in check reports what is missing; install it and re-run until clean.

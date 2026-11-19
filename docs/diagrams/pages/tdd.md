@@ -6,11 +6,11 @@ How a feature gets built one thin slice at a time: a failing test, the least cod
 
 ```mermaid
 flowchart LR
-  slices["Plan the slices"] --> prep["Before code"]
-  prep["Before code"] --> loop["Red, then green"]
-  loop["Red, then green"] --> refactor["Refactor check"]
-  refactor["Refactor check"] --> commit["Commit and log"]
-  commit["Commit and log"] --> done["All slices pass"]
+  n_slices["Plan the slices"] --> n_prep["Before code"]
+  n_prep["Before code"] --> n_loop["Red, then green"]
+  n_loop["Red, then green"] --> n_refactor["Refactor check"]
+  n_refactor["Refactor check"] --> n_commit["Commit and log"]
+  n_commit["Commit and log"] --> n_done["All slices pass"]
 ```
 
 - [Plan the slices](#plan-the-slices): Split the PRD into vertical slices and confirm their size once with the user.

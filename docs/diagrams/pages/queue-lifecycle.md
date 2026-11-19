@@ -6,10 +6,10 @@ The states a queue task passes through, from the owner's request to a merged PR.
 
 ```mermaid
 flowchart LR
-  add["Add"] --> pending["Pending"]
-  pending["Pending"] --> active["Active"]
-  active["Active"] --> outcome["Outcome"]
-  outcome["Outcome"] --> deliver["Deliver"]
+  n_add["Add"] --> n_pending["Pending"]
+  n_pending["Pending"] --> n_active["Active"]
+  n_active["Active"] --> n_outcome["Outcome"]
+  n_outcome["Outcome"] --> n_deliver["Deliver"]
 ```
 
 - [Add](#add): The owner asks for work and the agent records it with the owner's words.

@@ -6,10 +6,10 @@ How a session retrospective finds what slowed the agent down, backed by evidence
 
 ```mermaid
 flowchart LR
-  reconstruct["Reconstruct the session"] --> trace["Trace causes"]
-  trace["Trace causes"] --> classify["Classify and rank"]
-  classify["Classify and rank"] --> report["Report"]
-  report["Report"] --> route["Route selected work"]
+  n_reconstruct["Reconstruct the session"] --> n_trace["Trace causes"]
+  n_trace["Trace causes"] --> n_classify["Classify and rank"]
+  n_classify["Classify and rank"] --> n_report["Report"]
+  n_report["Report"] --> n_route["Route selected work"]
 ```
 
 - [Reconstruct the session](#reconstruct-the-session): On request, rebuild what happened from the conversation or a session log.
