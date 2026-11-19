@@ -35,8 +35,8 @@ const OPTS = { root: '/repo', runUrl: 'https://github.com/o/r/actions/runs/1', d
   const r = buildReport({ runtime: RUNTIME, osv }, OPTS);
   assert('findings status', r.status === 'findings');
   assert('body starts with the issue marker', r.body.startsWith(ISSUE_MARKER));
-  assert('runtime behind row', r.body.includes('| `.ruby-version:1` | ruby | 3.4.12 | behind: latest patch is 3.4.13 |'), r.body);
-  assert('runtime eol row', r.body.includes('| `Dockerfile:3` | node | 20 | end of life since 2026-04-30 |'), r.body);
+  assert('runtime behind row', r.body.includes('| `.ruby-version:1` | ruby | 3.4.12 | behind: latest patch is [3.4.13](https://github.com/ruby/ruby/releases/tag/v3_4_13) |'), r.body);
+  assert('runtime eol row', r.body.includes('| `Dockerfile:3` | node | 20 | end of life since 2026-04-30 ([schedule](https://endoflife.date/nodejs)) |'), r.body);
   assert('unchecked pin listed', r.body.includes('`Dockerfile:5`') && r.body.includes('pinned by digest'));
   assert('package row: relative path, ids linked, fixed versions',
     r.body.includes('| `Gemfile.lock` | `rack` | `2.2.3` | RubyGems |') && r.body.includes('[GHSA-22f2-v57c-j9cx](https://osv.dev/vulnerability/GHSA-22f2-v57c-j9cx)'), r.body);

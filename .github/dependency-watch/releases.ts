@@ -15,6 +15,16 @@ export const RELEASE_URLS: Record<Runtime, string> = {
 
 const EOL_PRODUCTS: Record<Runtime, string> = { ruby: 'ruby', node: 'nodejs', python: 'python', go: 'go' };
 export const eolUrl = (runtime: Runtime): string => `https://endoflife.date/api/${EOL_PRODUCTS[runtime]}.json`;
+export const eolPageUrl = (runtime: Runtime): string => `https://endoflife.date/${EOL_PRODUCTS[runtime]}`;
+
+// Where an owner reads up on a release, built from fixed templates (no third-party text).
+const RELEASE_NOTES: Record<Runtime, (version: string) => string> = {
+  ruby: v => `https://github.com/ruby/ruby/releases/tag/v${v.replace(/\./g, '_')}`,
+  node: v => `https://github.com/nodejs/node/releases/tag/v${v}`,
+  python: v => `https://www.python.org/downloads/release/python-${v.replace(/\./g, '')}/`,
+  go: v => `https://go.dev/doc/devel/release#go${v}`,
+};
+export const releaseNotesUrl = (runtime: Runtime, version: string): string => RELEASE_NOTES[runtime](version);
 
 export const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 

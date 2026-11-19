@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { isEntryPoint, todayIso } from './cli.ts';
+import { eolPageUrl, releaseNotesUrl } from './releases.ts';
 import type { Classification, Finding, Note } from './versions.ts';
 
 // The workflow finds its one tracking issue by label; the marker identifies the body as generated.
@@ -69,8 +70,22 @@ function packageRows(osv: OsvOutput, root: string): PackageRow[] {
   return rows.sort((a, b) => byText(`${a.file} ${a.pkg.name} ${a.pkg.version}`, `${b.file} ${b.pkg.name} ${b.pkg.version}`));
 }
 
-const describe = (f: Finding): string =>
-  f.kind === 'behind' ? `behind: latest patch is ${cell(f.latest)}` : `end of life${f.since ? ` since ${cell(f.since)}` : ''}`;
+// `latest` passed the release-list version check, so it is safe inside a link.
+const describe = (f: Finding): string => f.kind === 'behind'
+  ? `behind: latest patch is [${f.latest}](${releaseNotesUrl(f.runtime, f.latest)})`
+  : `end of life${f.since ? ` since ${cell(f.since)}` : ''} ([schedule](${eolPageUrl(f.runtime)}))`;
+
+function patchSection(findings: Finding[], packages: number): string[] {
+  const bumps = findings.filter(f => f.kind === 'behind').length;
+  const eol = findings.length - bumps;
+  if (!bumps && !eol && !packages) return [];
+  const steps = [
+    ...(bumps ? [`Tell your agent \`/dependency-watch fix\`: it bumps ${bumps} runtime pin(s) to the latest patch and opens a PR for you to merge.`] : []),
+    ...(packages ? ['Dependabot opens security PRs for the packages.'] : []),
+    ...(eol ? [`${eol} end-of-life line(s) need a decision: move to a supported line in a normal PR.`] : []),
+  ];
+  return ['', '### To patch', '', ...steps.map(s => `- ${s}`)];
+}
 type Located = { file: string; line: number };
 const where = (s: Located): string => code(`${s.file}:${s.line}`);
 const byLocation = (a: Located, b: Located): number => byText(a.file, b.file) || a.line - b.line;
@@ -113,7 +128,9 @@ export function buildReport(input: ReportInput, options: ReportOptions): Report 
     ...packageSection(rows),
     ...notesSection(input.runtime.unchecked),
     '',
-    'Fix: bump the pin or package in a normal PR. Dependabot opens security PRs for packages. Suppress a reviewed false positive in `osv-scanner.toml` with a reason.',
+    ...patchSection(input.runtime.findings, rows.length),
+    '',
+    'Suppress a reviewed false positive in `osv-scanner.toml` with a reason.',
   ].join('\n');
   return { status, body };
 }
