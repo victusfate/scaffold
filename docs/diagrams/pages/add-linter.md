@@ -67,12 +67,9 @@ Optionally match settings to your existing code, report per language, and offer 
 - Tuning proposes values seen in your code, for example line length; you confirm, override or decline.
 - The commit never includes .bak or .scaffold-new files.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Add linter, detailed](../generated/add-linter.svg)
-
-</details>
 
 ## Glossary
 

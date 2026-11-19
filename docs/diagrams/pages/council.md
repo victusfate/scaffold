@@ -87,12 +87,9 @@ The main agent weighs the advisors and commits to one recommendation and a first
 
 - "It depends" is not a verdict; the chairman has to commit.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Council, detailed](../generated/council.svg)
-
-</details>
 
 ## Glossary
 

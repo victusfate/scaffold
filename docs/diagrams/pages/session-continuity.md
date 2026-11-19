@@ -70,12 +70,9 @@ Details: [PR workflow](pr-workflow.md)
 - Remove .pause/handoff.md with git rm, then check-handoff --pre-merge must pass on the merged head.
 - The PR then lands on main as one squash commit.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Session continuity, detailed](../generated/session-continuity.svg)
-
-</details>
 
 ## Glossary
 

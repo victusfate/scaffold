@@ -82,12 +82,9 @@ Details: [PR workflow](pr-workflow.md)
 - The PR lands on main as one squash commit.
 - queue advance --pr --branch records the merge and the fresh branch.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Orchestration, detailed](../generated/orchestration.svg)
-
-</details>
 
 ## Glossary
 

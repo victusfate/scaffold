@@ -60,7 +60,7 @@ export type ExplorerSpec = {
   // Q&A framing sent with every question, ahead of the selected-node context.
   ask?: { context: string; style?: string };
   start?: { node?: string; flow?: string };
-  // Relative path to the full detailed diagram image, folded at the end of the markdown page.
+  // Relative path to the full detailed diagram image, shown after the stages on the markdown page.
   detail?: string;
 };
 

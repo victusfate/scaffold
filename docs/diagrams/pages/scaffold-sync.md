@@ -76,12 +76,9 @@ Details: [/upstream skill](../../../skills/upstream.md)
   - Exports chosen skills into another repo in a target harness's format.
   - .sync/hoisted records the name, harness and pinned ref; --from-manifest replays it.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Scaffold sync, detailed](../generated/scaffold-sync.svg)
-
-</details>
 
 ## Glossary
 

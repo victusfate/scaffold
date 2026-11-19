@@ -96,12 +96,9 @@ Check the recording still matches the source, then open the tour as one offline 
 - view writes tour.html, which needs no server or network.
 - The page shows its snapshot hash and says freshness is unknown offline.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Mind meld, detailed](../generated/mind-meld.svg)
-
-</details>
 
 ## Glossary
 

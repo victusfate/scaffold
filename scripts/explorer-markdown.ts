@@ -1,5 +1,5 @@
 // explorer-markdown — render an explorer spec as one GitHub markdown page that starts high level and
-// drills down: overview diagram → one section per component → folded detailed diagram → glossary →
+// drills down: overview diagram → one section per component → the full detailed diagram → glossary →
 // a copyable "Ask your LLM" block.
 // Why: GitHub strips scripts from READMEs and wikis, so the interactive explorer page cannot run there.
 // Markdown pages linked from the README give the same drill-down with no hosting, and GitHub's copy
@@ -112,8 +112,7 @@ export function renderMarkdown(spec: ExplorerSpec, context: PageContext = {}): s
     ...overview(spec), '',
     ...nodes.map(n => `- [${n.name}](${hasSection(n) ? `#${githubAnchor(n.name)}` : n.link}): ${n.role}`), '',
     ...nodes.filter(hasSection).flatMap(node => nodeSection(node, context.titles ?? {})),
-    ...(spec.detail ? ['<details>', '<summary>Detailed flow</summary>', '',
-      `![${spec.title}, detailed](${spec.detail})`, '', '</details>', ''] : []),
+    ...(spec.detail ? ['## Detailed flow', '', `![${spec.title}, detailed](${spec.detail})`, ''] : []),
     ...(glossary.length ? ['## Glossary', '', ...glossary.map(g => `- **${g.t}**: ${g.d}`), ''] : []),
     ...askBlock(spec, context.source),
   ].join('\n') + '\n';

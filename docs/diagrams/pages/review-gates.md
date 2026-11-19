@@ -80,12 +80,9 @@ A verified run writes a receipt for the exact code, so the merge step can reuse 
 - Plan and gate-script hashes
 - Tool binaries
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Review gates, detailed](../generated/review-gates.svg)
-
-</details>
 
 ## Glossary
 

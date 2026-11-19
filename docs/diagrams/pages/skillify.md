@@ -71,12 +71,9 @@ Details: [Scaffold sync](scaffold-sync.md)
 - Branch `skillify/<slug>` off `scaffold/main`, push, and open a PR titled `feat(skill): <slug>`.
 - Do not merge; the summary lists slug, files, validator result and PR link.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Skillify, detailed](../generated/skillify.svg)
-
-</details>
 
 ## Glossary
 

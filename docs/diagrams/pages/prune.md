@@ -59,12 +59,9 @@ Details: [PR workflow](pr-workflow.md)
 
 - At any step, stop, pause or just answer from the owner halts the run at once.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Prune, detailed](../generated/prune.svg)
-
-</details>
 
 ## Glossary
 

@@ -69,12 +69,9 @@ Re-run the new test, the original command and nearby tests, then report.
 
 - After three failed fixes, stop and question the design with the user before a fourth.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Investigate, detailed](../generated/investigate.svg)
-
-</details>
 
 ## Glossary
 

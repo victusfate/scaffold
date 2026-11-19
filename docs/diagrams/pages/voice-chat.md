@@ -78,12 +78,9 @@ Quit with Ctrl-C or by saying an exit phrase.
 
 - Exit phrases: "stop listening", "goodbye agent", "that's all for now".
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Voice chat, detailed](../generated/voice-chat.svg)
-
-</details>
 
 ## Glossary
 

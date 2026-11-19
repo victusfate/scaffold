@@ -2,7 +2,7 @@
 
 **Start here: [Scaffold at a glance](pages/system-map.md).** It maps every skill; click a skill link under the map for its own page,
 which starts with a one-line overview and drills down: each stage, where it breaks, the full detailed
-diagram (folded), a glossary, and a block you can copy into your own LLM to ask follow-up questions.
+diagram, a glossary, and a block you can copy into your own LLM to ask follow-up questions.
 
 ## How the pages are made
 
@@ -11,7 +11,7 @@ Everything here is generated. Edit the sources, then regenerate:
 | You edit | Generated |
 |---|---|
 | `explorer/<slug>.explorer.json`: a skill's stages, detail, glossary and questions | `pages/<slug>.md` |
-| `src/<slug>.mmd`: the detailed mermaid diagram | `generated/<slug>.svg` (folded into the page) |
+| `src/<slug>.mmd`: the detailed mermaid diagram | `generated/<slug>.svg` (shown on the page) |
 
 ```bash
 npm run diagrams                 # every SVG and page

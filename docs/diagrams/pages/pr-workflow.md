@@ -68,12 +68,9 @@ With the owner's explicit authorization, the orchestrator squash-merges it onto 
 - The squash merge uses --match-head-commit, so only the commit whose checks were read can land.
 - Confirm the PR is MERGED, pull main, and cut a fresh branch before the next task.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![PR workflow, detailed](../generated/pr-workflow.svg)
-
-</details>
 
 ## Glossary
 

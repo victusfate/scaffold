@@ -80,12 +80,9 @@ Details: [Review gates](review-gates.md)
 - /code-refiner runs in auto-fix mode: correctness and structure reviews, then one fix pass.
 - A summary lists what was built, the tests and any deviation from the plan.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![TDD, detailed](../generated/tdd.svg)
-
-</details>
 
 ## Glossary
 

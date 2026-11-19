@@ -82,12 +82,9 @@ A table of issues with status and commit, plus one summary line for the PR.
 - Deferred and blocked items are listed with reasons.
 - Inside the feature chain it writes qa-report.md; standalone it prints in chat.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![QA, detailed](../generated/qa.svg)
-
-</details>
 
 ## Glossary
 

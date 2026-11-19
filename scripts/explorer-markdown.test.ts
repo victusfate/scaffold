@@ -39,8 +39,9 @@ void test('each node is a linked section with role, nested detail, risks and tab
   assert.match(md, /\| Step \| Message \|\n\|---\|---\|\n\| red \| test: … \|/);
 });
 
-void test('detailed diagram folded, glossary, copyable LLM context', () => {
-  assert.match(md, /<details>\n<summary>Detailed flow<\/summary>\n\n!\[Feature chain, detailed\]\(\.\.\/generated\/feature-chain\.svg\)\n\n<\/details>/);
+void test('detailed diagram shown under its own heading, glossary, copyable LLM context', () => {
+  assert.match(md, /## Detailed flow\n\n!\[Feature chain, detailed\]\(\.\.\/generated\/feature-chain\.svg\)\n/);
+  assert.doesNotMatch(md, /<details>/);
   assert.match(md, /\*\*PRD\*\*: Product requirements document\./);
   const ask = /## Ask your LLM\n\n[^\n]+\n\n```text\n([\s\S]*?)```/.exec(md)?.[1] ?? '';
   assert.match(ask, /The reader is learning the scaffold feature chain\./);

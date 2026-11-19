@@ -79,12 +79,9 @@ Details: [Skillify](skillify.md)
   - skillify for a reusable procedure, add-linter for linter setup, feature-chain for a substantial change.
   - upstream when the fix belongs in scaffold; improve, code-refiner or prune for code quality.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Retro, detailed](../generated/retro.svg)
-
-</details>
 
 ## Glossary
 

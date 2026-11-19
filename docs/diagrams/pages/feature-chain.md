@@ -74,12 +74,9 @@ Details: [PR workflow](pr-workflow.md)
 
 - Merging needs explicit owner authorization; a PR is not approval.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Feature chain, detailed](../generated/feature-chain.svg)
-
-</details>
 
 ## Glossary
 

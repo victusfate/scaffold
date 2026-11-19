@@ -14,7 +14,7 @@
 ## Decisions
 ### Markdown drill-down, not hosted explorer pages
 **Decision:** README → `docs/diagrams/pages/<slug>.md`. Each page has an overview mermaid diagram (4–6
-boxes), stage sections with links, the existing detailed diagram folded in `<details>`, a glossary, and
+boxes), stage sections with links, the existing detailed diagram shown in full (owner: "auto show the detailed flows"), a glossary, and
 an "Ask your LLM" code block.
 **Rationale:** owner: "readme nav, you can click links that open up new md files". GitHub strips scripts
 from READMEs and wikis, so interactive explorer pages would need Pages, and the owner chose not to host.

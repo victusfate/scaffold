@@ -80,12 +80,9 @@ Details: [PR workflow](pr-workflow.md)
 
 - tick exits 7 until the task is advanced; that means delivery is pending, not that the queue drained.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![Queue task lifecycle, detailed](../generated/queue-lifecycle.svg)
-
-</details>
 
 ## Glossary
 

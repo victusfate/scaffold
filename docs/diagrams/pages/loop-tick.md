@@ -78,12 +78,9 @@ Check that each job advanced since the last tick, not just that it is running.
 
 - A running process is not proof that work is moving.
 
-<details>
-<summary>Detailed flow</summary>
+## Detailed flow
 
 ![One loop tick, detailed](../generated/loop-tick.svg)
-
-</details>
 
 ## Glossary
 
