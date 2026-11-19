@@ -8,11 +8,11 @@ export interface RepoFile { path: string; content: string; }
 interface PinSite { file: string; line: number; raw: string; }
 
 // exact: full major.minor.patch, comparable to upstream releases.
-// floating: a line or major only (`3.4`, `26`); a rebuild picks up the latest patch.
+// floating: a line, a major or `latest` (`3.4`, `26`); a rebuild picks up the latest patch.
 // unchecked: cannot be evaluated (alias, digest, build arg); reported, never treated as clean.
 export type Pin =
   | PinSite & { state: 'exact'; runtime: Runtime; version: string }
-  | PinSite & { state: 'floating'; runtime: Runtime }
+  | PinSite & { state: 'floating'; runtime: Runtime; version: string }
   | PinSite & { state: 'unchecked'; runtime?: Runtime; reason: string };
 
 const EXACT_VERSION = /^\d+\.\d+\.\d+$/;
@@ -41,7 +41,7 @@ const baseName = (path: string): string => path.slice(path.lastIndexOf('/') + 1)
 function pinFromVersion(site: PinSite, runtime: Runtime, text: string): Pin {
   const version = text.replace(VERSION_PREFIX, '');
   if (EXACT_VERSION.test(version)) return { ...site, state: 'exact', runtime, version };
-  if (FLOATING_VERSION.test(version)) return { ...site, state: 'floating', runtime };
+  if (FLOATING_VERSION.test(version)) return { ...site, state: 'floating', runtime, version };
   return { ...site, state: 'unchecked', runtime, reason: 'not a version number' };
 }
 
@@ -73,7 +73,7 @@ function dockerfilePin(site: PinSite, image: string): Pin | undefined {
   const runtime = IMAGE_NAMES[repo];
   if (!runtime) return undefined;
   if (digest) return { ...site, state: 'unchecked', runtime, reason: 'pinned by digest' };
-  if (!tag) return { ...site, state: 'floating', runtime };
+  if (!tag) return { ...site, state: 'floating', runtime, version: 'latest' };
   return pinFromVersion(site, runtime, tag.split('-')[0]);
 }
 

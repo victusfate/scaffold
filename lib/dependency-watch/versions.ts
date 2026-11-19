@@ -1,22 +1,20 @@
-// Classify runtime pins against upstream release data: behind its line's latest patch, or unevaluable.
-// Pure: no I/O, no clock. Imports only sibling modules (shipped verbatim into consumer repos).
+// Classify runtime pins against upstream release data: behind its line's latest patch, on an
+// end-of-life line, or unevaluable. Pure: no I/O; the caller passes today's date.
+// Imports only sibling modules (shipped verbatim into consumer repos).
 
 import type { Pin, Runtime } from './pins.ts';
 
 export interface RuntimeReleases {
   versions: string[];
-  eol: Record<string, string | false>;
+  // Release line → EOL date (ISO), or a boolean when endoflife.date gives no date.
+  eol: Record<string, string | boolean>;
 }
 export type Releases = Partial<Record<Runtime, RuntimeReleases>>;
 
-export interface Finding {
-  runtime: Runtime;
-  file: string;
-  line: number;
-  pinned: string;
-  kind: 'behind';
-  latest: string;
-}
+interface FindingSite { runtime: Runtime; file: string; line: number; pinned: string; }
+export type Finding =
+  | FindingSite & { kind: 'behind'; latest: string }
+  | FindingSite & { kind: 'eol'; since: string | null };
 
 export interface Note { runtime?: Runtime; file: string; line: number; raw: string; reason: string; }
 
@@ -45,23 +43,42 @@ function latestInLine(runtime: Runtime, version: string, versions: string[]): st
 const note = (pin: Pin, reason: string): Note =>
   ({ runtime: pin.runtime, file: pin.file, line: pin.line, raw: pin.raw, reason });
 
-function classifyExact(pin: Extract<Pin, { state: 'exact' }>, releases: Releases, result: Classification): void {
-  const known = releases[pin.runtime];
-  if (!known) { result.unchecked.push(note(pin, 'no release data')); return; }
+type VersionedPin = Extract<Pin, { state: 'exact' | 'floating' }>;
+
+const site = (pin: VersionedPin): FindingSite =>
+  ({ runtime: pin.runtime, file: pin.file, line: pin.line, pinned: pin.version });
+
+// Returns false when the pin cannot be evaluated (recorded as unchecked), so no EOL check follows.
+function checkPatch(pin: Extract<Pin, { state: 'exact' }>, known: RuntimeReleases, result: Classification): boolean {
   const latest = latestInLine(pin.runtime, pin.version, known.versions);
-  const order = latest === undefined ? 1 : compareVersions(pin.version, latest);
-  if (order > 0) result.unchecked.push(note(pin, 'version not in upstream releases'));
-  else if (order < 0) {
-    result.findings.push({ runtime: pin.runtime, file: pin.file, line: pin.line, pinned: pin.version, kind: 'behind', latest: latest! });
+  if (latest === undefined || compareVersions(pin.version, latest) > 0) {
+    result.unchecked.push(note(pin, 'version not in upstream releases'));
+    return false;
   }
+  if (compareVersions(pin.version, latest) < 0) result.findings.push({ ...site(pin), kind: 'behind', latest });
+  return true;
 }
 
-export function classify(pins: Pin[], releases: Releases): Classification {
+function checkEol(pin: VersionedPin, known: RuntimeReleases, today: string, result: Classification): void {
+  const eol = known.eol[releaseLine(pin.runtime, pin.version)];
+  const ended = typeof eol === 'string' ? eol <= today : eol === true;
+  if (ended) result.findings.push({ ...site(pin), kind: 'eol', since: typeof eol === 'string' ? eol : null });
+}
+
+function classifyVersioned(pin: VersionedPin, releases: Releases, today: string, result: Classification): void {
+  const known = releases[pin.runtime];
+  if (!known) { result.unchecked.push(note(pin, 'no release data')); return; }
+  if (pin.state === 'floating') result.info.push(note(pin, 'floating version; a rebuild picks up the latest patch'));
+  else if (!checkPatch(pin, known, result)) return;
+  checkEol(pin, known, today, result);
+}
+
+// `today` is an ISO date (YYYY-MM-DD); ISO dates compare correctly as strings.
+export function classify(pins: Pin[], releases: Releases, today: string): Classification {
   const result: Classification = { findings: [], info: [], unchecked: [] };
   for (const pin of pins) {
-    if (pin.state === 'exact') classifyExact(pin, releases, result);
-    else if (pin.state === 'floating') result.info.push(note(pin, 'floating version; a rebuild picks up the latest patch'));
-    else result.unchecked.push(note(pin, pin.reason));
+    if (pin.state === 'unchecked') result.unchecked.push(note(pin, pin.reason));
+    else classifyVersioned(pin, releases, today, result);
   }
   return result;
 }

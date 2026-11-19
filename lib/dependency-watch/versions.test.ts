@@ -27,7 +27,7 @@ const RUBY: Releases = { ruby: { versions: ['3.3.13', '3.3.14', '3.4.12', '3.4.1
 {
   const pins = parsePins([{ path: '.ruby-version', content: 'ruby-4.0.9' }]);
   const r = classify(pins, RUBY, NOW);
-  assert('ruby- prefix parsed', r.findings[0]?.pinned === '4.0.9' && r.findings[0]?.latest === '4.0.10', show(r));
+  assert('ruby- prefix parsed', show(r.findings) === show([{ runtime: 'ruby', file: '.ruby-version', line: 1, pinned: '4.0.9', kind: 'behind', latest: '4.0.10' }]), show(r));
 }
 
 // A pin on its line's latest patch is clean.
@@ -44,7 +44,7 @@ const ALL: Releases = {
   go: { versions: ['1.27.3', '1.27.4'], eol: {} },
 };
 const one = (path: string, content: string) => classify(parsePins([{ path, content }]), ALL, NOW);
-const behind = (path: string, content: string) => one(path, content).findings.map(f => `${f.runtime}@${f.pinned}->${f.latest}:${f.line}`);
+const behind = (path: string, content: string) => one(path, content).findings.map(f => f.kind === 'behind' ? `${f.runtime}@${f.pinned}->${f.latest}:${f.line}` : f.kind);
 
 // Node, Python and Go pin files; Node's release line is its major.
 assert('.node-version', show(behind('.node-version', '26.12.0\n')) === show(['node@26.12.0->26.13.1:1']), show(behind('.node-version', '26.12.0\n')));
