@@ -141,5 +141,13 @@ const byStatus = (json, status) => json.filter(r => r.status === status).map(r =
   assert('unknown flag rejected', run(['--into', repo, '--nope']).status === 1);
 }
 
+// ── Scaffold only: its own install must match the templates (consumers never receive this list) ──
+const ROOT = join(HERE, '../..');
+if (existsSync(join(ROOT, '.github/scaffold-internal.txt'))) {
+  const self = run(['--detect-only', '--into', ROOT]).json;
+  assert('scaffold dogfood install is current (re-run tools/dependency-watch/run --into . --force)',
+    self.files.every(f => f.state === 'scaffold'), show(self.files.filter(f => f.state !== 'scaffold')));
+}
+
 console.error(`\n${passed} passed, ${failed} failed`);
 if (failed) process.exit(1);
