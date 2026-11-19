@@ -81,7 +81,9 @@ flowchart LR
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants an overview of scaffold, a template that gives AI coding agents shared skills, rules and workflows, and how its skills fit together.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/system-map.md
+The reader wants an overview of scaffold, a template that gives AI coding agents
+shared skills, rules and workflows, and how its skills fit together.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/system-map.md
 Scaffold: https://github.com/victusfate/scaffold
 ```

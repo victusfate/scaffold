@@ -102,8 +102,10 @@ A verified run writes a receipt for the exact code, so the merge step can reuse 
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand how scaffold reviews, fixes and verifies a code change before it merges.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/review-gates.md
+The reader wants to understand how scaffold reviews, fixes and verifies a code
+change before it merges.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/review-gates.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

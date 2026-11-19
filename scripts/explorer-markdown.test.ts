@@ -92,7 +92,19 @@ void test('boxes are colored by lane with the shared diagram palette; map lanes 
 void test('with a page URL the LLM block stays short: context, URLs and questions only', () => {
   const page = renderMarkdown(SPEC, { source: { name: 'Scaffold', repo: 'https://github.com/o/r', page: 'https://github.com/o/r/blob/main/p.md' } });
   const ask = /```text\n([\s\S]*?)```/.exec(page.slice(page.indexOf('## Ask your LLM')))?.[1] ?? '';
-  assert.equal(ask, 'The reader is learning the scaffold feature chain.\nRead this page: https://github.com/o/r/blob/main/p.md\nScaffold: https://github.com/o/r\n\nQuestions worth asking:\n- When is a design "done"?\n');
+  assert.equal(ask, 'The reader is learning the scaffold feature chain.\nRead this page:\nhttps://github.com/o/r/blob/main/p.md\nScaffold: https://github.com/o/r\n\nQuestions worth asking:\n- When is a design "done"?\n');
+});
+
+void test('every line of the LLM block fits in 80 characters, wrapped on words; URLs stay whole', () => {
+  const long = 'The reader wants an overview of scaffold, a template that gives AI coding agents shared skills, rules and workflows, and how its skills fit together.';
+  const page = renderMarkdown({ ...SPEC, ask: { context: long }, nodes: { d: { ...SPEC.nodes.design, qs: [long] } } },
+    { source: { name: 'Scaffold', repo: 'https://github.com/o/r', page: 'https://github.com/o/r/blob/main/docs/diagrams/pages/a-very-long-page-name-for-wrapping.md' } });
+  const ask = /```text\n([\s\S]*?)```/.exec(page.slice(page.indexOf('## Ask your LLM')))?.[1] ?? '';
+  const lines = ask.trimEnd().split('\n');
+  assert.ok(lines.filter(l => !l.includes('https://')).every(l => l.length <= 80), lines.join('\n'));
+  assert.match(ask, /^The reader wants an overview of scaffold, a template that gives AI coding agents\nshared skills/);
+  assert.match(ask, /\n- The reader wants an overview of scaffold, a template that gives AI coding\n {2}agents shared/);
+  assert.match(ask, /Read this page:\nhttps:\/\/github\.com\/o\/r\/blob\/main\/docs\/diagrams\/pages\/a-very-long-page-name-for-wrapping\.md\n/);
 });
 
 void test('deterministic', () => assert.equal(renderMarkdown(SPEC), md));

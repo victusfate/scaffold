@@ -91,8 +91,10 @@ Details: [PR workflow](pr-workflow.md)
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand how scaffold lets an agent session stop and pick up later, on any device.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/session-continuity.md
+The reader wants to understand how scaffold lets an agent session stop and pick
+up later, on any device.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/session-continuity.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

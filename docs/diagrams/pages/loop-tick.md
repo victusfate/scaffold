@@ -100,8 +100,10 @@ Check that each job advanced since the last tick, not just that it is running.
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand what scaffold's orchestrator does on each tick of its autonomous loop.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/loop-tick.md
+The reader wants to understand what scaffold's orchestrator does on each tick of
+its autonomous loop.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/loop-tick.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

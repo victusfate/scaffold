@@ -103,8 +103,10 @@ A table of issues with status and commit, plus one summary line for the PR.
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand how scaffold's /qa skill checks that a change really works for a user.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/qa.md
+The reader wants to understand how scaffold's /qa skill checks that a change
+really works for a user.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/qa.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

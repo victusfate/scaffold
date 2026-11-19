@@ -100,10 +100,13 @@ Details: [Skillify](skillify.md)
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand scaffold's /retro skill: how an AI agent reviews a session for friction and proposes environment fixes.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/retro.md
+The reader wants to understand scaffold's /retro skill: how an AI agent reviews
+a session for friction and proposes environment fixes.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/retro.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
-- Why look for a cause in the environment instead of blaming the agent's mistake?
+- Why look for a cause in the environment instead of blaming the agent's
+  mistake?
 ```

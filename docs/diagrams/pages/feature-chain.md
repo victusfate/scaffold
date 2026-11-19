@@ -94,8 +94,10 @@ Details: [PR workflow](pr-workflow.md)
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand scaffold's feature chain: how an AI agent takes a feature from idea to reviewed PR.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/feature-chain.md
+The reader wants to understand scaffold's feature chain: how an AI agent takes a
+feature from idea to reviewed PR.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/feature-chain.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

@@ -98,8 +98,10 @@ Quit with Ctrl-C or by saying an exit phrase.
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand scaffold's /voice-chat skill: a hands-free voice loop for talking to a coding agent.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/voice-chat.md
+The reader wants to understand scaffold's /voice-chat skill: a hands-free voice
+loop for talking to a coding agent.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/voice-chat.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

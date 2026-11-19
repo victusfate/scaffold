@@ -92,8 +92,10 @@ Details: [Scaffold sync](scaffold-sync.md)
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand scaffold's /skillify skill: how an AI agent turns a finished session into a registered, reusable skill.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/skillify.md
+The reader wants to understand scaffold's /skillify skill: how an AI agent turns
+a finished session into a registered, reusable skill.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/skillify.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

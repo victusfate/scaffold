@@ -118,8 +118,10 @@ Check the recording still matches the source, then open the tour as one offline 
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand scaffold's /mind-meld skill: a learning tool that explains a repo's code from indexes and real sandboxed runs.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/mind-meld.md
+The reader wants to understand scaffold's /mind-meld skill: a learning tool that
+explains a repo's code from indexes and real sandboxed runs.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/mind-meld.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

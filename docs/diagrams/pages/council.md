@@ -108,8 +108,10 @@ The main agent weighs the advisors and commits to one recommendation and a first
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand scaffold's /council skill: how an AI agent pressure-tests a hard decision with five persona advisors.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/council.md
+The reader wants to understand scaffold's /council skill: how an AI agent
+pressure-tests a hard decision with five persona advisors.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/council.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

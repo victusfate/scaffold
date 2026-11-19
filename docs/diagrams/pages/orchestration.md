@@ -104,8 +104,10 @@ Details: [PR workflow](pr-workflow.md)
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand how scaffold's orchestrator splits work across subagents and lands it on main.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/orchestration.md
+The reader wants to understand how scaffold's orchestrator splits work across
+subagents and lands it on main.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/orchestration.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

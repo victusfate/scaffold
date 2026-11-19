@@ -89,8 +89,10 @@ With the owner's explicit authorization, the orchestrator squash-merges it onto 
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand how scaffold's agents take a task from branch to a merged PR safely.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/pr-workflow.md
+The reader wants to understand how scaffold's agents take a task from branch to
+a merged PR safely.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/pr-workflow.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

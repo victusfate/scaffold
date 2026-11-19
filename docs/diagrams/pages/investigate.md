@@ -88,8 +88,10 @@ Re-run the new test, the original command and nearby tests, then report.
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand how scaffold's /investigate skill debugs a failure before fixing it.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/investigate.md
+The reader wants to understand how scaffold's /investigate skill debugs a
+failure before fixing it.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/investigate.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

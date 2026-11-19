@@ -86,8 +86,10 @@ Optionally match settings to your existing code, report per language, and offer 
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand how scaffold's /add-linter skill sets up linting for a repo without clobbering existing configs.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/add-linter.md
+The reader wants to understand how scaffold's /add-linter skill sets up linting
+for a repo without clobbering existing configs.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/add-linter.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:

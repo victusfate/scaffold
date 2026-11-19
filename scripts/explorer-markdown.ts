@@ -108,18 +108,33 @@ function nodeSection(node: ExplorerNode, titles: Record<string, string>): string
   ];
 }
 
+// The block is read in GitHub's fixed-width code box, so prose wraps at 80 columns on word boundaries;
+// a wrapped list item keeps a hanging indent. A single long word (a URL) is never split.
+const WRAP = 80;
+function wrap(text: string, first = '', rest = first): string[] {
+  const lines: string[] = [];
+  let line = first;
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const prefix = lines.length ? rest : first;
+    if (line.length > prefix.length && line.length + 1 + word.length > WRAP) { lines.push(line); line = rest + word; }
+    else line += (line.length > prefix.length ? ' ' : '') + word;
+  }
+  return [...lines, line];
+}
+
 // With a page URL the block stays short: a network-capable assistant reads the page itself. Without one
 // (an offline copy), the block carries the page summary instead.
 function askBlock(spec: ExplorerSpec, source?: PageContext['source']): string[] {
   const nodes = Object.values(spec.nodes);
   const questions = nodes.flatMap(n => n.qs ?? []);
   const where = source
-    ? [`Read this page: ${source.page}`, `${source.name}: ${source.repo}`]
-    : [...(spec.ask?.context ? [''] : []), `${spec.title}${spec.lede ? `: ${spec.lede}` : ''}`, ...nodes.map(n => `- ${n.name}: ${n.role}`)];
+    ? ['Read this page:', source.page, `${source.name}: ${source.repo}`]
+    : [...(spec.ask?.context ? [''] : []), ...wrap(`${spec.title}${spec.lede ? `: ${spec.lede}` : ''}`),
+      ...nodes.flatMap(n => wrap(`${n.name}: ${n.role}`, '- ', '  '))];
   const context = [
-    ...(spec.ask?.context ? [spec.ask.context] : []),
+    ...(spec.ask?.context ? wrap(spec.ask.context) : []),
     ...where,
-    ...(questions.length ? ['', 'Questions worth asking:', ...questions.map(q => `- ${q}`)] : []),
+    ...(questions.length ? ['', 'Questions worth asking:', ...questions.flatMap(q => wrap(q, '- ', '  '))] : []),
   ];
   return ['## Ask your LLM', '', 'Copy this block into your own assistant to ask about anything on this page.', '',
     '```text', ...context, '```'];

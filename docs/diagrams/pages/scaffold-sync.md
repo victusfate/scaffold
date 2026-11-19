@@ -96,8 +96,10 @@ Details: [/upstream skill](../../../skills/upstream.md)
 Copy this block into your own assistant to ask about anything on this page.
 
 ```text
-The reader wants to understand how scaffold's shared agent rules and skills sync into project repos and how fixes flow back.
-Read this page: https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/scaffold-sync.md
+The reader wants to understand how scaffold's shared agent rules and skills sync
+into project repos and how fixes flow back.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/scaffold-sync.md
 Scaffold: https://github.com/victusfate/scaffold
 
 Questions worth asking:
