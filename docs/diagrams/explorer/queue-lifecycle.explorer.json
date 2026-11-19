@@ -1,0 +1,41 @@
+{
+  "title": "Queue task lifecycle",
+  "lede": "The states a queue task passes through, from the owner's request to a merged PR.",
+  "detail": "../generated/queue-lifecycle.svg",
+  "lanes": [
+    { "id": "owner", "name": "Owner" },
+    { "id": "queue", "name": "Queue" },
+    { "id": "ship", "name": "Delivery" }
+  ],
+  "nodes": {
+    "add": { "lane": "owner", "name": "Add", "role": "The owner asks for work and the agent records it with the owner's words.", "link": "../../../skills/queue.md",
+      "details": ["queue add --requested stores the owner's words with a title, an accept note and a validate command.", "queue.db is the store; queue.md is its committed, readable view, re-rendered on each change."] },
+    "pending": { "lane": "queue", "name": "Pending", "role": "The task waits its turn; the top eligible line runs first.",
+      "details": [
+        { "t": "Three kinds of waiting", "more": ["Eligible: its deps are done and it is not held.", "Waiting: a dep or gate is unfinished.", "Held: parked; the drain skips it until unheld."] }] },
+    "active": { "lane": "queue", "name": "Active", "role": "A worker or slot claims the task and a lease clock starts.", "link": "loop-tick.md",
+      "details": ["A tick or claim --worker sets the task's owner to the worker or slot.", "release, or park --resume, returns it to pending."],
+      "risks": ["The lease is the age of the claim, not a process id; tick never reclaims an expired lease, it stops and reports."] },
+    "outcome": { "lane": "queue", "name": "Outcome", "role": "The task's validate command decides done, retry or failed.",
+      "details": ["A failure below maxFailures goes back to pending for a retry.", "At maxFailures it is marked failed and stays visible; requeue revives it.", "A done task auto-archives to archive.md, but stays while unfinished work depends on it."],
+      "deep": [{ "h": "Task markers in queue.md", "table": { "head": ["Marker", "Meaning"], "rows": [["[ ]", "pending"], ["[~]", "parked with a resume note"], ["[x]", "done"], ["[!]", "failed"]] } }] },
+    "deliver": { "lane": "ship", "name": "Deliver", "role": "In per-task mode, the task's PR must merge before the queue moves on.", "link": "pr-workflow.md",
+      "details": ["PR, real checks, and the owner approves the merge.", "Then a fresh branch and queue advance --pr --branch."],
+      "risks": ["tick exits 7 until the task is advanced; that means delivery is pending, not that the queue drained."],
+      "qs": ["Why does a done task still hold up the queue until its PR merges?"] }
+  },
+  "flows": [
+    { "id": "main", "name": "Request to delivered", "steps": [
+      ["add", "pending", "Task recorded", "queue.db row"],
+      ["pending", "active", "Claimed by a worker", "owner + lease"],
+      ["active", "outcome", "Work finished", "validate result"],
+      ["outcome", "deliver", "Done and archived", "PR"]] }
+  ],
+  "glossary": {
+    "lease": { "t": "Lease", "a": ["lease"], "d": "How long a claim has been held; not a process id." },
+    "gate": { "t": "Gate", "a": ["gate"], "d": "A task every other task depends on, used to block work temporarily." },
+    "maxfail": { "t": "maxFailures", "a": ["maxFailures"], "d": "The retry cap before a task fails for good." },
+    "advance": { "t": "advance", "a": ["advance"], "d": "Records the merged PR and the fresh branch so the queue moves on." }
+  },
+  "ask": { "context": "The reader wants to understand how a task moves through scaffold's work queue, from request to merged PR." }
+}
