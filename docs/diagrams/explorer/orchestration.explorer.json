@@ -1,0 +1,44 @@
+{
+  "title": "Orchestration",
+  "lede": "How one orchestrator turns owner requests into merged work by handing tasks to subagents in their own lanes.",
+  "detail": "../generated/orchestration.svg",
+  "sources": ["docs/diagrams/src/orchestration.mmd", "AGENTS.md"],
+  "reviewed": "1b874cfd58f1",
+  "lanes": [
+    { "id": "owner", "name": "Owner" },
+    { "id": "orch", "name": "Orchestrator" },
+    { "id": "lane", "name": "Subagent" }
+  ],
+  "nodes": {
+    "request": { "lane": "owner", "name": "Owner requests", "role": "Only the owner creates tasks; the agent records the request in the queue.", "link": "queue-lifecycle.md",
+      "details": ["The agent runs queue add --requested with the owner's words and an acceptance check.",
+        { "t": "One shared record", "more": ["queue.db holds typed tasks: status, owner, accept, evidence.", "queue.md is the committed view; line order is priority.", "Every worktree reads the same record."] }],
+      "risks": ["An agent never adds its own tasks; its findings go to the owner instead."] },
+    "dispatch": { "lane": "orch", "name": "Dispatch", "role": "On each loop tick, the orchestrator gives the top suited task to a free worker slot.", "link": "loop-tick.md",
+      "details": ["It reads the slots from topology.json.", "It creates the worktree lane first, off the working branch's HEAD, then claims the task for that slot.",
+        { "t": "Steering later", "more": ["The orchestrator adds ORCH UPDATE notes to the task.", "The subagent follows the newest one at its next checkpoint."] }] },
+    "work": { "lane": "lane", "name": "Subagent works", "role": "The subagent builds its one task in its own worktree and commits locally.", "link": "feature-chain.md",
+      "details": ["It starts with an ff-only check that it is on the working branch's HEAD.", "A chore is built directly; a feature runs design, PRD, plan, TDD, refine.", "It validates, commits, records evidence and never pushes."],
+      "risks": ["A subagent that skips its checkpoints misses the orchestrator's steering."] },
+    "integrate": { "lane": "orch", "name": "Integrate", "role": "The orchestrator merges the target into the lane, re-runs the gates and merges green work into the one working branch.", "link": "review-gates.md",
+      "details": ["Red gates send the work back to the lane.", "Then it opens a PR with Critical changes and real check results."],
+      "risks": ["There is exactly one working branch per session; two long-lived branches split the work."] },
+    "ship": { "lane": "owner", "name": "Authorized merge", "role": "The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.", "link": "pr-workflow.md",
+      "details": ["The PR lands on main as one squash commit.", "queue advance --pr --branch records the merge and the fresh branch."],
+      "qs": ["Why can't the orchestrator merge to main on its own?"] }
+  },
+  "flows": [
+    { "id": "main", "name": "Request to merged work", "steps": [
+      ["request", "dispatch", "Task waits in the queue", "queue task"],
+      ["dispatch", "work", "Task claimed for a slot", "worktree + claim"],
+      ["work", "integrate", "Lane reports done", "local commits + evidence"],
+      ["integrate", "ship", "Gates green, PR opened", "PR"]] }
+  ],
+  "glossary": {
+    "worktree": { "t": "Worktree", "a": ["worktree"], "d": "An isolated git checkout per worker, so workers never collide." },
+    "slot": { "t": "Slot", "a": ["slot"], "d": "A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner." },
+    "ffonly": { "t": "ff-only", "a": ["ff-only"], "d": "Fast-forward only: the worker proves it starts from the working branch's HEAD, or stops." },
+    "orchupdate": { "t": "ORCH UPDATE", "a": ["ORCH UPDATE"], "d": "The orchestrator's steering note on a running worker's task." }
+  },
+  "ask": { "context": "The reader wants to understand how scaffold's orchestrator splits work across subagents and lands it on main." }
+}

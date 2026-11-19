@@ -1,0 +1,44 @@
+{
+  "title": "One loop tick",
+  "lede": "What the orchestrator does each time its loop wakes: handle finished work, fill free slots, and make sure work is moving.",
+  "detail": "../generated/loop-tick.svg",
+  "sources": ["docs/diagrams/src/loop-tick.mmd", "skills/loop.md"],
+  "reviewed": "1360b4e2769b",
+  "lanes": [
+    { "id": "wake", "name": "Wake" },
+    { "id": "slots", "name": "Slots" },
+    { "id": "watch", "name": "Watch" }
+  ],
+  "nodes": {
+    "wake": { "lane": "wake", "name": "Wake", "role": "A native /loop or an external driver fires the tick.", "link": "../../../skills/loop.md",
+      "details": ["Timers are only for external gating, a usage-limit window or a crash re-arm."],
+      "risks": ["A timer is never used to pace the agent's own work; that work runs continuously."] },
+    "topology": { "lane": "wake", "name": "Read topology", "role": "The orchestrator reads which worker slots exist from topology.json.",
+      "details": ["node scripts/topology.ts validates the file.", "An invalid file is a blocker to report. No file means the orchestrator works alone."] },
+    "review": { "lane": "slots", "name": "Finished slots", "role": "Review each finished slot's work, integrate or ship it, and set the task status.", "link": "orchestration.md",
+      "details": ["Integration and shipping stay within existing authorization.", "Status becomes done, fail, or park --resume."] },
+    "dispatch": { "lane": "slots", "name": "Free slots", "role": "Give each free slot a suited task in a new worktree.", "link": "queue-lifecycle.md",
+      "details": ["A slot is free when no active task is owned by its id.", "Order: create the worktree, claim the task for the slot, then start the slot's harness and model there.", "No suited task? Leave the slot free."] },
+    "reconcile": { "lane": "watch", "name": "Reconcile", "role": "Make active tasks match live subagents, then clean up leftovers.",
+      "details": [{ "t": "Compare live handles, active tasks and the git worktree list", "more": ["Task with no subagent: resume or park.", "Zombie worktree: integrate, park or clean.", "Orphan owner: adopt into a slot or park."] }] },
+    "supervise": { "lane": "watch", "name": "Supervise", "role": "Check that each job advanced since the last tick, not just that it is running.",
+      "details": ["Check the leaf step, orphans, and who holds a shared budget.", "A probe exits non-zero on an anomaly, which starts an investigation."],
+      "risks": ["A running process is not proof that work is moving."],
+      "qs": ["How does the orchestrator tell a stuck subagent from a slow one?"] }
+  },
+  "flows": [
+    { "id": "main", "name": "One tick", "steps": [
+      ["wake", "topology", "Tick fires", "trigger"],
+      ["topology", "review", "Slots known", "topology.json"],
+      ["review", "dispatch", "Finished work handled", "task statuses"],
+      ["dispatch", "reconcile", "Free slots filled", "claims + worktrees"],
+      ["reconcile", "supervise", "Tasks match subagents", "live handles"]] }
+  ],
+  "glossary": {
+    "slot": { "t": "Slot", "a": ["slot"], "d": "A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner." },
+    "harness": { "t": "Harness", "a": ["harness"], "d": "The agent tool a slot runs: claude, codex, agy or pi." },
+    "zombie": { "t": "Zombie worktree", "a": ["Zombie worktree"], "d": "A checkout with no task and no running subagent." },
+    "park": { "t": "Park", "a": ["park"], "d": "Return a task to pending, keeping its branch and a resume note." }
+  },
+  "ask": { "context": "The reader wants to understand what scaffold's orchestrator does on each tick of its autonomous loop." }
+}

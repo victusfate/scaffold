@@ -1,0 +1,41 @@
+{
+  "title": "Scaffold sync",
+  "lede": "How shared rules and skills flow from the scaffold repo into project repos, and how a project's generic fix flows back up.",
+  "detail": "../generated/scaffold-sync.svg",
+  "sources": ["docs/diagrams/src/scaffold-sync.mmd", "skills/sync-scaffold.md", "skills/upstream.md", "skills/hoist-skill.md"],
+  "reviewed": "0008053bc3e6",
+  "lanes": [
+    { "id": "consumer", "name": "Consumer repo" },
+    { "id": "scaffold", "name": "Scaffold repo" }
+  ],
+  "nodes": {
+    "bootstrap": { "lane": "consumer", "name": "Bootstrap", "role": "The first time, install the sync script, then run it once the user confirms.", "link": "../../../skills/sync-scaffold.md",
+      "details": ["If bin/sync-from-scaffold.sh is missing, a curl of bootstrap.sh installs the script only."] },
+    "down": { "lane": "consumer", "name": "Sync down", "role": "/sync-scaffold merges scaffold's files into the project on the current branch.", "link": "../../../skills/sync-scaffold.md",
+      "details": ["The manifest, scaffold-files.txt, lists the files scaffold ships.", "Each file gets a 3-way merge from the last synced commit.",
+        { "t": "When a merge can't be automatic", "more": ["No base and the file differs: the incoming copy is saved as a .scaffold-new sidecar to review.", "Paths in .scaffold-keep are skipped.", "Conflict markers: resolve, commit, re-run."] }],
+      "risks": ["A sidecar is not applied: the original file is unchanged until someone diffs and merges it."] },
+    "upstream": { "lane": "scaffold", "name": "Upstream", "role": "/upstream splits a project change into its universal half and moves that half into scaffold.", "link": "../../../skills/upstream.md",
+      "details": ["Work in a scaffold worktree off origin/main, never its main checkout.", "Make the change the scaffold way: skill, wrappers, RESOLVER, manifest, test.", "npm test, eslint and typecheck must pass."] },
+    "pr": { "lane": "scaffold", "name": "Scaffold PR", "role": "Open a scaffold PR that says why the change is universal, and merge it only if authorized.", "link": "pr-workflow.md",
+      "details": ["The PR names the consumer that needed it.", "Read the real check conclusions; a skipped check is not a pass.", "Remove the worktree after the merge."] },
+    "back": { "lane": "consumer", "name": "Sync back", "role": "Run /sync-scaffold again on a project branch to pull the merged change back in.", "link": "../../../skills/upstream.md",
+      "details": ["Keep .scaffold-keep paths and merge diverged files.", "Put the project-specific half in the project's own policy file.", "Then the project's own gates, PR and authorized merge.",
+        { "t": "Another way out: /hoist-skill", "more": ["Exports chosen skills into another repo in a target harness's format.", ".sync/hoisted records the name, harness and pinned ref; --from-manifest replays it."] }],
+      "qs": ["What decides whether a change belongs in scaffold or stays in the project?"] }
+  },
+  "flows": [
+    { "id": "main", "name": "Down, up and back", "steps": [
+      ["bootstrap", "down", "Sync script installed", "bin/sync-from-scaffold.sh"],
+      ["down", "upstream", "Project finds a generic fix", "project change"],
+      ["upstream", "pr", "Gates pass", "scaffold branch"],
+      ["pr", "back", "Scaffold PR merged", "scaffold main"]] }
+  ],
+  "glossary": {
+    "consumer": { "t": "Consumer", "a": ["consumer"], "d": "A project repo that syncs from scaffold." },
+    "manifest": { "t": "Manifest", "a": ["manifest"], "d": "The list of files scaffold ships to consumers." },
+    "sidecar": { "t": "Sidecar", "a": ["sidecar"], "d": "A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten." },
+    "keep": { "t": ".scaffold-keep", "a": [".scaffold-keep"], "d": "The consumer's list of paths the sync never touches." }
+  },
+  "ask": { "context": "The reader wants to understand how scaffold's shared agent rules and skills sync into project repos and how fixes flow back." }
+}

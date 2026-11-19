@@ -1,0 +1,42 @@
+{
+  "title": "Investigate",
+  "lede": "How /investigate finds the root cause of a bug before changing any code, then proves the fix with fresh evidence.",
+  "detail": "../generated/investigate.svg",
+  "sources": ["docs/diagrams/src/investigate.mmd", "skills/investigate.md"],
+  "reviewed": "3abca9aae49c",
+  "lanes": [
+    { "id": "find", "name": "Find the cause" },
+    { "id": "fix", "name": "Fix and prove" }
+  ],
+  "nodes": {
+    "repro": { "lane": "find", "name": "Reproduce", "role": "Read the whole error, reproduce it on demand, and trace back to where it first goes wrong.",
+      "details": ["Until this step is done, only logging and probes are allowed, not behavior changes.",
+        { "t": "Steps", "more": ["Read the full trace, warnings and exit codes.", "Write down the exact steps that reproduce it.", "Check what changed: git log, diff, environment.", "Log what crosses each boundary and trace back to the divergence."] }] },
+    "compare": { "lane": "find", "name": "Compare", "role": "Find similar code that works and list every difference.",
+      "details": ["Include differences that seem like they can't matter.", "Note what the broken path assumes: config, env vars, ordering, file layout."] },
+    "hypothesis": { "lane": "find", "name": "Hypothesis", "role": "Write down one guess about the cause and test it with the smallest change.",
+      "details": ["Form: X is the root cause because Y.", "Change one variable at a time."],
+      "risks": ["Stacking a second change on an unconfirmed first one hides which change mattered."] },
+    "fix": { "lane": "fix", "name": "Fix", "role": "Write a failing regression test, then make one fix at the root cause.", "link": "tdd.md",
+      "details": ["The test must fail for the named reason, not a bad fixture or import.", "No bundled refactors or unrelated edits."] },
+    "verify": { "lane": "fix", "name": "Verify", "role": "Re-run the new test, the original command and nearby tests, then report.",
+      "details": ["Never say fixed or passing without output produced in this turn.",
+        "Not fixed, and under three tries: go back to Reproduce with the new information.",
+        { "t": "Report", "more": ["Symptom, root cause, evidence, fix, regression test, commands re-run."] }],
+      "risks": ["After three failed fixes, stop and question the design with the user before a fourth."],
+      "qs": ["Why stop after three failed fixes instead of trying a fourth?", "What counts as fresh evidence?"] }
+  },
+  "flows": [
+    { "id": "main", "name": "Bug to proven fix", "steps": [
+      ["repro", "compare", "Reproduces on demand", "exact steps"],
+      ["compare", "hypothesis", "Differences listed", "difference list"],
+      ["hypothesis", "fix", "Cause confirmed", "root cause"],
+      ["fix", "verify", "Test fails, then passes", "regression test"]] }
+  ],
+  "glossary": {
+    "root": { "t": "Root cause", "a": ["root cause"], "d": "The first place behavior diverges from intent." },
+    "regression": { "t": "Regression test", "a": ["regression test"], "d": "An automated test that catches the bug if it comes back." },
+    "fresh": { "t": "Fresh evidence", "a": ["fresh evidence"], "d": "Output produced this turn, not an earlier run." }
+  },
+  "ask": { "context": "The reader wants to understand how scaffold's /investigate skill debugs a failure before fixing it." }
+}

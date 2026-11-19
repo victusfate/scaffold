@@ -1,0 +1,37 @@
+{
+  "title": "Prune",
+  "lede": "How /prune runs every quality lens on a branch, then fixes the findings through the full feature chain instead of a one-shot patch.",
+  "detail": "../generated/prune.svg",
+  "sources": ["docs/diagrams/src/prune.mmd", "skills/prune.md"],
+  "reviewed": "5bb18baae459",
+  "lanes": [
+    { "id": "find", "name": "Find" },
+    { "id": "plan", "name": "Plan" },
+    { "id": "build", "name": "Build" }
+  ],
+  "nodes": {
+    "audit": { "lane": "find", "name": "Audit", "role": "Run the correctness and structure reviews, read-only, and collect one findings table.",
+      "details": ["Correctness: /validate --effort max.", "Structure: the /simplify checklist, applied without auto-fix.", "Each finding is tagged [validate] or [quality]."],
+      "qs": ["When is /prune worth it instead of running /simplify alone?"] },
+    "design": { "lane": "plan", "name": "Design doc", "role": "Write the findings and how each kind will be fixed into design.md.",
+      "details": ["Findings get IDs (F-01 and on) and are grouped by class, not handled one by one.", "Written to `docs/quality-<branch-short>/design.md` (the last segment of the branch name), committed, then /design-review auto-fixes it."] },
+    "prd": { "lane": "plan", "name": "PRD", "role": "Turn the findings into user stories without re-interviewing.",
+      "details": ["Stories cite finding IDs.", "It names which fixes are risky enough to need tests."] },
+    "tdd": { "lane": "build", "name": "TDD", "role": "Build the fixes in slices, one group of fixes per slice, then refine.", "link": "tdd.md",
+      "details": ["/tdd runs /code-refiner when all slices pass.", "The review at the end of this step is the only pause."] },
+    "pr": { "lane": "build", "name": "Pull request", "role": "Open a PR whose body lists the findings and which IDs were addressed.", "link": "pr-workflow.md",
+      "risks": ["At any step, stop, pause or just answer from the owner halts the run at once."] }
+  },
+  "flows": [
+    { "id": "main", "name": "Branch to cleanup PR", "steps": [
+      ["audit", "design", "Findings collected", "findings table"],
+      ["design", "prd", "Decisions written", "design.md"],
+      ["prd", "tdd", "Stories cite findings", "prd.md"],
+      ["tdd", "pr", "All slices green, refined", "commits"]] }
+  ],
+  "glossary": {
+    "lens": { "t": "Lens", "a": ["lens"], "d": "One review angle: correctness or structure." },
+    "prd": { "t": "PRD", "a": ["PRD"], "d": "Product requirements document: the problem, the solution and the user stories." }
+  },
+  "ask": { "context": "The reader wants to understand how scaffold's /prune skill turns a quality audit into a planned, tested cleanup PR." }
+}

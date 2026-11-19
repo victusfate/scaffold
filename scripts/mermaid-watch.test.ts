@@ -16,11 +16,11 @@ const { parseArgs, injectReload } = await import('./mermaid-watch.ts');
   const a = parseArgs(['diagrams/demo.mmd']);
   assert('positional is the file', a.file === 'diagrams/demo.mmd');
   assert('port defaults to 8080', a.port === 8080, String(a.port));
-  assert('portable defaults false', a.portable === false);
+  assert('SVG-text labels by default, like mermaid-render', a.portable === true);
 
-  const b = parseArgs(['x.mmd', '--port', '9100', '--portable']);
+  const b = parseArgs(['x.mmd', '--port', '9100', '--html-labels']);
   assert('parses --port', b.port === 9100, String(b.port));
-  assert('parses --portable', b.portable === true);
+  assert('--html-labels opts out', b.portable === false);
 }
 
 // live-reload injection is self-contained and placed before </body>

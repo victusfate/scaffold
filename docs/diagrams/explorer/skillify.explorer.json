@@ -1,0 +1,41 @@
+{
+  "title": "Skillify",
+  "lede": "How finished work becomes a reusable skill that every agent and every downstream repo can invoke.",
+  "detail": "../generated/skillify.svg",
+  "sources": ["docs/diagrams/src/skillify.mmd", "skills/skillify.md"],
+  "reviewed": "f381c15f2741",
+  "lanes": [
+    { "id": "capture", "name": "Capture" },
+    { "id": "build", "name": "Build" },
+    { "id": "ship", "name": "Ship" }
+  ],
+  "nodes": {
+    "context": { "lane": "capture", "name": "Reconstruct context", "role": "Rebuild what the session did without asking the user to re-explain.", "link": "../../../skills/skillify.md",
+      "details": ["Reads the conversation, project manifests, git diff --stat and git log.", "Writes a one-paragraph recap that the user confirms in one line."] },
+    "interview": { "lane": "capture", "name": "Interview", "role": "Four short rounds, one question at a time, each with a recommended answer.",
+      "details": ["Intent, then inputs, then steps, then edge cases.", "Stops early if all four are already clear from context."] },
+    "name": { "lane": "build", "name": "Name and dedupe", "role": "Pick one skill, give it a short name, and check it isn't a duplicate.",
+      "details": ["One skill per run: if the session had several, pick the most valuable and say so.", "The slug is kebab-case, at most 30 characters, and stated before any file is written."],
+      "risks": ["If RESOLVER already has a skill with overlapping purpose, extend that one with an argument instead of adding a near-duplicate."],
+      "qs": ["Why only one skill per run?"] },
+    "generate": { "lane": "build", "name": "Generate and register", "role": "Write the skill body and its wrappers, register it, and validate.",
+      "details": [{ "t": "Five files", "more": ["`skills/<slug>.md` is the canonical body.", "Thin wrappers for Claude, Cursor, .agents and .agent/workflows point at it, all with the same description."] },
+        { "t": "Register", "more": ["A RESOLVER row with a unique ^/slug anchor.", "New paths appended to .github/scaffold-files.txt so sync copies them.", "A focused test for any script logic."] }],
+      "risks": ["Register or it doesn't ship: client discovery alone does not make a skill available through scaffold sync.", "node scripts/check-resolvable.ts must pass before the PR; it rejects wrapper descriptions that drift apart."] },
+    "upstream": { "lane": "ship", "name": "PR to scaffold", "role": "Open a pull request against scaffold so every repo inherits the skill, then stop for review.", "link": "scaffold-sync.md",
+      "details": ["Branch `skillify/<slug>` off `scaffold/main`, push, and open a PR titled `feat(skill): <slug>`.", "Do not merge; the summary lists slug, files, validator result and PR link."] }
+  },
+  "flows": [
+    { "id": "main", "name": "Session to skill", "steps": [
+      ["context", "interview", "Recap confirmed", "one-paragraph recap"],
+      ["interview", "name", "Intent, inputs, steps, edge cases", "answers"],
+      ["name", "generate", "Slug confirmed, no overlap", "slug"],
+      ["generate", "upstream", "Validator passes", "five files + RESOLVER row"]] }
+  ],
+  "glossary": {
+    "slug": { "t": "Slug", "a": ["slug"], "d": "The skill's short kebab-case name, used everywhere it is referenced." },
+    "resolver": { "t": "RESOLVER", "a": ["RESOLVER"], "d": "The routing table that maps /slug to its skill file." },
+    "wrapper": { "t": "Wrapper", "a": ["wrappers"], "d": "A thin per-tool file that points at the canonical skill body." }
+  },
+  "ask": { "context": "The reader wants to understand scaffold's /skillify skill: how an AI agent turns a finished session into a registered, reusable skill." }
+}

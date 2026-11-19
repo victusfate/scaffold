@@ -1,0 +1,47 @@
+{
+  "title": "Voice chat",
+  "lede": "How to talk to the coding agent hands-free through headphones. Audio stays on your machine; only the agent call goes out.",
+  "detail": "../generated/voice-chat.svg",
+  "sources": ["docs/diagrams/src/voice-chat.mmd", "skills/voice-chat.md"],
+  "reviewed": "9926f30d4d28",
+  "lanes": [
+    { "id": "setup", "name": "Set up" },
+    { "id": "talk", "name": "Talk" }
+  ],
+  "nodes": {
+    "check": { "lane": "setup", "name": "Check and install", "role": "A built-in check reports what is missing; install it and re-run until clean.", "link": "../../../skills/voice-chat.md",
+      "details": ["node scripts/voice/voice-loop.ts --check prints the speech model, voice backend, platform, recorder and player.",
+        { "t": "Install", "more": ["macOS: brew install sox whisper-cpp.", "Linux or WSL: apt install sox espeak-ng pulseaudio-utils, plus whisper-cli on PATH.", "Download the ggml-base.en Whisper model once."] }] },
+    "voice": { "lane": "setup", "name": "Pick a voice", "role": "Choose how replies are spoken, or leave it on auto.",
+      "details": ["auto tries Piper, then macOS say, then espeak-ng.", "XTTS clones a voice from a sample of about 6 seconds; it is the richest and heaviest, needs Python, and is never picked automatically."],
+      "deep": [{ "h": "Most-used settings", "table": { "head": ["Variable", "Default", "What"], "rows": [
+        ["VOICE_TTS_BACKEND", "auto", "say, espeak, piper or xtts"],
+        ["VOICE_AGENT", "claude", "claude or codex CLI"],
+        ["VOICE_GREETING / VOICE_SIGNOFF", "neutral", "spoken lines, to give the loop a persona"],
+        ["VOICE_START_THRESHOLD / VOICE_STOP_SECS / VOICE_STOP_THRESHOLD", "1% / 1.5 / 1%", "silence-gate feel, the biggest lever"]] } }] },
+    "launch": { "lane": "talk", "name": "Launch", "role": "Start the loop with Claude by default, or Codex.",
+      "details": ["node scripts/voice/voice-loop.ts", "Set VOICE_AGENT=codex for Codex, on both --check and launch."],
+      "risks": ["The runner speaks only the Claude and Codex CLI protocols; never swap in another binary while keeping their flags."] },
+    "turn": { "lane": "talk", "name": "Each turn", "role": "Your speech is recorded, transcribed, answered by the agent, and read back aloud.",
+      "details": [{ "t": "One turn at a time", "more": ["Mic, then a sox silence gate, then a wav file.", "whisper.cpp turns it into text, locally.", "The Claude or Codex CLI replies; this is the only remote call.", "Text-to-speech plays the reply in your headphones, locally."] },
+        "No push-to-talk: the silence gate starts and stops recording by sound level."],
+      "risks": ["Headphones are assumed so the agent's voice never re-enters the mic."],
+      "qs": ["Which account and billing does the agent call use?"] },
+    "stop": { "lane": "talk", "name": "Stop", "role": "Quit with Ctrl-C or by saying an exit phrase.",
+      "details": ["Exit phrases: \"stop listening\", \"goodbye agent\", \"that's all for now\"."] }
+  },
+  "flows": [
+    { "id": "main", "name": "Setup to conversation", "steps": [
+      ["check", "voice", "Dependencies clean", "check output"],
+      ["voice", "launch", "Backend chosen", "VOICE_TTS_BACKEND"],
+      ["launch", "turn", "Loop listening", "mic input"],
+      ["turn", "stop", "Exit phrase or Ctrl-C", "sign-off"]] }
+  ],
+  "glossary": {
+    "tts": { "t": "TTS", "a": ["Text-to-speech"], "d": "Text-To-Speech: reads the reply aloud." },
+    "gate": { "t": "Silence gate", "a": ["silence gate"], "d": "Starts and stops recording by sound level, so there is no push-to-talk." },
+    "whisper": { "t": "whisper.cpp", "a": ["whisper.cpp"], "d": "A local speech-recognition program and its model file." },
+    "sox": { "t": "sox", "a": ["sox"], "d": "A command-line audio tool that records the mic." }
+  },
+  "ask": { "context": "The reader wants to understand scaffold's /voice-chat skill: a hands-free voice loop for talking to a coding agent." }
+}

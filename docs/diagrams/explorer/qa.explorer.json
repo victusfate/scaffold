@@ -1,0 +1,47 @@
+{
+  "title": "QA",
+  "lede": "How /qa runs the real app, uses the changed parts the way a user would, and fixes what breaks.",
+  "detail": "../generated/qa.svg",
+  "sources": ["docs/diagrams/src/qa.mmd", "skills/qa.md"],
+  "reviewed": "5400a3c6703d",
+  "lanes": [
+    { "id": "test", "name": "Test" },
+    { "id": "fix", "name": "Fix" },
+    { "id": "report", "name": "Report" }
+  ],
+  "nodes": {
+    "setup": { "lane": "test", "name": "Set up", "role": "Pick the surfaces the diff touches and start the app as the repo documents it.",
+      "details": ["The working tree must be clean, so each fix can be its own commit.",
+        "Skipped, with a one-line reason, when the change has no runtime entry point.",
+        { "t": "Surfaces", "more": ["Browser pages, API endpoints, CLI commands, background jobs."] },
+        "Readiness is polled, never waited on with a fixed sleep.", "Only seeded or synthetic data; never production."] },
+    "probe": { "lane": "test", "name": "Probe", "role": "Run each entry point like a user, including bad input, and capture evidence.",
+      "details": ["Each issue gets an ID (QA-001), a severity, exact repro steps, and expected versus actual."],
+      "risks": ["A surface that could not be reached is marked blocked, never counted as passed."] },
+    "triage": { "lane": "test", "name": "Triage", "role": "Sort issues by severity and pick the ones the fix tier covers.",
+      "details": ["Issues below the tier, in third-party code, or needing infrastructure changes are deferred.", "With --report-only, it stops here and writes the report."],
+      "deep": [{ "h": "Fix tiers", "table": { "head": ["Tier", "Fixes"], "rows": [["quick", "critical, high"], ["standard (default)", "critical, high, medium"], ["exhaustive", "all, including low and cosmetic"]] } }] },
+    "fixloop": { "lane": "fix", "name": "Fix loop", "role": "Fix each issue at its root cause with a failing regression test first, then re-run the probe.", "link": "investigate.md",
+      "details": ["Each verified fix is committed with its test as fix(qa): QA-NNN.", "A CSS-only defect may use a before/after screenshot instead of a test."],
+      "risks": ["It stops and reports after two reverts, an edit to an unrelated file, 30 fixes, or when fixes keep spreading across many files."],
+      "qs": ["Why does a QA fix need a failing regression test before the fix?"] },
+    "final": { "lane": "fix", "name": "Final pass", "role": "Re-run every probe near a fix, plus the happy path on each surface.",
+      "details": ["Any regression is reported first."] },
+    "report": { "lane": "report", "name": "QA report", "role": "A table of issues with status and commit, plus one summary line for the PR.",
+      "details": ["Deferred and blocked items are listed with reasons.", "Inside the feature chain it writes qa-report.md; standalone it prints in chat."] }
+  },
+  "flows": [
+    { "id": "main", "name": "Diff to QA report", "steps": [
+      ["setup", "probe", "App ready", "surfaces"],
+      ["probe", "triage", "Issues logged", "QA-NNN list"],
+      ["triage", "fixloop", "In-tier issues chosen", "fix list"],
+      ["fixloop", "final", "Fixes committed", "fix(qa) commits"],
+      ["final", "report", "Regressions checked", "evidence"]] }
+  ],
+  "glossary": {
+    "surface": { "t": "Surface", "a": ["surface", "surfaces"], "d": "A way users reach the app: page, API, command or job." },
+    "blocked": { "t": "Blocked", "a": ["blocked"], "d": "Could not be reached; never counted as passed." },
+    "regression": { "t": "Regression test", "a": ["regression test"], "d": "An automated test that catches the bug if it comes back." }
+  },
+  "ask": { "context": "The reader wants to understand how scaffold's /qa skill checks that a change really works for a user." }
+}

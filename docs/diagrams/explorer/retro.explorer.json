@@ -1,0 +1,49 @@
+{
+  "title": "Retro",
+  "lede": "How a session retrospective finds what slowed the agent down, backed by evidence, and proposes fixes to its environment. Nothing changes until the user picks.",
+  "detail": "../generated/retro.svg",
+  "sources": ["docs/diagrams/src/retro.mmd", "skills/retro.md"],
+  "reviewed": "9ffa946c59d8",
+  "lanes": [
+    { "id": "gather", "name": "Gather" },
+    { "id": "analyze", "name": "Analyze" },
+    { "id": "act", "name": "Act" }
+  ],
+  "nodes": {
+    "reconstruct": { "lane": "gather", "name": "Reconstruct the session", "role": "On request, rebuild what happened from the conversation or a session log.", "link": "../../../skills/retro.md",
+      "details": ["Runs only when the user asks for /retro; the current session is the default.", "Cites concrete turns, commands, failures, corrections and repeated searches."],
+      "risks": ["If the record is unavailable, the retro reports the missing evidence and stops; it never infers struggles from the code alone."] },
+    "trace": { "lane": "analyze", "name": "Trace causes", "role": "Trace each struggle to a cause in the agent's environment.",
+      "details": ["Reads repo instructions, existing skills, check commands, hooks and CI wiring.", "Asks whether a remedy already exists but was undiscovered, unwired or broken."],
+      "qs": ["Why look for a cause in the environment instead of blaming the agent's mistake?"] },
+    "classify": { "lane": "analyze", "name": "Classify and rank", "role": "Sort findings into categories and rank them by impact and cost.",
+      "details": ["Prefers repairing an existing mechanism over adding a new one.", "Ranks by impact and recurrence risk, weighed against cost and the upkeep of a new rule or check."],
+      "deep": [{ "h": "Categories", "table": { "head": ["Category", "Session signal"], "rows": [
+        ["Navigation", "Repeated searches or a hidden dependency delayed progress."],
+        ["Automated checks", "A mechanical error escaped, or a failure went undetected."],
+        ["Review standards", "Review missed a judgement call."],
+        ["Steering size", "Relevant guidance was buried in instructions."],
+        ["Tool economy", "A call returned too much output or required repeated work."],
+        ["No-ops", "Repetitive or ineffective steering used up context."],
+        ["Information access", "Missing logs, docs or read access blocked progress."]] } }] },
+    "report": { "lane": "act", "name": "Report", "role": "A read-only table of findings with evidence and a recommended selection.",
+      "details": [{ "t": "One row per finding (R-01, R-02 and so on)", "more": ["Severity, session evidence, cause, proposed change and where it goes, cost, and how to verify it."] },
+        "An empty result is valid after a smooth run."],
+      "risks": ["The retro edits nothing; installs, hooks, access changes and tasks wait for the user's choice."] },
+    "route": { "lane": "act", "name": "Route selected work", "role": "The user picks remedies, and each goes to the skill that carries it out.", "link": "skillify.md",
+      "details": [{ "t": "Where work goes", "more": ["skillify for a reusable procedure, add-linter for linter setup, feature-chain for a substantial change.", "upstream when the fix belongs in scaffold; improve, code-refiner or prune for code quality."] }] }
+  },
+  "flows": [
+    { "id": "main", "name": "Session to fixes", "steps": [
+      ["reconstruct", "trace", "Evidence cited", "turns, commands, failures"],
+      ["trace", "classify", "Causes found", "candidate findings"],
+      ["classify", "report", "Ranked", "R-01 rows"],
+      ["report", "route", "User selects remedies", "chosen rows"]] }
+  ],
+  "glossary": {
+    "ci": { "t": "CI", "a": ["CI"], "d": "Continuous Integration: checks that run on every push or PR." },
+    "hook": { "t": "Hook", "a": ["hooks"], "d": "A script that runs automatically, for example before a commit." },
+    "steering": { "t": "Steering", "a": ["steering"], "d": "Written guidance that tells the agent how to behave." }
+  },
+  "ask": { "context": "The reader wants to understand scaffold's /retro skill: how an AI agent reviews a session for friction and proposes environment fixes." }
+}

@@ -48,6 +48,8 @@ scripts/explorer-spec.ts
 scripts/json-script.ts
 scripts/explorer-render.ts
 scripts/explorer-render.test.ts
+scripts/explorer-markdown.ts
+scripts/explorer-markdown.test.ts
 scripts/explorer.template.html
 scripts/queue-model.ts
 scripts/queue-io.ts

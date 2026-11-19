@@ -1,0 +1,49 @@
+{
+  "title": "TDD",
+  "lede": "How a feature gets built one thin slice at a time: a failing test, the least code that passes it, a quality check, a commit.",
+  "detail": "../generated/tdd.svg",
+  "sources": ["docs/diagrams/src/tdd.mmd", "skills/tdd.md"],
+  "reviewed": "f1538a4302da",
+  "lanes": [
+    { "id": "plan", "name": "Plan" },
+    { "id": "build", "name": "Build" },
+    { "id": "finish", "name": "Finish" }
+  ],
+  "nodes": {
+    "slices": { "lane": "plan", "name": "Plan the slices", "role": "Split the PRD into vertical slices and confirm their size once with the user.",
+      "details": ["If plan.md is missing, the agent writes it from prd.md first.",
+        { "t": "Each slice cuts through every layer", "more": ["Data, logic, UI and tests together.", "After the size is confirmed, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced."] }] },
+    "prep": { "lane": "build", "name": "Before code", "role": "For each slice, decide the interface and list the behaviors to test.",
+      "details": ["List behaviors, not implementation steps.",
+        { "t": "Name the assumption the slice tests", "more": ["Use the design's evidence, or mark it unknown.", "If a probe contradicts the intent, revise the design, PRD and unfinished slices first."] }],
+      "qs": ["Why list behaviors to test instead of implementation steps?"] },
+    "loop": { "lane": "build", "name": "Red, then green", "role": "Write one failing test, then the least code that makes it pass, and repeat.", "link": "investigate.md",
+      "details": ["The first test is a tracer bullet: one behavior, proving the path works end to end.",
+        "Tests use the public interface only, so they survive an internal refactor."],
+      "risks": ["Writing all tests first verifies imagined behavior; one test at a time keeps them honest.",
+        "A test that fails for a different reason, or an old test that breaks, stops the loop for /investigate."],
+      "qs": ["What goes wrong if you write all the tests before any code?"] },
+    "refactor": { "lane": "build", "name": "Refactor check", "role": "Score each touched file on the four-part rubric and audit the tests before committing.",
+      "details": [{ "t": "Every score must be 10/10", "more": ["A fix under 30 lines is applied in place, then re-tested and re-scored.", "A bigger fix is surfaced to the user, never silently patched."] },
+        { "t": "Test self-audit", "more": ["Assertions use sentinel values, not defaults.", "Every form of a new flag is covered.", "At least one test is written from the caller's side."] }] },
+    "commit": { "lane": "build", "name": "Commit and log", "role": "Commit the red, green and refactor steps, log the slice, then start the next one.",
+      "details": ["Commits: test (red), feat (green), and refactor only if something was refactored.", "Each slice's status is appended to tdd-log.md."] },
+    "done": { "lane": "finish", "name": "All slices pass", "role": "Run the full suite, then /code-refiner, then stop for the user's review.", "link": "review-gates.md",
+      "details": ["/code-refiner runs in auto-fix mode: correctness and structure reviews, then one fix pass.", "A summary lists what was built, the tests and any deviation from the plan."] }
+  },
+  "flows": [
+    { "id": "main", "name": "PRD to reviewed code", "steps": [
+      ["slices", "prep", "Slice size confirmed", "plan.md"],
+      ["prep", "loop", "Behaviors listed", "test list"],
+      ["loop", "refactor", "Tests green", "code + tests"],
+      ["refactor", "commit", "All 10/10 or surfaced", "score table"],
+      ["commit", "done", "No slices left", "tdd-log.md"]] }
+  ],
+  "glossary": {
+    "slice": { "t": "Vertical slice", "a": ["slice", "slices"], "d": "A thin piece of a feature that cuts through every layer and works on its own." },
+    "rubric": { "t": "Rubric", "a": ["rubric"], "d": "Four scores for code: Quality, Readability, Encapsulation, Clarity." },
+    "sentinel": { "t": "Sentinel value", "a": ["sentinel values"], "d": "A non-default test value, so a bug that silently resets a field can't hide." },
+    "tracer": { "t": "Tracer bullet", "a": ["tracer bullet"], "d": "The first test, which proves the path works end to end." }
+  },
+  "ask": { "context": "The reader wants to understand how scaffold's /tdd skill builds a feature test-first, one slice at a time." }
+}
