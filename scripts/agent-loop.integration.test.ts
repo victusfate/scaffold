@@ -9,6 +9,9 @@ import { setTimeout as delay } from 'node:timers/promises';
 import test from 'node:test';
 import { location, status } from './agent-loop-state.ts';
 
+// Integration convention (skills/tdd.md): opt in so glob-based `npm test` skips it.
+if (!process.env.RUN_INTEGRATION) { console.log('skip — set RUN_INTEGRATION=1'); process.exit(0); }
+
 const cli = fileURLToPath(new URL('./agent-loop.ts', import.meta.url));
 const codexAdapter = fileURLToPath(new URL('./agent-loop-codex.ts', import.meta.url));
 interface Status {

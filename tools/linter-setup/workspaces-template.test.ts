@@ -24,7 +24,11 @@ try {
   writeFileSync(join(pkg, 'test/index.test.ts'), blocks[1].replace(/^ {3}/gm, ''));
   symlinkSync(join(root, 'node_modules'), join(dir, 'node_modules'), 'dir'); // typescript + @types/node
 
-  const run = (...args: string[]) => execFileSync('npm', args, { cwd: dir, stdio: 'pipe', encoding: 'utf8' });
+  // A clean env: under an outer `node --test`, NODE_TEST_CONTEXT makes the nested runner report via
+  // the parent's protocol instead of printing the summary this test reads.
+  const env = { ...process.env };
+  delete env.NODE_TEST_CONTEXT;
+  const run = (...args: string[]) => execFileSync('npm', args, { cwd: dir, stdio: 'pipe', encoding: 'utf8', env });
   assert.match(run('test'), /pass 1/);
   assert.match(run('run', 'test:coverage'), /all files\s*\|\s*100/);
   run('run', 'typecheck');
