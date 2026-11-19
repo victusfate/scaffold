@@ -49,6 +49,8 @@ The owner creates tasks; one orchestrator per session dispatches them to subagen
 
 **Explore every skill:** start at [Scaffold at a glance](docs/diagrams/pages/system-map.md) and click through. Each page starts high level and drills down to the full detail. [How the diagrams are made](docs/diagrams/README.md).
 
+**Explore the code:** `node scripts/mind-meld.ts map . docs/map` writes a clickable map of any repo's source (TypeScript, Python, Rust, Ruby, or any language you add), with no code run. See [`/mind-meld`](skills/mind-meld.md).
+
 ## Quality gate
 
 Every feature is scored against a four-dimension rubric — **Quality**,

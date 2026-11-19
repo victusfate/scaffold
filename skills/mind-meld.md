@@ -13,7 +13,9 @@ node scripts/mind-meld.ts map . docs/map    # no execution, no Docker
 `docs/map/index.md` shows the repo's areas (top-level folders) and the imports between them. Each area
 page lists its source files, their definitions with line links, and the imports between them, plus a
 block to copy into an LLM. Arrows are imports declared in source, never inferred calls, and every file
-says how its facts were found.
+says how its facts were found. A folder with more than 12 files splits automatically into groups, by
+subfolder and by shared name prefix (`queue-*`), each with its own page. Write the map inside the repo,
+or its source links won't work on GitHub.
 
 | Language | How | Needs |
 |---|---|---|

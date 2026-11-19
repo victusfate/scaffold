@@ -191,3 +191,35 @@ void test('a tracked file missing from the working tree, or a repo with no suppo
   assert.equal(byFile(await scanRepo(root))['a/gone.py'], undefined);
   await assert.rejects(writeMap(repoOf({ 'README.md': '# x\n' }), join(tmpdir(), 'meld-none')), /no source files in a supported language/);
 });
+
+void test('a big flat folder splits into automatic prefix clusters, each with its own page', async () => {
+  const files: Record<string, string> = { 'tools/sub/deep.ts': 'export const d = 1;\n', 'tools/lonely.ts': 'export const l = 1;\n' };
+  for (const name of ['db', 'lock', 'view', 'edit', 'links']) files[`tools/queue-${name}.ts`] = `export const ${name} = 1;\n`;
+  for (const name of ['map', 'langs', 'pages']) files[`tools/mind-meld-${name}.ts`] = `import { ${name === 'map' ? 'db' : 'lock'} } from './queue-${name === 'map' ? 'db' : 'lock'}.ts';\nexport const m = 1;\n`;
+  for (const name of ['render', 'spec', 'markdown']) files[`tools/explorer-${name}.ts`] = `export const e = 1;\n`;
+  const root = repoOf(files);
+  const written = await writeMap(root, join(root, 'out'));
+  assert.ok(['tools.md', 'tools-queue.md', 'tools-mind-meld.md', 'tools-explorer.md', 'tools-sub.md', 'tools-other.md'].every(f => written.includes(f)), written.join(' '));
+  const area = readFileSync(join(root, 'out', 'tools.md'), 'utf8');
+  assert.match(area, /- \[queue-\*\]\(tools-queue\.md\): 5 modules/);
+  assert.match(area, /- \[mind-meld-\*\]\(tools-mind-meld\.md\): 3 modules/);
+  assert.match(area, /n_mind\w* --> n_queue/, 'cluster arrow from the real imports');
+  const cluster = readFileSync(join(root, 'out', 'tools-queue.md'), 'utf8');
+  assert.match(cluster, /^\[← tools\]\(tools\.md\)/);
+  assert.match(cluster, /## queue-db\.ts/);
+});
+
+void test('a small area keeps one page of modules', async () => {
+  const written = await writeMap(fixture(), join(mkdtempSync(join(tmpdir(), 'meld-small-')), 'out'));
+  assert.equal(written.filter(f => f.startsWith('svc')).length, 1);
+});
+
+void test('CLI warns when the pages are written outside the repo (their source links would break on GitHub)', () => {
+  const root = fixture();
+  const outside = mkdtempSync(join(tmpdir(), 'meld-outside-'));
+  const result = spawnSync(process.execPath, ['scripts/mind-meld.ts', 'map', root, outside], { encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stderr, /outside the repo/);
+  const inside = spawnSync(process.execPath, ['scripts/mind-meld.ts', 'map', root, join(root, 'docs', 'map')], { encoding: 'utf8' });
+  assert.doesNotMatch(inside.stderr, /outside the repo/);
+});

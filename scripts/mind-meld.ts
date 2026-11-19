@@ -7,7 +7,7 @@
 //        node scripts/mind-meld.ts map <repo-root> <out-dir>   (default view: static repo map pages)
 import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
-import { dirname, join, resolve, sep } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type ts from 'typescript';
 import { loadTypeScript } from './typescript-runtime.ts';
@@ -139,6 +139,8 @@ function main(args: string[]): void {
   const [command, arg, other] = args;
   if (command === 'map') {
     if (!arg || !other || args.length > 3) throw new Error('usage: mind-meld.ts map <repo-root> <out-dir>');
+    // Pages link to source by relative path, so they only work on GitHub when written inside the repo.
+    if (relative(resolve(arg), resolve(other)).startsWith('..')) console.error(`mind-meld map: ${other} is outside the repo, so the pages' source links will not work on GitHub`);
     writeMap(arg, other).then(files => console.log(`repo map: ${files.length} pages in ${other}`),
       (error: Error) => { console.error(error.message); process.exitCode = 1; });
     return;

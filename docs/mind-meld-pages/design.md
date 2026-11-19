@@ -43,3 +43,8 @@ to extend mind meld to support any languages … without bloating scaffold".
   adds any other language in its own `.mind-meld/languages/<name>.ts`, so scaffold does not grow.
 - **A missing tool is stated, not guessed:** the file stays on the map with the reason.
 - **Recorded runs stay the opt-in dive** (`flow`, `piece`, `pages`), for flows where behavior matters.
+- **Automatic clusters:** an area over 12 files becomes a page of groups (subfolders, plus files sharing a
+  first name segment, labelled by their longest shared prefix such as `queue-*`), each with its own page.
+  Owner: "make sure to identify and create prefix clusters automatically".
+- **Scaffold doesn't commit its own map** (owner choice: line-number links would change on almost every
+  code edit). The README says how to generate one.
