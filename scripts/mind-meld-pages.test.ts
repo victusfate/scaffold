@@ -43,9 +43,9 @@ void test('a run with nested calls becomes a flow; values stay in code spans', p
   assert.equal(spec.flows?.[0].steps[0][2], 'called with `{"hp":10,"damage":3}`');
 });
 
-void test('the page holds only indexed and recorded facts, including single-call runs', parses, () => {
+void test('the page holds only indexed and recorded facts', parses, () => {
   const page = renderPage(recorded(), { sourcePrefix: '../' });
-  assert.match(page, /\[scripts\/mind-meld-example\.ts:15-21\]\(\.\.\/scripts\/mind-meld-example\.ts#L15-L21\)/);
+  assert.match(page, /\[scripts\/mind-meld-example\.ts:15-21\]\(<\.\.\/scripts\/mind-meld-example\.ts#L15-L21>\)/);
   assert.match(page, /Static calls \(possible, not observed\): damage, save/);
   assert.match(page, /flow k1: called with `\{"hp":10,"damage":3\}`, returned `7`\n {2}- `hp`: `10` → `7`/);
   assert.match(page, /piece k2: called with `\{"hp":10,"damage":30\}`, returned `0`/);
@@ -64,8 +64,8 @@ void test('CLI: mind-meld.ts pages <bundle> [source-prefix] prints the page', pa
   const page = cli('docs/../');
   assert.equal(page.status, 0, page.stderr);
   assert.match(page.stdout, /^# Mind meld: combat, damage/);
-  assert.match(page.stdout, /\]\(docs\/\.\.\/scripts\/mind-meld-example\.ts#L/);
-  assert.match(cli().stdout, /\]\(\.\.\/scripts\/mind-meld-example\.ts#L/, 'default prefix is ../');
+  assert.match(page.stdout, /\]\(<docs\/\.\.\/scripts\/mind-meld-example\.ts#L/);
+  assert.match(cli().stdout, /\]\(<\.\.\/scripts\/mind-meld-example\.ts#L/, 'default prefix is ../');
 });
 
 void test('an index-only bundle says no runs were recorded and draws only static calls', parses, () => {
@@ -73,4 +73,28 @@ void test('an index-only bundle says no runs were recorded and draws only static
   assert.match(String(spec.lede), /^Indexed from this repo's source at snapshot [0-9a-f]+\. No runs were recorded/);
   assert.deepEqual(spec.flows?.map(f => f.name), ['Static calls (possible, not observed)']);
   assert.deepEqual(spec.flows?.[0].steps.map(s => [s[0], s[1]]).sort(), [['combat', 'damage'], ['combat', 'save']]);
+});
+
+void test('runs with no nested call, or an index with no edges, draw no invented arrows', parses, () => {
+  const pieceOnly = recorded(); pieceOnly.runs = [pieceOnly.runs[1]];
+  assert.doesNotMatch(renderPage(pieceOnly, { sourcePrefix: '../' }).split('```mermaid')[1].split('```')[0], /-->/);
+  const noEdges = { ...index(), edges: [] };
+  assert.doesNotMatch(renderPage(noEdges, { sourcePrefix: '../' }).split('```mermaid')[1].split('```')[0], /-->/);
+});
+
+void test('recorded values and excerpts are shown exactly; odd paths and layers still render', parses, () => {
+  const bundle = recorded();
+  bundle.runs[0].events[1].input = 'a`b``c';
+  bundle.runs[0].events[1].output = 'x\ny';
+  const page = renderPage(bundle, { sourcePrefix: '../' });
+  assert.ok(page.includes('called with ```a`b``c```'), 'backticks kept with a longer delimiter');
+  assert.ok(page.includes('returned `x\\ny`'), 'newline shown as \\n, not folded');
+  const odd = index(); odd.nodes[0].layer = '';
+  const spec = bundleToSpec(odd, { sourcePrefix: '../' });
+  assert.ok(spec.lanes.some(l => l.name === '(no layer)'), 'empty layer gets a named lane');
+  assert.match(renderPage(odd, { sourcePrefix: 'my dir/' }), /\]\(<my dir\/scripts\/mind-meld-example\.ts#L/);
+});
+
+void test('an index-only LLM block does not claim recorded runs', parses, () => {
+  assert.equal(bundleToSpec(index(), { sourcePrefix: '../' }).ask?.context.includes('recorded runs'), false);
 });
