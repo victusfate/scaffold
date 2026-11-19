@@ -1,103 +1,29 @@
 # Skill and process diagrams
 
-How scaffold's agents, skills and processes fit together, one flow per image. Each diagram reads left to
-right in numbered stages, and its legend spells out every acronym and term it uses.
+**Start here: [Scaffold at a glance](pages/system-map.md).** It maps every skill. Click one for its own page,
+which starts with a one-line overview and drills down: each stage, where it breaks, the full detailed
+diagram (folded), a glossary, and a block you can copy into your own LLM to ask follow-up questions.
 
-**These images are generated.** The mermaid sources in [`src/`](src/) are what you edit; everything in
-[`generated/`](generated/) is rebuilt from them. To refresh every image (after editing a source, or any time):
+## How the pages are made
+
+Everything here is generated. Edit the sources, then regenerate:
+
+| You edit | Generated |
+|---|---|
+| `explorer/<slug>.explorer.json`: a skill's stages, detail, glossary and questions | `pages/<slug>.md` |
+| `src/<slug>.mmd`: the detailed mermaid diagram | `generated/<slug>.svg` (folded into the page) |
 
 ```bash
-npm run diagrams                 # all diagrams
-npm run diagrams -- tdd qa       # only these
+npm run diagrams                 # every SVG and page
+npm run diagrams -- tdd qa       # only these SVGs (pages always rebuild)
 ```
 
-## How work flows
-
-### Tasks, orchestrator and subagents
-![Tasks, orchestrator and subagents](generated/orchestration.svg)
-Source: [`src/orchestration.mmd`](src/orchestration.mmd) · Rules: [`AGENTS.md`](../../AGENTS.md)
-
-### Queue task lifecycle
-![Queue task lifecycle](generated/queue-lifecycle.svg)
-Source: [`src/queue-lifecycle.mmd`](src/queue-lifecycle.mmd) · Skill: [`/queue`](../../skills/queue.md)
-
-### One loop tick
-![One loop tick](generated/loop-tick.svg)
-Source: [`src/loop-tick.mmd`](src/loop-tick.mmd) · Skill: [`/loop`](../../skills/loop.md)
-
-### Save, pause, resume
-![Save, pause, resume](generated/session-continuity.svg)
-Source: [`src/session-continuity.mmd`](src/session-continuity.mmd) · Skills: [`/save`](../../skills/save.md), [`/pause`](../../skills/pause.md), [`/resume`](../../skills/resume.md)
-
-## Building a feature
-
-### Feature chain
-![Feature chain](generated/feature-chain.svg)
-Source: [`src/feature-chain.mmd`](src/feature-chain.mmd) · Skill: [`/feature-chain`](../../skills/feature-chain.md)
-
-### TDD, one slice at a time
-![TDD](generated/tdd.svg)
-Source: [`src/tdd.mmd`](src/tdd.mmd) · Skill: [`/tdd`](../../skills/tdd.md)
-
-### Investigate a bug
-![Investigate](generated/investigate.svg)
-Source: [`src/investigate.mmd`](src/investigate.mmd) · Skill: [`/investigate`](../../skills/investigate.md)
-
-### QA the real app
-![QA](generated/qa.svg)
-Source: [`src/qa.mmd`](src/qa.mmd) · Skill: [`/qa`](../../skills/qa.md)
-
-## Review and shipping
-
-### Review gates
-![Review gates](generated/review-gates.svg)
-Source: [`src/review-gates.mmd`](src/review-gates.mmd) · Skills: [`/code-refiner`](../../skills/code-refiner.md), [`/validate`](../../skills/validate.md), [`/simplify`](../../skills/simplify.md), [`/audit`](../../skills/audit.md)
-
-### PR workflow
-![PR workflow](generated/pr-workflow.svg)
-Source: [`src/pr-workflow.mmd`](src/pr-workflow.mmd) · Skill: [`/create-pr`](../../skills/create-pr.md)
-
-### Prune
-![Prune](generated/prune.svg)
-Source: [`src/prune.mmd`](src/prune.mmd) · Skill: [`/prune`](../../skills/prune.md)
-
-## Improving the process
-
-### Retro
-![Retro](generated/retro.svg)
-Source: [`src/retro.mmd`](src/retro.mmd) · Skill: [`/retro`](../../skills/retro.md)
-
-### Skillify
-![Skillify](generated/skillify.svg)
-Source: [`src/skillify.mmd`](src/skillify.mmd) · Skill: [`/skillify`](../../skills/skillify.md)
-
-### Council
-![Council](generated/council.svg)
-Source: [`src/council.mmd`](src/council.mmd) · Skill: [`/council`](../../skills/council.md)
-
-## Scaffold across repos
-
-### Sync down, upstream up, hoist out
-![Scaffold sync](generated/scaffold-sync.svg)
-Source: [`src/scaffold-sync.mmd`](src/scaffold-sync.mmd) · Skills: [`/sync-scaffold`](../../skills/sync-scaffold.md), [`/upstream`](../../skills/upstream.md), [`/hoist-skill`](../../skills/hoist-skill.md)
-
-### Add linters
-![Add linter](generated/add-linter.svg)
-Source: [`src/add-linter.mmd`](src/add-linter.mmd) · Skill: [`/add-linter`](../../skills/add-linter.md)
-
-## Tools
-
-### Mind-meld learning IDE
-![Mind-meld](generated/mind-meld.svg)
-Source: [`src/mind-meld.mmd`](src/mind-meld.mmd) · Skill: [`/mind-meld`](../../skills/mind-meld.md)
-
-### Voice chat
-![Voice chat](generated/voice-chat.svg)
-Source: [`src/voice-chat.mmd`](src/voice-chat.mmd) · Skill: [`/voice-chat`](../../skills/voice-chat.md)
+`npm test` fails if a page is stale, a link goes nowhere, or a term is defined two ways.
 
 ## Adding a diagram
 
-1. Copy a source in `src/` as a starting point. Keep stage-to-stage arrows between the stage boxes
-   (subgraphs), not between nodes inside them, so the image stays landscape.
-2. Define every acronym in the legend.
-3. Run `npm run diagrams -- <slug>`, look at `generated/<slug>.png`, and add a section above.
+1. Write `src/<slug>.mmd` (copy an existing one). Keep stage-to-stage arrows between stage boxes so the
+   image stays landscape, and define every acronym in its legend.
+2. Write `explorer/<slug>.explorer.json` (copy `explorer/feature-chain.explorer.json`): 4–6 stages, one
+   flow through them, detail in `details`/`risks`, and `"detail": "../generated/<slug>.svg"`.
+3. Add the skill to `explorer/system-map.explorer.json` with `"link": "<slug>.md"`, then run `npm run diagrams`.

@@ -47,7 +47,7 @@ The owner creates tasks; one orchestrator per session dispatches them to subagen
 
 ![Scaffold: tasks, orchestrator and subagents](docs/diagrams/generated/orchestration.svg)
 
-More flows are on the [documentation page](docs/diagrams/README.md). Every image is generated: edit its mermaid source in `docs/diagrams/src/`, then run `npm run diagrams`.
+**Explore every skill:** start at [Scaffold at a glance](docs/diagrams/pages/system-map.md) and click through. Each page starts high level and drills down to the full detail. [How the diagrams are made](docs/diagrams/README.md).
 
 ## Quality gate
 
