@@ -17,19 +17,26 @@ const mermaidId = (id: string): string => id.replace(/[^A-Za-z0-9_]/g, '_');
 const mermaidLabel = (text: string): string => `"${text.replace(/"/g, '#quot;').replace(/\s+/g, ' ')}"`;
 const box = (spec: ExplorerSpec, id: string): string => `${mermaidId(id)}[${mermaidLabel(spec.nodes[id].name)}]`;
 
-// The overview follows the first flow; without one, the nodes chain in lane order.
+// Every flow's hops, once each, in the order they first appear. Without flows, nodes chain in lane order.
 function overviewEdges(spec: ExplorerSpec): [string, string][] {
-  const flow = spec.flows?.[0];
-  if (flow) return flow.steps.map(([from, to]) => [from, to]);
   const ordered = spec.lanes.flatMap(lane => Object.keys(spec.nodes).filter(id => spec.nodes[id].lane === lane.id));
-  return ordered.slice(1).map((id, i) => [ordered[i], id]);
+  if (!spec.flows?.length) return ordered.slice(1).map((id, i) => [ordered[i], id]);
+  const seen = new Set<string>();
+  return spec.flows.flatMap(f => f.steps.map(([from, to]): [string, string] => [from, to]))
+    .filter(([from, to]) => !seen.has(`${from}>${to}`) && seen.add(`${from}>${to}`));
 }
 
+// A skill page is one chain of labelled boxes. A map (some nodes on no flow) groups every node in
+// lane subgraphs so none is left out, then draws the flows between them.
 function overview(spec: ExplorerSpec): string[] {
   const edges = overviewEdges(spec);
-  const lines = edges.length
-    ? edges.map(([from, to]) => `  ${box(spec, from)} --> ${box(spec, to)}`)
-    : Object.keys(spec.nodes).map(id => `  ${box(spec, id)}`);
+  const onEdge = new Set(edges.flat());
+  const isMap = Object.keys(spec.nodes).some(id => !onEdge.has(id));
+  const lines = isMap
+    ? [...spec.lanes.flatMap(lane => [`  subgraph ${mermaidId(lane.id)}[${mermaidLabel(lane.name)}]`,
+      ...Object.keys(spec.nodes).filter(id => spec.nodes[id].lane === lane.id).map(id => `    ${box(spec, id)}`), '  end']),
+      ...edges.map(([from, to]) => `  ${mermaidId(from)} --> ${mermaidId(to)}`)]
+    : edges.map(([from, to]) => `  ${box(spec, from)} --> ${box(spec, to)}`);
   return ['```mermaid', 'flowchart LR', ...lines, '```'];
 }
 

@@ -48,4 +48,13 @@ void test('detailed diagram folded, glossary, copyable LLM context', () => {
   assert.match(ask, /When is a design "done"\?/);
 });
 
+void test('a map-like spec (nodes off every flow) groups all nodes by lane and draws every flow', () => {
+  const map: ExplorerSpec = {
+    title: 'Map', lanes: [{ id: 'a', name: 'Run' }, { id: 'b', name: 'Build' }],
+    nodes: { q: { lane: 'a', name: 'Queue', role: 'r' }, solo: { lane: 'a', name: 'Solo', role: 'r' }, f: { lane: 'b', name: 'Feature', role: 'r' }, x: { lane: 'b', name: 'Extra', role: 'r' } },
+    flows: [{ id: 'one', name: 'One', steps: [['q', 'f', 'w', 'p']] }, { id: 'two', name: 'Two', steps: [['f', 'x', 'w', 'p'], ['q', 'f', 'w', 'p']] }],
+  };
+  assert.match(renderMarkdown(map), /```mermaid\nflowchart LR\n {2}subgraph a\["Run"\]\n {4}q\["Queue"\]\n {4}solo\["Solo"\]\n {2}end\n {2}subgraph b\["Build"\]\n {4}f\["Feature"\]\n {4}x\["Extra"\]\n {2}end\n {2}q --> f\n {2}f --> x\n```/);
+});
+
 void test('deterministic', () => assert.equal(renderMarkdown(SPEC), md));
