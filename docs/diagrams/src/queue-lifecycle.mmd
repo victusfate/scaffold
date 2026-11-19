@@ -1,0 +1,85 @@
+---
+title: Queue task lifecycle
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph ADD["1 · Owner adds a task"]
+    direction TB
+    A1["Owner asks for the work"]:::owner
+    A2["queue add --requested<br/>title, accept, validate"]:::owner
+    A3[("queue.db store<br/>queue.md view re-rendered")]:::state
+    A1 --> A2 --> A3
+  end
+
+  subgraph PENDING["2 · pending [ ]"]
+    direction TB
+    P1["eligible: deps done,<br/>not held; top line<br/>runs first"]:::state
+    P2["waiting: a dep or<br/>gate is unfinished<br/>(gate / ungate)"]:::state
+    P3["held: parked; the drain<br/>skips it until unheld"]:::owner
+    P1 ~~~ P2 ~~~ P3
+  end
+
+  subgraph ACTIVE["3 · active (claimed)"]
+    direction TB
+    C1["tick or claim --worker<br/>owner = worker or slot"]:::orch
+    C2["Lease clock runs<br/>(age of the claim)"]:::orch
+    C3["release or park --resume<br/>→ back to pending"]:::orch
+    C1 --> C2 --> C3
+  end
+
+  subgraph OUTCOME["4 · Outcome"]
+    direction TB
+    O1{"done: validate passes?"}:::gate
+    O2["fail below maxFailures<br/>→ retry, back to pending"]:::gate
+    O3["fail at maxFailures<br/>→ failed [!], stays visible<br/>requeue revives it"]:::gate
+    O1 ~~~ O2 ~~~ O3
+  end
+
+  subgraph DELIVER["5 · Deliver (per-task mode)"]
+    direction TB
+    D1["PR, real checks,<br/>owner approves merge"]:::git
+    D2["Fresh branch, then<br/>advance --pr --branch"]:::git
+    D3["tick exits 7<br/>until advanced"]:::gate
+    D1 --> D2 --> D3
+  end
+
+  subgraph ARCHIVE["6 · Archive"]
+    direction TB
+    R1["done [x] auto-archives<br/>to archive.md"]:::state
+    R2["Kept while unfinished<br/>work depends on it"]:::state
+    R3["failed tasks leave<br/>via archive sweep"]:::state
+    R1 --> R2
+    R2 ~~~ R3
+  end
+
+  ADD ==> PENDING ==> ACTIVE ==> OUTCOME ==> DELIVER ==> ARCHIVE
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["queue.db / queue.md<br/>the store (source of truth,<br/>git-ignored) / its committed,<br/>human-readable view"]:::git
+    L2["deps<br/>tasks that must<br/>finish first"]:::git
+    L3["gate<br/>a task every other task<br/>depends on, to block<br/>work temporarily"]:::git
+    L4["lease<br/>how long a claim has<br/>been held; not a<br/>process id"]:::git
+    L5["slot<br/>a worker seat declared<br/>in topology.json"]:::git
+    L6["validate<br/>the task's own<br/>check command"]:::git
+    L7["maxFailures<br/>retry cap before a<br/>task fails for good"]:::git
+    L8["advance<br/>records the merged PR<br/>and fresh branch so the<br/>queue moves on"]:::git
+    L9["PR<br/>pull request: a proposed<br/>change, reviewed and<br/>checked before merge"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9
+  end
+
+  FLOW ~~~ LEGEND

@@ -1,0 +1,87 @@
+---
+title: TDD — one vertical slice at a time
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph PLAN["1 · Plan"]
+    direction TB
+    P1["No plan.md?<br/>split prd.md into<br/>vertical slices"]:::state
+    P2["Confirm granularity<br/>once with the user"]:::owner
+    P1 --> P2
+  end
+
+  subgraph PREP["2 · Before code (per slice)"]
+    direction TB
+    B1["Decide interface changes"]:::lane
+    B2["List behaviors to test<br/>not implementation steps"]:::lane
+    B3["Name the assumption<br/>this slice tests"]:::lane
+    B1 --> B2 --> B3
+  end
+
+  subgraph LOOP["3 · RED → GREEN loop"]
+    direction TB
+    R1["Tracer bullet: one test<br/>for one behavior"]:::lane
+    R2["RED: next test<br/>confirm it fails"]:::gate
+    R3["GREEN: minimal code<br/>confirm it passes"]:::lane
+    R4{"Fails for another reason?<br/>stop → /investigate"}:::gate
+    R1 --> R2 --> R3
+    R3 ~~~ R4
+  end
+
+  subgraph REFACTOR["4 · REFACTOR confirms quality"]
+    direction TB
+    Q1["Score touched files<br/>on four rubric dimensions"]:::gate
+    Q2{"All 10/10?<br/>fix under 30 lines in place<br/>else surface to user"}:::gate
+    Q3["Test self-audit: sentinel<br/>values, every flag form,<br/>a caller-side test"]:::gate
+    Q1 --> Q2 --> Q3
+  end
+
+  subgraph RECORD["5 · Commit + log"]
+    direction TB
+    C1["test: slice N red"]:::git
+    C2["feat: slice N green"]:::git
+    C3["refactor: slice N<br/>only if refactored"]:::git
+    C4["Append slice status<br/>to tdd-log.md"]:::state
+    C5{"More slices?<br/>yes → back to stage 2"}:::gate
+    C1 --> C2 --> C3 --> C4 --> C5
+  end
+
+  subgraph DONE["6 · All slices pass"]
+    direction TB
+    F1["Full suite green"]:::gate
+    F2["/code-refiner<br/>auto-fix mode"]:::gate
+    F3["Summary, then wait<br/>for user review"]:::owner
+    F1 --> F2 --> F3
+  end
+
+  PLAN ==> PREP ==> LOOP ==> REFACTOR ==> RECORD ==> DONE
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["TDD<br/>Test-Driven Development:<br/>failing test first, then code,<br/>then clean up"]:::git
+    L2["vertical slice<br/>one small feature cut<br/>through every layer,<br/>data to UI to tests"]:::git
+    L3["RED<br/>a new test that fails<br/>because the behavior<br/>doesn't exist yet"]:::git
+    L4["GREEN<br/>just enough code to<br/>make that test pass"]:::git
+    L5["REFACTOR<br/>check and tidy the code<br/>without changing<br/>behavior"]:::git
+    L6["tracer bullet<br/>first test that proves<br/>the path works end<br/>to end"]:::git
+    L7["rubric<br/>four scores: Quality,<br/>Readability, Encapsulation,<br/>Clarity"]:::git
+    L8["sentinel value<br/>a non-default test value,<br/>so a silent reset<br/>can't hide"]:::git
+    L9["PRD<br/>Product Requirements Doc:<br/>what to build + how we<br/>know it's done"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9
+  end
+
+  FLOW ~~~ LEGEND

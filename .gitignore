@@ -22,7 +22,7 @@ coverage/
 
 # Local editor prefs & personal scratch diagrams (not part of scaffold)
 .vscode/
-diagrams/
+/diagrams/
 
 # Machine-local tooling — never committed
 .tooling/

@@ -1,0 +1,82 @@
+---
+title: /retro — evidence-backed session retrospective
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph ASK["1 · User requests"]
+    direction TB
+    A1["User asks for /retro<br/>only on request"]:::owner
+    A2["Current session by default<br/>or a log path / session id"]:::owner
+    A1 --> A2
+  end
+
+  subgraph RECON["2 · Reconstruct the session"]
+    direction TB
+    R1["Rebuild from conversation<br/>or primary logs"]:::orch
+    R2["Cite turns, commands,<br/>failures, corrections"]:::orch
+    R3{"Record missing?<br/>report gap and stop"}:::gate
+    R1 --> R2 --> R3
+  end
+
+  subgraph TRACE["3 · Trace causes"]
+    direction TB
+    T1["Read instructions, skills,<br/>checks, hooks, CI wiring"]:::orch
+    T2["Trace each struggle to<br/>its environmental cause"]:::orch
+    T3["Remedy exists but<br/>undiscovered, unwired, broken?"]:::orch
+    T1 --> T2 --> T3
+  end
+
+  subgraph CLASSIFY["4 · Classify and rank"]
+    direction TB
+    C1["Categories: navigation, checks,<br/>review, steering, tool economy,<br/>no-ops, information access"]:::state
+    C2["Prefer repairing an<br/>existing mechanism"]:::orch
+    C3["Rank by impact, recurrence,<br/>cost and upkeep"]:::orch
+    C1 --> C2 --> C3
+  end
+
+  subgraph REPORT["5 · Report (read-only)"]
+    direction TB
+    P1["Rows R-01…: severity, evidence,<br/>cause, change, cost, verification"]:::state
+    P2["Empty result is valid<br/>after a smooth run"]:::state
+    P3["Recommend a selection<br/>no edits yet"]:::orch
+    P1 ~~~ P2
+    P2 --> P3
+  end
+
+  subgraph ROUTE["6 · User selects, work is routed"]
+    direction TB
+    S1{"User picks<br/>remedies?"}:::gate
+    S2["Route: skillify · add-linter ·<br/>feature-chain · upstream ·<br/>improve · code-refiner · prune"]:::orch
+    S1 -->|yes| S2
+  end
+
+  ASK ==> RECON ==> TRACE ==> CLASSIFY ==> REPORT ==> ROUTE
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["retro<br/>retrospective: look back<br/>at a session to find<br/>what slowed it down"]:::git
+    L2["CI<br/>Continuous Integration:<br/>checks that run on<br/>every push or PR"]:::git
+    L3["hook<br/>a script that runs<br/>automatically, e.g.<br/>before a commit"]:::git
+    L4["steering<br/>written guidance that<br/>tells the agent<br/>how to behave"]:::git
+    L5["tool economy<br/>getting answers with<br/>fewer, smaller<br/>tool calls"]:::git
+    L6["no-op<br/>an instruction that<br/>uses context but<br/>changes nothing"]:::git
+    L7["skillify / add-linter /<br/>feature-chain / upstream<br/>other skills that<br/>carry out the fix"]:::git
+    L8["improve / code-refiner / prune<br/>skills for codebase<br/>surveys and code-quality<br/>cleanup"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8
+  end
+
+  FLOW ~~~ LEGEND

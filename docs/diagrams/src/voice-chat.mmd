@@ -1,0 +1,82 @@
+---
+title: /voice-chat — hands-free voice loop with the coding agent
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph CHECK["1 · Verify dependencies"]
+    direction TB
+    C1["voice-loop.ts --check"]:::orch
+    C2["Reports STT model, TTS backend,<br/>platform, recorder, player"]:::state
+    C3{"Anything missing?<br/>install, re-run until clean"}:::gate
+    C1 --> C2 --> C3
+  end
+
+  subgraph INSTALL["2 · Install what's missing"]
+    direction TB
+    I1["macOS: brew install<br/>sox whisper-cpp"]:::lane
+    I2["Linux / WSL: apt sox,<br/>espeak-ng, pulseaudio-utils<br/>+ whisper-cli on PATH"]:::lane
+    I3["Whisper model<br/>ggml-base.en, once"]:::state
+    I1 ~~~ I2
+    I2 --> I3
+  end
+
+  subgraph TTS["3 · Pick a TTS backend"]
+    direction TB
+    T1["VOICE_TTS_BACKEND=auto<br/>Piper → say → espeak-ng"]:::orch
+    T2["xtts: voice clone from<br/>~6s sample, opt-in only"]:::orch
+    T1 ~~~ T2
+  end
+
+  subgraph LAUNCH["4 · Run it"]
+    direction TB
+    R1["node scripts/voice/<br/>voice-loop.ts"]:::owner
+    R2["VOICE_AGENT=claude (default)<br/>or codex"]:::state
+    R1 --> R2
+  end
+
+  subgraph TURN["5 · Each turn, one at a time"]
+    direction TB
+    P1["Mic → sox silence gate<br/>→ wav"]:::lane
+    P2["whisper.cpp → text<br/>local"]:::lane
+    P3["Claude or Codex CLI<br/>→ reply (only remote call)"]:::orch
+    P4["TTS → headphones<br/>local"]:::lane
+    P1 --> P2 --> P3 --> P4
+  end
+
+  subgraph STOP["6 · Stop"]
+    direction TB
+    S1{"Ctrl-C or exit phrase:<br/>'stop listening',<br/>'goodbye agent'"}:::gate
+  end
+
+  CHECK ==> INSTALL ==> TTS ==> LAUNCH ==> TURN ==> STOP
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["STT<br/>Speech-To-Text:<br/>turns your voice<br/>into text"]:::git
+    L2["TTS<br/>Text-To-Speech:<br/>reads the reply<br/>aloud"]:::git
+    L3["silence gate<br/>starts and stops recording<br/>by sound level, so no<br/>push-to-talk"]:::git
+    L4["sox<br/>command-line audio<br/>tool that records<br/>the mic"]:::git
+    L5["whisper.cpp<br/>local speech-recognition<br/>program and its<br/>model file"]:::git
+    L6["Piper / say / espeak-ng<br/>local voices: neural,<br/>macOS built-in,<br/>robotic fallback"]:::git
+    L7["XTTS<br/>Coqui voice cloning:<br/>richest, heaviest,<br/>needs Python"]:::git
+    L8["CLI<br/>command-line interface:<br/>the Claude or<br/>Codex program"]:::git
+    L9["WSL<br/>Windows Subsystem<br/>for Linux"]:::git
+    L10["wav<br/>an uncompressed<br/>audio file"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
+  end
+
+  FLOW ~~~ LEGEND

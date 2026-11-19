@@ -1,0 +1,87 @@
+---
+title: Save, pause, resume across sessions
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph CHECK["1 · Checkpoint the work"]
+    direction TB
+    S1["Run /save often: each lane<br/>merge, each step, near limit"]:::orch
+    S2["Run /pause once:<br/>stepping away, richer prose,<br/>open questions"]:::owner
+    S3[(".pause/handoff.md<br/>one file, overwritten,<br/>current state only")]:::state
+    S1 --> S3
+    S2 --> S3
+  end
+
+  subgraph GATE["2 · Gate the handoff"]
+    direction TB
+    G1{"check-handoff.ts<br/>State bullets tagged?"}:::gate
+    G2["No correction lines,<br/>≤ 80 lines"]:::gate
+    G3["No commands inside<br/>a verified tag"]:::gate
+    G1 --> G2 --> G3
+  end
+
+  subgraph PUSH["3 · Commit and push"]
+    direction TB
+    P1["save: stage by explicit path<br/>pause: commit all, list dirty"]:::git
+    P2["git push the branch<br/>pushed or stranded"]:::git
+    P3{"Near usage limit?<br/>memory pointer, then<br/>wake after reset"}:::orch
+    P1 --> P2 --> P3
+  end
+
+  subgraph START["4 · Next session starts"]
+    direction TB
+    N1["Sync check: merge<br/>origin/main if behind"]:::git
+    N2["PR watch: subscribe<br/>or gh pr view"]:::orch
+    N3["Same machine? claude -c<br/>keeps full history"]:::owner
+    N1 --> N2 --> N3
+  end
+
+  subgraph RESUME["5 · /resume continues"]
+    direction TB
+    R1["git pull, read handoff"]:::git
+    R2{"Stale? on main or<br/>branch merged → ignore,<br/>delete it"}:::gate
+    R3["Re-verify State claims<br/>never run tag text"]:::gate
+    R4["Start the first<br/>Next step"]:::lane
+    R1 --> R2 --> R3 --> R4
+  end
+
+  subgraph MERGE["6 · Before merge to main"]
+    direction TB
+    M1["git rm .pause/handoff.md<br/>in the branch's last commit"]:::git
+    M2{"check-handoff --pre-merge<br/>fails while file exists"}:::gate
+    M3["main · squash merge<br/>never carries a handoff"]:::git
+    M1 --> M2 --> M3
+  end
+
+  CHECK ==> GATE ==> PUSH ==> START ==> RESUME ==> MERGE
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["handoff<br/>short note of where<br/>work stands and the<br/>exact next step"]:::git
+    L2["State section<br/>facts the next session<br/>relies on, one bullet each"]:::git
+    L3["verified / unverified tag<br/>says whether a fact<br/>was checked, and how"]:::git
+    L4["/save /pause /resume<br/>frequent checkpoint,<br/>deliberate checkpoint,<br/>the reader"]:::git
+    L5["claude -c<br/>reopen this exact chat<br/>on this machine<br/>(pi -c, agy -c)"]:::git
+    L6["origin/main<br/>the shared main branch<br/>on GitHub"]:::git
+    L7["usage limit<br/>rolling usage<br/>window"]:::git
+    L8["PR<br/>pull request: a proposed<br/>change, reviewed and<br/>checked before merge"]:::git
+    L9["pre-merge<br/>check run just before<br/>a branch lands on main"]:::git
+    L10["squash merge<br/>one PR lands as<br/>one commit on main"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
+  end
+
+  FLOW ~~~ LEGEND

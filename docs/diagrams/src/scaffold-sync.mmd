@@ -1,0 +1,94 @@
+---
+title: Sync down, upstream up, hoist out
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph BOOT["1 · Bootstrap (first time)"]
+    direction TB
+    B1{"bin/sync-from-scaffold.sh<br/>exists?"}:::gate
+    B2["No → curl bootstrap.sh<br/>installs the script only"]:::orch
+    B3["Run the sync after<br/>user confirms"]:::owner
+    B1 --> B2 --> B3
+  end
+
+  subgraph DOWN["2 · /sync-scaffold (down)"]
+    direction TB
+    D1["Stay on current branch<br/>run the sync script"]:::orch
+    D2[("Manifest<br/>scaffold-files.txt")]:::state
+    D3["3-way merge from<br/>last synced SHA"]:::git
+    D4["No base and differs →<br/>.scaffold-new sidecar<br/>.scaffold-keep skipped"]:::state
+    D5{"Conflict markers?<br/>resolve, commit, re-run"}:::gate
+    D1 -.-> D2
+    D2 --> D3 --> D4 --> D5
+  end
+
+  subgraph UP["3 · /upstream: make it generic"]
+    direction TB
+    U1["Split universal from<br/>project-specific"]:::owner
+    U2["Scaffold worktree off<br/>origin/main, never its<br/>main checkout"]:::git
+    U3["Change the scaffold way:<br/>skill, wrappers, RESOLVER,<br/>manifest, test"]:::lane
+    U4{"npm test, eslint,<br/>typecheck pass?"}:::gate
+    U1 --> U2 --> U3 --> U4
+  end
+
+  subgraph SPR["4 · Scaffold PR"]
+    direction TB
+    P1["PR says why universal<br/>and which consumer"]:::orch
+    P2{"Real check conclusions?<br/>skipped is not a pass"}:::gate
+    P3["Merge if authorized<br/>remove the worktree"]:::git
+    P1 --> P2 --> P3
+  end
+
+  subgraph BACK["5 · Sync back into consumer"]
+    direction TB
+    K1["Run /sync-scaffold<br/>on a consumer branch"]:::orch
+    K2["Keep .scaffold-keep paths<br/>merge diverged files"]:::git
+    K3["Add project-specific half<br/>to its policy file"]:::state
+    K4["Consumer gates, PR,<br/>authorized merge"]:::gate
+    K1 --> K2 --> K3 --> K4
+  end
+
+  subgraph HOIST["Or · /hoist-skill (out)"]
+    direction TB
+    H1["Pick skills, harness,<br/>--into target repo"]:::owner
+    H2["tools/hoist-skill/run<br/>emits harness wrappers"]:::orch
+    H3[(".sync/hoisted<br/>records name, harness, ref")]:::state
+    H4["Differs → sidecar<br/>--from-manifest replays"]:::git
+    H1 --> H2 --> H3 --> H4
+  end
+
+  BOOT ==> DOWN ==> UP ==> SPR ==> BACK
+  BACK ~~~ HOIST
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["scaffold<br/>shared repo of agent<br/>rules, skills and tools"]:::git
+    L2["consumer<br/>a project repo that<br/>syncs from scaffold"]:::git
+    L3["manifest<br/>list of files scaffold<br/>ships to consumers"]:::git
+    L4["SHA<br/>id of one git commit;<br/>here the last one synced"]:::git
+    L5["3-way merge<br/>combine both sides' edits<br/>from a shared base"]:::git
+    L6["sidecar .scaffold-new<br/>incoming copy saved<br/>beside the file to review"]:::git
+    L7[".scaffold-keep<br/>consumer list of paths<br/>sync never touches"]:::git
+    L8["worktree<br/>isolated git checkout,<br/>so sessions never collide"]:::git
+    L9["RESOLVER<br/>table mapping triggers<br/>to skills"]:::git
+    L10["harness<br/>agent tool: Claude Code,<br/>Codex, Cursor, agy, pi"]:::git
+    L11["PR<br/>pull request: a proposed<br/>change, reviewed and<br/>checked before merge"]:::git
+    L12["ref<br/>scaffold tag or commit<br/>a hoist is pinned to"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10 ~~~ L11 ~~~ L12
+  end
+
+  FLOW ~~~ LEGEND

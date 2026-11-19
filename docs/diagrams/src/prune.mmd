@@ -1,0 +1,76 @@
+---
+title: /prune — every quality lens, then the full feature chain
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph AUDIT["1 · Audit, read-only"]
+    direction TB
+    A1["/validate --effort max<br/>correctness findings"]:::orch
+    A2["/simplify checklist<br/>structural findings<br/>no auto-fix"]:::orch
+    A3["One findings table<br/>tagged validate / quality"]:::state
+    A1 --> A2 --> A3
+  end
+
+  subgraph DESIGN["2 · Design doc"]
+    direction TB
+    D1["docs/quality-BRANCH/<br/>design.md"]:::state
+    D2["Findings F-01…<br/>decisions grouped by class"]:::state
+    D3["Commit, then<br/>/design-review auto-fix"]:::git
+    D1 --> D2 --> D3
+  end
+
+  subgraph PRD["3 · PRD"]
+    direction TB
+    P1["/to-prd, no re-interview"]:::orch
+    P2["Stories cite finding IDs<br/>risky fixes need tests"]:::state
+    P3["Commit prd.md"]:::git
+    P1 --> P2 --> P3
+  end
+
+  subgraph TDD["4 · TDD"]
+    direction TB
+    T1["/tdd from prd.md<br/>one slice per fix group"]:::lane
+    T2["/code-refiner when<br/>all slices pass"]:::lane
+    T3{"Chain review step<br/>the only pause"}:::gate
+    T1 --> T2 --> T3
+  end
+
+  subgraph PR["5 · Pull request"]
+    direction TB
+    R1["/create-pr"]:::orch
+    R2["Body lists findings<br/>and IDs addressed"]:::state
+    R3{"Owner says stop,<br/>pause or just answer?<br/>halt at once"}:::owner
+    R1 --> R2 --> R3
+  end
+
+  AUDIT ==> DESIGN ==> PRD ==> TDD ==> PR
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["lens<br/>one review angle:<br/>correctness or structure"]:::git
+    L2["validate<br/>review for correctness bugs<br/>and weakened tests"]:::git
+    L3["simplify<br/>review for structure:<br/>reuse, clarity, altitude"]:::git
+    L4["PRD<br/>Product Requirements Doc:<br/>what to build + how we<br/>know it's done"]:::git
+    L5["TDD<br/>Test-Driven Development:<br/>failing test first, then code,<br/>then clean up"]:::git
+    L6["slice<br/>one thin end-to-end<br/>chunk of the work"]:::git
+    L7["code-refiner<br/>validate + simplify review,<br/>then one fix pass"]:::git
+    L8["PR<br/>pull request: a proposed<br/>change, reviewed before merge"]:::git
+    L9["BRANCH<br/>short name of the<br/>current git branch"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9
+  end
+
+  FLOW ~~~ LEGEND

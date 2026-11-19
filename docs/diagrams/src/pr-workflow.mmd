@@ -1,0 +1,87 @@
+---
+title: PR workflow — one task, real checks, squash merge
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph BRANCH["1 · One task, one branch"]
+    direction TB
+    B1["Pull latest main"]:::git
+    B2["Cut a fresh branch"]:::git
+    B3["One independent task<br/>per PR / merge cycle"]:::orch
+    B1 --> B2 --> B3
+  end
+
+  subgraph LOCAL["2 · Local gates"]
+    direction TB
+    G1["Clean tree, commits<br/>ahead of main"]:::gate
+    G2["Integration tests<br/>auto-correct ≤ 2 rounds"]:::gate
+    G3{"make ci green?<br/>no → DRAFT PR only"}:::gate
+    G4["Version bump, push"]:::git
+    G1 --> G2 --> G3 --> G4
+  end
+
+  subgraph OPEN["3 · Open the PR — /create-pr"]
+    direction TB
+    O1["/simplify: all files<br/>10/10 before opening"]:::gate
+    O2["Body: Summary, Critical<br/>changes, gate status,<br/>Quality Scores"]:::state
+    O3["gh pr create"]:::git
+    O4["Subscribe, or<br/>gh pr checks --watch"]:::orch
+    O1 --> O2 --> O3 --> O4
+  end
+
+  subgraph CHECKS["4 · Verify a real green"]
+    direction TB
+    C1["Read actual check<br/>conclusions, not the button"]:::gate
+    C2{"Required check skipped?<br/>suspect, not a pass"}:::gate
+    C3["Capture the watch<br/>command's own exit"]:::gate
+    C4["Security scan<br/>must pass"]:::gate
+    C1 --> C2 --> C3 --> C4
+  end
+
+  subgraph MERGE["5 · Owner-authorized merge"]
+    direction TB
+    M1["git rm handoff<br/>check-handoff --pre-merge"]:::git
+    M2{"Owner authorizes?<br/>a PR is not approval"}:::owner
+    M3["Squash merge with<br/>--match-head-commit"]:::git
+    M1 --> M2 -->|yes| M3
+  end
+
+  subgraph NEXT["6 · Before the next task"]
+    direction TB
+    N1["Confirm MERGED<br/>pull main"]:::git
+    N2["Fresh branch from<br/>updated main"]:::git
+    N1 --> N2
+  end
+
+  BRANCH ==> LOCAL ==> OPEN ==> CHECKS ==> MERGE ==> NEXT
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["PR<br/>pull request: a proposed<br/>change, reviewed and<br/>checked before merge"]:::git
+    L2["make ci<br/>the local pre-merge gate:<br/>unit + heavy integration<br/>checks"]:::git
+    L3["DRAFT PR<br/>a PR marked not ready,<br/>used while a local<br/>gate is red"]:::git
+    L4["Critical changes<br/>up to five path:line notes,<br/>what changed + what<br/>depends on it"]:::git
+    L5["skipped = passing<br/>GitHub counts a skipped<br/>required check as<br/>satisfied"]:::git
+    L6["handoff<br/>.pause/handoff.md, notes<br/>for in-flight work, kept<br/>off main"]:::git
+    L7["squash merge<br/>one PR<br/>lands as one commit<br/>on main"]:::git
+    L8["--match-head-commit<br/>merge only the exact<br/>commit whose checks<br/>were read"]:::git
+    L9["Security scan<br/>CI check: gitleaks,<br/>osv-scanner, zizmor on<br/>the changes"]:::git
+    L10["CI<br/>continuous integration:<br/>automated checks run<br/>on every push"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
+  end
+
+  FLOW ~~~ LEGEND

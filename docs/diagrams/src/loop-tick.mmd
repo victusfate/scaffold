@@ -1,0 +1,90 @@
+---
+title: One loop tick (topology)
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph WAKE["1 · Loop wakes"]
+    direction TB
+    W1["Native /loop or<br/>external driver fires"]:::orch
+    W2["Timer only for: external gating,<br/>usage window, crash re-arm"]:::gate
+    W3["Never a timer to<br/>pace own work"]:::gate
+    W1 ~~~ W2 ~~~ W3
+  end
+
+  subgraph TOPO["2 · Read topology"]
+    direction TB
+    T1[("topology.json<br/>orchestrator, tick,<br/>slots; no routing")]:::state
+    T2["node scripts/topology.ts<br/>validates the file"]:::orch
+    T3{"Invalid → report blocker<br/>missing → orchestrator only"}:::gate
+    T1 --> T2 --> T3
+  end
+
+  subgraph REVIEW["3 · Finished slots"]
+    direction TB
+    R1["Review the slot's work"]:::orch
+    R2["Integrate or ship within<br/>existing authorization"]:::git
+    R3["Set status: done, fail<br/>or park --resume"]:::state
+    R1 --> R2 --> R3
+  end
+
+  subgraph DISPATCH["4 · Free slots"]
+    direction TB
+    D1["Free = no active task<br/>owned by its id"]:::orch
+    D2["Create worktree first"]:::git
+    D3["claim id --worker slot<br/>--branch b"]:::state
+    D4["Start slot's harness<br/>and model there"]:::lane
+    D5{"Unsuited task?<br/>leave the slot free"}:::gate
+    D1 --> D2 --> D3 --> D4
+    D1 -.-> D5
+  end
+
+  subgraph RECON["5 · Reconcile, housekeeping"]
+    direction TB
+    H1["Compare live handles,<br/>active tasks, git worktree list"]:::orch
+    H2["Task, no subagent →<br/>resume or park"]:::orch
+    H3["Zombie worktree →<br/>integrate, park or clean"]:::git
+    H4["Orphan owner →<br/>adopt into slot or park"]:::state
+    H5{"Active tasks =<br/>live subagents?"}:::gate
+    H1 --> H2 --> H3 --> H4 --> H5
+  end
+
+  subgraph SUPER["6 · Supervise by progress"]
+    direction TB
+    P1["Did each job advance<br/>since last tick?"]:::gate
+    P2["Check leaf step, orphans,<br/>who holds shared budget"]:::orch
+    P3["Probe exits non-zero<br/>on anomaly → investigate"]:::gate
+    P1 --> P2 --> P3
+  end
+
+  WAKE ==> TOPO ==> REVIEW ==> DISPATCH ==> RECON ==> SUPER
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["topology.json<br/>repo file naming the<br/>orchestrator and its<br/>worker slots"]:::git
+    L2["slot<br/>a worker seat (model +<br/>tool); its id is the<br/>task owner"]:::git
+    L3["harness<br/>the agent tool a slot<br/>runs: claude, codex,<br/>agy, pi"]:::git
+    L5["worktree<br/>isolated git checkout<br/>per worker"]:::git
+    L6["park<br/>return a task to pending,<br/>keeping its branch and<br/>a resume note"]:::git
+    L7["zombie worktree<br/>checkout with no task<br/>and no running subagent"]:::git
+    L8["orphan owner<br/>active task owned by<br/>a name that is no slot"]:::git
+    L9["handle<br/>the session's own<br/>reference to a<br/>running subagent"]:::git
+    L10["progress, not liveness<br/>a running process is not<br/>proof work is moving"]:::git
+    L11["usage window<br/>rolling usage limit;<br/>wake after it resets"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10 ~~~ L11
+  end
+
+  FLOW ~~~ LEGEND

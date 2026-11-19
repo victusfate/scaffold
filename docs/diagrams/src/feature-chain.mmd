@@ -1,0 +1,94 @@
+---
+title: Feature chain — design to owner review
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph ENTRY["1 · Pick the entry point"]
+    direction TB
+    E1["Check docs/slug/<br/>for existing artifacts"]:::orch
+    E2["Resume at the first<br/>missing artifact"]:::orch
+    E3["External doc supplied<br/>→ placed as design.md"]:::state
+    E4["Stop anytime:<br/>stop · pause · just answer"]:::owner
+    E1 --> E2
+    E2 ~~~ E3 ~~~ E4
+  end
+
+  subgraph DESIGN["2 · Design — /co-plan"]
+    direction TB
+    D1["One question at a time<br/>with a recommended answer"]:::owner
+    D2["design.md: decisions,<br/>vocabulary, scenarios"]:::state
+    D3["/design-review<br/>auto-fix mode"]:::gate
+    D4["Commit design Q&A"]:::git
+    D1 --> D2 --> D3 --> D4
+  end
+
+  subgraph PRD["3 · PRD — /to-prd"]
+    direction TB
+    P1["No re-interview<br/>explore the codebase"]:::orch
+    P2["Confirm which<br/>modules need tests"]:::owner
+    P3["Write prd.md<br/>commit docs PRD"]:::state
+    P1 --> P2 --> P3
+  end
+
+  subgraph TDD["4 · Plan + TDD — /tdd"]
+    direction TB
+    T1["plan.md: vertical slices<br/>granularity confirmed once"]:::state
+    T2["Per slice:<br/>RED → GREEN → REFACTOR"]:::lane
+    T3["Commits + tdd-log.md"]:::git
+    T4{"Premise fails?<br/>revise design / PRD,<br/>then resume"}:::gate
+    T1 --> T2 --> T3
+    T3 ~~~ T4
+  end
+
+  subgraph REFINE["5 · Refine + QA"]
+    direction TB
+    R1{"Full suite green?"}:::gate
+    R2["/code-refiner auto-fix<br/>correctness + structure"]:::gate
+    R3["Commit refiner fixes"]:::git
+    R4["/qa drives real<br/>entry points<br/>→ qa-report.md"]:::lane
+    R1 -->|yes| R2 --> R3 --> R4
+  end
+
+  subgraph REVIEW["6 · Owner review"]
+    direction TB
+    V1["Summary: built, tests,<br/>QA, deviations"]:::orch
+    V2{"Merge authority<br/>already given?"}:::gate
+    V3["No → stop: please review<br/>before merging"]:::owner
+    V4["Yes → PR, validate,<br/>merge"]:::git
+    V1 --> V2
+    V2 --> V3
+    V2 --> V4
+  end
+
+  ENTRY ==> DESIGN ==> PRD ==> TDD ==> REFINE ==> REVIEW
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["slug<br/>short kebab-case name<br/>of the feature's<br/>docs folder"]:::git
+    L2["PRD<br/>Product Requirements Doc:<br/>what to build + how we<br/>know it's done"]:::git
+    L3["TDD<br/>Test-Driven Development:<br/>failing test first, then code,<br/>then clean up"]:::git
+    L4["vertical slice<br/>one small feature cut<br/>through every layer,<br/>data to UI to tests"]:::git
+    L5["RED / GREEN / REFACTOR<br/>test fails / test passes /<br/>tidy without changing<br/>behavior"]:::git
+    L6["auto-fix mode<br/>the review applies its<br/>own fixes instead of<br/>asking first"]:::git
+    L7["QA<br/>quality assurance: run<br/>the real app the way<br/>a user would"]:::git
+    L8["entry point<br/>where a user reaches it:<br/>page, API endpoint,<br/>CLI command, job"]:::git
+    L9["vocabulary<br/>agreed precise meaning<br/>for each term in<br/>the design"]:::git
+    L10["PR<br/>pull request: a proposed<br/>change, reviewed and<br/>checked before merge"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
+  end
+
+  FLOW ~~~ LEGEND

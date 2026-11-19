@@ -4,6 +4,8 @@
 
 An opinionated, cross-harness project scaffold for building software with AI coding agents. Drop it into any new project and your agent follows the same design → PRD → TDD workflow, with quality gates that score the code, whether you use Claude Code, Codex, Cursor, Antigravity, or pi.dev.
 
+**Documentation:** [skill and process diagrams](docs/diagrams/README.md): every core flow (feature chain, TDD, review gates, PR workflow, queue, loop, sync and more) as a one-page image with a plain-English legend.
+
 ## Usage
 
 **Browser / mobile:** hit "Use this template" above → create new repository → open in your preferred coding agent.
@@ -43,9 +45,9 @@ Skills can also be invoked individually. See [`docs/skills.md`](docs/skills.md) 
 
 The owner creates tasks; one orchestrator per session dispatches them to subagents, each working in its own git worktree; the orchestrator integrates each finished lane, opens one PR per task, and merges only with the owner's approval.
 
-![Scaffold: tasks, orchestrator and subagents](docs/orchestration/scaffold-orchestration.png)
+![Scaffold: tasks, orchestrator and subagents](docs/diagrams/generated/orchestration.png)
 
-Source: [`docs/orchestration/scaffold-orchestration.mmd`](docs/orchestration/scaffold-orchestration.mmd). Edit it, then re-render with `node scripts/mermaid-render.ts docs/orchestration/scaffold-orchestration.mmd --png --portable`.
+More flows are on the [documentation page](docs/diagrams/README.md). Every image is generated: edit its mermaid source in `docs/diagrams/src/`, then run `npm run diagrams`.
 
 ## Quality gate
 

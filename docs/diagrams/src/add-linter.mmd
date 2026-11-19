@@ -1,0 +1,86 @@
+---
+title: /add-linter — linter configs and workflows per language
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph DETECT["1 · Detect languages"]
+    direction TB
+    D1["linter-setup/run<br/>--detect-only"]:::orch
+    D2["State per language:<br/>none · foreign ·<br/>scaffold · stale"]:::state
+    D3{"All scaffold?<br/>nothing to do, stop"}:::gate
+    D1 --> D2 --> D3
+  end
+
+  subgraph ASK["2 · Ask once"]
+    direction TB
+    A1["One multi-select question<br/>for all actionable languages"]:::owner
+    A2["none → fresh add<br/>foreign → merge<br/>stale → re-merge"]:::owner
+    A3{"None confirmed?<br/>stop, write nothing"}:::gate
+    A1 --> A2 --> A3
+  end
+
+  subgraph EMIT["3 · CLI emits (deterministic)"]
+    direction TB
+    E1["Pipe confirmed list<br/>to linter-setup/run"]:::orch
+    E2["none → config<br/>+ workflow"]:::state
+    E3["foreign / stale →<br/>.scaffold-new sidecar<br/>original untouched"]:::state
+    E4["Adopted → devDependencies<br/>+ lint scripts (js/ts)"]:::state
+    E1 --> E2 --> E3 --> E4
+  end
+
+  subgraph MERGE["4 · Merge (foreign / stale)"]
+    direction TB
+    M1["Keep user rules,<br/>add missing thresholds,<br/>carry marker line"]:::orch
+    M2["Conflict → keep user value<br/>list the conflict"]:::orch
+    M3{"Approve diff?<br/>yes → .bak, write,<br/>remove sidecar"}:::gate
+    M1 --> M2 --> M3
+  end
+
+  subgraph TUNE["5 · Tune (optional)"]
+    direction TB
+    T1["Propose values seen<br/>in existing code"]:::orch
+    T2["User confirms,<br/>overrides or declines"]:::owner
+    T3["Show diff,<br/>write on approval"]:::orch
+    T1 --> T2 --> T3
+  end
+
+  subgraph FINISH["6 · Report and commit"]
+    direction TB
+    F1["Per language: written, deps,<br/>scripts, merged, tuned,<br/>skipped, declined"]:::state
+    F2{"Commit?<br/>never .bak or<br/>.scaffold-new"}:::gate
+    F3["git commit: feat: add<br/>scaffold linter config"]:::git
+    F1 --> F2 -->|yes| F3
+  end
+
+  DETECT ==> ASK ==> EMIT ==> MERGE ==> TUNE ==> FINISH
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["linter<br/>a tool that flags style<br/>and quality problems<br/>in code"]:::git
+    L2["workflow<br/>a GitHub Actions file that<br/>runs the linter on<br/>each push or PR"]:::git
+    L3["none / foreign<br/>no config yet / a config<br/>without scaffold's<br/>marker"]:::git
+    L4["scaffold / stale<br/>config is current / config<br/>from an older scaffold<br/>template"]:::git
+    L5["marker<br/>a hash-stamped line that<br/>tags a config as<br/>scaffold's"]:::git
+    L6["sidecar<br/>a .scaffold-new copy of the<br/>template next to your<br/>config, for merging"]:::git
+    L7["threshold<br/>a rule limit, e.g.<br/>max line length"]:::git
+    L8["devDependencies<br/>packages package.json<br/>installs for<br/>development only"]:::git
+    L9[".bak<br/>a backup of your<br/>original config"]:::git
+    L10["CLI<br/>command-line tool:<br/>here, linter-setup/run"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
+  end
+
+  FLOW ~~~ LEGEND
