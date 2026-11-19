@@ -1,0 +1,51 @@
+{
+  "title": "Mind meld",
+  "lede": "How a repo gets a learning tool that explains its code from real, recorded runs, viewable offline as a guided tour.",
+  "detail": "../generated/mind-meld.svg",
+  "lanes": [
+    { "id": "prepare", "name": "Prepare" },
+    { "id": "record", "name": "Record" },
+    { "id": "explain", "name": "Explain" }
+  ],
+  "nodes": {
+    "question": { "lane": "prepare", "name": "Start with a question", "role": "Name what a reader needs to understand and find the real code that answers it.", "link": "../../../skills/mind-meld.md",
+      "details": ["Name the question and the observable result that answers it.", "Find the actual user entry point, integration test and state owner in source.", "Pick an existing test or a small flow that reaches that code."] },
+    "adapters": { "lane": "prepare", "name": "Build adapters", "role": "Repo-specific code indexes the source and runs it, one language and runtime at a time.",
+      "details": ["An index adapter records nodes, static call edges, source bytes and hashes.", "An execution adapter runs only targets it has registered."],
+      "risks": ["Never turn a natural-language question into an arbitrary shell command."],
+      "deep": [{ "h": "Adapter contract", "table": { "head": ["Operation", "Result"], "rows": [
+        ["index()", "A validated version 1 bundle with nodes, static edges, source bytes and hashes"],
+        ["run_flow(entry, inputs)", "A recorded run bound to the exact indexed source snapshot"],
+        ["run_piece(target, inputs, fakes)", "A recorded isolated run, with the fake policy in its cache identity"],
+        ["diff(runA, runB)", "Ordered paths, outputs and state mutations from each run"]] } }] },
+    "run": { "lane": "record", "name": "Record real runs", "role": "Run the code in a locked-down sandbox and record what actually happened.",
+      "details": [{ "t": "Three runs", "more": ["A full flow, one isolated piece with fakes, and a contrasting run that tests an assumption."] },
+        { "t": "Sandbox", "more": ["Pinned image, no network, read-only source, time and resource limits.", "It never mounts the Docker socket, home, credentials or production data."] },
+        "Failed runs and their inputs are kept as evidence."],
+      "risks": ["If the sandbox is unavailable, execution is blocked; static browsing still works and the limitation is stated."],
+      "qs": ["What is the difference between a static edge and an observed call?"] },
+    "bundle": { "lane": "record", "name": "Validated bundle", "role": "Index, source and runs go into one JSON file checked by an executable schema.",
+      "details": ["Recordings are cached by everything that could change them: source, dependencies, versions, inputs and fakes.", "diff compares two runs: paths, outputs and state mutations."],
+      "risks": ["A recording is never reused under a new source hash."] },
+    "tour": { "lane": "explain", "name": "Tour and narrate", "role": "A guided tour follows input through ownership and mutations to output, citing source lines.",
+      "details": ["Narration cites file:line and event ids, and separates a possible dependency from an observed call.", "Reproduce a relevant failure and explain how to diagnose and repair it."],
+      "risks": ["The model must never invent an edge, value, timing, mutation or successful run."] },
+    "view": { "lane": "explain", "name": "Verify and view offline", "role": "Check the recording still matches the source, then open the tour as one offline page.",
+      "details": ["verify fails if any recorded source differs from the checkout or escapes it.", "view writes tour.html, which needs no server or network.", "The page shows its snapshot hash and says freshness is unknown offline."] }
+  },
+  "flows": [
+    { "id": "main", "name": "Question to tour", "steps": [
+      ["question", "adapters", "Entry point and test chosen", "target flow"],
+      ["adapters", "run", "Targets registered", "index + runner"],
+      ["run", "bundle", "Runs recorded", "recorded events"],
+      ["bundle", "tour", "Schema passes", "version 1 bundle"],
+      ["tour", "view", "Tour written", "tour.json"]] }
+  ],
+  "glossary": {
+    "adapter": { "t": "Adapter", "a": ["adapters"], "d": "Repo-specific code that indexes or runs one language or runtime." },
+    "sandbox": { "t": "Sandbox", "a": ["sandbox"], "d": "An isolated container that cannot touch the network or real data." },
+    "fakes": { "t": "Fakes", "a": ["fakes"], "d": "Stand-ins for outside boundaries, such as an in-memory save." },
+    "bundle": { "t": "Bundle", "a": ["bundle"], "d": "One JSON file holding the index, source bytes and recorded runs." }
+  },
+  "ask": { "context": "The reader wants to understand scaffold's /mind-meld skill: a learning tool that explains a repo's code from indexes and real sandboxed runs." }
+}

@@ -1,0 +1,50 @@
+{
+  "title": "Council",
+  "lede": "How a hard decision gets pressure-tested by five advisors with clashing views, then turned into one committed recommendation.",
+  "detail": "../generated/council.svg",
+  "lanes": [
+    { "id": "frame", "name": "Frame" },
+    { "id": "debate", "name": "Debate" },
+    { "id": "decide", "name": "Decide" }
+  ],
+  "nodes": {
+    "ask": { "lane": "frame", "name": "Owner asks", "role": "The owner brings a high-stakes decision with real tradeoffs.", "link": "../../../skills/council.md",
+      "details": ["Triggers include \"council this\", \"pressure-test this\" or a real \"should I X or Y\" with stakes.",
+        { "t": "Not for every question", "more": ["Factual lookups, yes/no questions, summaries and low-stakes advice skip the council.", "If the question has a correct answer, the agent just answers it."] }],
+      "qs": ["When is a council worth the cost instead of just asking the agent once?"] },
+    "brief": { "lane": "frame", "name": "Frame the brief", "role": "The main agent writes a neutral, self-contained brief grounded in the repo.",
+      "details": ["States the decision, the options, the constraints and what success means.",
+        { "t": "Maps the trade space", "more": ["Names the axes the decision balances, such as cost, speed, risk and reversibility.", "Marks which options are beaten on every axis and which are genuine tradeoffs."] }],
+      "risks": ["A brief that tips toward one answer makes every advisor argue from the same slant."] },
+    "advisors": { "lane": "debate", "name": "Five advisors", "role": "Five isolated subagents each argue from one fixed lens, all at once.",
+      "details": ["150 to 300 words each, no hedging, and no advisor sees another's answer.", "They inherit the session's model; diversity comes from the persona, not the vendor."],
+      "risks": ["If isolated subagents are unavailable, the agent must say so and give a clearly labeled single-agent analysis instead."],
+      "deep": [{ "h": "The five lenses", "table": { "head": ["Lens", "Stance"], "rows": [
+        ["Contrarian", "Assumes the plan breaks, and asks where and why."],
+        ["First-Principles", "Strips assumptions and asks whether this is even the right question."],
+        ["Expansionist", "Hunts hidden upside: what if this works better than expected?"],
+        ["Outsider", "Brings zero domain context and names what is confusing."],
+        ["Executor", "Cares only about implementation: what do you do Monday morning?"]] } }] },
+    "review": { "lane": "debate", "name": "Peer review", "role": "Each advisor reviews all five answers with the authors hidden.",
+      "details": ["Answers are relabeled A to E in random order so reviewers judge the argument, not the persona.",
+        { "t": "Three questions, about 200 words each", "more": ["Which response is strongest, and why?", "Which has the biggest blind spot?", "What did all five miss?"] }] },
+    "chair": { "lane": "decide", "name": "Chairman verdict", "role": "The main agent weighs the advisors and commits to one recommendation and a first step.",
+      "details": ["Weighs the advisors and never averages them.", "Names real disagreement instead of papering it into false consensus.",
+        { "t": "Shown in chat as markdown", "more": ["Sections: where the council agrees, where it clashes, blind spots caught, the recommendation, the one thing to do first.", "No files and no artifacts; the council edits nothing."] }],
+      "risks": ["\"It depends\" is not a verdict; the chairman has to commit."],
+      "qs": ["How does the chairman decide between two advisors who flatly disagree?"] }
+  },
+  "flows": [
+    { "id": "main", "name": "Question to verdict", "steps": [
+      ["ask", "brief", "Decision is worth a council", "the question"],
+      ["brief", "advisors", "Brief sent to all five", "brief + trade space"],
+      ["advisors", "review", "Five answers collected", "anonymized A to E"],
+      ["review", "chair", "Reviews collected", "peer reviews"]] }
+  ],
+  "glossary": {
+    "subagent": { "t": "Subagent", "a": ["subagent", "subagents"], "d": "A separate agent run that cannot see the others." },
+    "trade": { "t": "Trade space", "a": ["trade space"], "d": "The axes a decision balances, such as cost, speed and risk." },
+    "chairman": { "t": "Chairman", "a": ["chairman"], "d": "The main agent, who writes the final verdict." }
+  },
+  "ask": { "context": "The reader wants to understand scaffold's /council skill: how an AI agent pressure-tests a hard decision with five persona advisors." }
+}
