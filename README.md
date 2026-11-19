@@ -39,6 +39,14 @@ co-plan → to-prd → tdd → review
 
 Skills can also be invoked individually. See [`docs/skills.md`](docs/skills.md) for the full skill list and repo layout.
 
+## How work flows: queue, orchestrator, subagents
+
+The owner creates tasks; one orchestrator per session dispatches them to subagents, each working in its own git worktree; the orchestrator integrates each finished lane, opens one PR per task, and merges only with the owner's approval.
+
+![Scaffold: tasks, orchestrator and subagents](docs/orchestration/scaffold-orchestration.png)
+
+Source: [`docs/orchestration/scaffold-orchestration.mmd`](docs/orchestration/scaffold-orchestration.mmd). Edit it, then re-render with `node scripts/mermaid-render.ts docs/orchestration/scaffold-orchestration.mmd --png --portable`.
+
 ## Quality gate
 
 Every feature is scored against a four-dimension rubric — **Quality**,
