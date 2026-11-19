@@ -1,0 +1,27 @@
+# scaffold-dependency-watch
+# Security updates only. open-pull-requests-limit: 0 turns off routine version-update PRs;
+# Dependabot security updates still use these entries once enabled in the repo settings
+# (Settings > Advanced Security > Dependabot security updates, or the /dependency-watch skill).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directories: ["/"]
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 0
+    cooldown:
+      default-days: 7
+  - package-ecosystem: npm
+    directories: ["/"]
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 0
+    cooldown:
+      default-days: 7
+  - package-ecosystem: pip
+    directories: ["/scripts/voice"]
+    schedule:
+      interval: daily
+    open-pull-requests-limit: 0
+    cooldown:
+      default-days: 7

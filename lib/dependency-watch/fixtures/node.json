@@ -1,0 +1,344 @@
+[
+ {
+  "version": "v27.0.0-alpha.0.1.1",
+  "date": "2026-11-16",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v27.0.0-alpha.0.1.0",
+  "date": "2026-11-12",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v27.0.0-alpha.0.0.0",
+  "date": "2026-10-29",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.13.1",
+  "date": "2026-11-10",
+  "lts": "Lithium",
+  "security": true
+ },
+ {
+  "version": "v26.13.0",
+  "date": "2026-10-28",
+  "lts": "Lithium",
+  "security": false
+ },
+ {
+  "version": "v26.12.1",
+  "date": "2026-10-21",
+  "lts": false,
+  "security": true
+ },
+ {
+  "version": "v26.12.0",
+  "date": "2026-10-14",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.11.1",
+  "date": "2026-10-07",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.11.0",
+  "date": "2026-10-07",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.10.0",
+  "date": "2026-09-21",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.9.0",
+  "date": "2026-09-16",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.8.2",
+  "date": "2026-09-09",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.8.1",
+  "date": "2026-08-26",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.8.0",
+  "date": "2026-08-25",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.7.0",
+  "date": "2026-08-05",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.6.0",
+  "date": "2026-08-03",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.5.1",
+  "date": "2026-07-28",
+  "lts": false,
+  "security": true
+ },
+ {
+  "version": "v26.5.0",
+  "date": "2026-07-08",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.4.0",
+  "date": "2026-06-24",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.3.1",
+  "date": "2026-06-17",
+  "lts": false,
+  "security": true
+ },
+ {
+  "version": "v26.3.0",
+  "date": "2026-06-01",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.2.0",
+  "date": "2026-05-20",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.1.0",
+  "date": "2026-05-06",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v26.0.0",
+  "date": "2026-05-05",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.22.3",
+  "date": "2026-11-10",
+  "lts": "Krypton",
+  "security": true
+ },
+ {
+  "version": "v24.22.2",
+  "date": "2026-10-27",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.22.1",
+  "date": "2026-10-20",
+  "lts": "Krypton",
+  "security": true
+ },
+ {
+  "version": "v24.22.0",
+  "date": "2026-10-14",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.21.0",
+  "date": "2026-09-07",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.20.0",
+  "date": "2026-08-26",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.19.0",
+  "date": "2026-08-03",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.18.1",
+  "date": "2026-07-28",
+  "lts": "Krypton",
+  "security": true
+ },
+ {
+  "version": "v24.18.0",
+  "date": "2026-06-23",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.17.0",
+  "date": "2026-06-17",
+  "lts": "Krypton",
+  "security": true
+ },
+ {
+  "version": "v24.16.0",
+  "date": "2026-05-21",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.15.0",
+  "date": "2026-04-15",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.14.1",
+  "date": "2026-03-24",
+  "lts": "Krypton",
+  "security": true
+ },
+ {
+  "version": "v24.14.0",
+  "date": "2026-02-24",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.13.1",
+  "date": "2026-02-09",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.13.0",
+  "date": "2026-01-12",
+  "lts": "Krypton",
+  "security": true
+ },
+ {
+  "version": "v24.12.0",
+  "date": "2025-12-10",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.11.1",
+  "date": "2025-11-11",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.11.0",
+  "date": "2025-10-28",
+  "lts": "Krypton",
+  "security": false
+ },
+ {
+  "version": "v24.10.0",
+  "date": "2025-10-08",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.9.0",
+  "date": "2025-09-25",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.8.0",
+  "date": "2025-09-10",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.7.0",
+  "date": "2025-08-27",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.6.0",
+  "date": "2025-08-14",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.5.0",
+  "date": "2025-07-31",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.4.1",
+  "date": "2025-07-15",
+  "lts": false,
+  "security": true
+ },
+ {
+  "version": "v24.4.0",
+  "date": "2025-07-09",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.3.0",
+  "date": "2025-06-24",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.2.0",
+  "date": "2025-06-09",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.1.0",
+  "date": "2025-05-20",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.0.2",
+  "date": "2025-05-14",
+  "lts": false,
+  "security": true
+ },
+ {
+  "version": "v24.0.1",
+  "date": "2025-05-08",
+  "lts": false,
+  "security": false
+ },
+ {
+  "version": "v24.0.0",
+  "date": "2025-05-06",
+  "lts": false,
+  "security": false
+ }
+]

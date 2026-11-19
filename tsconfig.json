@@ -11,5 +11,5 @@
     "types": ["node"],
     "erasableSyntaxOnly": true
   },
-  "include": ["scripts/**/*.ts", "tools/**/*.ts"]
+  "include": ["scripts/**/*.ts", "tools/**/*.ts", "lib/dependency-watch/**/*.ts"]
 }

@@ -1,0 +1,29 @@
+kind: tool
+name: dependency-watch
+description: Detect a repo's package ecosystems and runtime pins, and install the scheduled dependency watch (osv-scanner + runtime-check workflow with one tracking issue, and a security-only dependabot.yml).
+inputs:
+  detect-only:
+    type: boolean
+    default: false
+    description: Report ecosystems, runtime pins and per-file state (none / scaffold / stale / foreign) as JSON; write nothing.
+  into:
+    type: string
+    default: "."
+    description: Target repo root (must be a git repo; only tracked files are considered).
+  schedule:
+    type: string
+    description: 5-field cron for the workflow. Default daily (17 6 * * *); an existing install keeps its current cron unless this is given.
+  force:
+    type: boolean
+    default: false
+    description: Overwrite differing files instead of writing *.scaffold-new sidecars. Never touches .scaffold-keep paths.
+run:
+  command: node tools/dependency-watch/run  # paths relative to the scaffold repo root
+test:
+  command: node tools/dependency-watch/test
+owned: []
+guarded: []
+emits:
+  - .github/workflows/dependency-watch.yml
+  - .github/dependency-watch/*.ts
+  - .github/dependabot.yml

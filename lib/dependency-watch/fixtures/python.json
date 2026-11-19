@@ -1,0 +1,620 @@
+[
+ {
+  "name": "Python 3.13.0",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2024-10-07T15:18:24Z"
+ },
+ {
+  "name": "Python 3.13.0a1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2023-10-13T09:53:52Z"
+ },
+ {
+  "name": "Python 3.13.0a2",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2023-11-21T22:49:31Z"
+ },
+ {
+  "name": "Python 3.13.0a3",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-01-17T14:52:53Z"
+ },
+ {
+  "name": "Python 3.13.0a4",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-02-15T17:29:40Z"
+ },
+ {
+  "name": "Python 3.13.0a5",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-03-12T23:31:49Z"
+ },
+ {
+  "name": "Python 3.13.0a6",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-04-09T15:25:17Z"
+ },
+ {
+  "name": "Python 3.13.0b1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-05-08T12:53:47Z"
+ },
+ {
+  "name": "Python 3.13.0b2",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-06-05T22:37:59Z"
+ },
+ {
+  "name": "Python 3.13.0b3",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-06-27T15:25:37Z"
+ },
+ {
+  "name": "Python 3.13.0b4",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-07-17T20:31:52Z"
+ },
+ {
+  "name": "Python 3.13.0rc1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-08-01T08:52:35Z"
+ },
+ {
+  "name": "Python 3.13.0rc2",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-09-06T22:30:44Z"
+ },
+ {
+  "name": "Python 3.13.0rc3",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-10-01T04:42:14Z"
+ },
+ {
+  "name": "Python 3.13.1",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2024-12-03T19:11:52Z"
+ },
+ {
+  "name": "Python 3.13.10",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-12-02T15:35:27Z"
+ },
+ {
+  "name": "Python 3.13.11",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-12-05T19:24:49Z"
+ },
+ {
+  "name": "Python 3.13.12",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-02-03T21:17:10Z"
+ },
+ {
+  "name": "Python 3.13.13",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-04-07T18:20:00Z"
+ },
+ {
+  "name": "Python 3.13.14",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-06-10T16:00:00Z"
+ },
+ {
+  "name": "Python 3.13.15",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-08-05T13:19:06Z"
+ },
+ {
+  "name": "Python 3.13.16",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-09-30T21:05:15Z"
+ },
+ {
+  "name": "Python 3.13.17",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-10-21T14:22:30Z"
+ },
+ {
+  "name": "Python 3.13.18",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-10-25T19:09:44Z"
+ },
+ {
+  "name": "Python 3.13.2",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-02-04T18:49:48Z"
+ },
+ {
+  "name": "Python 3.13.3",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-04-08T14:15:28Z"
+ },
+ {
+  "name": "Python 3.13.4",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-06-03T18:31:37Z"
+ },
+ {
+  "name": "Python 3.13.5",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-06-11T21:15:55Z"
+ },
+ {
+  "name": "Python 3.13.6",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-08-06T21:00:57Z"
+ },
+ {
+  "name": "Python 3.13.7",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-08-14T18:06:18Z"
+ },
+ {
+  "name": "Python 3.13.8",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-10-07T12:11:14Z"
+ },
+ {
+  "name": "Python 3.13.9",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-10-14T13:58:56Z"
+ },
+ {
+  "name": "Python 3.14.0",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-10-07T14:13:54Z"
+ },
+ {
+  "name": "Python 3.14.0a1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-10-15T21:36:08Z"
+ },
+ {
+  "name": "Python 3.14.0a2",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-11-19T19:50:56Z"
+ },
+ {
+  "name": "Python 3.14.0a3",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2024-12-17T15:49:10Z"
+ },
+ {
+  "name": "Python 3.14.0a4",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-01-14T15:09:49Z"
+ },
+ {
+  "name": "Python 3.14.0a5",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-02-11T19:22:27Z"
+ },
+ {
+  "name": "Python 3.14.0a6",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-03-14T17:05:06Z"
+ },
+ {
+  "name": "Python 3.14.0a7",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-04-08T14:04:24Z"
+ },
+ {
+  "name": "Python 3.14.0b1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-05-07T16:06:09Z"
+ },
+ {
+  "name": "Python 3.14.0b2",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-05-26T18:45:56Z"
+ },
+ {
+  "name": "Python 3.14.0b3",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-06-17T18:25:57Z"
+ },
+ {
+  "name": "Python 3.14.0b4",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-07-08T14:26:22Z"
+ },
+ {
+  "name": "Python 3.14.0rc1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-07-22T18:37:49Z"
+ },
+ {
+  "name": "Python 3.14.0rc2",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-08-14T16:06:20Z"
+ },
+ {
+  "name": "Python 3.14.0rc3",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2025-09-18T11:46:14Z"
+ },
+ {
+  "name": "Python 3.14.1",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-12-02T16:28:32Z"
+ },
+ {
+  "name": "Python 3.14.10",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-10-25T04:15:45Z"
+ },
+ {
+  "name": "Python 3.14.2",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-12-05T19:54:40Z"
+ },
+ {
+  "name": "Python 3.14.3",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-02-03T18:27:43Z"
+ },
+ {
+  "name": "Python 3.14.4",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-04-07T17:34:41Z"
+ },
+ {
+  "name": "Python 3.14.5",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-05-10T12:24:58Z"
+ },
+ {
+  "name": "Python 3.14.5rc1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2026-05-04T19:57:10Z"
+ },
+ {
+  "name": "Python 3.14.6",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-06-10T13:13:18Z"
+ },
+ {
+  "name": "Python 3.14.7",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-08-05T12:40:32Z"
+ },
+ {
+  "name": "Python 3.14.8",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-09-30T21:32:03Z"
+ },
+ {
+  "name": "Python 3.14.9",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-10-21T13:08:09Z"
+ },
+ {
+  "name": "Python 3.9.0",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2020-10-05T17:56:01Z"
+ },
+ {
+  "name": "Python 3.9.0a1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2019-11-19T13:29:27Z"
+ },
+ {
+  "name": "Python 3.9.0a2",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2019-12-18T22:36:05Z"
+ },
+ {
+  "name": "Python 3.9.0a3",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-01-24T21:27:36Z"
+ },
+ {
+  "name": "Python 3.9.0a4",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-02-26T00:22:37Z"
+ },
+ {
+  "name": "Python 3.9.0a5",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-03-23T22:04:05Z"
+ },
+ {
+  "name": "Python 3.9.0a6",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-04-28T14:34:47Z"
+ },
+ {
+  "name": "Python 3.9.0b1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-05-19T01:32:55Z"
+ },
+ {
+  "name": "Python 3.9.0b2",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-06-09T00:25:00Z"
+ },
+ {
+  "name": "Python 3.9.0b3",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-06-09T21:25:20Z"
+ },
+ {
+  "name": "Python 3.9.0b4",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-07-03T16:46:25Z"
+ },
+ {
+  "name": "Python 3.9.0b5",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-07-20T18:58:24Z"
+ },
+ {
+  "name": "Python 3.9.0rc1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-08-11T19:59:15Z"
+ },
+ {
+  "name": "Python 3.9.0rc2",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-09-17T08:58:25Z"
+ },
+ {
+  "name": "Python 3.9.1",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2020-12-07T23:57:18Z"
+ },
+ {
+  "name": "Python 3.9.10",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2022-01-14T21:58:12Z"
+ },
+ {
+  "name": "Python 3.9.11",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2022-03-16T14:04:11Z"
+ },
+ {
+  "name": "Python 3.9.12",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2022-03-23T23:32:04Z"
+ },
+ {
+  "name": "Python 3.9.13",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2022-05-17T14:32:13Z"
+ },
+ {
+  "name": "Python 3.9.14",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2022-09-06T21:34:10Z"
+ },
+ {
+  "name": "Python 3.9.15",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2022-10-11T18:46:32Z"
+ },
+ {
+  "name": "Python 3.9.16",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2022-12-06T20:03:20Z"
+ },
+ {
+  "name": "Python 3.9.17",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2023-06-06T12:57:04Z"
+ },
+ {
+  "name": "Python 3.9.18",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2023-08-24T19:24:03Z"
+ },
+ {
+  "name": "Python 3.9.19",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2024-03-19T16:51:15Z"
+ },
+ {
+  "name": "Python 3.9.1rc1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2020-11-26T17:54:19Z"
+ },
+ {
+  "name": "Python 3.9.2",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2021-02-19T12:50:40Z"
+ },
+ {
+  "name": "Python 3.9.20",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2024-09-06T20:05:36Z"
+ },
+ {
+  "name": "Python 3.9.21",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2024-12-03T18:06:58Z"
+ },
+ {
+  "name": "Python 3.9.22",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-04-08T16:15:57Z"
+ },
+ {
+  "name": "Python 3.9.23",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-06-03T19:16:58Z"
+ },
+ {
+  "name": "Python 3.9.24",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-10-09T12:36:24Z"
+ },
+ {
+  "name": "Python 3.9.25",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2025-10-31T19:03:29Z"
+ },
+ {
+  "name": "Python 3.9.2rc1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2021-02-16T21:22:36Z"
+ },
+ {
+  "name": "Python 3.9.3",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2021-04-02T17:32:13Z"
+ },
+ {
+  "name": "Python 3.9.4",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2021-04-04T13:22:44Z"
+ },
+ {
+  "name": "Python 3.9.5",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2021-05-03T13:39:48Z"
+ },
+ {
+  "name": "Python 3.9.6",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2021-06-28T19:14:11Z"
+ },
+ {
+  "name": "Python 3.9.7",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2021-08-30T21:12:00Z"
+ },
+ {
+  "name": "Python 3.9.8",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2021-11-05T21:22:58Z"
+ },
+ {
+  "name": "Python 3.9.9",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2021-11-15T21:41:58Z"
+ },
+ {
+  "name": "Python install manager 26.4",
+  "is_published": true,
+  "pre_release": false,
+  "release_date": "2026-10-09T14:58:02Z"
+ },
+ {
+  "name": "Python install manager 26.4 beta 1",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2026-08-18T20:09:14Z"
+ },
+ {
+  "name": "Python install manager 26.4 beta 2",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2026-09-01T12:32:12Z"
+ },
+ {
+  "name": "Python install manager 26.4 beta 3",
+  "is_published": true,
+  "pre_release": true,
+  "release_date": "2026-09-15T20:06:17Z"
+ }
+]

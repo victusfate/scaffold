@@ -6,6 +6,7 @@ Every tool home is self-describing: `tool.yaml` + `run` + `test` + `README.md`.
 | Tool | Purpose | Entry |
 |---|---|---|
 | [`hoist-skill`](hoist-skill/README.md) | Emit scaffold capabilities into a consumer repo in the target harness format (claude / cursor / antigravity); records and replays a `.sync/hoisted` manifest. | `node tools/hoist-skill/run` |
+| [`dependency-watch`](dependency-watch/README.md) | Detect a repo's ecosystems and runtime pins; install the scheduled osv-scanner + runtime-check workflow (one tracking issue) and a security-only `dependabot.yml`. | `node tools/dependency-watch/run` |
 | [`sync`](sync/README.md) | Zero-local-code consumer sync — promote files per `.sync/policy.yaml` and replay hoisted skills. | `node tools/sync/run.ts` (npx: `npx github:victusfate/scaffold sync`) |
 
 Shared modules live in `tools/lib/` (not callable units — no descriptors):

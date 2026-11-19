@@ -1,0 +1,94 @@
+[
+ {
+  "version": "go1.27.4",
+  "stable": true
+ },
+ {
+  "version": "go1.27.3",
+  "stable": true
+ },
+ {
+  "version": "go1.27.2",
+  "stable": true
+ },
+ {
+  "version": "go1.27.1",
+  "stable": true
+ },
+ {
+  "version": "go1.27.0",
+  "stable": true
+ },
+ {
+  "version": "go1.27rc3",
+  "stable": false
+ },
+ {
+  "version": "go1.27rc2",
+  "stable": false
+ },
+ {
+  "version": "go1.27rc1",
+  "stable": false
+ },
+ {
+  "version": "go1.26.11",
+  "stable": true
+ },
+ {
+  "version": "go1.26.10",
+  "stable": true
+ },
+ {
+  "version": "go1.26.9",
+  "stable": true
+ },
+ {
+  "version": "go1.26.8",
+  "stable": true
+ },
+ {
+  "version": "go1.26.7",
+  "stable": true
+ },
+ {
+  "version": "go1.26.6",
+  "stable": true
+ },
+ {
+  "version": "go1.26.5",
+  "stable": true
+ },
+ {
+  "version": "go1.26.4",
+  "stable": true
+ },
+ {
+  "version": "go1.26.3",
+  "stable": true
+ },
+ {
+  "version": "go1.26.2",
+  "stable": true
+ },
+ {
+  "version": "go1.26.1",
+  "stable": true
+ },
+ {
+  "version": "go1.26.0",
+  "stable": true
+ },
+ {
+  "version": "go1.26rc3",
+  "stable": false
+ },
+ {
+  "version": "go1.26rc2",
+  "stable": false
+ },
+ {
+  "version": "go1.26rc1",
+  "stable": false
+ }
+]

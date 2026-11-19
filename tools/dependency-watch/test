@@ -1,0 +1,168 @@
+#!/usr/bin/env node
+// Acceptance tests for tools/dependency-watch/run — detect and emit in temp git repos.
+
+import { spawnSync } from 'node:child_process';
+import { writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { repoWith } from '../../lib/dependency-watch/test-helpers.ts';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const RUN = join(HERE, 'run');
+
+let passed = 0, failed = 0;
+function assert(label, cond, detail = '') {
+  if (cond) { console.error(`  pass  ${label}`); passed++; }
+  else { console.error(`  FAIL  ${label}${detail ? ' — ' + detail : ''}`); failed++; }
+}
+const show = v => JSON.stringify(v);
+
+function run(args) {
+  const r = spawnSync(process.execPath, [RUN, ...args], { encoding: 'utf8' });
+  let json = null;
+  try { json = JSON.parse(r.stdout); } catch { /* status asserted by callers */ }
+  return { status: r.status, json, stderr: r.stderr };
+}
+const stateOf = (json, path) => json.files.find(f => f.path === path)?.state;
+
+const WORKFLOW = '.github/workflows/dependency-watch.yml';
+const DEPENDABOT = '.github/dependabot.yml';
+const CHECK = '.github/dependency-watch/runtime-check.ts';
+
+// ── Slice 7: detect ─────────────────────────────────────────────────────────
+const APP = {
+  'Gemfile.lock': 'GEM\n',
+  'web/package-lock.json': '{}\n',
+  'web/yarn.lock': '\n',
+  'svc/go.mod': 'module x\n',
+  'tools/requirements-dev.txt': 'x\n',
+  'test/fixtures/Cargo.lock': '\n',
+  '.github/workflows/ci.yml': 'on: push\n',
+  '.ruby-version': '3.4.12\n',
+  'Dockerfile': 'FROM node:26-slim\n',
+};
+{
+  const repo = repoWith(APP);
+  const r = run(['--detect-only', '--into', repo]);
+  assert('detect exits 0 with JSON', r.status === 0 && r.json, `${r.status} ${r.stderr}`);
+  assert('ecosystems with directories; fixtures ignored', show(r.json?.ecosystems) === show([
+    { ecosystem: 'bundler', directories: ['/'] },
+    { ecosystem: 'github-actions', directories: ['/'] },
+    { ecosystem: 'gomod', directories: ['/svc'] },
+    { ecosystem: 'npm', directories: ['/web'] },
+    { ecosystem: 'pip', directories: ['/tools'] },
+  ]), show(r.json?.ecosystems));
+  assert('runtime pins listed', show(r.json?.runtimePins) === show([
+    { file: '.ruby-version', line: 1, runtime: 'ruby', state: 'exact' },
+    { file: 'Dockerfile', line: 1, runtime: 'node', state: 'floating' },
+  ]), show(r.json?.runtimePins));
+  assert('fresh repo: every file is none', r.json?.files.length >= 3 && r.json.files.every(f => f.state === 'none'), show(r.json?.files));
+  assert('detect writes nothing', !existsSync(join(repo, WORKFLOW)) && !existsSync(join(repo, DEPENDABOT)));
+}
+{
+  const repo = repoWith({ ...APP, [DEPENDABOT]: 'version: 2\nupdates: []\n' });
+  const r = run(['--detect-only', '--into', repo]);
+  assert('hand-written dependabot.yml is foreign', stateOf(r.json, DEPENDABOT) === 'foreign', show(r.json?.files));
+}
+
+// ── Slice 8: emit ───────────────────────────────────────────────────────────
+const read = (repo, path) => readFileSync(join(repo, path), 'utf8');
+const byStatus = (json, status) => json.filter(r => r.status === status).map(r => r.path).sort();
+{
+  const repo = repoWith(APP);
+  const r = run(['--into', repo]);
+  assert('emit exits 0', r.status === 0 && Array.isArray(r.json), `${r.status} ${r.stderr}`);
+  assert('writes workflow, seven scripts and dependabot.yml', show(byStatus(r.json, 'written')) === show([
+    '.github/dependabot.yml',
+    '.github/dependency-watch/cli.ts', '.github/dependency-watch/patch.ts', '.github/dependency-watch/pins.ts', '.github/dependency-watch/releases.ts', '.github/dependency-watch/report.ts',
+    '.github/dependency-watch/runtime-check.ts', '.github/dependency-watch/versions.ts',
+    WORKFLOW,
+  ]), show(r.json));
+  assert('default schedule is daily', read(repo, WORKFLOW).includes("- cron: '17 6 * * *'"));
+  const dependabot = read(repo, DEPENDABOT);
+  assert('dependabot: security only, every ecosystem and directory',
+    (dependabot.match(/^    open-pull-requests-limit: 0$/gm) ?? []).length === 5
+      && dependabot.includes('package-ecosystem: npm\n    directories: ["/web"]')
+      && dependabot.includes('package-ecosystem: gomod\n    directories: ["/svc"]')
+      && (dependabot.match(/^    cooldown:\n      default-days: 7$/gm) ?? []).length === 5
+      && !dependabot.includes('cargo'), dependabot);
+  const fixtures = join(HERE, '../../lib/dependency-watch/fixtures');
+  const check = spawnSync(process.execPath, [join(repo, CHECK), '--today', '2026-11-19', '--releases', fixtures], { cwd: repo, encoding: 'utf8' });
+  assert('shipped check runs in the consumer repo (finds .ruby-version 3.4.12)', check.status === 1, `${check.status} ${check.stderr}`);
+
+  const again = run(['--into', repo]);
+  assert('re-run is idempotent', again.status === 0 && again.json.every(x => x.status === 'unchanged'), show(again.json));
+  const detected = run(['--detect-only', '--into', repo]).json;
+  assert('after emit every file is scaffold', detected.files.every(f => f.state === 'scaffold'), show(detected.files));
+}
+{
+  const repo = repoWith(APP);
+  run(['--into', repo, '--schedule', '0 */6 * * 1-5']);
+  assert('--schedule sets the cron', read(repo, WORKFLOW).includes("- cron: '0 */6 * * 1-5'"));
+  const again = run(['--into', repo]);
+  assert('re-run keeps a customized schedule', again.json.every(x => x.status === 'unchanged') && read(repo, WORKFLOW).includes("- cron: '0 */6 * * 1-5'"), show(again.json));
+  const detected = run(['--detect-only', '--into', repo]).json;
+  assert('customized schedule is still scaffold state', stateOf(detected, WORKFLOW) === 'scaffold', show(detected.files));
+}
+{
+  const repo = repoWith(APP);
+  run(['--into', repo]);
+  writeFileSync(join(repo, WORKFLOW), read(repo, WORKFLOW).replace("- cron: '17 6 * * *'", '- cron: "0 5 * * 1"'));
+  run(['--into', repo, '--force']);
+  assert('re-run keeps a double-quoted owner cron', read(repo, WORKFLOW).includes("- cron: '0 5 * * 1'"), read(repo, WORKFLOW).match(/cron.*/)?.[0]);
+}
+{
+  const repo = repoWith(APP);
+  run(['--into', repo]);
+  writeFileSync(join(repo, WORKFLOW), read(repo, WORKFLOW).replace("- cron: '17 6 * * *'", '- cron: 0 5 * * 1  # mondays'));
+  run(['--into', repo, '--force']);
+  assert('re-run keeps an unquoted owner cron', read(repo, WORKFLOW).includes("- cron: '0 5 * * 1'"), read(repo, WORKFLOW).match(/cron.*/)?.[0]);
+  writeFileSync(join(repo, WORKFLOW), read(repo, WORKFLOW).replace("- cron: '0 5 * * 1'", "- cron: 'weekly'"));
+  const bad = run(['--into', repo]);
+  assert('bad cron in the workflow file is named as such', bad.status === 1 && bad.stderr.includes('the cron in .github/workflows/dependency-watch.yml'), bad.stderr);
+}
+{
+  const repo = repoWith({ 'bun.lock': '{}\n' });
+  run(['--into', repo]);
+  assert('bun.lock maps to the bun ecosystem', read(repo, DEPENDABOT).includes('package-ecosystem: bun'));
+}
+{
+  const repo = repoWith({ ...APP, [DEPENDABOT]: 'version: 2\nupdates: []\n' });
+  const r = run(['--into', repo]);
+  assert('foreign dependabot.yml kept; sidecar written', read(repo, DEPENDABOT) === 'version: 2\nupdates: []\n'
+    && existsSync(join(repo, `${DEPENDABOT}.scaffold-new`)) && byStatus(r.json, 'sidecar').includes(DEPENDABOT), show(r.json));
+}
+{
+  const repo = repoWith(APP);
+  run(['--into', repo]);
+  writeFileSync(join(repo, CHECK), read(repo, CHECK) + '\n// local edit\n');
+  assert('edited shipped file detected as stale', stateOf(run(['--detect-only', '--into', repo]).json, CHECK) === 'stale');
+  run(['--into', repo]);
+  assert('stale file gets a sidecar without --force', read(repo, CHECK).includes('// local edit') && existsSync(join(repo, `${CHECK}.scaffold-new`)));
+  run(['--into', repo, '--force']);
+  assert('--force replaces it', !read(repo, CHECK).includes('// local edit'));
+}
+{
+  const repo = repoWith({ 'README.md': 'docs only\n' });
+  const r = run(['--into', repo]);
+  assert('no ecosystems → no dependabot.yml', r.status === 0 && !existsSync(join(repo, DEPENDABOT)) && existsSync(join(repo, WORKFLOW)), show(r.json));
+}
+{
+  const repo = repoWith(APP);
+  for (const bad of ['daily', '* * * *', "17 6 * * *'; rm -rf /"]) {
+    const r = run(['--into', repo, '--schedule', bad]);
+    assert(`invalid --schedule rejected: ${bad}`, r.status === 1 && !existsSync(join(repo, WORKFLOW)), `${r.status} ${r.stderr}`);
+  }
+  assert('unknown flag rejected', run(['--into', repo, '--nope']).status === 1);
+}
+
+// ── Scaffold only: its own install must match the templates (consumers never receive this list) ──
+const ROOT = join(HERE, '../..');
+if (existsSync(join(ROOT, '.github/scaffold-internal.txt'))) {
+  const self = run(['--detect-only', '--into', ROOT]).json;
+  assert('scaffold dogfood install is current (re-run tools/dependency-watch/run --into . --force)',
+    self.files.every(f => f.state === 'scaffold'), show(self.files.filter(f => f.state !== 'scaffold')));
+}
+
+console.error(`\n${passed} passed, ${failed} failed`);
+if (failed) process.exit(1);

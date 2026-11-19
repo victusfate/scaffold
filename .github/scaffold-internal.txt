@@ -87,3 +87,9 @@ tools/hoist-skill/notices.test.ts
 tools/hoist-skill/rename.test.ts
 tools/hoist-skill/references.test.ts
 scripts/render-diagrams.ts
+
+# Scaffold's own install of /dependency-watch (dogfood). Consumers get theirs from the skill,
+# rendered for their ecosystems and cadence, so these copies never sync.
+.github/workflows/dependency-watch.yml
+.github/dependency-watch/
+.github/dependabot.yml

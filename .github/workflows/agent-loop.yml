@@ -24,5 +24,7 @@ jobs:
           node-version-file: .node-version
       - run: node scripts/agent-loop.test.ts
       - run: node scripts/agent-loop.integration.test.ts
+        env:
+          RUN_INTEGRATION: '1'
       - run: node scripts/queue-edit.test.ts
       - run: node scripts/queue-lock.test.ts

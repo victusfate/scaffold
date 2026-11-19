@@ -1,0 +1,86 @@
+# scaffold-dependency-watch
+name: Dependency watch
+
+# Scheduled check of what this repo already ships, independent of PRs (security.yml covers PRs):
+#   osv-scanner     known vulnerabilities in every lockfile in the repo
+#   runtime-check   runtime pins (.ruby-version, .nvmrc, .tool-versions, Dockerfile FROM, ...) behind
+#                   their line's latest patch or on an end-of-life line, from upstream release lists
+# Findings go to ONE tracking issue (label dependency-watch), rewritten each run, closed when clean.
+# Findings do not fail the job; only a failed check does, and then the issue is left untouched.
+# Set up and updated by scaffold's /dependency-watch skill. Change the cron to change the cadence.
+# GitHub pauses schedules in repos with no activity for 60 days; re-enable from the Actions tab.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  push:
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: dependency-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: Dependency watch
+    if: github.event_name != 'push' || github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+    env:
+      # Same pinned release as security.yml (verified against the release's published checksums).
+      OSV_VERSION: 2.7.0
+      OSV_SHA256: 160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b
+      LABEL: dependency-watch
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          # The checks are TypeScript run by Node's type stripping (Node >= 23.6).
+          node-version: 24
+      - name: Check and update the tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP"
+
+          rc=0; node .github/dependency-watch/runtime-check.ts > "$out/runtime.json" || rc=$?
+          if [ "$rc" -ge 2 ]; then echo "::error::runtime check failed (see log); tracking issue left as is"; exit 1; fi
+
+          curl -sSfL --retry 3 -o "$out/osv-scanner" \
+            "https://github.com/google/osv-scanner/releases/download/v$OSV_VERSION/osv-scanner_linux_amd64"
+          echo "$OSV_SHA256  $out/osv-scanner" | sha256sum -c --quiet -
+          chmod +x "$out/osv-scanner"
+          osv=0; "$out/osv-scanner" scan source -r --format json . > "$out/osv.json" || osv=$?
+          case "$osv" in
+            0|1) ;;
+            128) echo '{"results":[]}' > "$out/osv.json" ;;   # no lockfiles in the repo
+            *) echo "::error::osv-scanner failed ($osv); tracking issue left as is"; exit 1 ;;
+          esac
+
+          status=$(node .github/dependency-watch/report.ts --runtime "$out/runtime.json" --osv "$out/osv.json" \
+            --root "$GITHUB_WORKSPACE" --run-url "$RUN_URL" --body-out "$out/body.md")
+          cat "$out/body.md" >> "$GITHUB_STEP_SUMMARY"
+
+          gh label create "$LABEL" --force --color B60205 \
+            --description "Scheduled dependency and runtime findings (one issue, rewritten each run)"
+          open=$(gh issue list --label "$LABEL" --state open --limit 100 --json number --jq 'map(.number) | sort | map(tostring) | join(" ")')
+          issue=${open%% *}
+          extra=${open#"$issue"}
+          if [ -n "${extra// /}" ]; then echo "::warning::more than one open $LABEL issue:$extra (updating #$issue only)"; fi
+
+          if [ "$status" = findings ]; then
+            if [ -n "$issue" ]; then gh issue edit "$issue" --body-file "$out/body.md"
+            else gh issue create --title "Dependency watch findings" --label "$LABEL" --body-file "$out/body.md"; fi
+          elif [ -n "$issue" ]; then
+            gh issue close "$issue" --comment "Clean run: $RUN_URL"
+          fi
+          echo "dependency watch: $status"
