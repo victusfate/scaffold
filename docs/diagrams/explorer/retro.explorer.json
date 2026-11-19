@@ -3,7 +3,7 @@
   "lede": "How a session retrospective finds what slowed the agent down, backed by evidence, and proposes fixes to its environment. Nothing changes until the user picks.",
   "detail": "../generated/retro.svg",
   "sources": ["docs/diagrams/src/retro.mmd", "skills/retro.md"],
-  "reviewed": "9ffa946c59d8",
+  "reviewed": "3447f46323cc",
   "lanes": [
     { "id": "gather", "name": "Gather" },
     { "id": "analyze", "name": "Analyze" },
@@ -17,7 +17,7 @@
       "details": ["Reads repo instructions, existing skills, check commands, hooks and CI wiring.", "Asks whether a remedy already exists but was undiscovered, unwired or broken."],
       "qs": ["Why look for a cause in the environment instead of blaming the agent's mistake?"] },
     "classify": { "lane": "analyze", "name": "Classify and rank", "role": "Sort findings into categories and rank them by impact and cost.",
-      "details": ["Prefers repairing an existing mechanism over adding a new one.", "Ranks by impact and recurrence risk, weighed against cost and the upkeep of a new rule or check."],
+      "details": ["Prefers repairing an existing mechanism over adding a new one.", "Keeps a remedy only if it would hold on a different task in the same repo; one remedy per finding.", "A missing hook or CI check counts only when an error escaped or went undetected in this session, and a proposed check must be able to fire in the agent's normal workflow.", "Ranks by impact and recurrence risk, weighed against cost and the upkeep of a new rule or check."],
       "deep": [{ "h": "Categories", "table": { "head": ["Category", "Session signal"], "rows": [
         ["Navigation", "Repeated searches or a hidden dependency delayed progress."],
         ["Automated checks", "A mechanical error escaped, or a failure went undetected."],
@@ -27,7 +27,7 @@
         ["No-ops", "Repetitive or ineffective steering used up context."],
         ["Information access", "Missing logs, docs or read access blocked progress."]] } }] },
     "report": { "lane": "act", "name": "Report", "role": "A read-only table of findings with evidence and a recommended selection.",
-      "details": [{ "t": "One row per finding (R-01, R-02 and so on)", "more": ["Severity, session evidence, cause, proposed change and where it goes, cost, and how to verify it."] },
+      "details": [{ "t": "One row per finding (R-01, R-02 and so on)", "more": ["Severity, session evidence, cause, proposed change and where it goes, cost, how to verify it, and when to remove it."] },
         "An empty result is valid after a smooth run."],
       "risks": ["The retro edits nothing; installs, hooks, access changes and tasks wait for the user's choice."] },
     "route": { "lane": "act", "name": "Route selected work", "role": "The user picks remedies, and each goes to the skill that carries it out.", "link": "skillify.md",

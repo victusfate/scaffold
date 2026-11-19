@@ -16,7 +16,10 @@ Default to the current session; accept a session log path or session identifier.
    Check whether the remedy already exists but was undiscovered, unwired, or broken.
 3. Classify supported candidates using the table below. Prefer repairing an
    existing mechanism over adding another. Keep only findings tied to the session;
-   an empty result is valid after a smooth run.
+   an empty result is valid after a smooth run. Keep a remedy only if it would
+   hold on a different task in the same repository: record durable facts such as
+   the test command, not a snapshot of this session's failures. Give each
+   candidate one remedy; attach no unrelated instruction to it.
 4. Rank candidates by impact and recurrence risk, accounting for implementation
    cost and the ongoing burden of a new rule or check. Present the report below.
    Finish with a recommended selection; wait for the user's choice before edits.
@@ -33,9 +36,14 @@ Default to the current session; accept a session log path or session identifier.
 | No-ops | Repetitive or ineffective steering consumed context | Remove or replace the instruction, preserving its useful constraint |
 | Information access | Missing logs, documentation, or read access blocked progress | Propose the smallest access or observability improvement |
 
-Treat missing guardrails as a candidate when inspecting the session's checks:
-identify whether a pre-commit hook or CI actually runs the relevant lint, type,
-and test commands. Cite that inspection alongside the session evidence.
+Treat a missing guardrail as a candidate only when a mechanical error escaped or
+a failure went undetected in this session; a repository lacking a hook or CI
+check is not a finding by itself. Then identify whether a pre-commit hook or CI
+actually runs the relevant lint, type, and test commands, and cite that
+inspection alongside the session evidence. Propose a check only after confirming
+it can fire: its tool is installed in the agent's environment and its trigger
+occurs in the agent's normal workflow. A list of known failures must state that
+it is incomplete and must not attribute unlisted failures to the agent's edits.
 Classify fixed syntax, banned APIs, import shapes, and file placement as mechanical;
 use an executable check for them. Reserve reviewer prose for contextual judgement.
 
@@ -45,7 +53,7 @@ State the session reviewed, the evidence available, and any gaps. For each candi
 
 | ID | Severity | Session evidence | Cause/category | Proposed change and destination | Cost/tradeoff | Verification |
 |---|---|---|---|---|---|---|
-| R-01 | high/medium/low | Turn, command, or log location | Observed environmental gap | Existing mechanism to repair or smallest addition | Effort and maintenance burden | How to prove it prevents the recurrence |
+| R-01 | high/medium/low | Turn, command, or log location | Observed environmental gap | Existing mechanism to repair or smallest addition | Effort and maintenance burden | How to prove it prevents the recurrence, and when to remove it |
 
 Explain the highest-value candidate briefly. Report no actionable findings when
 the evidence supports none. Keep the retrospective read-only: selecting a remedy
