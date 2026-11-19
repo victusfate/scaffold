@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseReleases, parseEol } from './releases.ts';
+import { parseReleases, parseEol, releaseNotesUrl } from './releases.ts';
 import type { Runtime } from './pins.ts';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -36,6 +36,14 @@ const releases = (runtime: Runtime, file: string): string[] => parseReleases(run
   const python = releases('python', 'python.json');
   assert('python final releases', python.includes('3.13.9'), python.slice(0, 5).join(' '));
   assert('python pre-releases and install manager excluded', python.every(v => /^\d+\.\d+\.\d+$/.test(v)));
+}
+{
+  const notes = { ruby: releaseNotesUrl('ruby', '3.4.13'), node: releaseNotesUrl('node', '26.13.1'),
+    python: releaseNotesUrl('python', '3.13.9'), go: releaseNotesUrl('go', '1.27.4') };
+  assert('release notes URLs', JSON.stringify(notes) === JSON.stringify({
+    ruby: 'https://github.com/ruby/ruby/releases/tag/v3_4_13', node: 'https://github.com/nodejs/node/releases/tag/v26.13.1',
+    python: 'https://www.python.org/downloads/release/python-3139/', go: 'https://go.dev/doc/devel/release#go1.27.4',
+  }), JSON.stringify(notes));
 }
 {
   const eol = parseEol(fixture('eol-ruby.json'));

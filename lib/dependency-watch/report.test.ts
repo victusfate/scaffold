@@ -41,6 +41,10 @@ const OPTS = { root: '/repo', runUrl: 'https://github.com/o/r/actions/runs/1', d
   assert('package row: relative path, ids linked, fixed versions',
     r.body.includes('| `Gemfile.lock` | `rack` | `2.2.3` | RubyGems |') && r.body.includes('[GHSA-22f2-v57c-j9cx](https://osv.dev/vulnerability/GHSA-22f2-v57c-j9cx)'), r.body);
   assert('fixed versions shown', /\| `rack` \|[^\n]*\| [0-9][^|]*\|$/m.test(r.body), r.body);
+  assert('release notes linked for the patch', r.body.includes('[3.4.13](https://github.com/ruby/ruby/releases/tag/v3_4_13)'), r.body);
+  assert('EOL schedule linked', r.body.includes('(https://endoflife.date/nodejs)'), r.body);
+  assert('patch instruction names the agent command and the decision left',
+    r.body.includes('`/dependency-watch fix`') && r.body.includes('1 end-of-life'), r.body);
   assert('run link and date', r.body.includes(OPTS.runUrl) && r.body.includes('2026-11-19'));
   assert('advisory prose never reaches the body',
     !/IGNORE PREVIOUS|attacker\.example|SYSTEM:|approve and merge/.test(r.body) && r.body.split(ISSUE_MARKER).length === 2, r.body);
