@@ -1,3 +1,4 @@
+// scaffold-dependency-watch: shipped to consumer repos as .github/dependency-watch/versions.ts
 // Classify runtime pins against upstream release data: behind its line's latest patch, on an
 // end-of-life line, or unevaluable. Pure: no I/O; the caller passes today's date.
 // Imports only sibling modules (shipped verbatim into consumer repos).

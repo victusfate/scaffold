@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// scaffold-dependency-watch: shipped to consumer repos as .github/dependency-watch/report.ts
 // Tracking-issue report: merge runtime-check and osv-scanner JSON into one markdown body.
 // Only structured fields reach the body (ids, packages, versions, files, links). Advisory summaries
 // and details are untrusted prose and are never read, so they cannot become agent instructions.

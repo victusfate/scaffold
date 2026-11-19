@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+// scaffold-dependency-watch: shipped to consumer repos as .github/dependency-watch/runtime-check.ts
 // Runtime check: report tracked runtime pins that are behind their line's latest patch or on an
 // end-of-life line. Run by the scheduled dependency-watch workflow; also runnable by hand.
 //

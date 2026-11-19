@@ -1,3 +1,4 @@
+// scaffold-dependency-watch: shipped to consumer repos as .github/dependency-watch/pins.ts
 // Runtime pins: find the runtime versions a repo declares in its version files and Dockerfiles.
 // Pure: no I/O. Imports nothing (shipped verbatim into consumer repos).
 

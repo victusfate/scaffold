@@ -1,3 +1,4 @@
+// scaffold-dependency-watch: shipped to consumer repos as .github/dependency-watch/releases.ts
 // Upstream release data: where each runtime publishes its releases, and parsers that turn those
 // payloads into final-release version lists. Latest-patch truth comes from the runtime's own list
 // (endoflife.date lagged the Ruby2Shell fix on disclosure day); endoflife.date supplies only EOL dates.
