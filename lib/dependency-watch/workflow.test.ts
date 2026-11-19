@@ -21,7 +21,7 @@ const pinOf = (text: string, name: string): string | undefined => new RegExp(`${
 
 assert('marker on first line', wf.startsWith('# scaffold-dependency-watch'));
 assert('daily default schedule', /schedule:\n\s+- cron: '17 6 \* \* \*'/.test(wf));
-assert('manual dispatch and push triggers', /workflow_dispatch:/.test(wf) && /\n  push:\n/.test(wf));
+assert('manual dispatch and push triggers', /workflow_dispatch:/.test(wf) && /\n {2}push:\n/.test(wf));
 assert('push runs only on the default branch', wf.includes('github.ref_name == github.event.repository.default_branch'));
 assert('no permissions by default; job gets read + issues', /^permissions: \{\}$/m.test(wf) && /contents: read/.test(wf) && /issues: write/.test(wf));
 assert('runs never overlap', /concurrency:\n\s+group: dependency-watch/.test(wf));
