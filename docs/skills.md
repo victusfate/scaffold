@@ -58,7 +58,7 @@ tools/
     hoist-skill/SKILL.md       # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md    # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md   # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
-    mind-meld/SKILL.md         # Build a repo-owned learning IDE from source indexes, real sandboxed runs and offline code-flow tours
+    mind-meld/SKILL.md         # Map a whole repo as drill-down pages (any language, no execution), then record real runs where behavior matters
     modern-web/SKILL.md        # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit/SKILL.md             # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md        # Add linter configs and GitHub Actions workflows for languages detected in the current repo
@@ -142,7 +142,7 @@ tools/
     hoist-skill/SKILL.md       # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch/SKILL.md    # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design/SKILL.md   # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
-    mind-meld/SKILL.md         # Build a repo-owned learning IDE from source indexes, real sandboxed runs and offline code-flow tours
+    mind-meld/SKILL.md         # Map a whole repo as drill-down pages (any language, no execution), then record real runs where behavior matters
     modern-web/SKILL.md        # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit/SKILL.md             # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md        # Add linter configs and GitHub Actions workflows for languages detected in the current repo
@@ -183,7 +183,7 @@ tools/
     hoist-skill.md       # Hoist scaffold capabilities into a consumer repo in the target harness format
     protect-branch.md    # Open GitHub branch protection settings for the current repo and show a targeted configuration checklist
     frontend-design.md   # Create distinctive, production-grade frontend interfaces that avoid generic AI aesthetics
-    mind-meld.md         # Build a repo-owned learning IDE from source indexes, real sandboxed runs and offline code-flow tours
+    mind-meld.md         # Map a whole repo as drill-down pages (any language, no execution), then record real runs where behavior matters
     modern-web.md        # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit.md             # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter.md        # Add linter configs and GitHub Actions workflows for languages detected in the current repo

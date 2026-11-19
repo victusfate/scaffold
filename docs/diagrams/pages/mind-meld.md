@@ -2,7 +2,7 @@
 
 # Mind meld
 
-How a repo gets a learning tool that explains its code from real, recorded runs, viewable offline as a guided tour.
+How a repo gets explained: by default a static map of every source file (`mind-meld.ts map`, any language, no execution), then recorded runs for the flows where real behavior matters. This page covers the recorded dive.
 
 ```mermaid
 flowchart LR

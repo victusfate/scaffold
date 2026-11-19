@@ -29,3 +29,17 @@ Recorded values go in code spans, so payload text can't render as markdown or hi
 ### Reuse
 `scripts/explorer-markdown.ts` renders the page; the bundle is validated with `validateBundle` first.
 `--source-prefix` sets how page links reach source files (default `../` for a page one level down).
+
+## Static-first (task-014, absorbs task-013)
+Owner: "the default mind meld runs diagram across a repo … and the interactive running/inspection/
+profiling/debugging is if you want to dive deeper", "a repo can be any languages", and "make it clear how
+to extend mind meld to support any languages … without bloating scaffold".
+
+- **Default view:** `mind-meld.ts map <repo> <out>` writes a repo map (areas = top-level folders) and one
+  page per area (files, definitions with line links, imports). No execution, no Docker.
+- **Arrows are declared imports, never inferred calls.** Each file states how its facts were found.
+- **Languages are adapters.** One contract (`LanguageAdapter` in `scripts/mind-meld-langs.ts`). Scaffold
+  ships TypeScript (compiler), Python (stdlib ast), Rust and Ruby (line patterns plus module rules). A repo
+  adds any other language in its own `.mind-meld/languages/<name>.ts`, so scaffold does not grow.
+- **A missing tool is stated, not guessed:** the file stays on the map with the reason.
+- **Recorded runs stay the opt-in dive** (`flow`, `piece`, `pages`), for flows where behavior matters.
