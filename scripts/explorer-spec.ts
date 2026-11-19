@@ -19,6 +19,8 @@ export type ExplorerNode = {
   risks?: Bullet[];
   deep?: DeepSection[];
   qs?: string[];
+  // Relative path to a page that goes deeper (markdown pages: the skill's own page).
+  link?: string;
 };
 
 // One step: [from node, to node, what happens, payload/data carried].
@@ -58,6 +60,8 @@ export type ExplorerSpec = {
   // Q&A framing sent with every question, ahead of the selected-node context.
   ask?: { context: string; style?: string };
   start?: { node?: string; flow?: string };
+  // Relative path to the full detailed diagram image, folded at the end of the markdown page.
+  detail?: string;
 };
 
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
