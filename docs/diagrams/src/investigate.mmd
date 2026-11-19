@@ -1,0 +1,81 @@
+---
+title: /investigate — root cause before any fix
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph REPRO["1 · Reproduce and read"]
+    direction TB
+    R1["Read the whole error<br/>trace, warnings, exit codes"]:::orch
+    R2["Reproduce on demand<br/>write down exact steps"]:::orch
+    R3["Check what changed<br/>git log, diff, env"]:::orch
+    R4["Instrument boundaries<br/>trace back to divergence"]:::orch
+    R1 --> R2 --> R3 --> R4
+  end
+
+  subgraph COMPARE["2 · Compare with working code"]
+    direction TB
+    C1["Find similar code<br/>that works"]:::lane
+    C2["List every difference<br/>even ones that can't matter"]:::lane
+    C3["Note what the broken<br/>path assumes"]:::lane
+    C1 --> C2 --> C3
+  end
+
+  subgraph HYPO["3 · One hypothesis at a time"]
+    direction TB
+    H1["Write it down:<br/>X is the cause because Y"]:::lane
+    H2["Smallest test change<br/>one variable at a time"]:::lane
+    H3{"Confirmed?<br/>no → new hypothesis<br/>never stack changes"}:::gate
+    H1 --> H2 --> H3
+  end
+
+  subgraph FIX["4 · Fix at the root cause"]
+    direction TB
+    F1["Failing regression test first<br/>fails for the named reason"]:::lane
+    F2["One fix at the root<br/>no bundled refactors"]:::lane
+    F1 --> F2
+  end
+
+  subgraph VERIFY["5 · Fresh evidence"]
+    direction TB
+    V1["Re-run new test, original<br/>command, nearby suite"]:::orch
+    V2{"Fixed?<br/>no, under 3 tries →<br/>back to step 1"}:::gate
+    V3{"3 fixes failed?<br/>stop, question the design<br/>report to the user"}:::owner
+    V1 --> V2 -.-> V3
+  end
+
+  subgraph REPORT["6 · Report"]
+    direction TB
+    P1["Symptom · root cause<br/>evidence · fix"]:::state
+    P2["Regression test<br/>failed before, passes after"]:::state
+    P1 --> P2
+  end
+
+  REPRO ==> COMPARE ==> HYPO ==> FIX ==> VERIFY ==> REPORT
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["root cause<br/>the first place behavior<br/>diverges from intent"]:::git
+    L2["regression test<br/>an automated test that<br/>catches the bug coming back"]:::git
+    L3["hypothesis<br/>one testable guess<br/>about the cause"]:::git
+    L4["boundary<br/>where data passes between<br/>components, logged in/out"]:::git
+    L5["fresh evidence<br/>output produced this turn,<br/>not an earlier run"]:::git
+    L6["git diff<br/>the line-by-line changes<br/>between two versions"]:::git
+    L7["env<br/>environment: OS, runtime,<br/>CI vs local machine"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7
+  end
+
+  FLOW ~~~ LEGEND

@@ -1,0 +1,80 @@
+---
+title: /council — five advisors, peer review, chairman verdict
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph ASK["1 · Owner asks"]
+    direction TB
+    A1["High-stakes decision<br/>should I X or Y?"]:::owner
+    A2{"Factual or low-stakes?<br/>yes → just answer"}:::gate
+    A1 --> A2
+  end
+
+  subgraph FRAME["2 · Frame the brief"]
+    direction TB
+    F1["Neutral, self-contained brief<br/>grounded in repo docs"]:::orch
+    F2["Options, constraints,<br/>what success means"]:::orch
+    F3["Map the trade space<br/>axes, tension, frontier"]:::orch
+    F1 --> F2 --> F3
+  end
+
+  subgraph ADVISE["3 · Five advisors in parallel"]
+    direction TB
+    V1["Contrarian · First-Principles<br/>Expansionist · Outsider<br/>Executor"]:::lane
+    V2["Isolated subagents<br/>one message, run together"]:::lane
+    V3["150–300 words each<br/>no hedging, no peeking"]:::lane
+    V1 --> V2 --> V3
+  end
+
+  subgraph REVIEW["4 · Anonymized peer review"]
+    direction TB
+    P1["Responses relabeled A–E<br/>in random order"]:::state
+    P2["Each advisor reviews all five<br/>~200 words, in parallel"]:::lane
+    P3["Strongest? Biggest blind spot?<br/>What did all five miss?"]:::lane
+    P1 --> P2 --> P3
+  end
+
+  subgraph CHAIR["5 · Chairman synthesis"]
+    direction TB
+    C1["Weigh advisors,<br/>never average them"]:::orch
+    C2["Agree · clash<br/>blind spots caught"]:::orch
+    C3["Commit to a recommendation<br/>+ the one first step"]:::gate
+    C1 --> C2 --> C3
+  end
+
+  subgraph PRESENT["6 · Present in chat"]
+    direction TB
+    R1["Council verdict<br/>as inline markdown"]:::owner
+    R2["No files, no artifacts<br/>council edits nothing"]:::state
+    R1 --> R2
+  end
+
+  ASK ==> FRAME ==> ADVISE ==> REVIEW ==> CHAIR ==> PRESENT
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["advisor<br/>a subagent arguing from<br/>one fixed persona lens"]:::git
+    L2["subagent<br/>a separate agent run that<br/>can't see the others"]:::git
+    L3["anonymized<br/>persona names hidden so<br/>reviewers judge the argument"]:::git
+    L4["chairman<br/>the main agent, who<br/>writes the final verdict"]:::git
+    L5["trade space<br/>the axes a decision balances:<br/>cost, speed, risk…"]:::git
+    L6["frontier<br/>options not beaten on<br/>every axis by another"]:::git
+    L7["markdown<br/>plain formatted text<br/>shown in the chat"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7
+  end
+
+  FLOW ~~~ LEGEND

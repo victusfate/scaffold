@@ -1,0 +1,89 @@
+---
+title: Review gates — refine, re-verify, receipts
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph GATHER["1 · Gather the diff"]
+    direction TB
+    G1["git diff main...HEAD<br/>+ changed files in full"]:::git
+    G2["Whole repo instead?<br/>/audit ranks worst<br/>files first"]:::orch
+    G1 ~~~ G2
+  end
+
+  subgraph REVIEW["2 · Two isolated reviewers in parallel"]
+    direction TB
+    V1["/validate · read-only<br/>correctness bugs"]:::gate
+    V2["Test integrity: a weakened<br/>test is a defect"]:::gate
+    V3["/simplify · read-only<br/>rubric scores + cleanups"]:::gate
+    V4["Diff economy +<br/>cross-file DRY check"]:::gate
+    V1 --> V2
+    V3 --> V4
+  end
+
+  subgraph MERGE["3 · Merge findings"]
+    direction TB
+    M1["Dedupe overlaps<br/>on the same lines"]:::orch
+    M2["Order: correctness first,<br/>then structure"]:::orch
+    M3{"Both clean?<br/>yes → skip the fix"}:::gate
+    M4["Standalone, no --fix:<br/>present and wait"]:::owner
+    M1 --> M2 --> M3
+    M3 ~~~ M4
+  end
+
+  subgraph FIX["4 · One serial fixer"]
+    direction TB
+    F1["Single agent applies<br/>the whole work list"]:::lane
+    F2["Re-run the test suite"]:::lane
+    F3["Fix needs a test change?<br/>surface it, never weaken"]:::owner
+    F1 --> F2 --> F3
+  end
+
+  subgraph VERIFY["5 · Re-verify"]
+    direction TB
+    R1["Fresh correctness +<br/>structural check"]:::gate
+    R2{"Correctness clear<br/>and all 10/10?<br/>no → fix once more,<br/>then surface"}:::gate
+    R1 --> R2
+  end
+
+  subgraph RECEIPT["6 · Verify once per commit"]
+    direction TB
+    E1[("Receipt keyed to<br/>exact tree identity")]:::state
+    E2["Merge step reuses<br/>a matching receipt"]:::git
+    E3{"Missing, mismatched<br/>or corrupt? fail closed<br/>→ re-run in full"}:::gate
+    E4["Full suites only for<br/>shared core, else<br/>affected-delta checks"]:::orch
+    E1 --> E2 --> E3
+    E3 ~~~ E4
+  end
+
+  GATHER ==> REVIEW ==> MERGE ==> FIX ==> VERIFY ==> RECEIPT
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["isolated reviewer<br/>fresh subagent with no<br/>session context, so it<br/>reviews objectively"]:::git
+    L2["rubric<br/>four scores: Quality,<br/>Readability, Encapsulation,<br/>Clarity"]:::git
+    L3["DRY<br/>Don't Repeat Yourself:<br/>one canonical place<br/>per concept"]:::git
+    L4["diff economy<br/>added lines must earn<br/>their place; deletions<br/>count as credit"]:::git
+    L5["receipt<br/>record of a verified run,<br/>valid only for that<br/>exact code"]:::git
+    L6["tree identity<br/>HEAD, tree, index, diffs,<br/>untracked inputs, base,<br/>plan, gate-script<br/>hashes, tool binaries"]:::git
+    L7["fail closed<br/>when in doubt, block<br/>and re-run instead<br/>of passing"]:::git
+    L8["shared core<br/>public API, save formats,<br/>networking, workspace<br/>build inputs"]:::git
+    L9["affected-delta<br/>checks only for the<br/>parts the change<br/>touches"]:::git
+    L10["HEAD<br/>the latest commit on<br/>a branch"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
+  end
+
+  FLOW ~~~ LEGEND

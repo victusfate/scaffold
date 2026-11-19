@@ -1,0 +1,85 @@
+---
+title: /skillify — turn finished work into a registered skill
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph CONTEXT["1 · Reconstruct context"]
+    direction TB
+    X1["Read conversation history<br/>what worked"]:::orch
+    X2["Project manifests,<br/>git diff --stat, git log"]:::orch
+    X3["One-paragraph recap<br/>user confirms in one line"]:::owner
+    X1 --> X2 --> X3
+  end
+
+  subgraph INTERVIEW["2 · Interview, one question at a time"]
+    direction TB
+    I1["Intent → Inputs →<br/>Steps → Edge cases"]:::owner
+    I2["Agent recommends<br/>an answer each round"]:::orch
+    I3["Stop early if all four<br/>are clear from context"]:::orch
+    I1 ~~~ I2 ~~~ I3
+  end
+
+  subgraph NAME["3 · Name and dedupe"]
+    direction TB
+    N1["One skill per run<br/>pick the most valuable"]:::orch
+    N2["State kebab-case slug<br/>≤30 chars before writing"]:::owner
+    N3{"Overlap in RESOLVER?<br/>yes → extend that skill"}:::gate
+    N1 --> N2 --> N3
+  end
+
+  subgraph GENERATE["4 · Generate five files"]
+    direction TB
+    G1["skills/slug.md<br/>canonical body"]:::state
+    G2["Claude, Cursor, .agents<br/>and .agent/workflows<br/>wrappers"]:::state
+    G3["Same description<br/>in all four wrappers"]:::state
+    G1 --> G2 --> G3
+  end
+
+  subgraph REGISTER["5 · Register and validate"]
+    direction TB
+    V1["RESOLVER row<br/>unique ^/slug anchor"]:::state
+    V2["Add paths to<br/>scaffold-files.txt"]:::state
+    V3["Test any script logic"]:::lane
+    V4{"check-resolvable.ts<br/>passes?"}:::gate
+    V1 --> V2 --> V3 --> V4
+  end
+
+  subgraph UPSTREAM["6 · PR to scaffold"]
+    direction TB
+    U1["Branch skillify/slug<br/>off scaffold/main, push"]:::git
+    U2["PR feat(skill): slug<br/>do not merge"]:::orch
+    U3["Summarize: slug, files,<br/>validator result, PR link"]:::owner
+    U1 --> U2 --> U3
+  end
+
+  CONTEXT ==> INTERVIEW ==> NAME ==> GENERATE ==> REGISTER ==> UPSTREAM
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["skill<br/>a reusable instruction<br/>file an agent<br/>can invoke"]:::git
+    L2["slug<br/>the skill's short<br/>kebab-case name used<br/>everywhere"]:::git
+    L3["kebab-case<br/>lowercase words<br/>joined by hyphens"]:::git
+    L4["RESOLVER<br/>the routing table that<br/>maps /slug to its<br/>skill file"]:::git
+    L5["wrapper<br/>a thin per-tool file<br/>pointing at the<br/>canonical body"]:::git
+    L6["scaffold-files.txt<br/>list of files sync<br/>copies into<br/>downstream repos"]:::git
+    L7["check-resolvable.ts<br/>validator: every skill<br/>is registered and<br/>wrappers match"]:::git
+    L8["PR<br/>pull request: a proposed<br/>change, reviewed<br/>before merge"]:::git
+    L9["scaffold/main<br/>the upstream scaffold<br/>repo's main branch"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9
+  end
+
+  FLOW ~~~ LEGEND

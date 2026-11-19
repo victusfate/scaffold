@@ -1,0 +1,88 @@
+---
+title: /mind-meld — learning IDE from indexes and real runs
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph QUESTION["1 · Start with a question"]
+    direction TB
+    Q1["Name the reader's question<br/>and the observable answer"]:::owner
+    Q2["Find real entry point,<br/>integration test, state owner"]:::orch
+    Q3["Pick an existing test<br/>or a small flow"]:::orch
+    Q1 --> Q2 --> Q3
+  end
+
+  subgraph ADAPT["2 · Build adapters"]
+    direction TB
+    D1["Index adapter: nodes,<br/>static edges, source, hashes"]:::orch
+    D2["Execution adapter<br/>for the runtime"]:::orch
+    D3["Only registered targets<br/>never an arbitrary shell"]:::gate
+    D1 --> D2 --> D3
+  end
+
+  subgraph RUN["3 · Record real runs in a sandbox"]
+    direction TB
+    R1["Pinned image, no network,<br/>read-only source, time limits"]:::lane
+    R2["Record a flow, an isolated<br/>piece, a contrasting run"]:::lane
+    R3["Keep failed runs<br/>and their inputs"]:::lane
+    R4{"Sandbox unavailable?<br/>static browsing only"}:::gate
+    R1 --> R2 --> R3 --> R4
+  end
+
+  subgraph BUNDLE["4 · Validated bundle"]
+    direction TB
+    B1[("Version 1 bundle<br/>checked by the schema")]:::state
+    B2["Cache key: source, deps,<br/>versions, inputs, fakes"]:::state
+    B3["diff two runs: paths,<br/>outputs, mutations"]:::state
+    B1 --> B2
+    B1 --> B3
+  end
+
+  subgraph TOUR["5 · Tour and narrate"]
+    direction TB
+    T1["Tour: input → ownership<br/>→ mutations → output"]:::orch
+    T2["Narration cites file:line<br/>and event ids"]:::orch
+    T3["Never invent edges,<br/>values or successes"]:::gate
+    T4["Reproduce a failure, explain<br/>diagnosis and repair"]:::orch
+    T1 --> T2 --> T4 --> T3
+  end
+
+  subgraph VIEW["6 · Verify and view offline"]
+    direction TB
+    V1{"verify: recorded source<br/>matches checkout?"}:::gate
+    V2["view → tour.html<br/>no server or network"]:::owner
+    V3["Page shows snapshot hash<br/>freshness unknown offline"]:::state
+    V1 -->|yes| V2 --> V3
+  end
+
+  QUESTION ==> ADAPT ==> RUN ==> BUNDLE ==> TOUR ==> VIEW
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["IDE<br/>Integrated Development<br/>Environment: a workspace<br/>for exploring code"]:::git
+    L2["adapter<br/>repo-specific code that<br/>indexes or runs one<br/>language or runtime"]:::git
+    L3["flow / piece<br/>a full integration run /<br/>one function run alone<br/>with fakes"]:::git
+    L4["fakes<br/>stand-ins for outside<br/>boundaries, e.g. an<br/>in-memory save"]:::git
+    L5["static edge<br/>a call that might happen,<br/>read from source, not<br/>an observed call"]:::git
+    L6["sandbox<br/>an isolated container<br/>that can't touch the network<br/>or real data"]:::git
+    L7["bundle<br/>JSON holding the index,<br/>source bytes and<br/>recorded runs"]:::git
+    L8["snapshot hash<br/>fingerprint of the exact<br/>source a run<br/>came from"]:::git
+    L9["schema<br/>the executable rules a<br/>bundle must pass<br/>before use"]:::git
+    L10["cache key<br/>everything that must match<br/>to reuse a past<br/>recording"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
+  end
+
+  FLOW ~~~ LEGEND

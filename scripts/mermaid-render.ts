@@ -7,7 +7,7 @@
 // default. `--publish` is the one explicit remote action (a mermaid.live URL
 // the user chooses to open).
 // Usage:
-//   node scripts/mermaid-render.ts <input.mmd> [--out <file.svg>] [--wrap] [--local] [--open] [--publish] [--no-render]
+//   node scripts/mermaid-render.ts <input.mmd> [--out <file.svg>  (also sets --png/--html paths)] [--wrap] [--local] [--open] [--publish] [--no-render]
 //     (default)     render <input>.svg locally, nothing remote
 //     --wrap        (re)write <input>.md — the .mmd inside a ```mermaid block —
 //                   for VS Code live preview; the open preview auto-refreshes
@@ -177,6 +177,8 @@ async function main(argv: string[]): Promise<void> {
   const mmd = readFileSync(input, 'utf8');
   if (!mmd.trim()) die(`input is empty: ${input}`);
   const svg = out ?? input.replace(/\.mmd$/, '.svg');
+  // --png and --html land beside the SVG, so --out relocates every render (generated-output dirs).
+  const stem = svg.replace(/\.svg$/, '');
 
   if (wrap) {
     const md = input.replace(/\.mmd$/, '.md');
@@ -195,13 +197,13 @@ async function main(argv: string[]): Promise<void> {
     process.stdout.write(`rendered: ${svg}\n`);
 
     if (html) {
-      const htmlPath = input.replace(/\.mmd$/, '.html');
+      const htmlPath = `${stem}.html`;
       const template = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'mermaid-viewer.template.html'), 'utf8');
       writeFileSync(htmlPath, interactiveHtml(readFileSync(svg, 'utf8'), titleFromPath(input), template));
       process.stdout.write(`interactive viewer: ${htmlPath}\n`);
     }
     if (png) {
-      const pngPath = input.replace(/\.mmd$/, '.png');
+      const pngPath = `${stem}.png`;
       try {
         runMmdc(input, pngPath, { portable, scale: Number(scale), background: 'white' });
       } catch {

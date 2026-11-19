@@ -1,0 +1,87 @@
+---
+title: /qa — drive the real app, fix what breaks
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph SETUP["1 · Set up"]
+    direction TB
+    S1{"Clean tree?<br/>dirty → ask user<br/>to commit or stash"}:::gate
+    S2["Pick surfaces from diff<br/>browser · API · CLI · job"]:::orch
+    S3["Start app as documented<br/>poll for readiness"]:::orch
+    S4["Seeded or synthetic test data<br/>never production"]:::orch
+    S1 --> S2 --> S3 --> S4
+  end
+
+  subgraph PROBE["2 · Probe like a user"]
+    direction TB
+    P1["Run each entry point<br/>happy path + bad input"]:::lane
+    P2["Capture evidence<br/>screenshots, responses, logs"]:::lane
+    P3["Log issues QA-001…<br/>severity, repro, expected"]:::state
+    P4["Unreachable surface<br/>marked blocked, not passed"]:::gate
+    P1 --> P2 --> P3 --> P4
+  end
+
+  subgraph TRIAGE["3 · Triage by severity"]
+    direction TB
+    T1["Sort critical → low<br/>apply the fix tier"]:::orch
+    T2["Out of tier, third-party,<br/>infra → deferred"]:::state
+    T3{"--report-only?<br/>yes → skip to report"}:::gate
+    T1 --> T2 --> T3
+  end
+
+  subgraph FIX["4 · Fix loop"]
+    direction TB
+    F1["/investigate: root cause<br/>failing regression test first"]:::lane
+    F2["Re-run the probe<br/>+ adjacent happy path"]:::lane
+    F3["Commit fix(qa): QA-NNN<br/>with its test"]:::git
+    F4{"2 reverts, off-issue edit,<br/>or 30 fixes? stop and report"}:::gate
+    F1 --> F2 --> F3 --> F4
+  end
+
+  subgraph FINAL["5 · Final pass"]
+    direction TB
+    R1["Re-run probes on<br/>every fixed area"]:::orch
+    R2["Happy path on<br/>each surface"]:::orch
+    R3["Any regression is<br/>reported first"]:::gate
+    R1 --> R2 --> R3
+  end
+
+  subgraph REPORT["6 · Report"]
+    direction TB
+    Q1["Issue table: ID, severity,<br/>status, commit"]:::state
+    Q2["Deferred + blocked<br/>with reasons"]:::state
+    Q3["One summary line<br/>for the PR body"]:::state
+    Q1 --> Q2 --> Q3
+  end
+
+  SETUP ==> PROBE ==> TRIAGE ==> FIX ==> FINAL ==> REPORT
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["QA<br/>quality assurance: checking<br/>the app works for a user"]:::git
+    L2["surface<br/>a way users reach the app:<br/>page, API, command, job"]:::git
+    L3["API<br/>application programming<br/>interface: HTTP endpoints"]:::git
+    L4["CLI<br/>command-line interface:<br/>commands, flags, exit codes"]:::git
+    L5["job<br/>background work: workers,<br/>queues, scheduled tasks"]:::git
+    L6["fix tier<br/>quick = critical + high,<br/>standard adds medium,<br/>exhaustive adds low + cosmetic"]:::git
+    L7["blocked<br/>could not be reached;<br/>never counted as passed"]:::git
+    L8["regression test<br/>an automated test that<br/>catches the bug coming back"]:::git
+    L9["PR<br/>pull request: a proposed<br/>change, reviewed before merge"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9
+  end
+
+  FLOW ~~~ LEGEND

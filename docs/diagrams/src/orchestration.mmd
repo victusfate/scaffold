@@ -1,0 +1,88 @@
+---
+title: Scaffold — tasks, orchestrator and subagents
+---
+flowchart TB
+  classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
+  classDef orch fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef state fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  classDef lane fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  classDef git fill:#e5e7eb,stroke:#374151,color:#1f2937
+  classDef gate fill:#fecaca,stroke:#b91c1c,color:#1f2937
+
+  %% Edges run between stage subgraphs (not inner nodes) so each stage keeps
+  %% its own top-to-bottom direction and the whole image stays landscape.
+
+  subgraph FLOW[" "]
+  direction LR
+
+  subgraph OWNER["1 · Owner requests"]
+    direction TB
+    O1["Ask for the work<br/>only the owner creates tasks"]:::owner
+    O0["Agent records it:<br/>queue add --requested<br/>owner's words + accept"]:::orch
+    O1 --> O0
+  end
+
+  subgraph QUEUE["2 · Queue state"]
+    direction TB
+    Q1[("queue.db<br/>typed tasks: status,<br/>owner, accept, evidence")]:::state
+    Q2["queue.md<br/>committed view<br/>line order = priority"]:::state
+    Q3["Shared by every worktree<br/>lanes + orchestrator<br/>read the same record"]:::state
+    Q1 -.render.-> Q2
+    Q2 ~~~ Q3
+  end
+
+  subgraph DISPATCH["3 · Orchestrator dispatches"]
+    direction TB
+    T["Loop tick<br/>reads topology.json slots"]:::orch
+    C["Claim top suited task<br/>--worker slot --branch b"]:::orch
+    W["Create worktree lane first<br/>off working-branch HEAD"]:::orch
+    U["Steer later with<br/>ORCH UPDATE task notes"]:::orch
+    T --> W --> C
+    C -.-> U
+  end
+
+  subgraph LANE["4 · Subagent works in its lane"]
+    direction TB
+    S1["ff-only base check"]:::lane
+    S2["Build: direct chore or<br/>design → PRD → plan<br/>→ TDD → refine"]:::lane
+    S3["Re-read task at checkpoints<br/>follow newest ORCH UPDATE"]:::lane
+    S4["Validate · commit locally<br/>record evidence · no push"]:::lane
+    S1 --> S2 --> S3 --> S4
+  end
+
+  subgraph INTEGRATE["5 · Orchestrator integrates"]
+    direction TB
+    I["Merge target into lane<br/>re-run gates on result"]:::orch
+    G{"Green?<br/>no → back to lane"}:::gate
+    B["Merge into the one<br/>working branch"]:::git
+    PR["Open PR<br/>Critical changes + real checks"]:::orch
+    I --> G -->|yes| B --> PR
+  end
+
+  subgraph SHIP["6 · Owner approves, task closes"]
+    direction TB
+    O2{"Owner authorizes<br/>the merge?"}:::gate
+    M["main · squash merge"]:::git
+    A["queue advance --pr --branch<br/>records merge + fresh branch"]:::state
+    O2 -->|yes| M --> A
+  end
+
+  OWNER ==> QUEUE ==> DISPATCH ==> LANE ==> INTEGRATE ==> SHIP
+  end
+  style FLOW fill:none,stroke:none
+
+  subgraph LEGEND["Legend"]
+    direction LR
+    L1["ff-only<br/>fast-forward only:<br/>worker proves it starts from the<br/>working branch's HEAD, else stops"]:::git
+    L2["PRD<br/>Product Requirements Doc:<br/>what to build + how we<br/>know it's done"]:::git
+    L3["TDD<br/>Test-Driven Development:<br/>failing test first, then code,<br/>then clean up"]:::git
+    L4["worktree<br/>isolated git checkout<br/>per worker, so workers<br/>never collide"]:::git
+    L5["ORCH UPDATE<br/>orchestrator's<br/>steering note on a running<br/>worker's task"]:::git
+    L6["squash merge<br/>one PR<br/>lands as one commit<br/>on main"]:::git
+    L7["PR<br/>pull request: a proposed<br/>change, reviewed and<br/>checked before merge"]:::git
+    L8["HEAD<br/>the latest commit on<br/>a branch"]:::git
+    L9["slot<br/>a worker seat (model +<br/>tool) the orchestrator<br/>hands tasks to"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9
+  end
+
+  FLOW ~~~ LEGEND
