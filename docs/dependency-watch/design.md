@@ -29,7 +29,7 @@
 | endoflife.date "latest" is current enough to detect a missing patch | Compare its Ruby `latest` to ruby-lang's index on disclosure day | **Disproved 2026-11-19**: endoflife.date listed 4.0.9 / 3.4.12; `cache.ruby-lang.org/pub/ruby/index.txt` already listed 4.0.10 / 3.4.13 [verified: curl] | Latest-patch comes from each runtime's upstream release list; endoflife.date is used only for EOL |
 | OSV/GHSA carry runtime advisories on day 0 | `api.osv.dev/v1/vulns/GHSA-34m4-m9fh-gqp5`, `api.github.com/advisories/...` | **Disproved**: both 404 on disclosure day [verified: curl] | Runtime check does not depend on advisory feeds; "behind latest patch" is the signal |
 | Dependabot security updates honor `dependabot.yml` with `open-pull-requests-limit: 0` (version updates off, security updates on) | GitHub docs; observe a security PR on a test repo | documented behavior, unobserved here | Fall back to no `dependabot.yml`, settings-only |
-| PRs created with the workflow `GITHUB_TOKEN` do not trigger CI | GitHub docs | documented | (drives the "issue, not PR" decision) |
+| PRs created with the workflow `GITHUB_TOKEN` do not trigger CI | GitHub docs | documented | (why the owner's agent opens the patch PR, not the workflow) |
 
 ## Canonical Vocabulary
 | Term | Definition |

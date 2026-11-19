@@ -13,8 +13,7 @@ Installs a scheduled check of what a repo already ships. It runs whether or not 
 - **One tracking issue** (label `dependency-watch`): rewritten in place on every run and closed when a
   run is clean. Built only from structured fields, never advisory prose.
 - **Security-only `dependabot.yml`** for the detected ecosystems (`open-pull-requests-limit: 0` turns
-  off routine version-update PRs). Turn on Dependabot security updates in the repo settings for PRs to
-  arrive.
+  off routine version-update PRs). The `/dependency-watch` skill turns on Dependabot security updates.
 
 ```bash
 node tools/dependency-watch/run --detect-only --into ../my-app      # what would be installed
@@ -23,7 +22,8 @@ node tools/dependency-watch/run --into ../my-app --schedule "0 */12 * * *"
 ```
 
 Run the check by hand in a repo that has it installed:
-`node .github/dependency-watch/runtime-check.ts` (exit 0 clean, 1 findings, 2 error).
+`node .github/dependency-watch/runtime-check.ts [--fix]` (exit 0 clean, 1 findings, 2 error). `--fix`
+bumps behind pins to the latest patch; `/dependency-watch fix` does that and opens the PR.
 
 Templates live in `lib/dependency-watch/`. The `/dependency-watch` skill wraps this tool.
 GitHub pauses scheduled workflows in repos with no activity for 60 days. Re-enable from the Actions tab.
