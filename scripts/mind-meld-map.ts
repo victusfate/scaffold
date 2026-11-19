@@ -7,7 +7,7 @@
 // Usage: node scripts/mind-meld.ts map <repo-root> <out-dir>
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { lstatSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { codeSpan, renderMarkdown, type PageContext } from './explorer-markdown.ts';
 import { validateSpec, type Bullet, type ExplorerNode, type ExplorerSpec } from './explorer-spec.ts';
@@ -18,17 +18,30 @@ const MAP_FILE = 'index.md';
 const IMPORTS = 'Imports (declared in source, not observed calls)';
 const ROOT_AREA = '(root)';
 const TOP_LANE = '(top)';
-// Tests, specs, fixtures and vendored or built trees are not what the repo ships.
+// Tests, specs, fixtures, type declarations and vendored or built trees are not what the repo ships. Not
+// shared with lib/dependency-watch's list: that copy ships into other repos on its own and imports nothing.
 const NOT_SHIPPED = /\.d\.ts$|(^|\/)\.mind-meld\/|(^|\/)(tests?|spec|specs|fixtures|testdata|vendor|node_modules|target|dist|build)\/|\.(test|spec)\.(ts|tsx|mts)$|(^|\/)test_[^/]*\.py$|_test\.py$|_(spec|test)\.rb$/;
 
 const areaOf = (file: string): string => file.includes('/') ? file.split('/')[0] : ROOT_AREA;
-// Page names are plain files: no leading dot (`.github` → `github.md`), no path characters.
-const pageOf = (area: string): string => `${area === ROOT_AREA ? 'root' : area.replace(/^\.+/, '').replace(/[^\w.-]/g, '_')}.md`;
+// Page names are plain files (no leading dot, no path characters) and unique: `index.md` is the map's,
+// and areas whose names clean up alike (`.github`, `github`) get a numbered suffix.
+function pageNames(areas: string[]): Map<string, string> {
+  const used = new Set([MAP_FILE]), names = new Map<string, string>();
+  for (const area of areas) {
+    const base = area === ROOT_AREA ? 'root' : area.replace(/^\.+/, '').replace(/[^\w.-]/g, '_') || 'area';
+    let name = `${base}.md`;
+    for (let n = 2; used.has(name); n++) name = `${base}_${n}.md`;
+    used.add(name); names.set(area, name);
+  }
+  return names;
+}
 
 export async function scanRepo(root: string): Promise<ModuleFacts[]> {
   const adapters = await loadAdapters(root);
   const tracked = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' }).split('\0');
-  return languageFacts(root, tracked.filter(f => f && adapterFor(f, adapters) && !NOT_SHIPPED.test(f)), adapters);
+  // Regular files only: a tracked file deleted from the working tree, or a symlink, is not mapped.
+  const isFile = (f: string): boolean => { try { return lstatSync(join(root, f)).isFile(); } catch { return false; } };
+  return languageFacts(root, tracked.filter(f => f && adapterFor(f, adapters) && !NOT_SHIPPED.test(f) && isFile(f)), adapters);
 }
 
 interface MapOptions { sourcePrefix: string }
@@ -55,20 +68,21 @@ function moduleNode(m: ModuleFacts, area: string, options: MapOptions): Explorer
 
 function areaSpec(area: string, modules: ModuleFacts[], options: MapOptions): ExplorerSpec {
   const files = new Set(modules.map(m => m.file));
-  const lanes = [...new Set(modules.map(m => moduleNode(m, area, options).lane))];
+  const nodes = modules.map(m => [m.file, moduleNode(m, area, options)] as const);
+  const lanes = [...new Set(nodes.map(([, node]) => node.lane))];
   const steps = modules.flatMap(m => m.imports.filter(f => files.has(f)).map((f): [string, string, string, string] => [m.file, f, 'imports', '']));
   return {
     title: area,
     lede: `${modules.length} source files in \`${area === ROOT_AREA ? '.' : `${area}/`}\`, with their definitions and the imports between them. Arrows are imports declared in source, not observed calls.`,
     lanes: lanes.map(id => ({ id, name: id })),
-    nodes: Object.fromEntries(lanes.flatMap(lane => modules.map(m => [m.file, moduleNode(m, area, options)] as const)
-      .filter(([, node]) => node.lane === lane))),
+    // Grouped by lane, so the page reads folder by folder.
+    nodes: Object.fromEntries(lanes.flatMap(lane => nodes.filter(([, node]) => node.lane === lane))),
     flows: steps.length ? [{ id: 'imports', name: IMPORTS, steps }] : [],
     ask: { context: `The reader is learning how the ${area} part of this repo is organized, from a static map (no code was run).` },
   };
 }
 
-function mapSpec(areas: Map<string, ModuleFacts[]>): ExplorerSpec {
+function mapSpec(areas: Map<string, ModuleFacts[]>, pages: Map<string, string>): ExplorerSpec {
   const hops = new Map<string, number>();
   for (const [area, modules] of areas) {
     for (const target of modules.flatMap(m => m.imports.map(areaOf)).filter(t => t !== area)) {
@@ -82,10 +96,10 @@ function mapSpec(areas: Map<string, ModuleFacts[]>): ExplorerSpec {
   const languages = (modules: ModuleFacts[]): string => [...new Set(modules.map(m => m.language))].sort().join(', ');
   return {
     title: MAP_TITLE,
-    lede: 'Every source file in this repo, by top-level folder, from a static map (no code was run). Click an area for its files and definitions. Arrows are imports declared in source, not observed calls; record a run with mind-meld to see what actually executes.',
+    lede: 'Every source file in this repo, by top-level folder, from a static map (no code was run). Tests, fixtures and vendored or built folders are left out. Click an area for its files and definitions. Arrows are imports declared in source, not observed calls; record a run with mind-meld to see what actually executes.',
     lanes: [{ id: 'areas', name: 'Areas' }],
     nodes: Object.fromEntries([...areas].map(([area, modules]) => [area, {
-      lane: 'areas', name: area, link: pageOf(area),
+      lane: 'areas', name: area, link: pages.get(area),
       role: `${modules.length} module${modules.length === 1 ? '' : 's'} (${languages(modules)})`,
     }])),
     flows: steps.length ? [{ id: 'imports', name: IMPORTS, steps }] : [],
@@ -96,15 +110,17 @@ function mapSpec(areas: Map<string, ModuleFacts[]>): ExplorerSpec {
 // Writes the repo map and one page per area into outDir; returns the file names written.
 export async function writeMap(root: string, outDir: string): Promise<string[]> {
   const facts = await scanRepo(root);
+  if (!facts.length) throw new Error('mind-meld map: no source files in a supported language (add an adapter in .mind-meld/languages)');
   const areas = new Map<string, ModuleFacts[]>();
   for (const m of facts) areas.set(areaOf(m.file), [...(areas.get(areaOf(m.file)) ?? []), m]);
   const options: MapOptions = { sourcePrefix: `${relative(outDir, root) || '.'}/` };
-  const map = mapSpec(areas);
-  const titles = Object.fromEntries([...areas.keys()].map(area => [pageOf(area), area]));
+  const pageOf = pageNames([...areas.keys()]);
+  const map = mapSpec(areas, pageOf);
+  const titles = Object.fromEntries([...pageOf].map(([area, page]) => [page, area]));
   const context: PageContext = { titles, up: { title: MAP_TITLE, link: MAP_FILE } };
   const pages: [string, ExplorerSpec, PageContext][] = [
     [MAP_FILE, map, { titles }],
-    ...[...areas].map(([area, modules]): [string, ExplorerSpec, PageContext] => [pageOf(area), areaSpec(area, modules, options), context]),
+    ...[...areas].map(([area, modules]): [string, ExplorerSpec, PageContext] => [pageOf.get(area)!, areaSpec(area, modules, options), context]),
   ];
   mkdirSync(outDir, { recursive: true });
   for (const [file, spec, pageContext] of pages) {

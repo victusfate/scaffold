@@ -133,3 +133,61 @@ void test('CLI: mind-meld.ts map <repo> <out> writes the pages', () => {
   assert.match(result.stdout, /repo map: 6 pages/);
   assert.match(readFileSync(join(out, 'index.md'), 'utf8'), /^# Repo map/);
 });
+
+// ── Review regressions: each case below once drew a wrong arrow, lost a page or misreported a tool ──
+function repoOf(files: Record<string, string>): string {
+  const root = mkdtempSync(join(tmpdir(), 'meld-edge-'));
+  execFileSync('git', ['init', '-q'], { cwd: root });
+  for (const [path, text] of Object.entries(files)) {
+    mkdirSync(dirname(join(root, path)), { recursive: true });
+    writeFileSync(join(root, path), text);
+  }
+  execFileSync('git', ['add', '.'], { cwd: root });
+  return root;
+}
+
+void test('page names never collide: an area named index or root keeps its own page', async () => {
+  const root = repoOf({ 'index/a.py': 'x = 1\n', 'root/b.py': 'y = 1\n', 'c.py': 'z = 1\n' });
+  const written = await writeMap(root, join(root, 'out'));
+  assert.equal(new Set(written).size, written.length, written.join(' '));
+  assert.match(readFileSync(join(root, 'out', 'index.md'), 'utf8'), /^# Repo map/);
+});
+
+void test('Python: a package wins over a same-named module file', async () => {
+  const facts = byFile(await scanRepo(repoOf({ 'pkg/__init__.py': '', 'pkg.py': '', 'app/run.py': 'from pkg import x\n' })));
+  assert.deepEqual(facts['app/run.py'].imports, ['pkg/__init__.py']);
+});
+
+void test('Rust: no arrows for files outside a crate or uses that resolve to nothing; bin roots resolve like main.rs', async () => {
+  const facts = byFile(await scanRepo(repoOf({
+    'src/lib.rs': 'pub mod a;\npub struct World;\n', 'src/a.rs': 'use crate::World;\nuse crate::missing::Thing;\n',
+    'build.rs': 'use crate::a;\n', 'src/bin/tool.rs': 'mod helper;\n', 'src/bin/helper.rs': 'pub fn h() {}\n',
+    'src/b.rs': '/*\nuse crate::a;\n*/\npub fn b() {}\n' })));
+  assert.deepEqual(facts['src/a.rs'].imports, ['src/lib.rs'], 'World is declared in lib.rs; missing::Thing resolves to nothing');
+  assert.deepEqual(facts['build.rs'].imports, []);
+  assert.deepEqual(facts['src/bin/tool.rs'].imports, ['src/bin/helper.rs']);
+  assert.deepEqual(facts['src/b.rs'].imports, [], 'a use inside a block comment is not an import');
+});
+
+void test('Ruby: require does not guess a repo-root file', async () => {
+  const facts = byFile(await scanRepo(repoOf({ 'json.rb': '', 'app/x.rb': "require 'json'\n" })));
+  assert.deepEqual(facts['app/x.rb'].imports, []);
+});
+
+void test('repo adapters are held to the facts rule: unknown imports dropped, skipped or failed files stated', async () => {
+  const root = repoOf({
+    '.mind-meld/languages/go.ts': "export default { name: 'Go', extensions: ['.go'], facts: (files) => files.slice(1).map(file => ({ file, definitions: [], imports: ['nope/zz.go'], method: 'test' })) };\n",
+    '.mind-meld/languages/zig.ts': "export default { name: 'Zig', extensions: ['.zig'], facts: () => { throw new Error('boom'); } };\n",
+    'a/one.go': '', 'a/two.go': '', 'z/main.zig': '' });
+  const facts = byFile(await scanRepo(root));
+  assert.deepEqual(facts['a/two.go'].imports, []);
+  assert.match(facts['a/one.go'].method, /not extracted: Go returned nothing/);
+  assert.match(facts['z/main.zig'].method, /not extracted: Zig failed: boom/);
+});
+
+void test('a tracked file missing from the working tree, or a repo with no supported code, is handled plainly', async () => {
+  const root = repoOf({ 'a/x.py': 'x = 1\n', 'a/gone.py': 'y = 1\n' });
+  execFileSync('rm', [join(root, 'a', 'gone.py')]);
+  assert.equal(byFile(await scanRepo(root))['a/gone.py'], undefined);
+  await assert.rejects(writeMap(repoOf({ 'README.md': '# x\n' }), join(tmpdir(), 'meld-none')), /no source files in a supported language/);
+});
