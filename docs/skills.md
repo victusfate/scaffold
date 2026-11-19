@@ -62,7 +62,7 @@ tools/
     modern-web/SKILL.md        # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit/SKILL.md             # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md        # Add linter configs and GitHub Actions workflows for languages detected in the current repo
-    dependency-watch/SKILL.md  # Install a scheduled dependency and runtime vulnerability watch: osv-scanner + runtime-pin check (behind latest patch or EOL) into one tracking issue, plus security-only Dependabot PRs
+    dependency-watch/SKILL.md  # Scheduled dependency + runtime vulnerability watch (one issue); `fix` opens the patch PR
     ponytail/SKILL.md          # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
     diagram/SKILL.md           # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, or a standalone interactive explorer page from an `.explorer.json` spec (flows, drill-downs, glossary, timeline, topics, Q&A); defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council/SKILL.md           # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
@@ -148,7 +148,7 @@ tools/
     modern-web/SKILL.md        # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit/SKILL.md             # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter/SKILL.md        # Add linter configs and GitHub Actions workflows for languages detected in the current repo
-    dependency-watch/SKILL.md  # Install a scheduled dependency and runtime vulnerability watch: osv-scanner + runtime-pin check (behind latest patch or EOL) into one tracking issue, plus security-only Dependabot PRs
+    dependency-watch/SKILL.md  # Scheduled dependency + runtime vulnerability watch (one issue); `fix` opens the patch PR
     ponytail/SKILL.md          # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
     diagram/SKILL.md           # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, or a standalone interactive explorer page from an `.explorer.json` spec (flows, drill-downs, glossary, timeline, topics, Q&A); defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council/SKILL.md           # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
@@ -190,7 +190,7 @@ tools/
     modern-web.md        # Apply Chrome's Modern Web Guidance before writing or reviewing HTML/CSS/client-side JS — native plugin or package where the harness has one (Claude Code, agy, Codex, pi), else search → retrieve → verify via the npm CLI
     audit.md             # Score source files ranked worst-first across all four rubric dimensions with cited violations
     add-linter.md        # Add linter configs and GitHub Actions workflows for languages detected in the current repo
-    dependency-watch.md  # Install a scheduled dependency and runtime vulnerability watch: osv-scanner + runtime-pin check (behind latest patch or EOL) into one tracking issue, plus security-only Dependabot PRs
+    dependency-watch.md  # Scheduled dependency + runtime vulnerability watch (one issue); `fix` opens the patch PR
     ponytail.md          # Lazy-senior-dev generation mode — force the simplest working solution (YAGNI, stdlib first, no unrequested abstractions)
     diagram.md           # Generate or update a mermaid diagram as `.mmd` text-source-of-truth, or a standalone interactive explorer page from an `.explorer.json` spec (flows, drill-downs, glossary, timeline, topics, Q&A); defaults to a lightweight Node live-preview server that watches the .mmd (hot-reload, pan/zoom), with a self-hosted mermaid.live editor (Docker), system-viewer SVG, VS Code live preview, or public mermaid.live publish as alternatives
     council.md           # Run a high-stakes decision through five persona-diverse advisors (parallel) → anonymized peer review → chairman synthesis of agreements, clashes, and next step
