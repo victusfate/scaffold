@@ -329,7 +329,8 @@ only a human selection promotes it to `pending`. `reconciling` is the state whil
 an agent-driven reconciliation task (D7) integrates the branch against the
 integration tip; it resolves to `completed` (clean validated merge) or `failed`
 (held for later resolution). A stale lease on a `running` task returns it to
-`pending` (D12).
+`pending` (D12). A `completed` task's issue is not closed automatically; it stays
+open until the owner archives it (owner decision, 2026-11-24).
 
 ---
 

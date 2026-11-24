@@ -1,5 +1,5 @@
 ---
-title: /mind-meld — learning IDE from indexes and real runs
+title: /mind-meld — visual code walkthrough from indexes and real runs
 ---
 flowchart TB
   classDef owner fill:#fde68a,stroke:#b45309,color:#1f2937
@@ -60,10 +60,10 @@ flowchart TB
 
   subgraph VIEW["6 · Verify and view offline"]
     direction TB
-    V1{"verify: recorded source<br/>matches checkout?"}:::gate
+    V1["verify source hashes before<br/>trusting it about the checkout"]:::gate
     V2["view → tour.html<br/>no server or network"]:::owner
     V3["Page shows snapshot hash<br/>freshness unknown offline"]:::state
-    V1 -->|yes| V2 --> V3
+    V1 --> V2 --> V3
   end
 
   QUESTION ==> ADAPT ==> RUN ==> BUNDLE ==> TOUR ==> VIEW
@@ -72,7 +72,6 @@ flowchart TB
 
   subgraph LEGEND["Legend"]
     direction LR
-    L1["IDE<br/>Integrated Development<br/>Environment: a workspace<br/>for exploring code"]:::git
     L2["adapter<br/>repo-specific code that<br/>indexes or runs one<br/>language or runtime"]:::git
     L3["flow / piece<br/>a full integration run /<br/>one function run alone<br/>with fakes"]:::git
     L4["fakes<br/>stand-ins for outside<br/>boundaries, e.g. an<br/>in-memory save"]:::git
@@ -82,7 +81,7 @@ flowchart TB
     L8["snapshot hash<br/>fingerprint of the exact<br/>source a run<br/>came from"]:::git
     L9["schema<br/>the executable rules a<br/>bundle must pass<br/>before use"]:::git
     L10["cache key<br/>everything that must match<br/>to reuse a past<br/>recording"]:::git
-    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
+    L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
   end
 
   FLOW ~~~ LEGEND
