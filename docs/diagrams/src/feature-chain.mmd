@@ -18,7 +18,7 @@ flowchart TB
   subgraph ENTRY["1 · Pick the entry point"]
     direction TB
     E1["Check docs/slug/<br/>for existing artifacts"]:::orch
-    E2["Resume at the first<br/>missing artifact"]:::orch
+    E2["Resume at the first<br/>missing artifact, or first<br/>incomplete slice"]:::orch
     E3["External doc supplied<br/>→ placed as design.md"]:::state
     E4["Stop anytime:<br/>stop · pause · just answer"]:::owner
     E1 --> E2
@@ -57,7 +57,7 @@ flowchart TB
     R1{"Full suite green?"}:::gate
     R2["/code-refiner auto-fix<br/>correctness + structure"]:::gate
     R3["Commit refiner fixes"]:::git
-    R4["/qa drives real<br/>entry points → qa-report.md<br/>(none? skip, record why)"]:::lane
+    R4["/qa drives real entry points,<br/>fixes what breaks → qa-report.md<br/>(none? skip, record why)"]:::lane
     R1 -->|yes| R2 --> R3 --> R4
   end
 
@@ -65,7 +65,7 @@ flowchart TB
     direction TB
     V1["Summary: built, tests,<br/>QA, deviations"]:::orch
     V2{"Merge authority<br/>already given?"}:::gate
-    V3["No → stop: please review<br/>before merging"]:::owner
+    V3["No → stop: please review<br/>before merging<br/>(queued task: PR kept ready)"]:::owner
     V4["Yes → PR, validate,<br/>merge"]:::git
     V1 --> V2
     V2 --> V3
@@ -81,8 +81,8 @@ flowchart TB
     L1["slug<br/>short kebab-case name<br/>of the feature's<br/>docs folder"]:::git
     L2["PRD<br/>Product Requirements Doc:<br/>what to build + how we<br/>know it's done"]:::git
     L3["TDD<br/>Test-Driven Development:<br/>failing test first, then code,<br/>then clean up"]:::git
-    L4["vertical slice<br/>one small feature cut<br/>through every layer,<br/>data to UI to tests"]:::git
-    L5["RED / GREEN / REFACTOR<br/>test fails / test passes /<br/>tidy without changing<br/>behavior"]:::git
+    L4["vertical slice<br/>a piece of a feature cut<br/>through every layer,<br/>data to UI to tests"]:::git
+    L5["RED / GREEN / REFACTOR<br/>test fails / test passes /<br/>confirm quality<br/>scores"]:::git
     L6["auto-fix mode<br/>the review applies its<br/>own fixes instead of<br/>asking first"]:::git
     L7["QA<br/>quality assurance: run<br/>the real app the way<br/>a user would"]:::git
     L8["entry point<br/>where a user reaches it:<br/>page, API endpoint,<br/>CLI command, job"]:::git
