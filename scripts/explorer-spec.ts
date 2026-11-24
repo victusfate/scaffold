@@ -11,6 +11,9 @@ export type DeepSection = { h: string; list?: string[]; table?: { head: string[]
 
 export type Term = { t: string; a: string[]; d: string };
 
+// What a node is in a C4 view. A node with no `as` is a container: a running part of the system.
+export const C4_AS = ['person', 'external', 'database', 'queue'] as const;
+
 export type ExplorerNode = {
   lane: string;
   name: string;
@@ -21,6 +24,8 @@ export type ExplorerNode = {
   qs?: string[];
   // Relative path to a page that goes deeper (markdown pages: the skill's own page).
   link?: string;
+  // Read only when the spec has `c4` (scripts/c4-from-explorer.ts).
+  c4?: { as?: typeof C4_AS[number]; technology?: string };
 };
 
 // One step: [from node, to node, what happens, payload/data carried].
@@ -66,6 +71,9 @@ export type ExplorerSpec = {
   // edit flags the page for review (render-explorer-pages); the hash is refreshed by acknowledging it.
   sources?: string[];
   reviewed?: string;
+  // Opts the page into C4 output (scripts/render-c4.ts): the software system its nodes are the parts of.
+  // For pages about running software; a process flow's stages are not parts of a system.
+  c4?: { system: string; description?: string };
 };
 
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
@@ -98,6 +106,13 @@ function checkFlows(s: ExplorerSpec, refs: Refs, errs: string[]): void {
       if (!Array.isArray(st) || st.length !== 4) { errs.push(`flows.${f.id}.steps[${i}]: must be [from, to, what, payload]`); return; }
       checkIds(`flows.${f.id}.steps[${i}]`, [st[0], st[1]], refs.nodes, errs);
     });
+  }
+}
+
+function checkC4(s: ExplorerSpec, errs: string[]): void {
+  if (s.c4 && !isStr(s.c4.system)) errs.push('c4.system is required');
+  for (const [id, n] of Object.entries(s.nodes)) {
+    if (n.c4?.as && !C4_AS.includes(n.c4.as)) errs.push(`nodes.${id}: unknown c4.as "${String(n.c4.as)}" (${C4_AS.join(', ')})`);
   }
 }
 
@@ -160,5 +175,6 @@ export function validateSpec(s: ExplorerSpec): string[] {
   checkTopics(s, refs, errs);
   checkTimeline(s, refs, errs);
   checkStart(s, refs, errs);
+  checkC4(s, errs);
   return errs;
 }
