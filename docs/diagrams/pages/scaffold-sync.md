@@ -37,11 +37,11 @@ Details: [/sync-scaffold skill](../../../skills/sync-scaffold.md)
 Details: [/sync-scaffold skill](../../../skills/sync-scaffold.md)
 
 - The manifest, scaffold-files.txt, lists the files scaffold ships.
-- Each file gets a 3-way merge from the last synced commit.
+- A file that differs, has a base and has no uncommitted edits gets a 3-way merge from the last synced commit.
 - When a merge can't be automatic
   - No base and the file differs: the incoming copy is saved as a .scaffold-new sidecar to review.
   - Paths in .scaffold-keep are skipped.
-  - Conflict markers: resolve, commit, re-run.
+  - Conflict markers: resolve, commit, re-run with --mark-resolved.
 
 **Where it breaks**
 
@@ -54,8 +54,8 @@ Details: [/sync-scaffold skill](../../../skills/sync-scaffold.md)
 Details: [/upstream skill](../../../skills/upstream.md)
 
 - Work in a scaffold worktree off origin/main, never its main checkout.
-- Make the change the scaffold way: skill, wrappers, RESOLVER, manifest, test.
-- npm test, eslint and typecheck must pass.
+- Make the change the scaffold way; a new skill needs its wrappers, RESOLVER entry, manifest line and test.
+- npm test and eslint (0 errors) must pass, plus typecheck when TypeScript changed.
 
 ## Scaffold PR
 
@@ -727,18 +727,18 @@ const CURRENT_PLAN = 'co-plan';
 
 ## Checked against the source
 
-The bootstrap, upstream, scaffold PR, sync-back and hoist stages match their skill docs. The sync-down mechanics (3-way merge from the last synced commit, the no-base sidecar condition, .scaffold-keep skipping) are not described in skills/sync-scaffold.md; they live in bin/sync-from-scaffold.sh, so those claims have no support in the listed sources. The flow also omits that invoking /upstream is itself the merge authorization and when it stops at a ready PR.
+The flow matches the three skill docs and the sync script on nearly every claim. The material differences are in sync-down: the script skips files with uncommitted edits before any 3-way merge, and after a conflict it asks for a re-run with --mark-resolved, neither of which the page shows. The page also omits deletion of files scaffold no longer ships and the rule that the synced SHA is saved only when no conflicts or sidecars remain.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 30 | 6 | 0 | 0 | 8 | 14 |
+| 38 | 3 | 0 | 0 | 9 | 14 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Bootstrap: checks
 
 <details>
-<summary>3 confirmed, with the supporting line</summary>
+<summary>4 confirmed, with the supporting line</summary>
 
 - **Confirmed**: The first time, install the sync script, then run it once the user confirms.
   > Or offer to run it now. Do not run it without confirmation.
@@ -746,56 +746,33 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/sync-scaffold.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/sync-scaffold.md#L39)
 
 - **Confirmed**: If bin/sync-from-scaffold.sh is missing, a curl of bootstrap.sh installs the script only.
-  > This installs \`bin/sync-from-scaffold.sh\` but does \*\*not\*\* run the sync automatically.
+  > This installs \`bin/sync-from-scaffold.sh\` but does \*\*not\*\* run the sync automatically. After bootstrap completes, tell the user to run the sync manually:
   >
   > [`skills/sync-scaffold.md:33`](https://github.com/victusfate/scaffold/blob/main/skills/sync-scaffold.md#L33)
 
-- **Confirmed**: Sync script installed (bin/sync-from-scaffold.sh): bootstrap → down
-  > This installs \`bin/sync-from-scaffold.sh\` but does \*\*not\*\* run the sync automatically.
+- **Confirmed**: Sync script installed (bin/sync-from-scaffold.sh)
+  > After bootstrap completes, tell the user to run the sync manually:
   >
   > [`skills/sync-scaffold.md:33`](https://github.com/victusfate/scaffold/blob/main/skills/sync-scaffold.md#L33)
+
+- **Confirmed** (from the diagram): bin/sync-from-scaffold.sh exists?
+  > Check whether \`bin/sync-from-scaffold.sh\` exists in the current working directory.
+  >
+  > [`skills/sync-scaffold.md:9`](https://github.com/victusfate/scaffold/blob/main/skills/sync-scaffold.md#L9)
 
 </details>
 
 ### Sync down: checks
 
-- **Partly** (outside tracked sources): Each file gets a 3-way merge from the last synced commit.
-  > if git merge-file -p "$ours" "$base" "$theirs" &gt; "$merged" 2&gt;/dev/null; then
+- **Partly**: Project finds a generic fix (project change)
+  > Move a change that belongs to every scaffold consumer (a rule, skill, script or tool)
   >
-  > [`bin/sync-from-scaffold.sh:213`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L213)
+  > [`skills/upstream.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L3)
 
-  The sync script does run a three-way merge, but it is not stated in sync-scaffold.md, upstream.md or hoist-skill.md, nor in any skills/, scripts/ or docs/ file they point to; the three-way merge appears only in bin/sync-from-scaffold.sh and README.md, and there it applies only to files that differ and have a base at the last synced SHA.
-
-- **Partly**: No base and the file differs: the incoming copy is saved as a .scaffold-new sidecar to review.
-  > the original was not changed; a \`.scaffold-new\` sidecar holds the incoming version.
-  >
-  > [`skills/sync-scaffold.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/sync-scaffold.md#L25)
-
-  The sidecar and its review are confirmed; the trigger condition (no base and the file differs) is not in the skill docs, only in bin/sync-from-scaffold.sh.
-
-- **Partly**: Paths in .scaffold-keep are skipped.
-  > \- \*\*Kept\*\* — files protected by \`.scaffold-keep\` (skipped as intended).
-  >
-  > [`skills/hoist-skill.md:54`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L54)
-
-  Said for the hoist tool; sync-scaffold.md never mentions .scaffold-keep (it only lists "kept" among report categories), and upstream.md tells the agent to keep those paths when resolving conflicts.
-
-- **Partly**: Sidecar: A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten.
-  > \- \*\*Force\*\* — whether to overwrite differing files. Default: no (sidecars are written instead). Only set \`--force\` if the user explicitly asks.
-  >
-  > [`skills/hoist-skill.md:17`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L17)
-
-  The sidecar definition is confirmed, but "never overwritten" is too strong: hoist-skill --force overwrites differing files.
-
-- **Partly**: .scaffold-keep: The consumer's list of paths the sync never touches.
-  > \- \*\*Kept\*\* — files protected by \`.scaffold-keep\` (skipped as intended).
-  >
-  > [`skills/hoist-skill.md:54`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L54)
-
-  Stated for the hoist tool; for /sync-scaffold itself the skill docs only tell the agent to keep those paths during conflict resolution (the script behaviour lives in bin/sync-from-scaffold.sh).
+  The source describes /upstream on its own terms; that it follows a sync down is the page's own narrative, not a stated order.
 
 <details>
-<summary>6 confirmed, with the supporting line</summary>
+<summary>11 confirmed, with the supporting line</summary>
 
 - **Confirmed**: /sync-scaffold merges scaffold's files into the project on the current branch.
   > \*\*Always run on the current working branch.\*\* Do not switch to main or any other branch before or after syncing.
@@ -803,43 +780,68 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/sync-scaffold.md:5`](https://github.com/victusfate/scaffold/blob/main/skills/sync-scaffold.md#L5)
 
 - **Confirmed**: The manifest, scaffold-files.txt, lists the files scaffold ships.
-  >   \- all five paths added to \`.github/scaffold-files.txt\`, the sync manifest;
+  > if ! manifest=$(git show scaffold/main:.github/scaffold-files.txt 2&gt;/dev/null); then
   >
-  > [`skills/upstream.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L57)
+  > [`bin/sync-from-scaffold.sh:117`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L117)
 
-- **Confirmed**: Conflict markers: resolve, commit, re-run.
-  > tell the user to resolve the markers, commit, then re-run.
+- **Confirmed**: A file that differs, has a base and has no uncommitted edits gets a 3-way merge from the last synced commit.
+  > if \[ -n "$last\_sha" \] &amp;&amp; git cat-file -e "${last\_sha}:${file}" 2&gt;/dev/null; then
   >
-  > [`skills/sync-scaffold.md:23`](https://github.com/victusfate/scaffold/blob/main/skills/sync-scaffold.md#L23)
+  > [`bin/sync-from-scaffold.sh:206`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L206)
+
+- **Confirmed**: No base and the file differs: the incoming copy is saved as a .scaffold-new sidecar to review.
+  > \# No base SHA — don't overwrite; save sidecar for deliberate review
+  >
+  > [`bin/sync-from-scaffold.sh:224`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L224)
+
+- **Confirmed**: Paths in .scaffold-keep are skipped.
+  > \#     line; \# and blank lines ignored) — any matching path is always skipped.
+  >
+  > [`bin/sync-from-scaffold.sh:11`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L11)
+
+- **Confirmed**: Conflict markers: resolve, commit, re-run with --mark-resolved.
+  > Conflicts (resolve, commit, then re-run with --mark-resolved &lt;file&gt; for each resolution):
+  >
+  > [`bin/sync-from-scaffold.sh:334`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L334)
 
 - **Confirmed**: A sidecar is not applied: the original file is unchanged until someone diffs and merges it.
-  > The user should diff and merge deliberately, then re-run the sync.
+  > the original was not changed; a \`.scaffold-new\` sidecar holds the incoming version. The user should diff and merge deliberately, then re-run the sync.
   >
   > [`skills/sync-scaffold.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/sync-scaffold.md#L25)
 
-- **Confirmed**: Project finds a generic fix (project change): down → upstream
-  > Move a change that belongs to every scaffold consumer (a rule, skill, script or tool)
-  >
-  > [`skills/upstream.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L3)
-
 - **Confirmed**: Manifest: The list of files scaffold ships to consumers.
-  > \- \*\*Script or tool:\*\* add it with a test, and add it to the manifest if consumers
+  > \- all five paths added to \`.github/scaffold-files.txt\`, the sync manifest;
   >
-  > [`skills/upstream.md:62`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L62)
+  > [`skills/upstream.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L57)
+
+- **Confirmed**: Sidecar: A .scaffold-new copy of scaffold's version saved beside your file for review; writing it leaves your file unchanged.
+  > &lt;file&gt;.scaffold-new for deliberate review; the target is left unchanged.
+  >
+  > [`bin/sync-from-scaffold.sh:9`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L9)
+
+- **Confirmed**: .scaffold-keep: The consumer's list of paths the sync never touches.
+  > \#   - .scaffold-keep: an optional file at the repo root (one path or glob per
+  >
+  > [`bin/sync-from-scaffold.sh:10`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L10)
+
+- **Confirmed** (from the diagram): Legend: SHA = id of one git commit; here the last one synced
+  > SHA\_FILE=".github/scaffold-sync-sha"
+  >
+  > [`bin/sync-from-scaffold.sh:35`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L35)
 
 </details>
 
 ### Upstream: checks
 
-- **Partly**: npm test, eslint and typecheck must pass.
-  > npm run typecheck   \# when TypeScript changed
+- **Partly**: Make the change the scaffold way; a new skill needs its wrappers, RESOLVER entry, manifest line and test.
+  > \- all five paths added to \`.github/scaffold-files.txt\`, the sync manifest;
   >
-  > [`skills/upstream.md:70`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L70)
+  > [`skills/upstream.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L57)
 
-  Typecheck is required only when TypeScript changed, and eslint must show 0 errors while existing warnings are tolerated.
+  Wrappers, RESOLVER row and acceptance test are listed, but the manifest needs five paths rather than one line, and the claim omits the canonical skills/&lt;name&gt;.md and the regenerated docs/skills.md that the same list requires.
 
 <details>
-<summary>6 confirmed, with the supporting line</summary>
+<summary>8 confirmed, with the supporting line</summary>
 
 - **Confirmed**: /upstream splits a project change into its universal half and moves that half into scaffold.
   > Decide what is universal and what belongs only to this project.
@@ -851,25 +853,35 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/upstream.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L36)
 
-- **Confirmed**: Make the change the scaffold way: skill, wrappers, RESOLVER, manifest, test.
-  >   \- all five paths added to \`.github/scaffold-files.txt\`, the sync manifest;
+- **Confirmed**: npm test and eslint (0 errors) must pass, plus typecheck when TypeScript changed.
+  > npx eslint .        \# 0 errors (existing warnings are not yours to fix here)
   >
-  > [`skills/upstream.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L57)
+  > [`skills/upstream.md:69`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L69)
 
-- **Confirmed** (from the diagram): RESOLVER: table mapping triggers to skills
-  >   \- a row in \`.claude/skills/RESOLVER.md\` with the trigger regex, path and
-  >
-  > [`skills/upstream.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L55)
-
-- **Confirmed** (from the diagram): harness: agent tool: Claude Code, Codex, Cursor, agy, pi
-  > \- \*\*Harness\*\* — \`claude\` (default), \`cursor\`, \`antigravity\`, \`codex\`, \`pi\`, or \`all\`.
-  >
-  > [`skills/hoist-skill.md:15`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L15)
-
-- **Confirmed**: Gates pass (scaffold branch): upstream → pr
+- **Confirmed**: Gates pass (scaffold branch)
   > Fix every failure before pushing. Hosted CI confirms; it isn't the place to find failures.
   >
   > [`skills/upstream.md:73`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L73)
+
+- **Confirmed** (from the diagram): Split universal from project-specific
+  > \#\# Step 1 — split generic from project-specific
+  >
+  > [`skills/upstream.md:19`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L19)
+
+- **Confirmed** (from the diagram): Legend: worktree = isolated git checkout, so sessions never collide
+  > \- Never edit, stash or check out branches in a scaffold or consumer checkout another session is using. Use a worktree.
+  >
+  > [`skills/upstream.md:114`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L114)
+
+- **Confirmed** (from the diagram): Legend: RESOLVER = table mapping triggers to skills
+  > \- a row in \`.claude/skills/RESOLVER.md\` with the trigger regex, path and
+  >
+  > [`skills/upstream.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L55)
+
+- **Confirmed** (from the diagram): Legend: harness = agent tool: Claude Code, Codex, Cursor, agy, pi
+  > \- \*\*Universal\*\* goes to scaffold, written harness-neutrally (Claude Code, Codex,
+  >
+  > [`skills/upstream.md:23`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L23)
 
 </details>
 
@@ -889,23 +901,30 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/upstream.md:79`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L79)
 
 - **Confirmed**: Read the real check conclusions; a skipped check is not a pass.
-  > \- Never merge on skipped, failing or unread checks.
+  > \`gh pr checks &lt;n&gt; --watch; echo "EXIT=$?"\`. A \*\*skipped\*\* required check is
   >
-  > [`skills/upstream.md:112`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L112)
+  > [`skills/upstream.md:81`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L81)
 
 - **Confirmed**: Remove the worktree after the merge.
   > Purpose). Delete the branch and remove the scaffold worktree.
   >
   > [`skills/upstream.md:84`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L84)
 
-- **Confirmed**: Scaffold PR merged (scaffold main): pr → back
-  > \3. Sync scaffold back into this consumer.
+- **Confirmed**: Scaffold PR merged (scaffold main)
+  > \#\# Step 6 — sync it back into this consumer
   >
-  > [`skills/upstream.md:8`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L8)
+  > [`skills/upstream.md:86`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L86)
 
 </details>
 
 ### Sync back: checks
+
+- **Partly** (from the diagram): /hoist-skill drawn as an "Or" branch beside "Sync back into consumer" (spec: "Another way out")
+  > This is the reverse direction of \`/hoist-skill\` (scaffold → consumer) and finishes
+  >
+  > [`skills/upstream.md:10`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L10)
+
+  The source frames /hoist-skill as the reverse direction of /upstream (scaffold to consumer), not as an alternative to the sync-back step.
 
 <details>
 <summary>10 confirmed, with the supporting line</summary>
@@ -916,7 +935,7 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/upstream.md:92`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L92)
 
 - **Confirmed**: Keep .scaffold-keep paths and merge diverged files.
-  >    \- Keep the consumer's local content in \`.scaffold-keep\` paths.
+  > \- Keep the consumer's local content in \`.scaffold-keep\` paths.
   >
   > [`skills/upstream.md:94`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L94)
 
@@ -930,15 +949,15 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/upstream.md:98`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L98)
 
-- **Confirmed**: /hoist-skill: Exports chosen skills into another repo in a target harness's format.
-  > Export one or more scaffold skills into a target repo in the requested harness format.
+- **Confirmed**: Another way out: /hoist-skill — Exports chosen skills into another repo in a target harness's format.
+  > Export one or more scaffold skills into a target repo in the requested harness format. Wraps \`tools/hoist-skill/run\` — do not reimplement its logic here.
   >
   > [`skills/hoist-skill.md:8`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L8)
 
 - **Confirmed**: .sync/hoisted records the name, harness and pinned ref; --from-manifest replays it.
-  > a tab-separated manifest recording each \`(name, harness, ref)\` triple
+  > This reads \`&lt;destination&gt;/.sync/hoisted\` and re-emits every recorded \`(name, harness)\` pair. Clobber-safe: unchanged files are skipped, locally edited files become sidecars, \`.scaffold-keep\` paths are honored.
   >
-  > [`skills/hoist-skill.md:45`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L45)
+  > [`skills/hoist-skill.md:74`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L74)
 
 - **Confirmed** (from the diagram): Pick skills, harness, --into target repo
   > \- \*\*Destination\*\* — the \`--into\` path (the target repo root). Must be provided; do not guess.
@@ -946,16 +965,16 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/hoist-skill.md:16`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L16)
 
 - **Confirmed** (from the diagram): tools/hoist-skill/run emits harness wrappers
-  > Wraps \`tools/hoist-skill/run\` — do not reimplement its logic here.
+  > &gt; controls which format is emitted: \`claude\` writes Claude Code wrappers,
   >
-  > [`skills/hoist-skill.md:8`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L8)
+  > [`skills/hoist-skill.md:5`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L5)
 
-- **Confirmed** (from the diagram): Differs → sidecar; --from-manifest replays
-  > Clobber-safe: unchanged files are skipped, locally edited files become sidecars, \`.scaffold-keep\` paths are honored.
+- **Confirmed** (from the diagram): Hoist: differs → sidecar
+  > \- \*\*Force\*\* — whether to overwrite differing files. Default: no (sidecars are written instead). Only set \`--force\` if the user explicitly asks.
   >
-  > [`skills/hoist-skill.md:74`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L74)
+  > [`skills/hoist-skill.md:17`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L17)
 
-- **Confirmed** (from the diagram): ref: scaffold tag or commit a hoist is pinned to
+- **Confirmed** (from the diagram): Legend: ref = scaffold tag or commit a hoist is pinned to
   > \- \*\*Ref\*\* — optional scaffold ref to stamp in the manifest (\`--ref &lt;tag\|commit&gt;\`, default \`main\`). Use when the consumer pins to a specific release.
   >
   > [`skills/hoist-skill.md:18`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L18)
@@ -964,51 +983,56 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ## In the source, not shown in the flow
 
-- Invoking /upstream itself authorizes merging both the scaffold PR and the consumer sync PR once checks really pass; the flow shows authorization only as an unexplained precondition.
-  > The user invoking \`/upstream\` authorizes merging the scaffold PR and the consumer sync
+- A differing file with uncommitted local edits is skipped, not merged; the report tells the user to stash or commit first.
+  > \# Uncommitted local edits (working tree or index) — don't touch
   >
-  > [`skills/upstream.md:15`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L15)
+  > [`bin/sync-from-scaffold.sh:199`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L199)
 
-- /upstream stops at a ready PR when either repo's policy needs separate merge approval or the user says "PR only".
-  > PR, once each one's checks pass for real. Stop at a ready PR instead when either
+- The sync also deletes files scaffold stopped shipping, but only when still byte-identical to what scaffold shipped; modified and kept ones are reported.
+  > \#   - An orphan is deleted only when it is still byte-identical to what scaffold
   >
-  > [`skills/upstream.md:16`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L16)
+  > [`bin/sync-from-scaffold.sh:16`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L16)
 
-- Never put a person's email, credentials or project names into scaffold; universal text is written harness-neutrally.
+- The synced SHA is saved only when no conflicts or sidecar reviews are pending, so those must be cleared before the sync counts as done.
+  > \# Save SHA only when there are no unresolved conflicts or pending reviews
+  >
+  > [`bin/sync-from-scaffold.sh:322`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L322)
+
+- With AGENTS.local.md present, AGENTS.md is regenerated as scaffold's AGENTS.md plus a marked local block instead of being merged.
+  > \#     never shipped by scaffold). When it exists, sync writes AGENTS.md as scaffold's AGENTS.md followed by a
+  >
+  > [`bin/sync-from-scaffold.sh:27`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L27)
+
+- The sync script updates itself first and re-runs when scaffold has a newer copy and the tree is clean.
+  > \# Self-update first: if scaffold has a newer version of this script and the
+  >
+  > [`bin/sync-from-scaffold.sh:230`](https://github.com/victusfate/scaffold/blob/main/bin/sync-from-scaffold.sh#L230)
+
+- Nothing personal or project-specific goes up: no email addresses, credentials or project names in scaffold.
   > \- Never put a person's email address, credentials or project names into scaffold.
   >
   > [`skills/upstream.md:28`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L28)
 
-- /hoist-skill overwrites differing files only with --force, set only when the user explicitly asks.
-  > \- \*\*Force\*\* — whether to overwrite differing files. Default: no (sidecars are written instead). Only set \`--force\` if the user explicitly asks.
+- Invoking /upstream is itself the merge authorization for both PRs; it stops at a ready PR when policy needs separate approval or the user says "PR only".
+  > The user invoking \`/upstream\` authorizes merging the scaffold PR and the consumer sync
   >
-  > [`skills/hoist-skill.md:17`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L17)
+  > [`skills/upstream.md:15`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L15)
 
-- After a hoist the user is reminded to commit .sync/hoisted so the registration survives.
+- After a hoist the user is reminded to commit .sync/hoisted, and --force is set only when the user explicitly asks.
   > Remind the user to commit \`&lt;destination&gt;/.sync/hoisted\` so the registration survives across sessions and devices.
   >
   > [`skills/hoist-skill.md:58`](https://github.com/victusfate/scaffold/blob/main/skills/hoist-skill.md#L58)
 
-- /sync-scaffold ends with a report: which path ran, files updated, kept, skipped, reviewed or conflicted, and the next step.
+- After either path /sync-scaffold reports which path ran and the files updated, kept, skipped, reviewed or conflicted.
   > \- Files updated, kept, skipped, reviewed (sidecar), or conflicted
   >
   > [`skills/sync-scaffold.md:51`](https://github.com/victusfate/scaffold/blob/main/skills/sync-scaffold.md#L51)
-
-- /upstream ends with a linked report of both PRs, the synced scaffold SHA, conflicts and anything left unmerged.
-  > \- the consumer sync PR, and the scaffold SHA it synced to;
-  >
-  > [`skills/upstream.md:105`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L105)
-
-- Bootstrap can also install the GitHub Actions sync workflow with --with-workflow.
-  > curl -fsSL https://raw.githubusercontent.com/victusfate/scaffold/main/bin/bootstrap.sh \| bash -s -- --with-workflow
-  >
-  > [`skills/sync-scaffold.md:43`](https://github.com/victusfate/scaffold/blob/main/skills/sync-scaffold.md#L43)
 
 ## Glossary
 
 - **Consumer**: A project repo that syncs from scaffold.
 - **Manifest**: The list of files scaffold ships to consumers.
-- **Sidecar**: A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten.
+- **Sidecar**: A .scaffold-new copy of scaffold's version saved beside your file for review; writing it leaves your file unchanged.
 - **.scaffold-keep**: The consumer's list of paths the sync never touches.
 
 ## Ask your LLM

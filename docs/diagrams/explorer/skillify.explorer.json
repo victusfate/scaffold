@@ -2,8 +2,8 @@
   "title": "Skillify",
   "lede": "How finished work becomes a reusable skill that every agent and every downstream repo can invoke.",
   "detail": "../generated/skillify.svg",
-  "sources": ["docs/diagrams/src/skillify.mmd", "skills/skillify.md"],
-  "reviewed": "f381c15f2741",
+  "sources": ["docs/diagrams/src/skillify.mmd", "skills/skillify.md", "scripts/resolver-phases.ts"],
+  "reviewed": "dfb7d9b183da",
   "lanes": [
     { "id": "capture", "name": "Capture" },
     { "id": "build", "name": "Build" },
@@ -11,7 +11,7 @@
   ],
   "nodes": {
     "context": { "lane": "capture", "name": "Reconstruct context", "role": "Rebuild what the session did without asking the user to re-explain.", "link": "../../../skills/skillify.md",
-      "details": ["Reads the conversation, project manifests, git diff --stat and git log.", "Writes a one-paragraph recap that the user confirms in one line."] },
+      "details": ["Reads the conversation, project manifests, git diff --stat and git log.", "Writes a one-paragraph recap and confirms it in one line."] },
     "interview": { "lane": "capture", "name": "Interview", "role": "Four short rounds, one question at a time, each with a recommended answer.",
       "details": ["Intent, then inputs, then steps, then edge cases.", "Stops early if all four are already clear from context."] },
     "name": { "lane": "build", "name": "Name and dedupe", "role": "Pick one skill, give it a short name, and check it isn't a duplicate.",
@@ -29,7 +29,7 @@
     { "id": "main", "name": "Session to skill", "steps": [
       ["context", "interview", "Recap confirmed", "one-paragraph recap"],
       ["interview", "name", "Intent, inputs, steps, edge cases", "answers"],
-      ["name", "generate", "Slug confirmed, no overlap", "slug"],
+      ["name", "generate", "Slug stated, no overlap", "slug"],
       ["generate", "upstream", "Validator passes", "five files + RESOLVER row"]] }
   ],
   "glossary": {

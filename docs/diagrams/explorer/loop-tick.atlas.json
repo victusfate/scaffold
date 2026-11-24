@@ -1,5 +1,5 @@
 {
-  "summary": "Stages 2 to 5 (topology, finished slots, free slots, reconcile) match skills/loop.md closely. The supervise stage and the three timer cases are not in skills/loop.md at all; they come from docs/agents-detail.md (Continuous execution), so the spec's sources list is incomplete. The flow also shows reconcile only after dispatch while the source section is titled 'Reconcile lanes before dispatch', and it omits the 'running subagent without an active task' case and the highest-priority rule.",
+  "summary": "The tick matches the loop skill and agents-detail closely: every stage claim has source text. The gaps are ordering glosses (supervise after dispatch, \"housekeeping\" before dispatch where agents-detail puts it after), the \"zombie\" label applied to a broader case than the source defines, and omitted reconcile rules (subagent without a task, ownership check before cleanup, linking a harness-named branch).",
   "checks": [
     {
       "node": "wake",
@@ -17,9 +17,7 @@
       "claim": "Timers are only for external gating, a usage-limit window or a crash re-arm.",
       "verdict": "confirmed",
       "file": "docs/agents-detail.md",
-      "quote": "which has nothing to wait for. A timer IS correct in three cases:",
-      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
-      "elsewhere": true
+      "quote": "which has nothing to wait for. A timer IS correct in three cases:"
     },
     {
       "node": "wake",
@@ -27,8 +25,8 @@
       "kind": "risk",
       "claim": "A timer is never used to pace the agent's own work; that work runs continuously.",
       "verdict": "confirmed",
-      "file": "skills/loop.md",
-      "quote": "Continue useful authorized work during each run; an interval restarts ended work rather than pacing live work."
+      "file": "docs/agents-detail.md",
+      "quote": "- **Don't insert a `ScheduleWakeup`/timer delay to *pace* self-contained work.** A wakeup delay is for"
     },
     {
       "node": "topology",
@@ -45,8 +43,8 @@
       "kind": "detail",
       "claim": "node scripts/topology.ts validates the file.",
       "verdict": "confirmed",
-      "file": "scripts/topology.ts",
-      "quote": "//   node scripts/topology.ts [path]    # validate and print the topology as JSON (exit 1 on error)"
+      "file": "docs/agents-detail.md",
+      "quote": "(`scripts/topology.ts`, `node scripts/topology.ts` validates), and never creates or overwrites the file."
     },
     {
       "node": "topology",
@@ -56,15 +54,6 @@
       "verdict": "confirmed",
       "file": "skills/loop.md",
       "quote": "1. Read and validate the topology; an invalid file is a blocker to report. No file: orchestrator only."
-    },
-    {
-      "node": "topology",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "topology.json: orchestrator, tick, slots; no routing",
-      "verdict": "confirmed",
-      "file": "skills/loop.md",
-      "quote": "names the orchestrator, the tick cadence and the subagent **slots**, with no routing: the orchestrator judges which"
     },
     {
       "node": "review",
@@ -82,7 +71,7 @@
       "claim": "Integration and shipping stay within existing authorization.",
       "verdict": "confirmed",
       "file": "skills/loop.md",
-      "quote": "2. For each slot whose task finished, review it, integrate or ship it within existing authorization, and set the"
+      "quote": "review it, integrate or ship it within existing authorization"
     },
     {
       "node": "review",
@@ -94,56 +83,10 @@
       "quote": "task status (`done`, `fail`, or `park --resume \"<next step>\"`)."
     },
     {
-      "node": "dispatch",
-      "origin": "spec",
-      "kind": "role",
-      "claim": "Give each free slot a suited task in a new worktree.",
-      "verdict": "partial",
-      "file": "skills/loop.md",
-      "quote": "3. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with",
-      "note": "The source says the highest-priority suited task; the spec and diagram drop the priority rule."
-    },
-    {
-      "node": "dispatch",
-      "origin": "spec",
-      "kind": "detail",
-      "claim": "A slot is free when no active task is owned by its id.",
-      "verdict": "confirmed",
-      "file": "skills/loop.md",
-      "quote": "3. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with"
-    },
-    {
-      "node": "dispatch",
-      "origin": "spec",
-      "kind": "detail",
-      "claim": "Order: create the worktree, claim the task for the slot, then start the slot's harness and model there.",
-      "verdict": "confirmed",
-      "file": "skills/loop.md",
-      "quote": "that branch's worktree. Create the worktree first so the claim links its branch in the same write; when the"
-    },
-    {
-      "node": "dispatch",
-      "origin": "spec",
-      "kind": "detail",
-      "claim": "No suited task? Leave the slot free.",
-      "verdict": "confirmed",
-      "file": "skills/loop.md",
-      "quote": "rather than send it a task it should not take."
-    },
-    {
-      "node": "dispatch",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "claim id --worker slot --branch b",
-      "verdict": "confirmed",
-      "file": "skills/loop.md",
-      "quote": "`node scripts/queue.ts claim <id> --worker <slot-id> --branch <branch>` and start that slot's harness/model in"
-    },
-    {
       "node": "reconcile",
       "origin": "spec",
       "kind": "role",
-      "claim": "Make active tasks match live subagents, then clean up leftovers.",
+      "claim": "Make active tasks match live subagents and resolve leftover worktrees.",
       "verdict": "confirmed",
       "file": "skills/loop.md",
       "quote": "- End each run with the active-task count matching the live subagent count."
@@ -182,16 +125,43 @@
       "claim": "Orphan owner: adopt into a slot or park.",
       "verdict": "confirmed",
       "file": "skills/loop.md",
-      "quote": "4. Reconcile (below). An active task whose owner is not a slot id is orphaned: adopt it into a free slot or park it."
+      "quote": "An active task whose owner is not a slot id is orphaned: adopt it"
     },
     {
-      "node": "reconcile",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "orphan owner: active task owned by a name that is no slot",
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Give each free slot the highest-priority task it suits, in a new worktree.",
       "verdict": "confirmed",
       "file": "skills/loop.md",
-      "quote": "4. Reconcile (below). An active task whose owner is not a slot id is orphaned: adopt it into a free slot or park it."
+      "quote": "4. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A slot is free when no active task is owned by its id.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "For each free slot (no `[>]` task owned by its id)"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Order: create the worktree, claim the task for the slot, then start the slot's harness and model there.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "that branch's worktree. Create the worktree first so the claim links its branch in the same write; when the"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "No suited task? Leave the slot free.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "rather than send it a task it should not take."
     },
     {
       "node": "supervise",
@@ -200,9 +170,7 @@
       "claim": "Check that each job advanced since the last tick, not just that it is running.",
       "verdict": "confirmed",
       "file": "docs/agents-detail.md",
-      "quote": "- **Supervise background work by progress, not liveness.** When a tick checks on running jobs, \"the",
-      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
-      "elsewhere": true
+      "quote": "- **Did it advance since the last tick?** Compare a progress counter (items finished, commits, CPU"
     },
     {
       "node": "supervise",
@@ -211,9 +179,7 @@
       "claim": "Check the leaf step, orphans, and who holds a shared budget.",
       "verdict": "confirmed",
       "file": "docs/agents-detail.md",
-      "quote": "  - **What is each job doing right now?** Look at the leaf process or current step. A `sleep` inside a",
-      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
-      "elsewhere": true
+      "quote": "- **What is each job doing right now?** Look at the leaf process or current step. A `sleep` inside a"
     },
     {
       "node": "supervise",
@@ -222,94 +188,89 @@
       "claim": "A probe exits non-zero on an anomaly, which starts an investigation.",
       "verdict": "confirmed",
       "file": "docs/agents-detail.md",
-      "quote": "  Encode these as a small probe script run every tick that exits non-zero on anomalies, and",
-      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
-      "elsewhere": true
+      "quote": "Encode these as a small probe script run every tick that exits non-zero on anomalies, and"
     },
     {
       "node": "supervise",
       "origin": "spec",
       "kind": "risk",
       "claim": "A running process is not proof that work is moving.",
-      "verdict": "partial",
-      "file": "skills/loop.md",
-      "quote": "Inspect productive progress as well as scheduler status; changing configuration requires stop, wait/cancel, then restart.",
-      "note": "loop.md says to inspect progress as well as scheduler status but never states that a live process is not health; that wording is in docs/agents-detail.md."
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "A job can be alive and stuck: in a retry/wait loop, or blocked on a"
     },
     {
       "node": "wake",
       "origin": "spec",
       "kind": "step",
-      "claim": "Tick fires (trigger): wake → topology",
+      "claim": "Tick fires (trigger)",
       "verdict": "confirmed",
       "file": "skills/loop.md",
-      "quote": "1. Read and validate the topology; an invalid file is a blocker to report. No file: orchestrator only."
+      "quote": "task suits which slot. Swapping resources edits that file, never the scheduled prompt. Each tick:"
     },
     {
       "node": "topology",
       "origin": "spec",
       "kind": "step",
-      "claim": "Slots known (topology.json): topology → review",
+      "claim": "Slots known (topology.json)",
       "verdict": "confirmed",
       "file": "skills/loop.md",
-      "quote": "2. For each slot whose task finished, review it, integrate or ship it within existing authorization, and set the"
+      "quote": "`.agent/topology.json` (consumer-owned; schema `lib/topology.schema.json`, reader `node scripts/topology.ts`)"
     },
     {
       "node": "review",
       "origin": "spec",
       "kind": "step",
-      "claim": "Finished work handled (task statuses): review → dispatch",
+      "claim": "Finished work handled (task statuses)",
       "verdict": "confirmed",
       "file": "skills/loop.md",
-      "quote": "3. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with"
-    },
-    {
-      "node": "dispatch",
-      "origin": "spec",
-      "kind": "step",
-      "claim": "Free slots filled (claims + worktrees): dispatch → reconcile",
-      "verdict": "partial",
-      "file": "skills/loop.md",
-      "quote": "A subagent that replied and went idle is not a running lane; resolve each mismatch before spawning more work:",
-      "note": "The numbered tick list puts Reconcile fourth, after dispatch, but the section is titled \"Reconcile lanes before dispatch\" and requires mismatches resolved before spawning more work; the flow shows only the after-dispatch order."
+      "quote": "3. Reconcile (below), before any new dispatch."
     },
     {
       "node": "reconcile",
       "origin": "spec",
       "kind": "step",
-      "claim": "Tasks match subagents (live handles): reconcile → supervise",
-      "verdict": "partial",
+      "claim": "Tasks match subagents (live handles)",
+      "verdict": "confirmed",
       "file": "skills/loop.md",
-      "quote": "- End each run with the active-task count matching the live subagent count.",
-      "note": "The matching count is confirmed, but loop.md has no supervise stage after reconcile; its tick list ends at step 4 (Reconcile)."
+      "quote": "A subagent that replied and went idle is not a running lane; resolve each mismatch before spawning more work:"
     },
     {
       "node": "dispatch",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Free slots filled (claims + worktrees)",
+      "verdict": "partial",
+      "file": "docs/agents-detail.md",
+      "quote": "- **Supervise background work by progress, not liveness.** When a tick checks on running jobs, \"the",
+      "note": "The source says a tick supervises running jobs but never places that after dispatch; the loop skill's tick has four steps and ends at dispatch, so the order is the page's own."
+    },
+    {
+      "node": "supervise",
       "origin": "spec",
       "kind": "glossary",
       "claim": "Slot: A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner.",
       "verdict": "confirmed",
-      "file": "skills/loop.md",
-      "quote": "`node scripts/queue.ts claim <id> --worker <slot-id> --branch <branch>` and start that slot's harness/model in"
+      "file": "docs/agents-detail.md",
+      "quote": "- `slots[].id` is unique kebab-case and doubles as the queue task **owner** while the slot is busy. `harness`"
     },
     {
       "node": "dispatch",
       "origin": "spec",
       "kind": "glossary",
-      "claim": "Harness: The agent tool a slot runs: claude, codex, agy or pi.",
-      "verdict": "partial",
+      "claim": "Harness: The agent tool a slot runs, such as claude, codex, agy or pi.",
+      "verdict": "confirmed",
       "file": "docs/agents-detail.md",
-      "quote": "is `claude`, `codex`, `agy`, `pi` or another name the repo's dispatcher understands.",
-      "note": "loop.md does not list harness names; docs/agents-detail.md (not a listed source) lists these four plus any other name the dispatcher understands, so the list is not closed."
+      "quote": "is `claude`, `codex`, `agy`, `pi` or another name the repo's dispatcher understands."
     },
     {
       "node": "reconcile",
       "origin": "spec",
       "kind": "glossary",
-      "claim": "Zombie worktree: A checkout with no task and no running subagent.",
+      "claim": "Zombie worktree: A worktree an interrupted session left behind.",
       "verdict": "confirmed",
-      "file": "skills/loop.md",
-      "quote": "- Worktree without a task or subagent: integrate, park, or clean it under the repository's branch rules."
+      "file": "docs/agents-detail.md",
+      "quote": "- **Reap zombie worktrees after an interrupted session.** The normal merge step deletes each lane's"
     },
     {
       "node": "review",
@@ -317,51 +278,127 @@
       "kind": "glossary",
       "claim": "Park: Return a task to pending, keeping its branch and a resume note.",
       "verdict": "confirmed",
-      "file": "scripts/queue-model.ts",
-      "quote": " * Park a task whose lane stopped with work in hand: it returns to pending (owner and lease cleared,"
+      "file": "scripts/queue-park.test.ts",
+      "quote": "assert('park returns an active task to pending', t.status === 'pending');",
+      "note": "The sources only say park preserves work and releases ownership (skills/loop.md); \"to pending\" is stated in scripts/queue-park.test.ts, which would need adding to sources."
+    },
+    {
+      "node": "topology",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "topology.json: orchestrator, tick, slots; no routing",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "names the orchestrator, the tick cadence and the subagent **slots**, with no routing"
+    },
+    {
+      "node": "reconcile",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Stage title \"4 · Reconcile, housekeeping\", placed before dispatch",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "slots, reconcile lanes, then dispatch the next priority task to every free slot. Changing models or the slot mix"
+    },
+    {
+      "node": "reconcile",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Active tasks = live subagents? (decision at the end of reconcile)",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "- End each run with the active-task count matching the live subagent count."
+    },
+    {
+      "node": "dispatch",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Highest-priority suited task: claim id --worker slot --branch b",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "`node scripts/queue.ts claim <id> --worker <slot-id> --branch <branch>` and start that slot's harness/model in"
+    },
+    {
+      "node": "reconcile",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: orphan owner = active task owned by a name that is no slot",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "is owned by its id, and an active task owned by a non-slot is flagged as orphaned. Orchestrator and subagents"
+    },
+    {
+      "node": "reconcile",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: handle = the session's own reference to a running subagent",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "Compare current-session live subagent handles, queue `[>]` tasks, and `git worktree list` every run."
+    },
+    {
+      "node": "dispatch",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: worktree = isolated git checkout per worker",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "- **Never park a worker branch.** Keep at most one branch (and worktree) per active subagent, plus"
     },
     {
       "node": "wake",
       "origin": "diagram",
       "kind": "box",
-      "claim": "usage window: rolling usage limit; wake after it resets",
+      "claim": "Legend: usage window = rolling usage limit; wake after it resets",
       "verdict": "confirmed",
       "file": "docs/agents-detail.md",
-      "quote": "  - **Usage-limit windows:** when closing in on 100% of the rolling 5-hour usage limit, schedule a",
-      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
-      "elsewhere": true
+      "quote": "- **Usage-limit windows:** when closing in on 100% of the rolling 5-hour usage limit, schedule a"
+    },
+    {
+      "node": "topology",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: topology.json = repo file naming the orchestrator and its worker slots",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "`.agent/topology.json` declares who does the work. Like `.agent/default-language.md` it is **consumer-owned**:"
     }
   ],
   "missing": [
     {
-      "what": "Reconcile has a fourth mismatch case the flow omits: a running subagent with no active task must be claimed or stopped.",
+      "what": "Reconcile has a fourth mismatch the flow omits: a running subagent with no active task must have its task claimed or its assignment stopped.",
       "file": "skills/loop.md",
       "quote": "- Running subagent without an active task: claim its task or stop that owned assignment."
     },
     {
-      "what": "When the harness names its own worktree branch, the orchestrator must link it with `queue set` in the same step, or the Slots panel and branch accounting break.",
+      "what": "When the harness names its own worktree branch, the branch must be linked with queue set right after dispatch; an unlinked active branch breaks the Slots panel.",
       "file": "skills/loop.md",
       "quote": "harness names its own worktree branch, link it with `queue set <id> branch <b>` right after dispatch, in"
     },
     {
-      "what": "The topology's slot list is the ceiling on concurrent subagents, alongside client slots, host limits and the memory guard.",
+      "what": "The slot list is the ceiling on concurrent subagents, alongside client slots, host limits and the memory guard.",
       "file": "skills/loop.md",
       "quote": "Treat the topology's slot list as the ceiling on concurrent subagents; respect client slots, host limits, and the repo's memory guard."
     },
     {
-      "what": "Changing models or the slot mix edits the topology file, never the scheduled prompt.",
-      "file": "skills/loop.md",
-      "quote": "task suits which slot. Swapping resources edits that file, never the scheduled prompt. Each tick:"
+      "what": "Worktree cleanup needs an ownership check first: staleness grants no authority, and the subagent must be verified as ended before cleaning.",
+      "file": "docs/agents-detail.md",
+      "quote": "session; verify ownership and actual subagent end before cleanup:"
     },
     {
-      "what": "A subagent that replied and went idle does not count as a running lane when reconciling.",
+      "what": "Each tick lists the worktree roots this session owns and flags each directory with its size and age.",
+      "file": "docs/agents-detail.md",
+      "quote": "146 GB. On session start or resume, and on each loop tick, list the worktree roots owned by this"
+    },
+    {
+      "what": "Every anomaly the probe reports is investigated before the tick ends.",
+      "file": "docs/agents-detail.md",
+      "quote": "investigate each anomaly before ending the tick. A human asking \"how's X holding up?\" is this probe;"
+    },
+    {
+      "what": "A subagent that replied and went idle does not count as a running lane during reconcile.",
       "file": "skills/loop.md",
       "quote": "A subagent that replied and went idle is not a running lane; resolve each mismatch before spawning more work:"
-    },
-    {
-      "what": "At completion or a blocker needing user direction, the loop checkpoints and ends recurrence.",
-      "file": "skills/loop.md",
-      "quote": "At completion or a blocker needing user direction, checkpoint and end recurrence with that outcome."
     }
   ],
   "code": {

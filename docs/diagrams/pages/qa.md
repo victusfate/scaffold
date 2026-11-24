@@ -361,30 +361,23 @@ No code here: The agent fills in the report table and summary line, writing docs
 
 ## Checked against the source
 
-The spec and diagram follow skills/qa.md closely; every stage, tier and stop condition traces to source text, with only small wording gaps (the diagram's stop decision omits the 'fixes keep spreading' trigger, the API legend omits webhooks). The main gap is omission: the fix loop's classify step (verified / best-effort / reverted), the no-new-dependency tooling rule, the never-commit-evidence rule and the every-five-fixes self-check are not shown.
+Every claim in the qa spec and diagram is stated in skills/qa.md; nothing is unsupported or contradicted. The most important gap is the fix loop's classify step (verified / best-effort / reverted) and the five-fix self-check, which the flow omits even though its stop rule counts reverts. Setup rules on tooling, evidence storage and real credentials are also not shown.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 34 | 3 | 0 | 0 | 8 | 6 |
+| 41 | 0 | 0 | 0 | 10 | 6 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Set up: checks
 
-- **Partly** (from the diagram): API: application programming interface: HTTP endpoints
-  > \- \*\*API\*\* — HTTP endpoints, webhooks
-  >
-  > [`skills/qa.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L38)
-
-  The source's API surface also includes webhooks.
-
 <details>
-<summary>11 confirmed, with the supporting line</summary>
+<summary>13 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Pick the surfaces the diff touches and start the app as the repo documents it.
-  > \2. \*\*Pick the surfaces\*\* from the diff (\`git diff main...HEAD --stat\`) and the
+  > \3. \*\*Start the app\*\* the way the repo documents it (README, \`package.json\`
   >
-  > [`skills/qa.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L35)
+  > [`skills/qa.md:42`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L42)
 
 - **Confirmed**: The working tree must be clean, so each fix can be its own commit.
   > commit or stash first. Each QA fix must be its own commit.
@@ -397,9 +390,9 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/qa.md:26`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L26)
 
 - **Confirmed**: Surfaces: Browser pages, API endpoints, CLI commands, background jobs.
-  > Surfaces: browser ✓  API ✓  CLI —  job blocked (&lt;reason&gt;)
+  > \- \*\*browser\*\* — pages and components behind a route
   >
-  > [`skills/qa.md:120`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L120)
+  > [`skills/qa.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L37)
 
 - **Confirmed**: Readiness is polled, never waited on with a fixed sleep.
   > background and wait for readiness by polling (HTTP 200, a log line), never a
@@ -411,37 +404,47 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/qa.md:51`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L51)
 
-- **Confirmed**: App ready — surfaces
+- **Confirmed**: setup → probe: App ready (payload: surfaces)
   > background and wait for readiness by polling (HTTP 200, a log line), never a
   >
   > [`skills/qa.md:44`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L44)
 
 - **Confirmed**: Surface: A way users reach the app: page, API, command or job.
-  > Surfaces: browser ✓  API ✓  CLI —  job blocked (&lt;reason&gt;)
+  > \2. \*\*Pick the surfaces\*\* from the diff (\`git diff main...HEAD --stat\`) and the
   >
-  > [`skills/qa.md:120`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L120)
+  > [`skills/qa.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L35)
 
 - **Confirmed** (from the diagram): Clean tree? dirty → ask user to commit or stash
   > \1. \*\*Clean tree.\*\* Run \`git status --porcelain\`. If dirty, stop and ask the user to
   >
   > [`skills/qa.md:33`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L33)
 
-- **Confirmed** (from the diagram): CLI: command-line interface: commands, flags, exit codes
+- **Confirmed** (from the diagram): Legend: API — HTTP endpoints, webhooks
+  > \- \*\*API\*\* — HTTP endpoints, webhooks
+  >
+  > [`skills/qa.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L38)
+
+- **Confirmed** (from the diagram): Legend: CLI — commands, flags, exit codes
   > \- \*\*CLI\*\* — commands, flags, exit codes
   >
   > [`skills/qa.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L39)
 
-- **Confirmed** (from the diagram): job: background work: workers, queues, scheduled tasks
+- **Confirmed** (from the diagram): Legend: job — background work: workers, queues, scheduled tasks
   > \- \*\*job\*\* — workers, queues, scheduled tasks
   >
   > [`skills/qa.md:40`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L40)
+
+- **Confirmed** (from the diagram): Title: /qa — drive the real app, fix what breaks
+  > Run the real app, drive the changed entry points the way a user would, then fix
+  >
+  > [`skills/qa.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L3)
 
 </details>
 
 ### Probe: checks
 
 <details>
-<summary>6 confirmed, with the supporting line</summary>
+<summary>7 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Run each entry point like a user, including bad input, and capture evidence.
   > For each surface, write down the steps, run them, and capture evidence:
@@ -458,7 +461,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/qa.md:78`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L78)
 
-- **Confirmed**: Issues logged — QA-NNN list
+- **Confirmed**: probe → triage: Issues logged (payload: QA-NNN list)
   > Each issue gets: ID (\`QA-001\`…), severity (critical / high / medium / low), surface,
   >
   > [`skills/qa.md:74`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L74)
@@ -467,6 +470,11 @@ An agent judged each claim against the source; each quote is found in its file w
   > Mark a surface you could not reach (app won't start, auth wall, missing service)
   >
   > [`skills/qa.md:77`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L77)
+
+- **Confirmed** (from the diagram): Run each entry point: happy path + bad input
+  > \- \*\*API\*\* — happy path, invalid input, missing auth, and idempotency for writes.
+  >
+  > [`skills/qa.md:67`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L67)
 
 - **Confirmed** (from the diagram): Capture evidence: screenshots, responses, logs
   > Put evidence (screenshots, response dumps, logs) in a scratch directory outside
@@ -478,7 +486,7 @@ An agent judged each claim against the source; each quote is found in its file w
 ### Triage: checks
 
 <details>
-<summary>5 confirmed, with the supporting line</summary>
+<summary>6 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Sort issues by severity and pick the ones the fix tier covers.
   > Sort issues by severity and apply the fix tier. Mark as deferred anything below the
@@ -495,29 +503,27 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/qa.md:84`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L84)
 
-- **Confirmed**: In-tier issues chosen — fix list
-  > For each in-tier issue, highest severity first:
-  >
-  > [`skills/qa.md:88`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L88)
-
-- **Confirmed** (from the diagram): fix tier: quick = critical + high, standard adds medium, exhaustive adds low + cosmetic
+- **Confirmed**: Fix tiers table: quick = critical, high; standard = critical, high, medium; exhaustive = all, including low and cosmetic.
   > \*\*Fix tiers:\*\* quick = critical + high; standard = + medium; exhaustive = + low and
   >
   > [`skills/qa.md:21`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L21)
+
+- **Confirmed**: Fix tiers table: standard is the default tier.
+  > \| Tier \| \`standard\` \| \`--quick\`, \`--exhaustive\` \|
+  >
+  > [`skills/qa.md:17`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L17)
+
+- **Confirmed**: triage → fixloop: In-tier issues chosen (payload: fix list)
+  > For each in-tier issue, highest severity first:
+  >
+  > [`skills/qa.md:88`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L88)
 
 </details>
 
 ### Fix loop: checks
 
-- **Partly** (from the diagram): 2 reverts, off-issue edit, or 30 fixes? stop and report
-  > files. Hard cap: 30 fixes per run.
-  >
-  > [`skills/qa.md:106`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L106)
-
-  The diagram's stop decision drops the fourth trigger the source lists (fixes keep spreading across many files); the spec risk includes it.
-
 <details>
-<summary>6 confirmed, with the supporting line</summary>
+<summary>7 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Fix each issue at its root cause with a failing regression test first, then re-run the probe.
   > \1. \*\*Diagnose and fix\*\* with \`/investigate\` Phases 1–4: root cause first, a
@@ -530,19 +536,24 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/qa.md:97`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L97)
 
 - **Confirmed**: A CSS-only defect may use a before/after screenshot instead of a test.
-  > production seam that only the test needs, and a CSS-only defect may use a
+  > before/after screenshot instead of a test.
   >
-  > [`skills/qa.md:93`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L93)
+  > [`skills/qa.md:94`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L94)
 
 - **Confirmed**: It stops and reports after two reverts, an edit to an unrelated file, 30 fixes, or when fixes keep spreading across many files.
   > the loop is helping. Stop and report to the user after two reverts, after any
   >
   > [`skills/qa.md:104`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L104)
 
-- **Confirmed**: Fixes committed — fix(qa) commits
+- **Confirmed**: fixloop → final: Fixes committed (payload: fix(qa) commits)
   > \`fix(qa): QA-NNN — &lt;short description&gt;\`.
   >
   > [`skills/qa.md:98`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L98)
+
+- **Confirmed** (from the diagram): /investigate: root cause, failing regression test first
+  > \1. \*\*Diagnose and fix\*\* with \`/investigate\` Phases 1–4: root cause first, a
+  >
+  > [`skills/qa.md:90`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L90)
 
 - **Confirmed** (from the diagram): Re-run the probe + adjacent happy path
   > \2. \*\*Re-verify the QA probe:\*\* re-run the original probe and the adjacent happy
@@ -553,15 +564,8 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Final pass: checks
 
-- **Partly**: Regressions checked — evidence
-  > If anything regressed, say so first in the report.
-  >
-  > [`skills/qa.md:111`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L111)
-
-  Regressions feeding the report is stated; the source does not say evidence is the payload handed to the report (the template carries no evidence column, and evidence stays in a scratch directory).
-
 <details>
-<summary>2 confirmed, with the supporting line</summary>
+<summary>3 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Re-run every probe near a fix, plus the happy path on each surface.
   > Re-run every probe that touched a fixed area, plus the happy path on each surface.
@@ -573,12 +577,17 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/qa.md:111`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L111)
 
+- **Confirmed**: final → report: Regressions checked (payload: regressions, if any)
+  > If anything regressed, say so first in the report.
+  >
+  > [`skills/qa.md:111`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L111)
+
 </details>
 
 ### QA report: checks
 
 <details>
-<summary>4 confirmed, with the supporting line</summary>
+<summary>5 confirmed, with the supporting line</summary>
 
 - **Confirmed**: A table of issues with status and commit, plus one summary line for the PR.
   > \| ID \| Sev \| Surface \| Issue \| Status \| Commit \|
@@ -595,6 +604,11 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/qa.md:115`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L115)
 
+- **Confirmed** (from the diagram): Issue table: ID, severity, status, commit
+  > \| ID \| Sev \| Surface \| Issue \| Status \| Commit \|
+  >
+  > [`skills/qa.md:123`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L123)
+
 - **Confirmed** (from the diagram): One summary line for the PR body
   > End with one line for the PR body:
   >
@@ -604,12 +618,17 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ## In the source, not shown in the flow
 
-- Fix-loop step 4 classifies each fix as verified, best-effort, or reverted (revert only that commit, keep the test and evidence, mark deferred); the flow never shows these outcomes.
+- Each fix is classified verified, best-effort or reverted; a reverted fix reverts only its own commit, keeps the test and evidence, and is marked deferred. The flow mentions "two reverts" but never shows this step.
   > \4. \*\*Classify:\*\* verified / best-effort (fix applied, could not fully re-verify, say
   >
   > [`skills/qa.md:99`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L99)
 
-- Tooling rule: use the repo's existing runner or client and never add a dependency for QA; with no browser tooling, fall back to a throwaway Playwright script outside the repo or mark browser probes blocked.
+- The loop checks whether it is helping after every five fixes and after any revert.
+  > \*\*Self-regulation:\*\* after every five fixes, and after any revert, check whether
+  >
+  > [`skills/qa.md:103`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L103)
+
+- Tooling rule: use what the repo already has and add no dependency for QA; a browser surface with no available tooling is marked blocked.
   > \`curl\` or its HTTP test client, the CLI binary. Do not add a dependency for QA.
   >
   > [`skills/qa.md:47`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L47)
@@ -619,22 +638,17 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/qa.md:56`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L56)
 
-- Self-regulation checkpoint: after every five fixes and after any revert, check whether the loop is helping.
-  > \*\*Self-regulation:\*\* after every five fixes, and after any revert, check whether
+- Never ask the user for real credentials and never send real emails, payments or webhooks to third parties (the flow shows only "never production").
+  > for real credentials in chat, never point probes at production, and never send
   >
-  > [`skills/qa.md:103`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L103)
+  > [`skills/qa.md:52`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L52)
 
-- Identity safety: never ask for real credentials in chat and never send real emails, payments or webhooks to third parties.
-  > real emails, payments, or webhooks to third parties.
+- The default scope is diff-aware: changed behavior plus one adjacent happy path per surface.
+  > Default is diff-aware: changed behavior plus one adjacent happy path per surface.
   >
-  > [`skills/qa.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L53)
+  > [`skills/qa.md:41`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L41)
 
-- Per-surface probe assertions (browser console errors and failed requests, API persisted state and idempotency, CLI exit code and files written, job retry without duplicate side effects) are not shown.
-  > Assert status code, response shape, and the persisted state (read it back).
-  >
-  > [`skills/qa.md:68`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L68)
-
-- QA fix additions: extend an existing test or fixture when one covers the boundary and never add a production seam only the test needs.
+- QA fixes extend an existing test or fixture where one covers the boundary and never add a production seam only the test needs.
   > an existing test or fixture when one covers the boundary, never add a
   >
   > [`skills/qa.md:92`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L92)
@@ -643,6 +657,16 @@ An agent judged each claim against the source; each quote is found in its file w
   > fixed sleep. Record the start command in the report.
   >
   > [`skills/qa.md:45`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L45)
+
+- In-tier issues are fixed highest severity first.
+  > For each in-tier issue, highest severity first:
+  >
+  > [`skills/qa.md:88`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L88)
+
+- /feature-chain Phase 3 runs /qa after /code-refiner when the feature has a user-facing entry point.
+  > \- \`/feature-chain\` Phase 3 runs \`/qa\` after \`/code-refiner\` when the feature has a
+  >
+  > [`skills/qa.md:136`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L136)
 
 ## Glossary
 

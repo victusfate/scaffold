@@ -1,5 +1,5 @@
 {
-  "summary": "The prune flow matches skills/prune.md on every claim checked: the five phases, their order, the tags, the slug rule and the single pause all have matching text. Nothing is contradicted or unsupported. What it leaves out is small: the slug is announced first, design.md has scope and edge-case sections, the PRD maps finding IDs to changes, and each phase can be resumed on its own.",
+  "summary": "The prune spec and diagram match skills/prune.md on every phase, artifact, tag and pause; all claims are confirmed. Three definitions (PRD sections, the validate and code-refiner legend entries) are true but rest on skills outside the spec's sources. The omissions are minor: stating the slug first, the scope and edge-case sections of the design doc, and per-phase resuming.",
   "checks": [
     {
       "node": "audit",
@@ -53,7 +53,7 @@
       "claim": "Findings get IDs (F-01 and on) and are grouped by class, not handled one by one.",
       "verdict": "confirmed",
       "file": "skills/prune.md",
-      "quote": "| F-01 | [validate] | … | … | high |"
+      "quote": "(how each finding class will be addressed — group related findings, not one-by-one)"
     },
     {
       "node": "design",
@@ -98,7 +98,7 @@
       "claim": "Build the fixes in slices, one group of fixes per slice, then refine.",
       "verdict": "confirmed",
       "file": "skills/prune.md",
-      "quote": "Each vertical slice should correspond to one cohesive group of fixes"
+      "quote": "Run `/tdd` from `prd.md`. Each vertical slice should correspond to one cohesive group of fixes"
     },
     {
       "node": "tdd",
@@ -125,7 +125,7 @@
       "claim": "Open a PR whose body lists the findings and which IDs were addressed.",
       "verdict": "confirmed",
       "file": "skills/prune.md",
-      "quote": "The PR body includes the findings summary and lists which finding IDs were addressed."
+      "quote": "Run `/create-pr`. The PR body includes the findings summary and lists which finding IDs were addressed."
     },
     {
       "node": "pr",
@@ -161,7 +161,7 @@
       "claim": "Stories cite findings (payload: prd.md)",
       "verdict": "confirmed",
       "file": "skills/prune.md",
-      "quote": "Run `/tdd` from `prd.md`."
+      "quote": "- User Stories: each class of fix as a story, referencing finding IDs."
     },
     {
       "node": "tdd",
@@ -188,7 +188,8 @@
       "claim": "PRD: Product requirements document: the problem, the solution and the user stories.",
       "verdict": "confirmed",
       "file": "skills/to-prd.md",
-      "quote": "The solution from the user's perspective."
+      "quote": "The problem from the user's perspective.",
+      "note": "skills/prune.md names only the User Stories, Implementation Decisions and Testing Decisions sections; the problem and solution sections are in skills/to-prd.md, which would need adding to sources."
     },
     {
       "node": "prd",
@@ -206,22 +207,23 @@
       "claim": "/create-pr",
       "verdict": "confirmed",
       "file": "skills/prune.md",
-      "quote": "Run `/create-pr`. The PR body includes the findings summary"
+      "quote": "Run `/create-pr`. The PR body includes the findings summary and lists which finding IDs were addressed."
     },
     {
       "node": "audit",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend, validate: review for correctness bugs and weakened tests",
+      "claim": "Legend validate: review for correctness bugs and weakened tests",
       "verdict": "confirmed",
-      "file": "skills/code-refiner.md",
-      "quote": "correctness bugs + the test-integrity check (a test weakened to pass is a"
+      "file": "skills/validate.md",
+      "quote": "A test weakened to make it pass is a **defect**, not a simplification — and the",
+      "note": "skills/prune.md says only 'correctness validation'; the weakened-test check is in skills/validate.md, which would need adding to sources."
     },
     {
       "node": "audit",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend, simplify: review for structure: reuse, clarity, altitude",
+      "claim": "Legend simplify: review for structure: reuse, clarity, altitude",
       "verdict": "confirmed",
       "file": "skills/prune.md",
       "quote": "dimensions plus reuse, simplification, efficiency, altitude, and the"
@@ -230,30 +232,31 @@
       "node": "tdd",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend, code-refiner: validate + simplify review, then one fix pass",
+      "claim": "Legend code-refiner: validate + simplify review, then one fix pass",
       "verdict": "confirmed",
       "file": "skills/code-refiner.md",
-      "quote": "**in parallel**, merge their findings, then apply every fix in a **single serial"
+      "quote": "**in parallel**, merge their findings, then apply every fix in a **single serial",
+      "note": "skills/prune.md gives only '(validate + simplify)'; the single fix pass is in skills/code-refiner.md, which would need adding to sources."
     }
   ],
   "missing": [
     {
-      "what": "The slug is stated before design.md is written, and quality-<branch-short> is only the default.",
+      "what": "The slug is stated before design.md is written, and quality-<branch-short> is only its default.",
       "file": "skills/prune.md",
       "quote": "State the slug before writing. Default: `quality-<branch-short>` where `<branch-short>` is the last path segment of the current branch name."
     },
     {
-      "what": "design.md also carries a Scope (in/out) section and Edge Cases the fixes must not break; the flow mentions only findings and decisions.",
+      "what": "The design doc also records scope (in and out) and the edge cases the fixes must not break.",
       "file": "skills/prune.md",
       "quote": "(anything fragile the fixes must not break)"
     },
     {
-      "what": "The PRD's Implementation Decisions map each finding ID to a concrete change.",
+      "what": "The PRD maps finding IDs to concrete changes under Implementation Decisions.",
       "file": "skills/prune.md",
       "quote": "- Implementation Decisions: map finding IDs to concrete changes."
     },
     {
-      "what": "Each phase can be resumed on its own (re-run the audit, edit design.md then /design-review, /to-prd, /tdd, /create-pr); the flow shows stopping but not resuming.",
+      "what": "Each phase can be resumed on its own (re-run the audit, edit design.md and re-run /design-review, /to-prd, /tdd, /create-pr).",
       "file": "skills/prune.md",
       "quote": "- Design: edit `design.md` directly, then re-run `/design-review`"
     }

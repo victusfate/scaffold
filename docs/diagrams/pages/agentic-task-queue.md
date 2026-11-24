@@ -16,7 +16,7 @@ flowchart LR
 ```
 
 - [Ingestion sources](#ingestion-sources): Three ways work enters the queue as issues: a person running /queue ingest, automated watchers and cron hooks, and assistant proposals that wait for a human to select them.
-- [Dispatch layer](#dispatch-layer): Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to exactly one worker through an assign, verify and lease claim.
+- [Dispatch layer](#dispatch-layer): Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to one worker through an assign, verify and lease claim; a rare double claim is possible.
 - [Workers](#workers): The agents that claim and execute tasks: Claude routines and manual pulls in phase 1, with GitHub Action crons added in phase 2.
 - [Execution layer](#execution-layer): Runs one claimed task in its own worktree in the task's target repo, validates it, and merges it back into the integration branch, sending conflicts to an agent-driven reconciliation task.
 
@@ -26,7 +26,7 @@ Three ways work enters the queue as issues: a person running /queue ingest, auto
 
 ## Dispatch layer
 
-Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to exactly one worker through an assign, verify and lease claim.
+Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to one worker through an assign, verify and lease claim; a rare double claim is possible.
 
 ## Workers
 
@@ -2218,18 +2218,28 @@ No code here: Not built: checking out a target repo from a project label, the me
 
 ## Checked against the source
 
-Every box in the diagram and all four merge-back outcomes are stated in design.md. The two write-back arrows are weaker: the design never says a completed issue is closed, and it only implies a failed label through status being mirrored as labels. The diagram leaves out the collision check on automated ingestion, the direct run-step failure path, dependency and priority ordering, and the stale-lease return to pending.
+Every box and stage of the task-queue page is stated in design.md; the one soft spot is 'exactly one worker', which the design qualifies as not a hard mutex. The page is a thin overview: it omits the direct task-failure path, the collision check on automated ingestion, dependency and priority ordering, and stale-lease recovery.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 23 | 1 | 1 | 0 | 9 | 14 |
+| 25 | 0 | 0 | 0 | 8 | 14 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Ingestion sources: checks
 
 <details>
-<summary>4 confirmed, with the supporting line</summary>
+<summary>5 confirmed, with the supporting line</summary>
+
+- **Confirmed**: Three ways work enters the queue as issues: a person running /queue ingest, automated watchers and cron hooks, and assistant proposals that wait for a human to select them.
+  > as issues with \`status: "proposed"\` and are \*\*not\*\* eligible for claim until a
+  >
+  > [`docs/agentic-task-queue/design.md:379`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L379)
+
+- **Confirmed**: ING -&gt; DISP: Work enters the queue (issue)
+  > Ingestion writes issues into the shared queue store (D11); it never runs them.
+  >
+  > [`docs/agentic-task-queue/design.md:355`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L355)
 
 - **Confirmed** (from the diagram): M: Manual /queue ingest (alignment loop then slice)
   > Manual ingestion (\`/queue ingest\`) runs an interactive alignment loop before
@@ -2239,15 +2249,10 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): A: Automated watchers / cron / telemetry
   > \1. \*\*Trigger\*\* — file-watcher, telemetry monitor, or cron hook fires.
   >
-  > [`docs/agentic-task-queue/design.md:369`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L369)
+  > [`docs/agentic-task-queue/design.md:370`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L370)
 
-- **Confirmed** (from the diagram): P: Assistant library proposals
+- **Confirmed** (from the diagram): P: Assistant library proposals (edge: proposed then human selects)
   > An external source (a personal-assistant library) may propose tasks. These enter
-  >
-  > [`docs/agentic-task-queue/design.md:377`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L377)
-
-- **Confirmed** (from the diagram): P -.-&gt; Q: proposed then human selects
-  > as issues with \`status: "proposed"\` and are \*\*not\*\* eligible for claim until a
   >
   > [`docs/agentic-task-queue/design.md:378`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L378)
 
@@ -2256,46 +2261,66 @@ An agent judged each claim against the source; each quote is found in its file w
 ### Dispatch layer: checks
 
 <details>
-<summary>5 confirmed, with the supporting line</summary>
+<summary>8 confirmed, with the supporting line</summary>
 
-- **Confirmed** (from the diagram): Subgraph title: DISPATCH LAYER (shared, cross-project), holding the queue store, distribution and claim
-  > The dispatch layer owns the shared store, atomic claiming, cross-project
+- **Confirmed**: Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to one worker through an assign, verify and lease claim; a rare double claim is possible.
+  > the cost of a rare double-claim is bounded (a second worker
   >
-  > [`docs/agentic-task-queue/design.md:183`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L183)
+  > [`docs/agentic-task-queue/design.md:207`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L207)
+
+- **Confirmed**: Step DISP to WORK: Claimed by one worker (payload: claim + lease)
+  > \| \*\*dispatch layer\*\* \| Shared store + claiming + targeting + distribution; hands each task to one worker (D10) \|
+  >
+  > [`docs/agentic-task-queue/design.md:259`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L259)
 
 - **Confirmed** (from the diagram): Q: GitHub Issues queue store; 1 task = 1 issue; labels: status / priority / project
   > target repo), labels carry \`status\`, \`priority\`, and \`project:&lt;repo&gt;\`, and the
   >
   > [`docs/agentic-task-queue/design.md:34`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L34)
 
-- **Confirmed** (from the diagram): CRON: Cron / routine; pull: ask for top eligible
+- **Confirmed** (from the diagram): CRON: Cron / routine pull: ask for top eligible
   > \- \*\*Cron / routine (pull):\*\* a scheduled runner wakes, asks the store for the
   >
   > [`docs/agentic-task-queue/design.md:220`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L220)
 
-- **Confirmed** (from the diagram): PUSH: Push; issue / label event
+- **Confirmed** (from the diagram): PUSH: Push - issue / label event
   > \- \*\*Push (event):\*\* marking a task ready (an issue label/assignment event) fires
   >
   > [`docs/agentic-task-queue/design.md:222`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L222)
 
-- **Confirmed** (from the diagram): CLAIM (decision): Claim; assign · verify · lease
-  > \#\#\# D12 — Atomic claim: assign + verify + lease
+- **Confirmed** (from the diagram): CLAIM: Claim - assign, verify, lease
+  > \| \*\*claim\*\* \| Assign the issue to self + flip \`status:running\`, then verify sole assignee (D12) \|
   >
-  > [`docs/agentic-task-queue/design.md:201`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L201)
+  > [`docs/agentic-task-queue/design.md:262`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L262)
+
+- **Confirmed** (from the diagram): DONE -&gt; Q: mark completed, open until archived
+  > \`pending\` (D12). A \`completed\` task's issue is not closed automatically; it stays
+  >
+  > [`docs/agentic-task-queue/design.md:332`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L332)
+
+- **Confirmed** (from the diagram): FAIL -&gt; Q: failed status recorded as label
+  > \`status\`, \`priority\`, and \`project\` are mirrored as labels so the store is
+  >
+  > [`docs/agentic-task-queue/design.md:281`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L281)
 
 </details>
 
 ### Workers: checks
 
 <details>
-<summary>2 confirmed, with the supporting line</summary>
+<summary>3 confirmed, with the supporting line</summary>
 
-- **Confirmed** (from the diagram): W1: Phase 1; Claude routines + manual pulls
-  > \- \*\*Phase 1 (v1):\*\* workers are \*\*Claude routines and manual pulls\*\* — a Claude
+- **Confirmed**: The agents that claim and execute tasks: Claude routines and manual pulls in phase 1, with GitHub Action crons added in phase 2.
+  > \| \*\*worker\*\* \| An agent that claims and executes a task — a Claude routine/manual pull (Phase 1) or GitHub Action (Phase 2) \|
   >
-  > [`docs/agentic-task-queue/design.md:230`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L230)
+  > [`docs/agentic-task-queue/design.md:261`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L261)
 
-- **Confirmed** (from the diagram): W2: Phase 2 (later); GitHub Action crons
+- **Confirmed**: WORK -&gt; EXEC: Target repo checked out (task)
+  > field in the body). A worker, on claiming, checks out that repo and runs the
+  >
+  > [`docs/agentic-task-queue/design.md:246`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L246)
+
+- **Confirmed** (from the diagram): W2: Phase 2 (later) GitHub Action crons
   > \- \*\*Phase 2 (later):\*\* add \*\*GitHub Action worker crons\*\* — a scheduled/dispatched
   >
   > [`docs/agentic-task-queue/design.md:234`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L234)
@@ -2304,29 +2329,18 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Execution layer: checks
 
-- **Not found** (from the diagram): DONE -.-&gt; Q: close issue
-
-  design.md never says a completed task's issue is closed; completion is only described as marking status "completed" (searched the file for "clos": no match).
-
-- **Partly** (from the diagram): FAIL -.-&gt; Q: label failed
-  > \`status\`, \`priority\`, and \`project\` are mirrored as labels so the store is
-  >
-  > [`docs/agentic-task-queue/design.md:281`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L281)
-
-  The design says status is mirrored as a label and that the task is marked "failed", but never names a failed label or a write-back step in those words.
-
 <details>
-<summary>12 confirmed, with the supporting line</summary>
+<summary>9 confirmed, with the supporting line</summary>
 
-- **Confirmed** (from the diagram): Subgraph title: EXECUTION LAYER (per target repo)
-  > are all scoped to the target repo. One shared queue, many target repos; the
+- **Confirmed**: Runs one claimed task in its own worktree in the task's target repo, validates it, and merges it back into the integration branch, sending conflicts to an agent-driven reconciliation task.
+  > execution layer there — the worktree, integration branch, and merge-back (D4–D8)
   >
-  > [`docs/agentic-task-queue/design.md:248`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L248)
+  > [`docs/agentic-task-queue/design.md:247`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L247)
 
 - **Confirmed** (from the diagram): CO: Check out target repo; project label to repo
-  > field in the body). A worker, on claiming, checks out that repo and runs the
+  > Every task names its \*\*target repository\*\* (\`project:&lt;repo&gt;\` label + a \`repo\`
   >
-  > [`docs/agentic-task-queue/design.md:246`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L246)
+  > [`docs/agentic-task-queue/design.md:245`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L245)
 
 - **Confirmed** (from the diagram): WT: Worktree per task; branch off integration tip
   > \1. Each task branches off the integration tip into its own worktree.
@@ -2336,96 +2350,76 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): RUN: Apply changes; run command + validationScript
   > \6. Run \`command\` then \`validationScript\`.
   >
-  > [`docs/agentic-task-queue/design.md:409`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L409)
+  > [`docs/agentic-task-queue/design.md:410`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L410)
 
-- **Confirmed** (from the diagram): MB (decision): Merge-back into integration
-  > \| \*\*merge-back\*\* \| Merging a completed task branch into the integration branch \|
-  >
-  > [`docs/agentic-task-queue/design.md:270`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L270)
-
-- **Confirmed** (from the diagram): DONE: completed
-  > proposed → pending → running → completed
-  >
-  > [`docs/agentic-task-queue/design.md:322`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L322)
-
-- **Confirmed** (from the diagram): REC: Reconciliation task; agent-driven, keeps commits
-  > \- It \*\*starts from the existing task branch\*\* (the worker's commits are
-  >
-  > [`docs/agentic-task-queue/design.md:138`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L138)
-
-- **Confirmed** (from the diagram): FAIL: failed; held for later
-  > \`reconciling → failed\` and is \*\*held for later resolution\*\* (human or a
-  >
-  > [`docs/agentic-task-queue/design.md:147`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L147)
-
-- **Confirmed** (from the diagram): MB --&gt; DONE: clean + validation ok
-  > \- \*\*Clean merge + validation passes →\*\* record \`result.mergeCommit\`, delete
+- **Confirmed** (from the diagram): MB -&gt; completed: clean + validation ok
+  >    \- \*\*Clean merge + validation passes →\*\* record \`result.mergeCommit\`, delete
   >
   > [`docs/agentic-task-queue/design.md:128`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L128)
 
-- **Confirmed** (from the diagram): MB --&gt; REC: conflict / fails
+- **Confirmed** (from the diagram): MB -&gt; Reconciliation task: conflict / fails
   > \2. \*\*Any merge conflict, or a clean merge whose validation then fails →\*\* set the
   >
   > [`docs/agentic-task-queue/design.md:130`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L130)
 
-- **Confirmed** (from the diagram): REC --&gt; DONE: clean validated merge
-  > integration tip; it resolves to \`completed\` (clean validated merge) or \`failed\`
+- **Confirmed** (from the diagram): REC: Reconciliation task, agent-driven, keeps commits
+  > \- It \*\*starts from the existing task branch\*\* (the worker's commits are
   >
-  > [`docs/agentic-task-queue/design.md:330`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L330)
+  > [`docs/agentic-task-queue/design.md:138`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L138)
 
-- **Confirmed** (from the diagram): REC --&gt; FAIL: cannot merge safely
-  > \- \*\*Cannot produce a clean, validated merge →\*\* the original task transitions
+- **Confirmed** (from the diagram): REC -&gt; completed: clean validated merge
+  > \- \*\*Success →\*\* merge into integration; the original task transitions
   >
-  > [`docs/agentic-task-queue/design.md:146`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L146)
+  > [`docs/agentic-task-queue/design.md:144`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L144)
+
+- **Confirmed** (from the diagram): REC -&gt; failed (held for later): cannot merge safely
+  >   \`reconciling → failed\` and is \*\*held for later resolution\*\* (human or a
+  >
+  > [`docs/agentic-task-queue/design.md:147`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L147)
 
 </details>
 
 ## In the source, not shown in the flow
 
-- Automated ingestion does not write straight into the store: it passes a context-collision check against pending or running manual tasks and is deferred (dropped after 3 deferrals) on overlap.
+- A task that fails during execution (its command or validation) goes straight to failed with its worktree deleted; the diagram shows failed only after reconciliation.
+  > \8. \*\*Failure:\*\* delete the worktree (no reset needed — the integration branch was
+  >
+  > [`docs/agentic-task-queue/design.md:417`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L417)
+
+- Automated ingestion runs a context-collision check against pending or running manual tasks and defers (then drops after 3 deferrals) on overlap; the diagram sends automated work straight into the queue.
   > a \`pending\` or \`running\` manual task's \`contextFiles\` is \*\*deferred, re-evaluated
   >
   > [`docs/agentic-task-queue/design.md:167`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L167)
 
-- A task can fail directly in the run step (task or validation failure) without going through merge-back or reconciliation: the worktree is deleted and the task is marked failed.
-  > \8. \*\*Failure:\*\* delete the worktree (no reset needed — the integration branch was
-  >
-  > [`docs/agentic-task-queue/design.md:416`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L416)
-
-- Eligibility is gated by dependencies: no task starts until every dependsOn task is completed.
-  > never starts a task until all declared dependencies are \`"completed"\`. The
-  >
-  > [`docs/agentic-task-queue/design.md:48`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L48)
-
-- Selection among eligible tasks is two-tier priority (all high before any default), first-in first-out within a tier.
+- Task selection is gated by dependsOn and ordered by two priority tiers (high before default, FIFO within a tier); the flow only says 'top eligible'.
   > eligible \`"high"\` task is selected before any \`"default"\` task; within a tier,
   >
   > [`docs/agentic-task-queue/design.md:54`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L54)
 
-- A stale lease heartbeat returns a running task to pending for another worker; the diagram names the lease but shows no path back to the queue.
+- Lease recovery: a stale heartbeat on a running task makes a sweep return it to pending for another worker.
   > died — common in ephemeral environments), a sweep returns the task to \`pending\`
   >
   > [`docs/agentic-task-queue/design.md:212`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L212)
 
-- A worker that loses the claim race backs off and picks the next eligible task.
-  > assignee\*\* (verify-after-write). If another worker won the race, the loser backs
+- The claim is not a hard mutex: a rare double-claim is possible and bounded, and hard exclusivity is deferred.
+  > off and picks the next eligible task. This is not a hard mutex, but the race
   >
-  > [`docs/agentic-task-queue/design.md:205`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L205)
+  > [`docs/agentic-task-queue/design.md:206`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L206)
 
-- A failure does not halt the queue; only the failed task's transitive dependents are skipped and reported.
+- A task failure does not halt the queue: independent tasks keep running and only the failed task's transitive dependents are skipped.
   > still runs. Only the failed task's \*\*transitive dependents\*\* are skipped — their
   >
   > [`docs/agentic-task-queue/design.md:158`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L158)
-
-- Reconciliation is itself a new high-priority task put back in the queue, and the original task sits in a reconciling state meanwhile; the diagram draws it as a box inside the execution layer with no return to the store.
-  > task \`"reconciling"\` and \*\*enqueue a first-class reconciliation task\*\*
-  >
-  > [`docs/agentic-task-queue/design.md:131`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L131)
 
 - Merges into the integration branch happen one at a time even when tasks run in parallel.
   > \- \*\*Integration merges serialize even when execution parallelizes.\*\* Tasks 1–3
   >
   > [`docs/agentic-task-queue/design.md:108`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L108)
+
+- The reconciliation task is enqueued at high priority and the original task sits in a reconciling state meanwhile.
+  > (\`origin: "automated/reconcile/&lt;taskId&gt;"\`, \`priority: "high"\` so it clears
+  >
+  > [`docs/agentic-task-queue/design.md:132`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L132)
 
 ## Ask your LLM
 

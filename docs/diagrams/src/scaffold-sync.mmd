@@ -27,7 +27,7 @@ flowchart TB
     direction TB
     D1["Stay on current branch<br/>run the sync script"]:::orch
     D2[("Manifest<br/>scaffold-files.txt")]:::state
-    D3["3-way merge from<br/>last synced SHA"]:::git
+    D3["Differs and has a base →<br/>3-way merge from<br/>last synced SHA"]:::git
     D4["No base and differs →<br/>.scaffold-new sidecar<br/>.scaffold-keep skipped"]:::state
     D5{"Conflict markers?<br/>resolve, commit, re-run"}:::gate
     D1 -.-> D2
@@ -39,7 +39,7 @@ flowchart TB
     U1["Split universal from<br/>project-specific"]:::owner
     U2["Scaffold worktree off<br/>origin/main, never its<br/>main checkout"]:::git
     U3["Change the scaffold way:<br/>skill, wrappers, RESOLVER,<br/>manifest, test"]:::lane
-    U4{"npm test, eslint,<br/>typecheck pass?"}:::gate
+    U4{"npm test, eslint pass?<br/>typecheck if TypeScript changed"}:::gate
     U1 --> U2 --> U3 --> U4
   end
 

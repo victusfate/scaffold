@@ -22,7 +22,7 @@ flowchart LR
 - [Dispatch](#dispatch): On each loop tick, the orchestrator gives the top suited task to a free worker slot.
 - [Subagent works](#subagent-works): The subagent builds its one task in its own worktree and commits locally.
 - [Integrate](#integrate): The orchestrator merges the target into the lane, re-runs the gates and merges green work into the one working branch.
-- [Authorized merge](#authorized-merge): The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.
+- [Authorized merge](#authorized-merge): With the owner's session or standing authorization, the orchestrator squash-merges and queue advance records the delivery.
 
 ## Owner requests
 
@@ -59,7 +59,7 @@ The subagent builds its one task in its own worktree and commits locally.
 Details: [Feature chain](feature-chain.md)
 
 - It starts with an ff-only check that it is on the working branch's HEAD.
-- A chore is built directly; a feature runs design, PRD, plan, TDD, refine.
+- A chore is built directly; a feature runs design, PRD, plan, TDD and refine; an interactive feature chain adds QA.
 - It validates, commits, records evidence and never pushes.
 
 **Where it breaks**
@@ -72,8 +72,8 @@ The orchestrator merges the target into the lane, re-runs the gates and merges g
 
 Details: [Review gates](review-gates.md)
 
-- Red gates send the work back to the lane.
-- Then it opens a PR with Critical changes and real check results.
+- Red gates block the merge; a subagent finishes the branch.
+- Then it opens a PR with Critical changes and verifies the real checks on the final head.
 
 **Where it breaks**
 
@@ -81,7 +81,7 @@ Details: [Review gates](review-gates.md)
 
 ## Authorized merge
 
-The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.
+With the owner's session or standing authorization, the orchestrator squash-merges and queue advance records the delivery.
 
 Details: [PR workflow](pr-workflow.md)
 
@@ -1602,11 +1602,11 @@ export function drainKick(q: Queue): string {
 
 ## Checked against the source
 
-The orchestration flow matches AGENTS.md and its long form closely: 29 of 36 claims are stated in the sources and none is contradicted. The partial ones are small rewordings (what happens on red gates, when real checks are read, when a task "closes"). The largest gap is what the flow leaves out: the task time box, resolving a stopped subagent's branch in the same tick, and the orchestrator-only push step.
+The flow matches its sources on who creates tasks, lane isolation, integration gates and the authorized squash merge. Nine claims about slots, topology.json, worktree-before-claim, ORCH UPDATE and the ff-only stop rule are true but stated only in skills/loop.md and docs/agents-detail.md, which the spec does not list as sources. The most important factual gaps are QA shown as a step of the queued feature chain, "evidence" shown as a queue.db field, and the missing "not authorized" path at the merge gate.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 29 | 7 | 0 | 0 | 10 | 12 |
+| 27 | 8 | 0 | 0 | 7 | 12 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
@@ -1617,22 +1617,20 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/queue.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L35)
 
-  The store and typed fields are stated, but no source line lists these four fields together; evidence is named only in the AGENTS.md typed-fields rule.
+  queue.md shows status, owner and accept as task fields, but no evidence field; AGENTS.md only says evidence lives in "the queue CLI's typed fields", and the Task type in scripts/queue-model.ts (not a listed source) has no evidence field.
 
 <details>
-<summary>7 confirmed, with the supporting line</summary>
+<summary>6 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Only the owner creates tasks; the agent records the request in the queue.
-  > an agent adds a task only when the owner explicitly asks for that task, quoting their words
+  > owner creates tasks:\*\* an agent adds a task only when the owner explicitly asks for that task, quoting their words
   >
   > [`AGENTS.md:110`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L110)
 
 - **Confirmed**: The agent runs queue add --requested with the owner's words and an acceptance check.
-  > the owner explicitly asks for \*that\* task, quoting their words (\`--requested "&lt;their words&gt;"\`).
+  > \#   agents: add --requested "&lt;human words&gt;" (tasks are human-owned; --parent adds lineage only)
   >
-  > [`docs/agents-detail.md:800`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L800)
-
-  The accept part is not in the AGENTS.md rule; it comes from skills/queue.md ("Every task carries an `accept:`").
+  > [`skills/queue.md:125`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L125)
 
 - **Confirmed**: queue.md is the committed view; line order is priority.
   > \*\*\`queue.md\` is the view\*\*, re-rendered after every mutation and committed so the
@@ -1640,26 +1638,19 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/queue.md:43`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L43)
 
 - **Confirmed**: Every worktree reads the same record.
-  > The queue store is shared by every worktree, so an edit made by one agent is visible to the others
+  > checkout's \`.agent/queue/\` (found through git's common dir), so every worktree
   >
-  > [`docs/agents-detail.md:947`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L947)
+  > [`skills/queue.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L39)
 
 - **Confirmed**: An agent never adds its own tasks; its findings go to the owner instead.
   > exception, and findings go to the owner, never into new tasks.
   >
   > [`AGENTS.md:112`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L112)
 
-- **Confirmed**: Task waits in the queue (payload: queue task)
+- **Confirmed**: request → dispatch: Task waits in the queue (payload: queue task)
   > A resumed \`active\` task is preferred next wake; otherwise the topmost \*\*eligible\*\*
   >
   > [`skills/queue.md:403`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L403)
-
-- **Confirmed** (from the diagram): queue.db -render-&gt; queue.md (the view is rendered from the store)
-  > file you can open at any moment: \`.agent/queue/queue.md\`.
-  >
-  > [`skills/queue.md:9`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L9)
-
-  Line 8-9 of skills/queue.md: the store "is rendered after every change to one file".
 
 </details>
 
@@ -1669,77 +1660,102 @@ An agent judged each claim against the source; each quote is found in its file w
 <summary>9 confirmed, with the supporting line</summary>
 
 - **Confirmed**: On each loop tick, the orchestrator gives the top suited task to a free worker slot.
-  > \3. For each free slot (no \`\[&gt;\]\` task owned by its id), claim the highest-priority task it suits with
+  > \4. For each free slot (no \`\[&gt;\]\` task owned by its id), claim the highest-priority task it suits with
   >
-  > [`skills/loop.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L37)
+  > [`skills/loop.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L39)
+
+  True, but the text is in skills/loop.md, which is not in this spec's sources (AGENTS.md only links topology.json); add skills/loop.md.
 
 - **Confirmed**: It reads the slots from topology.json.
-  > runs the tick: read the topology, review and ship finished
+  > \1. Read and validate the topology; an invalid file is a blocker to report. No file: orchestrator only.
   >
-  > [`docs/agents-detail.md:937`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L937)
+  > [`skills/loop.md:34`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L34)
+
+  Stated in skills/loop.md, not in the listed sources; AGENTS.md only has "Slots: [`.agent/topology.json`]". Add skills/loop.md.
 
 - **Confirmed**: It creates the worktree lane first, off the working branch's HEAD, then claims the task for that slot.
   > that branch's worktree. Create the worktree first so the claim links its branch in the same write; when the
   >
-  > [`skills/loop.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L39)
+  > [`skills/loop.md:41`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L41)
+
+  The worktree-before-claim order is only in skills/loop.md (not a listed source); "off that branch's HEAD" is in AGENTS.md. Add skills/loop.md.
 
 - **Confirmed**: The orchestrator adds ORCH UPDATE notes to the task.
   > priority), append a line to that task's note starting \`ORCH UPDATE &lt;time&gt;:\` with the instruction. Prefer this
   >
   > [`docs/agents-detail.md:951`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L951)
 
+  ORCH UPDATE appears only in docs/agents-detail.md (Lane steering), which is not in the sources; AGENTS.md just links to it. Add docs/agents-detail.md.
+
 - **Confirmed**: The subagent follows the newest one at its next checkpoint.
   > \- \*\*What a lane does with it:\*\* it follows the newest \`ORCH UPDATE\`. When an update conflicts with work in progress,
   >
   > [`docs/agents-detail.md:957`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L957)
 
-- **Confirmed**: Task claimed for a slot (payload: worktree + claim)
+  Only in docs/agents-detail.md, not a listed source; AGENTS.md says only that the subagent re-reads its task at each checkpoint.
+
+- **Confirmed**: dispatch → work: Task claimed for a slot (payload: worktree + claim)
   > \`node scripts/queue.ts claim &lt;id&gt; --worker &lt;slot-id&gt; --branch &lt;branch&gt;\` and start that slot's harness/model in
   >
-  > [`skills/loop.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L38)
+  > [`skills/loop.md:40`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L40)
+
+  Claiming for a slot is described only in skills/loop.md, not a listed source; queue.md describes claim --worker without slots.
 
 - **Confirmed**: Slot: A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner.
-  > \- \`slots\[\].id\` is unique kebab-case and doubles as the queue task \*\*owner\*\* while the slot is busy. \`harness\`
+  > names the orchestrator, the tick cadence and the subagent \*\*slots\*\*, with no routing: the orchestrator judges which
   >
-  > [`docs/agents-detail.md:933`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L933)
+  > [`skills/loop.md:31`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L31)
+
+  Defined in skills/loop.md (and docs/agents-detail.md, Agent topology), neither in the listed sources; add skills/loop.md.
 
 - **Confirmed**: ORCH UPDATE: The orchestrator's steering note on a running worker's task.
   > \- \*\*Orchestrator → lane:\*\* to steer a running lane (a new finding, a narrowed scope, a bisect result, a changed
   >
   > [`docs/agents-detail.md:950`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L950)
 
-- **Confirmed** (from the diagram): Claim top suited task --worker slot --branch b (after the worktree is created)
-  > \3. For each free slot (no \`\[&gt;\]\` task owned by its id), claim the highest-priority task it suits with
+  Only in docs/agents-detail.md (Lane steering), not a listed source.
+
+- **Confirmed** (from the diagram): Claim top suited task --worker slot --branch b
+  > \`node scripts/queue.ts claim &lt;id&gt; --worker &lt;slot-id&gt; --branch &lt;branch&gt;\` and start that slot's harness/model in
   >
-  > [`skills/loop.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L37)
+  > [`skills/loop.md:40`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L40)
+
+  The --worker/--branch claim form is in skills/loop.md, not a listed source (queue.md lists claim with --worker only).
 
 </details>
 
 ### Subagent works: checks
 
-- **Partly**: A chore is built directly; a feature runs design, PRD, plan, TDD, refine.
-  > \*\*PRD\*\* \`/to-prd\` → \*\*Plan\*\* vertical slices in \`plan.md\` → \*\*TDD\*\* \`/tdd\` RED → GREEN → REFACTOR, then
+- **Partly** (outside tracked sources): A chore is built directly; a feature runs design, PRD, plan, TDD and refine; an interactive feature chain adds QA.
+  > explicit paths) so the tree is clean, then \*\*run \`/qa\`\*\* when the feature has a
   >
-  > [`AGENTS.md:180`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L180)
+  > [`skills/feature-chain.md:89`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L89)
 
-  The chain in AGENTS.md ends with `/code-refiner` and `/qa`; the flow stops at refine and leaves out the /qa step (the direct-chore wording is from skills/queue.md).
+  Chore and design/PRD/plan/TDD/refine are stated in skills/queue.md, but the feature chain runs /qa only when the feature has a user-facing entry point, a condition the claim drops; no source uses the term 'interactive chain'.
 
 - **Partly**: A subagent that skips its checkpoints misses the orchestrator's steering.
-  > \- \*\*When a lane reads:\*\* at every checkpoint, before any long-running step (a full suite, a bake, a render
+  >   locally in that lane and reports evidence (commit, tests run, doubts). It re-reads its task at each checkpoint
   >
-  > [`docs/agents-detail.md:955`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L955)
+  > [`AGENTS.md:35`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L35)
 
-  The source states the duty to re-read the task at checkpoints; it does not state this consequence, which is an inference.
+  The source states the rule (re-read the task at each checkpoint); the consequence of skipping is the page's own rationale.
 
-- **Partly** (from the diagram): Re-read task at checkpoints, follow newest ORCH UPDATE (shown once, between build and validate)
-  > sweep), and before writing its result file, a lane re-reads its own task with the queue CLI's \`show\` command.
+- **Partly**: Worktree: An isolated git checkout per worker, so workers never collide.
+  > worktree add\|remove\|list &lt;id&gt;          \# isolated git worktree per task
   >
-  > [`docs/agents-detail.md:956`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L956)
+  > [`skills/queue.md:143`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L143)
 
-  The source asks for a re-read at every checkpoint, before any long-running step and before writing the result file, not once after the build.
+  The sources say worktrees are isolated, one per task or lane; "so workers never collide" is the page's own rationale.
+
+- **Partly** (outside tracked sources) (from the diagram): Diagram box: Build: direct chore or design, PRD, plan, TDD, refine (interactive chain: + QA)
+  > explicit paths) so the tree is clean, then \*\*run \`/qa\`\*\* when the feature has a
+  >
+  > [`skills/feature-chain.md:89`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L89)
+
+  Chore and design/PRD/plan/TDD/refine are stated in skills/queue.md, but the feature chain runs /qa only when the feature has a user-facing entry point, a condition the claim drops; no source uses the term 'interactive chain'. The box text matches docs/diagrams/src/orchestration.mmd line 47, so the diagram carries the same omission.
 
 <details>
-<summary>7 confirmed, with the supporting line</summary>
+<summary>6 confirmed, with the supporting line</summary>
 
 - **Confirmed**: The subagent builds its one task in its own worktree and commits locally.
   > \- \*\*Subagent:\*\* started by the orchestrator for one task, in its own lane. Works only that task, commits
@@ -1747,88 +1763,88 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`AGENTS.md:34`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L34)
 
 - **Confirmed**: It starts with an ff-only check that it is on the working branch's HEAD.
-  > any edit, is \`git merge --ff-only &lt;working-branch&gt;\`; or the lane brief records the base SHA and the lane
+  > \- \*\*Lanes work in isolated worktrees\*\* off that branch's HEAD (ff-only first). Before integrating one, \*\*merge\*\* the current target
   >
-  > [`docs/agents-detail.md:858`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L858)
-
-  The source also allows the alternative of checking `git rev-parse HEAD` against a recorded base SHA.
+  > [`AGENTS.md:215`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L215)
 
 - **Confirmed**: It validates, commits, records evidence and never pushes.
   > \- Only the authorized orchestrator publishes. Lanes and bounded runs commit locally and report; they do not
   >
   > [`AGENTS.md:26`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L26)
 
-- **Confirmed**: Lane reports done (payload: local commits + evidence)
-  > locally in that lane and reports evidence (commit, tests run, doubts). It re-reads its task at each checkpoint
+- **Confirmed**: work → integrate: Lane reports done (payload: local commits + evidence)
+  >   locally in that lane and reports evidence (commit, tests run, doubts). It re-reads its task at each checkpoint
   >
   > [`AGENTS.md:35`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L35)
-
-- **Confirmed**: Worktree: An isolated git checkout per worker, so workers never collide.
-  > \- \*\*Lanes work in isolated git worktrees\*\* (\`isolation: "worktree"\`), each branched off the
-  >
-  > [`docs/agents-detail.md:854`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L854)
-
-  Isolation per lane is stated; the "never collide" reason is implied, not written.
 
 - **Confirmed**: ff-only: Fast-forward only: the worker proves it starts from the working branch's HEAD, or stops.
   > checks \`git rev-parse HEAD\` against it. A lane that cannot fast-forward stops and reports instead of
   >
   > [`docs/agents-detail.md:859`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L859)
 
-- **Confirmed** (from the diagram): Legend TDD: failing test first, then code, then clean up
-  > \*\*PRD\*\* \`/to-prd\` → \*\*Plan\*\* vertical slices in \`plan.md\` → \*\*TDD\*\* \`/tdd\` RED → GREEN → REFACTOR, then
+  AGENTS.md says only "(ff-only first)"; the "or stops" rule is in docs/agents-detail.md, which is not a listed source.
+
+- **Confirmed** (from the diagram): Re-read task at every checkpoint and before long steps; follow newest ORCH UPDATE
+  > \- \*\*When a lane reads:\*\* at every checkpoint, before any long-running step (a full suite, a bake, a render
   >
-  > [`AGENTS.md:180`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L180)
+  > [`docs/agents-detail.md:955`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L955)
+
+  "Before long steps" and ORCH UPDATE are only in docs/agents-detail.md, not a listed source; AGENTS.md covers "at each checkpoint".
 
 </details>
 
 ### Integrate: checks
 
-- **Partly**: Red gates send the work back to the lane.
-  > \3. Integrate only when that merged result is green. Hosted CI then confirms main instead of
+- **Partly**: Red gates block the merge; a subagent finishes the branch.
+  >   branch the same tick: merge it (done), merge sound progress and note what remains, or send another subagent.
   >
-  > [`docs/agents-detail.md:877`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L877)
+  > [`AGENTS.md:94`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L94)
 
-  The source only says not to integrate until green; the closest route back is the hygiene rule to send another subagent at the same branch, not "back to the lane".
+  AGENTS.md says integrate only when green, but a stopped lane has three outcomes (merge, merge sound progress and note the rest, or send another subagent); the page shows only the last.
 
-- **Partly**: Then it opens a PR with Critical changes and real check results.
-  > \*\*One independent task per PR/merge cycle.\*\* Validate locally, open the PR, verify real required checks on the
+- **Partly**: There is exactly one working branch per session; two long-lived branches split the work.
+  > \- \*\*Exactly one working branch per session\*\*, holding both lane code and the orchestrator's own work.
   >
-  > [`AGENTS.md:190`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L190)
+  > [`AGENTS.md:213`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L213)
 
-  Critical changes in the PR body is stated; real required checks are verified on the final head after the PR is open, they are not something the PR is opened with.
+  The rule is in AGENTS.md; the consequence ("silently splits the project in two") is only in docs/agents-detail.md, which is not a listed source.
 
 <details>
 <summary>3 confirmed, with the supporting line</summary>
 
 - **Confirmed**: The orchestrator merges the target into the lane, re-runs the gates and merges green work into the one working branch.
-  > off that branch's HEAD (ff-only first). Before integrating one, \*\*merge\*\* the current target
+  >   into it (one merge commit, not a rebase), re-run lint, the touched packages' full suites and any derived
   >
-  > [`AGENTS.md:215`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L215)
+  > [`AGENTS.md:216`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L216)
 
-- **Confirmed**: There is exactly one working branch per session; two long-lived branches split the work.
-  > \- \*\*Exactly one working branch per session\*\*, holding both lane code and the orchestrator's own work.
+- **Confirmed**: Then it opens a PR with Critical changes and verifies the real checks on the final head.
+  > \*\*One independent task per PR/merge cycle.\*\* Validate locally, open the PR, verify real required checks on the
   >
-  > [`AGENTS.md:213`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L213)
+  > [`AGENTS.md:190`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L190)
 
-- **Confirmed**: Gates green, PR opened (payload: PR)
-  > that each pass on their own can break when combined. Before opening the lane's PR or integrating it:
+- **Confirmed**: integrate → ship: Gates green, PR opened (payload: PR)
+  > \3. Run \`/create-pr\`; inspect actual required hosted check conclusions on the final
   >
-  > [`docs/agents-detail.md:869`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L869)
+  > [`skills/queue.md:349`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L349)
 
 </details>
 
 ### Authorized merge: checks
 
-- **Partly**: The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.
-  > with explicit session or standing project authorization\*\*. Creating a PR does not authorize merging;
+- **Partly** (from the diagram): Owner authorized the merge? session or standing (only a "yes" exit is drawn)
+  >    Creating a PR or draining a queue does \*\*not\*\* grant merge permission. Without
   >
-  > [`docs/agents-detail.md:597`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L597)
+  > [`skills/queue.md:354`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L354)
 
-  Authorization may also be standing project policy; and the queue marks the task done at `done` (before the PR), while `advance` only acknowledges the delivery cycle, so "the task closes when the queue records it" blurs two steps.
+  The gate is real, but the source also defines the "no" path (keep the ready PR, report, gate the next task), which the diagram omits.
 
 <details>
 <summary>3 confirmed, with the supporting line</summary>
+
+- **Confirmed**: With the owner's session or standing authorization, the orchestrator squash-merges and queue advance records the delivery.
+  > \4. Merge only with explicit session authorization or standing project policy.
+  >
+  > [`skills/queue.md:353`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L353)
 
 - **Confirmed**: The PR lands on main as one squash commit.
   > \*\*Merge by squash:\*\* one commit per PR on main, titled with the PR title; publication follows
@@ -1840,64 +1856,44 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/queue.md:134`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L134)
 
-- **Confirmed** (from the diagram): Owner authorizes the merge? (decision gate before main, squash merge)
-  > final head, and merge \*\*only with explicit authorization\*\* (a PR is not approval). A failed gate stays part of
-  >
-  > [`AGENTS.md:191`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L191)
-
 </details>
 
 ## In the source, not shown in the flow
 
-- Every task has a time box (default 4-6 hours of worker time); at the box the orchestrator ships the green part and closes the task or returns it to owner triage, and never auto-continues it.
-  > work is unbuilt: "exhausted" means built and reachable. \*\*Time-box every task\*\* (default 4–6 h of worker time, or
+- When merge authority is absent the orchestrator keeps the ready PR, reports the missing authorization and gates the next task; the flow shows only the authorized path.
+  >    authority, keep the ready PR, report the missing authorization, and gate the
   >
-  > [`AGENTS.md:78`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L78)
+  > [`skills/queue.md:355`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L355)
 
-- When a subagent stops, its branch is resolved in the same tick (merge, merge sound progress and note the rest, or send another subagent); a worker branch is never parked.
-  > \- Never park a worker branch: at most one branch per active subagent plus main. When a subagent stops, resolve its
+- A subagent never asks the user a question; on real ambiguity it fails the task with a needs-spec note instead of guessing or waiting.
+  >   \*\*fails the task with a \`needs-spec: &lt;what's missing&gt;\` note\*\* (\`queue fail &lt;id&gt;
   >
-  > [`AGENTS.md:93`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L93)
+  > [`skills/queue.md:334`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L334)
 
-- Each tick the orchestrator first reviews and ships finished slots, and does housekeeping after dispatch; the flow shows only the dispatch part of the tick.
-  > slots, dispatch the next priority task to every free slot, then housekeeping. Changing models or the slot mix
-  >
-  > [`docs/agents-detail.md:938`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L938)
-
-- Each tick the orchestrator checks that subagents are actually running and progressing; a subagent that "waits" may be asleep.
-  > \- Subagents that "wait" may be asleep: check their processes each tick; subagents never end a turn idle.
-  >
-  > [`AGENTS.md:88`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L88)
-
-- Only the orchestrator publishes: it integrates lanes locally, runs the CI preflight and pushes in controlled batches. The flow says lanes do not push but never shows the push step.
-  > run the CI preflight, and publish in controlled batches.
-  >
-  > [`AGENTS.md:222`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L222)
-
-- At integration the lane worktree and completed artifacts are retired, and zombie worktrees from interrupted sessions are reaped.
+- Completed lane worktrees and branches are retired at integration, and zombie worktrees from interrupted sessions are reaped.
   > \- \*\*Retire completed artifacts at integration\*\*, and reap zombie worktrees left by interrupted sessions:
   >
   > [`AGENTS.md:218`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L218)
 
-- Before deleting branches, worktrees or tasks, confirm the PR is MERGED and its commit is in origin/main.
-  > \- Confirm the PR is \`MERGED\` and its commit is in \`origin/main\` before deleting branches, worktrees or tasks.
+- The orchestrator keeps the queue record true as subagents start, stop and merge (claim, release or done, then render and commit the view).
+  >   the committed \`queue.md\`. Claim a task when its subagent starts, release it or mark it done when
   >
-  > [`AGENTS.md:85`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L85)
+  > [`skills/queue.md:94`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L94)
 
-- The default is one independent task per PR/merge cycle, with subagents parallelizing subtasks of the current task; the flow reads as one separate queue task per slot.
-  > cut a fresh branch from updated main before the next independent task. Subagents may parallelize
+- queue advance checks nothing on GitHub; the orchestrator must verify the merge, branch and CI itself before calling it.
+  > requires evidence references, but \*\*does not query GitHub, verify the branch,
   >
-  > [`docs/agents-detail.md:600`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L600)
+  > [`skills/queue.md:369`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L369)
 
-- The handoff file is removed before the merge to main and check-handoff --pre-merge must pass on the merged head.
-  > branches:\*\* before merging to main, the orchestrator commits \`git rm .pause/handoff.md\`, and
+- Every task is time-boxed (default 4–6 h of worker time): at the box the green part ships and the task closes or returns to the owner.
+  > work is unbuilt: "exhausted" means built and reachable. \*\*Time-box every task\*\* (default 4–6 h of worker time, or
   >
-  > [`AGENTS.md:197`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L197)
+  > [`AGENTS.md:78`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L78)
 
-- A missing topology file means orchestrator only, with no slots to dispatch to.
-  > slot. A missing file means orchestrator only, no slots.
+- done records implementation acceptance only, not a merge; the delivery gate remains until the PR merges.
+  >    integrated branch. \`done\` records implementation acceptance, \*\*not a merge\*\*.
   >
-  > [`docs/agents-detail.md:936`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L936)
+  > [`skills/queue.md:348`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L348)
 
 ## Glossary
 

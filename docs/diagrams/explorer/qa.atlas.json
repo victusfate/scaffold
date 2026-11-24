@@ -1,5 +1,5 @@
 {
-  "summary": "The spec and diagram follow skills/qa.md closely; every stage, tier and stop condition traces to source text, with only small wording gaps (the diagram's stop decision omits the 'fixes keep spreading' trigger, the API legend omits webhooks). The main gap is omission: the fix loop's classify step (verified / best-effort / reverted), the no-new-dependency tooling rule, the never-commit-evidence rule and the every-five-fixes self-check are not shown.",
+  "summary": "Every claim in the qa spec and diagram is stated in skills/qa.md; nothing is unsupported or contradicted. The most important gap is the fix loop's classify step (verified / best-effort / reverted) and the five-fix self-check, which the flow omits even though its stop rule counts reverts. Setup rules on tooling, evidence storage and real credentials are also not shown.",
   "checks": [
     {
       "node": "setup",
@@ -8,7 +8,7 @@
       "claim": "Pick the surfaces the diff touches and start the app as the repo documents it.",
       "verdict": "confirmed",
       "file": "skills/qa.md",
-      "quote": "2. **Pick the surfaces** from the diff (`git diff main...HEAD --stat`) and the"
+      "quote": "3. **Start the app** the way the repo documents it (README, `package.json`"
     },
     {
       "node": "setup",
@@ -35,7 +35,7 @@
       "claim": "Surfaces: Browser pages, API endpoints, CLI commands, background jobs.",
       "verdict": "confirmed",
       "file": "skills/qa.md",
-      "quote": "Surfaces: browser ✓  API ✓  CLI —  job blocked (<reason>)"
+      "quote": "- **browser** — pages and components behind a route"
     },
     {
       "node": "setup",
@@ -110,6 +110,24 @@
       "quote": "In `--report-only` mode, stop here and write the report."
     },
     {
+      "node": "triage",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Fix tiers table: quick = critical, high; standard = critical, high, medium; exhaustive = all, including low and cosmetic.",
+      "verdict": "confirmed",
+      "file": "skills/qa.md",
+      "quote": "**Fix tiers:** quick = critical + high; standard = + medium; exhaustive = + low and"
+    },
+    {
+      "node": "triage",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Fix tiers table: standard is the default tier.",
+      "verdict": "confirmed",
+      "file": "skills/qa.md",
+      "quote": "| Tier | `standard` | `--quick`, `--exhaustive` |"
+    },
+    {
       "node": "fixloop",
       "origin": "spec",
       "kind": "role",
@@ -134,7 +152,7 @@
       "claim": "A CSS-only defect may use a before/after screenshot instead of a test.",
       "verdict": "confirmed",
       "file": "skills/qa.md",
-      "quote": "production seam that only the test needs, and a CSS-only defect may use a"
+      "quote": "before/after screenshot instead of a test."
     },
     {
       "node": "fixloop",
@@ -194,7 +212,7 @@
       "node": "setup",
       "origin": "spec",
       "kind": "step",
-      "claim": "App ready — surfaces",
+      "claim": "setup → probe: App ready (payload: surfaces)",
       "verdict": "confirmed",
       "file": "skills/qa.md",
       "quote": "background and wait for readiness by polling (HTTP 200, a log line), never a"
@@ -203,7 +221,7 @@
       "node": "probe",
       "origin": "spec",
       "kind": "step",
-      "claim": "Issues logged — QA-NNN list",
+      "claim": "probe → triage: Issues logged (payload: QA-NNN list)",
       "verdict": "confirmed",
       "file": "skills/qa.md",
       "quote": "Each issue gets: ID (`QA-001`…), severity (critical / high / medium / low), surface,"
@@ -212,7 +230,7 @@
       "node": "triage",
       "origin": "spec",
       "kind": "step",
-      "claim": "In-tier issues chosen — fix list",
+      "claim": "triage → fixloop: In-tier issues chosen (payload: fix list)",
       "verdict": "confirmed",
       "file": "skills/qa.md",
       "quote": "For each in-tier issue, highest severity first:"
@@ -221,7 +239,7 @@
       "node": "fixloop",
       "origin": "spec",
       "kind": "step",
-      "claim": "Fixes committed — fix(qa) commits",
+      "claim": "fixloop → final: Fixes committed (payload: fix(qa) commits)",
       "verdict": "confirmed",
       "file": "skills/qa.md",
       "quote": "`fix(qa): QA-NNN — <short description>`."
@@ -230,11 +248,10 @@
       "node": "final",
       "origin": "spec",
       "kind": "step",
-      "claim": "Regressions checked — evidence",
-      "verdict": "partial",
+      "claim": "final → report: Regressions checked (payload: regressions, if any)",
+      "verdict": "confirmed",
       "file": "skills/qa.md",
-      "quote": "If anything regressed, say so first in the report.",
-      "note": "Regressions feeding the report is stated; the source does not say evidence is the payload handed to the report (the template carries no evidence column, and evidence stays in a scratch directory)."
+      "quote": "If anything regressed, say so first in the report."
     },
     {
       "node": "setup",
@@ -243,7 +260,7 @@
       "claim": "Surface: A way users reach the app: page, API, command or job.",
       "verdict": "confirmed",
       "file": "skills/qa.md",
-      "quote": "Surfaces: browser ✓  API ✓  CLI —  job blocked (<reason>)"
+      "quote": "2. **Pick the surfaces** from the diff (`git diff main...HEAD --stat`) and the"
     },
     {
       "node": "probe",
@@ -267,19 +284,28 @@
       "node": "probe",
       "origin": "diagram",
       "kind": "box",
+      "claim": "Run each entry point: happy path + bad input",
+      "verdict": "confirmed",
+      "file": "skills/qa.md",
+      "quote": "- **API** — happy path, invalid input, missing auth, and idempotency for writes."
+    },
+    {
+      "node": "probe",
+      "origin": "diagram",
+      "kind": "box",
       "claim": "Capture evidence: screenshots, responses, logs",
       "verdict": "confirmed",
       "file": "skills/qa.md",
       "quote": "Put evidence (screenshots, response dumps, logs) in a scratch directory outside"
     },
     {
-      "node": "triage",
+      "node": "fixloop",
       "origin": "diagram",
       "kind": "box",
-      "claim": "fix tier: quick = critical + high, standard adds medium, exhaustive adds low + cosmetic",
+      "claim": "/investigate: root cause, failing regression test first",
       "verdict": "confirmed",
       "file": "skills/qa.md",
-      "quote": "**Fix tiers:** quick = critical + high; standard = + medium; exhaustive = + low and"
+      "quote": "1. **Diagnose and fix** with `/investigate` Phases 1–4: root cause first, a"
     },
     {
       "node": "fixloop",
@@ -291,42 +317,13 @@
       "quote": "2. **Re-verify the QA probe:** re-run the original probe and the adjacent happy"
     },
     {
-      "node": "fixloop",
+      "node": "report",
       "origin": "diagram",
       "kind": "box",
-      "claim": "2 reverts, off-issue edit, or 30 fixes? stop and report",
-      "verdict": "partial",
-      "file": "skills/qa.md",
-      "quote": "files. Hard cap: 30 fixes per run.",
-      "note": "The diagram's stop decision drops the fourth trigger the source lists (fixes keep spreading across many files); the spec risk includes it."
-    },
-    {
-      "node": "setup",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "CLI: command-line interface: commands, flags, exit codes",
+      "claim": "Issue table: ID, severity, status, commit",
       "verdict": "confirmed",
       "file": "skills/qa.md",
-      "quote": "- **CLI** — commands, flags, exit codes"
-    },
-    {
-      "node": "setup",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "job: background work: workers, queues, scheduled tasks",
-      "verdict": "confirmed",
-      "file": "skills/qa.md",
-      "quote": "- **job** — workers, queues, scheduled tasks"
-    },
-    {
-      "node": "setup",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "API: application programming interface: HTTP endpoints",
-      "verdict": "partial",
-      "file": "skills/qa.md",
-      "quote": "- **API** — HTTP endpoints, webhooks",
-      "note": "The source's API surface also includes webhooks."
+      "quote": "| ID | Sev | Surface | Issue | Status | Commit |"
     },
     {
       "node": "report",
@@ -336,16 +333,57 @@
       "verdict": "confirmed",
       "file": "skills/qa.md",
       "quote": "End with one line for the PR body:"
+    },
+    {
+      "node": "setup",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: API — HTTP endpoints, webhooks",
+      "verdict": "confirmed",
+      "file": "skills/qa.md",
+      "quote": "- **API** — HTTP endpoints, webhooks"
+    },
+    {
+      "node": "setup",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: CLI — commands, flags, exit codes",
+      "verdict": "confirmed",
+      "file": "skills/qa.md",
+      "quote": "- **CLI** — commands, flags, exit codes"
+    },
+    {
+      "node": "setup",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: job — background work: workers, queues, scheduled tasks",
+      "verdict": "confirmed",
+      "file": "skills/qa.md",
+      "quote": "- **job** — workers, queues, scheduled tasks"
+    },
+    {
+      "node": "setup",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Title: /qa — drive the real app, fix what breaks",
+      "verdict": "confirmed",
+      "file": "skills/qa.md",
+      "quote": "Run the real app, drive the changed entry points the way a user would, then fix"
     }
   ],
   "missing": [
     {
-      "what": "Fix-loop step 4 classifies each fix as verified, best-effort, or reverted (revert only that commit, keep the test and evidence, mark deferred); the flow never shows these outcomes.",
+      "what": "Each fix is classified verified, best-effort or reverted; a reverted fix reverts only its own commit, keeps the test and evidence, and is marked deferred. The flow mentions \"two reverts\" but never shows this step.",
       "file": "skills/qa.md",
       "quote": "4. **Classify:** verified / best-effort (fix applied, could not fully re-verify, say"
     },
     {
-      "what": "Tooling rule: use the repo's existing runner or client and never add a dependency for QA; with no browser tooling, fall back to a throwaway Playwright script outside the repo or mark browser probes blocked.",
+      "what": "The loop checks whether it is helping after every five fixes and after any revert.",
+      "file": "skills/qa.md",
+      "quote": "**Self-regulation:** after every five fixes, and after any revert, check whether"
+    },
+    {
+      "what": "Tooling rule: use what the repo already has and add no dependency for QA; a browser surface with no available tooling is marked blocked.",
       "file": "skills/qa.md",
       "quote": "`curl` or its HTTP test client, the CLI binary. Do not add a dependency for QA."
     },
@@ -355,22 +393,17 @@
       "quote": "the repo, or a gitignored one. Never commit it."
     },
     {
-      "what": "Self-regulation checkpoint: after every five fixes and after any revert, check whether the loop is helping.",
+      "what": "Never ask the user for real credentials and never send real emails, payments or webhooks to third parties (the flow shows only \"never production\").",
       "file": "skills/qa.md",
-      "quote": "**Self-regulation:** after every five fixes, and after any revert, check whether"
+      "quote": "for real credentials in chat, never point probes at production, and never send"
     },
     {
-      "what": "Identity safety: never ask for real credentials in chat and never send real emails, payments or webhooks to third parties.",
+      "what": "The default scope is diff-aware: changed behavior plus one adjacent happy path per surface.",
       "file": "skills/qa.md",
-      "quote": "real emails, payments, or webhooks to third parties."
+      "quote": "Default is diff-aware: changed behavior plus one adjacent happy path per surface."
     },
     {
-      "what": "Per-surface probe assertions (browser console errors and failed requests, API persisted state and idempotency, CLI exit code and files written, job retry without duplicate side effects) are not shown.",
-      "file": "skills/qa.md",
-      "quote": "Assert status code, response shape, and the persisted state (read it back)."
-    },
-    {
-      "what": "QA fix additions: extend an existing test or fixture when one covers the boundary and never add a production seam only the test needs.",
+      "what": "QA fixes extend an existing test or fixture where one covers the boundary and never add a production seam only the test needs.",
       "file": "skills/qa.md",
       "quote": "an existing test or fixture when one covers the boundary, never add a"
     },
@@ -378,6 +411,16 @@
       "what": "The start command is recorded in the report.",
       "file": "skills/qa.md",
       "quote": "fixed sleep. Record the start command in the report."
+    },
+    {
+      "what": "In-tier issues are fixed highest severity first.",
+      "file": "skills/qa.md",
+      "quote": "For each in-tier issue, highest severity first:"
+    },
+    {
+      "what": "/feature-chain Phase 3 runs /qa after /code-refiner when the feature has a user-facing entry point.",
+      "file": "skills/qa.md",
+      "quote": "- `/feature-chain` Phase 3 runs `/qa` after `/code-refiner` when the feature has a"
     }
   ],
   "code": {

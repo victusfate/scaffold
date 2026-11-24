@@ -2,8 +2,8 @@
   "title": "Feature chain",
   "lede": "How a feature idea becomes a reviewed, tested PR. The owner decides intent and authorizes merges; the agent does the rest.",
   "detail": "../generated/feature-chain.svg",
-  "sources": ["docs/diagrams/src/feature-chain.mmd", "skills/feature-chain.md"],
-  "reviewed": "e75f4688d357",
+  "sources": ["docs/diagrams/src/feature-chain.mmd", "skills/feature-chain.md", "skills/tdd.md", "skills/co-plan.md", "skills/code-refiner.md", "skills/to-prd.md", "docs/agents-detail.md", "skills/design-review.md"],
+  "reviewed": "7f678bd2e35f",
   "lanes": [
     { "id": "plan", "name": "Plan" },
     { "id": "build", "name": "Build" },
@@ -12,20 +12,20 @@
   "nodes": {
     "design": { "lane": "plan", "name": "Design", "role": "Agree on what to build and why, one question at a time.", "link": "../../../skills/co-plan.md",
       "details": ["The agent explores the code first and only asks what the code can't answer, each time with a recommended answer.",
-        "Resumes at the first missing artifact in `docs/<slug>/`; a supplied document is placed as design.md.",
+        "Resumes at the first missing artifact in `docs/<slug>/`, or at the first incomplete slice when plan.md exists; a supplied document is placed as design.md.",
         { "t": "Output: design.md", "more": ["Decisions with rationale, canonical vocabulary, edge cases.", "Then /design-review patches structural gaps."] }],
       "qs": ["What makes a design question worth asking the owner instead of deciding?"] },
     "prd": { "lane": "plan", "name": "PRD", "role": "Turn the design into user stories and testing decisions, without re-interviewing.",
       "details": ["Cross-checks the design against the codebase and confirms with the owner which modules need tests."] },
     "tdd": { "lane": "build", "name": "TDD slices", "role": "Build in thin vertical slices: failing test, minimal code, refactor, commit.", "link": "tdd.md",
-      "details": ["Granularity is confirmed once with the owner; after that, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced."],
+      "details": ["Granularity is confirmed once with the owner; after that, an interface change is surfaced only if it departs from plan.md, and a large fix is always surfaced."],
       "risks": ["Writing all tests first verifies imagined behavior; one test at a time keeps them honest."] },
     "refine": { "lane": "build", "name": "Refine", "role": "Two independent reviewers (correctness, structure) report; one pass applies every fix.", "link": "review-gates.md",
       "details": ["A test weakened to pass counts as a defect, not a fix."] },
-    "qa": { "lane": "build", "name": "QA", "role": "Run the real app and drive the changed entry points the way a user would.", "link": "qa.md",
+    "qa": { "lane": "build", "name": "QA", "role": "Run the real app, drive the changed entry points the way a user would, and fix what breaks.", "link": "qa.md",
       "details": ["Skipped, with the reason recorded, when the change has no runtime entry point."] },
-    "review": { "lane": "ship", "name": "Owner review", "role": "A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.", "link": "pr-workflow.md",
-      "details": ["Merging needs explicit owner authorization; a PR is not approval."] }
+    "review": { "lane": "ship", "name": "Owner review", "role": "Give the owner a summary, then stop for review or, for a queued task, open its PR; merge only with authority.", "link": "pr-workflow.md",
+      "details": ["Merging needs explicit owner authorization; a PR is not approval. Without it, a queued task keeps its ready PR and the next task waits."] }
   },
   "flows": [
     { "id": "main", "name": "Idea to PR", "steps": [
@@ -37,7 +37,7 @@
   ],
   "glossary": {
     "prd": { "t": "PRD", "a": ["PRD"], "d": "Product requirements document: the problem, the solution and the user stories." },
-    "slice": { "t": "Vertical slice", "a": ["slice", "slices"], "d": "A thin piece of a feature that cuts through every layer and works on its own." }
+    "slice": { "t": "Vertical slice", "a": ["slice", "slices"], "d": "A piece of a feature that cuts through every layer: data, logic, UI and tests." }
   },
   "ask": { "context": "The reader wants to understand scaffold's feature chain: how an AI agent takes a feature from idea to reviewed PR." }
 }

@@ -1,5 +1,5 @@
 {
-  "summary": "The flow matches skills/add-linter.md well: all six stages, their order and the stop conditions are stated in the source. Three claims are loose: the sidecar glossary says the file is never overwritten although an approved merge does write over it, the merge-to-finish step names only merged configs although fresh adds are tuned too, and the legend says workflows run on each push or PR, which the doc does not state. The main omission is the TypeScript lint:fix type-check gate, along with the no-package.json, format-only-language and CLI-missing branches.",
+  "summary": "The add-linter page matches skills/add-linter.md: all stages, states and steps are stated in the doc, with only two wording-level partials. The main gap is what the page omits: packages are not added for sidecar configs until the agent applies the merge, and the format-only-language and missing-CLI branches are not shown.",
   "checks": [
     {
       "node": "detect",
@@ -32,7 +32,7 @@
       "node": "detect",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Config states table: none = No config yet -> Fresh add",
+      "claim": "Config states: none - No config yet - Fresh add",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
       "quote": "- `state: \"none\"` → no linter config found; offer a **fresh add**"
@@ -41,7 +41,7 @@
       "node": "detect",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Config states table: foreign = A config without scaffold's marker -> Merge",
+      "claim": "Config states: foreign - A config without scaffold's marker - Merge",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
       "quote": "- `state: \"foreign\"` → config exists but lacks the scaffold marker; offer a **merge**"
@@ -50,7 +50,7 @@
       "node": "detect",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Config states table: stale = From an older scaffold template -> Re-merge",
+      "claim": "Config states: stale - From an older scaffold template - Re-merge",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
       "quote": "- `state: \"stale\"` → scaffold config whose template has since changed; offer a"
@@ -59,7 +59,7 @@
       "node": "detect",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Config states table: scaffold = Current -> Skip",
+      "claim": "Config states: scaffold - Current - Skip",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
       "quote": "- `state: \"scaffold\"` → current scaffold config; skip silently"
@@ -107,7 +107,7 @@
       "claim": "For an existing config: The original is left untouched.",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
-      "quote": "the existing config is left untouched"
+      "quote": "  the existing config is left untouched"
     },
     {
       "node": "emit",
@@ -125,7 +125,7 @@
       "claim": "The agent merges the sidecar into your config, keeping your rules, and writes only on approval.",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
-      "quote": "- **Merge and tune are agent-driven, not tool features.** The"
+      "quote": "The CLI never edits an existing config; you perform the merge. For each"
     },
     {
       "node": "merge",
@@ -134,7 +134,7 @@
       "claim": "Missing scaffold thresholds are added and the marker line is carried over.",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
-      "quote": "- carry the scaffold marker line from the sidecar (it holds the `sha256:` stamp)"
+      "quote": "   - carry the scaffold marker line from the sidecar (it holds the `sha256:` stamp)"
     },
     {
       "node": "merge",
@@ -150,9 +150,10 @@
       "origin": "spec",
       "kind": "risk",
       "claim": "On a conflict your value is kept and the conflict is listed, so you see what scaffold would have changed.",
-      "verdict": "confirmed",
+      "verdict": "partial",
       "file": "skills/add-linter.md",
-      "quote": "scaffold-enforced) **keep the user's value** and record the conflict."
+      "quote": "     scaffold-enforced) **keep the user's value** and record the conflict.",
+      "note": "Keeping the user's value and listing the conflict is stated; 'so you see what scaffold would have changed' is the page's own rationale (the source only shows a conflict list with both values)."
     },
     {
       "node": "finish",
@@ -185,7 +186,7 @@
       "node": "detect",
       "origin": "spec",
       "kind": "step",
-      "claim": "detect -> ask: Actionable languages found (payload: language states)",
+      "claim": "detect -> ask: Actionable languages found (language states)",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
       "quote": "Ask about each language with state `none`, `foreign`, or `stale` exactly once, as"
@@ -194,7 +195,7 @@
       "node": "ask",
       "origin": "spec",
       "kind": "step",
-      "claim": "ask -> emit: Languages confirmed (payload: confirmed list)",
+      "claim": "ask -> emit: Languages confirmed (confirmed list)",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
       "quote": "Pass the confirmed language list as JSON to the linter-setup CLI:"
@@ -203,30 +204,29 @@
       "node": "emit",
       "origin": "spec",
       "kind": "step",
-      "claim": "emit -> merge: Sidecars written for existing configs (payload: .scaffold-new files)",
+      "claim": "Sidecar: A .scaffold-new copy of scaffold's version saved beside your file for review; writing it leaves your file unchanged.",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
-      "quote": "1. Read the existing `[configFile]` and the `[configFile].scaffold-new` sidecar."
+      "quote": "- `foreign`/`stale` → writes the template to `[configFile].scaffold-new` (sidecar);"
     },
     {
       "node": "merge",
       "origin": "spec",
       "kind": "step",
-      "claim": "merge -> finish: Merges approved or declined (payload: merged configs)",
-      "verdict": "partial",
+      "claim": "merge -> finish: Merges approved or declined (written or merged configs)",
+      "verdict": "confirmed",
       "file": "skills/add-linter.md",
-      "quote": "For each language whose config was written (fresh add) or merged, offer an optional",
-      "note": "Tuning takes freshly written configs as well as merged ones, and a declined merge is neither merged nor tuned; the payload names only merged configs."
+      "quote": "5. If the user declines: leave the sidecar and original in place; nothing is marked."
     },
     {
       "node": "emit",
       "origin": "spec",
       "kind": "glossary",
-      "claim": "Sidecar: A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten.",
+      "claim": "Sidecar: A .scaffold-new copy saved beside your file for you to review and merge; writing it leaves your file unchanged.",
       "verdict": "partial",
       "file": "skills/add-linter.md",
-      "quote": "existing `.bak`; if one exists, surface it and ask), write the merged config to",
-      "note": "Only the CLI never overwrites the file; after the user approves the merge, the merged config is written over the original (which is backed up to .bak)."
+      "quote": "- `foreign`/`stale` → writes the template to `[configFile].scaffold-new` (sidecar);",
+      "note": "The sidecar is a copy of scaffold's template, not of the user's file; the wording 'copy saved beside your file' can be read either way, and the agent, not the user, performs the merge."
     },
     {
       "node": "merge",
@@ -235,13 +235,31 @@
       "claim": "Marker: A hash-stamped line that tags a config as scaffold's.",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
-      "quote": "- carry the scaffold marker line from the sidecar (it holds the `sha256:` stamp)"
+      "quote": "- `none` → writes the config (marker hash-stamped) + workflow"
+    },
+    {
+      "node": "emit",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "E1: Pipe confirmed list to linter-setup/run",
+      "verdict": "confirmed",
+      "file": "skills/add-linter.md",
+      "quote": "echo '[\"js\",\"python\"]' | node tools/linter-setup/run --into ."
+    },
+    {
+      "node": "emit",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "E2: none -> config + workflow",
+      "verdict": "confirmed",
+      "file": "skills/add-linter.md",
+      "quote": "- `none` → writes the config (marker hash-stamped) + workflow"
     },
     {
       "node": "finish",
       "origin": "diagram",
       "kind": "box",
-      "claim": "T3: Show diff, write on approval",
+      "claim": "T3: Show diff, write on approval (tuning edits)",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
       "quote": "3. Apply confirmed edits to `[configFile]`, show the diff, write on approval."
@@ -253,13 +271,13 @@
       "claim": "F1: Per language: written, deps, scripts, merged, tuned, skipped, declined",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
-      "quote": "| `skipped` | \"— [lang]: already current (skipped)\" |"
+      "quote": "| `declined` | \"— [lang]: left unchanged\" |"
     },
     {
       "node": "finish",
       "origin": "diagram",
       "kind": "box",
-      "claim": "F2 -->|yes| F3: git commit: feat: add scaffold linter config",
+      "claim": "F3: git commit: feat: add scaffold linter config",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
       "quote": "git commit -m \"feat: add scaffold linter config for [languages]\""
@@ -268,32 +286,46 @@
       "node": "emit",
       "origin": "diagram",
       "kind": "box",
-      "claim": "E2: none → config + workflow",
+      "claim": "Legend: workflow - a GitHub Actions file that runs the linter",
       "verdict": "confirmed",
       "file": "skills/add-linter.md",
-      "quote": "- `none` → writes the config (marker hash-stamped) + workflow"
+      "quote": "Add linter configs and GitHub Actions workflows for languages detected in the"
     },
     {
-      "node": "emit",
+      "node": "merge",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend L2 workflow: a GitHub Actions file that runs the linter on each push or PR",
-      "verdict": "partial",
+      "claim": "Legend: .bak - a backup of your original config",
+      "verdict": "confirmed",
       "file": "skills/add-linter.md",
-      "quote": "Add linter configs and GitHub Actions workflows for languages detected in the",
-      "note": "The skill doc says the workflows are GitHub Actions workflows but never states when they run; \"on each push or PR\" is not in skills/add-linter.md."
+      "quote": "| `merged` | \"✓ [lang]: merged into [file] (original kept as [file].bak)\" |"
     }
   ],
   "missing": [
     {
-      "what": "The TypeScript lint:fix script is gated by the type-checker (`eslint . --fix && tsc --noEmit`); a bare `eslint . --fix` must never be run on a type-aware config.",
+      "what": "A sidecar does not add npm packages, so the agent adds them when it applies the merge; the flow shows deps only for adopted configs.",
+      "file": "skills/add-linter.md",
+      "quote": "adopted the config yet (add them when you apply the merge in Step 4). With no"
+    },
+    {
+      "what": "If a .bak already exists the agent surfaces it and asks, rather than silently skipping the backup.",
+      "file": "skills/add-linter.md",
+      "quote": "   existing `.bak`; if one exists, surface it and ask), write the merged config to"
+    },
+    {
+      "what": "When the user declines a merge, the sidecar and the original both stay in place and nothing is marked.",
+      "file": "skills/add-linter.md",
+      "quote": "5. If the user declines: leave the sidecar and original in place; nothing is marked."
+    },
+    {
+      "what": "The TypeScript lint:fix script runs the type-checker after the autofix, and a bare eslint --fix must never be run on a type-aware config.",
       "file": "skills/add-linter.md",
       "quote": "fix is only trusted once the type-checker still passes. Never run a bare"
     },
     {
-      "what": "With no package.json the CLI does not create one; it reports the `npm i -D` one-liner, and the user is reminded to run `npm install` after deps are added.",
+      "what": "Tuning never changes the marker stamp, so a tuned config is not reported as stale.",
       "file": "skills/add-linter.md",
-      "quote": "one. Remind the user to run `npm install` after deps are added."
+      "quote": "4. Declining keeps scaffold's defaults. Tuning never changes the marker stamp"
     },
     {
       "what": "Format-only languages (zig, mojo) get a workflow only and skip the merge and tune steps.",
@@ -301,29 +333,19 @@
       "quote": "- **Format-only languages** (zig, mojo): no config file, workflow only, so"
     },
     {
-      "what": "If the linter-setup CLI is not available, the skill falls back to copying the language templates from lib/linters/<lang>/ by hand.",
+      "what": "With no package.json the CLI reports an npm install one-liner instead of creating one, and the user is reminded to run npm install after deps are added.",
+      "file": "skills/add-linter.md",
+      "quote": "`package.json`, the CLI reports the `npm i -D …` one-liner instead of creating"
+    },
+    {
+      "what": "If tools/linter-setup/run is not available, the skill falls back to copying templates from lib/linters/<lang>/ by hand.",
       "file": "skills/add-linter.md",
       "quote": "- If `tools/linter-setup/run` is not available (consumer repo without scaffold"
     },
     {
-      "what": "Tuning never changes the marker stamp, because staleness tracks the template and not the tuned values.",
-      "file": "skills/add-linter.md",
-      "quote": "4. Declining keeps scaffold's defaults. Tuning never changes the marker stamp"
-    },
-    {
-      "what": "When a .bak already exists the agent must surface it and ask, not just avoid overwriting it.",
-      "file": "skills/add-linter.md",
-      "quote": "existing `.bak`; if one exists, surface it and ask), write the merged config to"
-    },
-    {
-      "what": "If the user declines the commit, the written files are listed so they can stage and commit them manually.",
+      "what": "If the user declines the commit, the written files are listed so they can commit by hand.",
       "file": "skills/add-linter.md",
       "quote": "If no, list the written files so the user can stage and commit them manually."
-    },
-    {
-      "what": "The tune step also covers fixture paths (ESLint ignores plus a root .quality-ignore) and offers an opt-in npm-workspaces TypeScript template.",
-      "file": "skills/add-linter.md",
-      "quote": "6. **Multi-package TypeScript.** For an npm-workspaces repo, offer the opt-in"
     }
   ],
   "code": {

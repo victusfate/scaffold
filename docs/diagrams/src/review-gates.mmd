@@ -45,7 +45,7 @@ flowchart TB
   subgraph FIX["4 · One serial fixer"]
     direction TB
     F1["Single agent applies<br/>the whole work list"]:::lane
-    F2["Re-run the test suite"]:::lane
+    F2["Re-run the test suite<br/>if a runner is found"]:::lane
     F3["Fix needs a test change?<br/>surface it, never weaken"]:::owner
     F1 --> F2 --> F3
   end
@@ -76,7 +76,7 @@ flowchart TB
     L1["isolated reviewer<br/>fresh subagent with no<br/>session context, so it<br/>reviews objectively"]:::git
     L2["rubric<br/>four scores: Quality,<br/>Readability, Encapsulation,<br/>Clarity"]:::git
     L3["DRY<br/>Don't Repeat Yourself:<br/>one canonical place<br/>per concept"]:::git
-    L4["diff economy<br/>added lines must earn<br/>their place; deletions<br/>count as credit"]:::git
+    L4["diff economy<br/>added lines must earn<br/>their place; deletions<br/>that keep behavior<br/>count as credit"]:::git
     L5["receipt<br/>record of a verified run,<br/>valid only for that<br/>exact code"]:::git
     L6["tree identity<br/>HEAD, tree, index, diffs,<br/>untracked inputs, base,<br/>plan, gate-script<br/>hashes, tool binaries"]:::git
     L7["fail closed<br/>when in doubt, block<br/>and re-run instead<br/>of passing"]:::git

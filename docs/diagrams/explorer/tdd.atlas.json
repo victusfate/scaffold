@@ -1,5 +1,5 @@
 {
-  "summary": "The TDD flow matches skills/tdd.md closely: every stage, gate and commit rule is in the source. The differences are overstatements (\"every score must be 10/10\" although surfaced violations may be committed, a caller-side test presented as required, slices said to run \"without pausing\") and the diagram calling REFACTOR a tidy-up when the source calls it a confirmation pass. The main thing not shown is that the rubric is loaded before GREEN code is written, plus the optional integration-test step.",
+  "summary": "The TDD spec and diagram match skills/tdd.md closely; every stage, gate, threshold and artifact is stated in the source. The only non-confirmed items are small teaching glosses ('keeps them honest', TDD as 'then clean up', RED 'because the behavior doesn't exist yet'). The main omission is that the rubric is loaded before GREEN code is written, plus the optional integration-test section.",
   "checks": [
     {
       "node": "slices",
@@ -41,11 +41,10 @@
       "node": "slices",
       "origin": "spec",
       "kind": "detail",
-      "claim": "After the size is confirmed, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.",
-      "verdict": "partial",
+      "claim": "After the size is confirmed, an interface change is surfaced only if it departs from plan.md; a large fix is always surfaced.",
+      "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from `plan.md`.",
-      "note": "tdd.md states the two surfacing conditions but never says slices otherwise run without pausing, and it also stops the loop for /investigate on an unexpected failure."
+      "quote": "Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from `plan.md`."
     },
     {
       "node": "prep",
@@ -81,7 +80,7 @@
       "claim": "Use the design's evidence, or mark it unknown.",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "evidence, or mark it unknown."
+      "quote": "evidence, or mark it unknown. If a probe contradicts intent, revise design/PRD"
     },
     {
       "node": "prep",
@@ -90,7 +89,7 @@
       "claim": "If a probe contradicts the intent, revise the design, PRD and unfinished slices first.",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "If a probe contradicts intent, revise design/PRD"
+      "quote": "and unfinished slices before implementing more of that premise."
     },
     {
       "node": "loop",
@@ -117,16 +116,17 @@
       "claim": "Tests use the public interface only, so they survive an internal refactor.",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "A good test reads like a specification and survives internal refactors"
+      "quote": "Tests verify **behavior through public interfaces**, not implementation details. A good test reads like a specification and survives internal refactors"
     },
     {
       "node": "loop",
       "origin": "spec",
       "kind": "risk",
       "claim": "Writing all tests first verifies imagined behavior; one test at a time keeps them honest.",
-      "verdict": "confirmed",
+      "verdict": "partial",
       "file": "skills/tdd.md",
-      "quote": "Tests written in bulk verify imagined behavior and become insensitive to real changes."
+      "quote": "Tests written in bulk verify imagined behavior and become insensitive to real changes.",
+      "note": "The source states the failure of bulk-written tests and the one-test-at-a-time rule, but 'keeps them honest' is the page's own rationale for the rule."
     },
     {
       "node": "loop",
@@ -150,11 +150,10 @@
       "node": "refactor",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Every score must be 10/10",
-      "verdict": "partial",
+      "claim": "Aim for 10/10 on every score",
+      "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "- Do not commit until all scores are 10/10 or violations are explicitly surfaced.",
-      "note": "The source allows a commit below 10/10 when the violation is explicitly surfaced to the user, so \"must\" overstates it."
+      "quote": "- Do not commit until all scores are 10/10 or violations are explicitly surfaced."
     },
     {
       "node": "refactor",
@@ -169,7 +168,7 @@
       "node": "refactor",
       "origin": "spec",
       "kind": "detail",
-      "claim": "A bigger fix is surfaced to the user, never silently patched.",
+      "claim": "A bigger fix is flagged to the user for cleanup, never silently patched.",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
       "quote": "- Fix >30 lines or requires architectural rethinking: surface to the user with the citation; do not silently patch."
@@ -190,7 +189,7 @@
       "claim": "Assertions use sentinel values, not defaults.",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "Replace it with a sentinel (non-default) value"
+      "quote": "Does any assertion use the default value for the field it verifies? Replace it with a sentinel (non-default) value"
     },
     {
       "node": "refactor",
@@ -205,11 +204,10 @@
       "node": "refactor",
       "origin": "spec",
       "kind": "detail",
-      "claim": "At least one test is written from the caller's side.",
-      "verdict": "partial",
+      "claim": "A missing caller-side test is flagged for the integration suite.",
+      "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "If not, flag it for the integration test suite.",
-      "note": "The source asks whether such a test exists and, if not, has it flagged for the integration test suite; it is not a hard requirement of the slice."
+      "quote": "If not, flag it for the integration test suite."
     },
     {
       "node": "commit",
@@ -218,7 +216,7 @@
       "claim": "Commit the red, green and refactor steps, log the slice, then start the next one.",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "Append to `./docs/<feature-slug>/tdd-log.md`:"
+      "quote": "Execute `./docs/<feature-slug>/plan.md` using TDD, one vertical slice at a time."
     },
     {
       "node": "commit",
@@ -254,7 +252,7 @@
       "claim": "/code-refiner runs in auto-fix mode: correctness and structure reviews, then one fix pass.",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "merges the findings, applies them in one coherent pass, and re-verifies (correctness clear, all rubric dimensions 10/10)"
+      "quote": "correctness + test-integrity (`validate`) and structural quality (`simplify`) — merges the findings, applies them in one coherent pass"
     },
     {
       "node": "done",
@@ -272,7 +270,7 @@
       "claim": "Slice size confirmed (payload: plan.md)",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "Granularity was confirmed once at plan time"
+      "quote": "Confirm granularity once with the user before coding."
     },
     {
       "node": "prep",
@@ -290,7 +288,7 @@
       "claim": "Tests green (payload: code + tests)",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "Confirm quality scores — only after GREEN, never while RED"
+      "quote": "REFACTOR: Confirm quality scores — only after GREEN, never while RED"
     },
     {
       "node": "refactor",
@@ -305,21 +303,19 @@
       "node": "commit",
       "origin": "spec",
       "kind": "step",
-      "claim": "No slices left (payload: tdd-log.md)",
-      "verdict": "partial",
+      "claim": "No slices left (payload: commits)",
+      "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "When the full test suite is green, run `/code-refiner` in auto-fix mode.",
-      "note": "The final stage is gated on all slices passing and the full suite being green; the source does not say tdd-log.md is what is handed to it."
+      "quote": "### When all slices pass"
     },
     {
       "node": "slices",
       "origin": "spec",
       "kind": "glossary",
-      "claim": "Vertical slice: A thin piece of a feature that cuts through every layer and works on its own.",
-      "verdict": "partial",
+      "claim": "Vertical slice: A piece of a feature that cuts through every layer: data, logic, UI and tests.",
+      "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "(each cuts through all layers: data → logic → UI → tests)",
-      "note": "The source says a slice cuts through all layers; it does not say a slice is thin or that it works on its own."
+      "quote": "(each cuts through all layers: data → logic → UI → tests)"
     },
     {
       "node": "refactor",
@@ -355,7 +351,7 @@
       "claim": "RED: next test, confirm it fails",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "Write next test → confirm it fails"
+      "quote": "RED:      Write next test → confirm it fails"
     },
     {
       "node": "loop",
@@ -364,7 +360,7 @@
       "claim": "GREEN: minimal code, confirm it passes",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "Write minimal code to pass → confirm it passes"
+      "quote": "GREEN:    Write minimal code to pass → confirm it passes"
     },
     {
       "node": "commit",
@@ -373,7 +369,7 @@
       "claim": "More slices? yes → back to stage 2",
       "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "Execute `./docs/<feature-slug>/plan.md` using TDD, one vertical slice at a time."
+      "quote": "### Workflow per slice"
     },
     {
       "node": "done",
@@ -385,36 +381,64 @@
       "quote": "Wait for the user to confirm or request changes."
     },
     {
+      "node": "loop",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend TDD: Test-Driven Development: failing test first, then code, then clean up",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "Never write code that would violate the rubric; REFACTOR is a confirmation pass, not a correction pass.",
+      "note": "Dictionary-style definition, but 'then clean up' differs from the source, which makes REFACTOR a confirmation pass and not a correction pass."
+    },
+    {
+      "node": "loop",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend RED: a new test that fails because the behavior doesn't exist yet",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "RED:      Write next test → confirm it fails",
+      "note": "The source says the new test must be confirmed to fail and must fail for the reason it was written for; 'because the behavior doesn't exist yet' is the page's own gloss."
+    },
+    {
+      "node": "loop",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend GREEN: just enough code to make that test pass",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "GREEN:    Write minimal code to pass → confirm it passes"
+    },
+    {
       "node": "refactor",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Stage title and legend: REFACTOR confirms quality / check and tidy the code without changing behavior",
-      "verdict": "partial",
+      "claim": "Legend REFACTOR: confirm the quality scores after GREEN, before committing",
+      "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "REFACTOR is a confirmation pass, not a correction pass.",
-      "note": "The source defines REFACTOR as confirming quality scores, a confirmation pass rather than a tidy-up; 'without changing behavior' is not stated."
+      "quote": "**Quality confirmation (run at REFACTOR, before committing):**"
     }
   ],
   "missing": [
     {
-      "what": "Before writing GREEN code the agent loads the quality rubric and writes to it from the start; neither the spec nor the diagram shows the rubric being applied before REFACTOR.",
+      "what": "The quality rubric is loaded before writing GREEN code and code is written to it from the start; the flow shows the rubric only as a score after GREEN.",
       "file": "skills/tdd.md",
       "quote": "**The rubric is the generative voice, not a post-hoc judge.** Before writing GREEN code, load the quality rubric:"
     },
     {
-      "what": "The source has an optional integration-test step with its own rules (when to write one, env-var gate, real empty temp directory) that the flow does not show.",
+      "what": "The optional integration-test path (separate file, env-var gated, written when a feature crosses a system boundary) is not shown beyond the caller-side flag.",
       "file": "skills/tdd.md",
-      "quote": "### Integration tests (optional, not always run)"
+      "quote": "- The feature crosses a system boundary (writes files a downstream consumer reads, curls a remote, spawns a subprocess)"
     },
     {
-      "what": "The per-cycle checklist forbids speculative features and anticipating future tests; the flow shows only 'minimal code'.",
-      "file": "skills/tdd.md",
-      "quote": "- No speculative features added"
-    },
-    {
-      "what": "A green test of the wrong acceptance criterion does not close the gap; the flow shows the revise step but not this rule.",
+      "what": "A green test of the wrong acceptance criterion does not close the gap; the flow shows the premise revision but not this rule.",
       "file": "skills/tdd.md",
       "quote": "the wrong acceptance criterion does not close the gap."
+    },
+    {
+      "what": "The per-cycle checklist rule against speculative code (no speculative features, do not anticipate future tests) is not shown.",
+      "file": "skills/tdd.md",
+      "quote": "- No speculative features added"
     }
   ],
   "code": {

@@ -2,8 +2,8 @@
   "title": "Mind meld",
   "lede": "How a repo gets explained: by default a static map of every source file (`mind-meld.ts map`, any language, no execution), then recorded runs for the flows where real behavior matters. This page covers the recorded dive.",
   "detail": "../generated/mind-meld.svg",
-  "sources": ["docs/diagrams/src/mind-meld.mmd", "skills/mind-meld.md"],
-  "reviewed": "a9851c73400b",
+  "sources": ["docs/diagrams/src/mind-meld.mmd", "skills/mind-meld.md", "scripts/mind-meld-schema.ts"],
+  "reviewed": "66b32d3c853e",
   "lanes": [
     { "id": "prepare", "name": "Prepare" },
     { "id": "record", "name": "Record" },
@@ -27,12 +27,12 @@
       "risks": ["If the sandbox is unavailable, execution is blocked; static browsing still works and the limitation is stated."],
       "qs": ["What is the difference between a static edge and an observed call?"] },
     "bundle": { "lane": "record", "name": "Validated bundle", "role": "Index, source and runs go into one JSON file checked by an executable schema.",
-      "details": ["Recordings are cached by everything that could change them: source, dependencies, versions, inputs and fakes.", "diff compares two runs: paths, outputs and state mutations."],
+      "details": ["Recordings are cached by what could change them: source, dependencies, versions, inputs, fakes, runtime and sandbox policy.", "diff compares two runs: paths, outputs and state mutations."],
       "risks": ["A recording is never reused under a new source hash."] },
     "tour": { "lane": "explain", "name": "Tour and narrate", "role": "A guided tour follows input through ownership and mutations to output, citing source lines.",
       "details": ["Narration cites file:line and event ids, and separates a possible dependency from an observed call.", "Reproduce a relevant failure and explain how to diagnose and repair it."],
       "risks": ["The model must never invent an edge, value, timing, mutation or successful run."] },
-    "view": { "lane": "explain", "name": "Verify and view offline", "role": "Check the recording still matches the source, then open the tour as one offline page.",
+    "view": { "lane": "explain", "name": "Verify and view offline", "role": "Check the recording against the source before trusting it, and open the tour as one offline page.",
       "details": ["verify fails if any recorded source differs from the checkout or escapes it.", "view writes tour.html, which needs no server or network.", "The page shows its snapshot hash and says freshness is unknown offline.", "pages writes the same evidence as a GitHub markdown page (call path, source links, recorded calls, an LLM block), facts only."] }
   },
   "flows": [

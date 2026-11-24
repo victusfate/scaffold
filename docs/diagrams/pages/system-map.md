@@ -74,7 +74,7 @@ flowchart LR
 - [Skillify](skillify.md): Turn finished work into a reusable, registered skill.
 - [Retro](retro.md): An evidence-backed look back at a session that proposes concrete fixes.
 - [Council](council.md): Five advisors, anonymous peer review and a chairman verdict for hard decisions.
-- [Mind meld](mind-meld.md): A repo-owned learning IDE built from code indexes and real runs.
+- [Mind meld](mind-meld.md): A visual code walkthrough of a repo, built from code indexes and real runs.
 
 ## Scaffold Flow Atlas
 
@@ -82,25 +82,25 @@ flowchart LR
 
 | Flow | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---|---:|---:|---:|---:|---:|---:|
-| [Orchestration](orchestration.md) | 29 | 7 | 0 | 0 | 10 | 12 |
-| [Queue task lifecycle](queue-lifecycle.md) | 29 | 6 | 0 | 0 | 10 | 14 |
-| [One loop tick](loop-tick.md) | 30 | 5 | 0 | 0 | 6 | 14 |
-| [Session continuity](session-continuity.md) | 30 | 3 | 0 | 0 | 8 | 9 |
-| [Agentic task queue](agentic-task-queue.md) | 23 | 1 | 1 | 0 | 9 | 14 |
-| [Feature chain](feature-chain.md) | 30 | 6 | 0 | 0 | 8 | 12 |
-| [TDD](tdd.md) | 37 | 6 | 0 | 0 | 4 | 11 |
-| [PR workflow](pr-workflow.md) | 29 | 5 | 0 | 0 | 11 | 13 |
-| [Review gates](review-gates.md) | 33 | 3 | 0 | 0 | 5 | 12 |
-| [QA](qa.md) | 34 | 3 | 0 | 0 | 8 | 6 |
-| [Investigate](investigate.md) | 31 | 1 | 0 | 0 | 7 | 6 |
+| [Orchestration](orchestration.md) | 27 | 8 | 0 | 0 | 7 | 12 |
+| [Queue task lifecycle](queue-lifecycle.md) | 35 | 1 | 0 | 0 | 8 | 14 |
+| [One loop tick](loop-tick.md) | 39 | 1 | 0 | 0 | 7 | 14 |
+| [Session continuity](session-continuity.md) | 33 | 2 | 0 | 0 | 8 | 9 |
+| [Agentic task queue](agentic-task-queue.md) | 25 | 0 | 0 | 0 | 8 | 14 |
+| [Feature chain](feature-chain.md) | 38 | 2 | 0 | 0 | 7 | 12 |
+| [TDD](tdd.md) | 43 | 3 | 0 | 0 | 4 | 11 |
+| [PR workflow](pr-workflow.md) | 33 | 2 | 0 | 0 | 8 | 13 |
+| [Review gates](review-gates.md) | 36 | 3 | 0 | 0 | 6 | 12 |
+| [QA](qa.md) | 41 | 0 | 0 | 0 | 10 | 6 |
+| [Investigate](investigate.md) | 32 | 1 | 0 | 0 | 6 | 6 |
 | [Prune](prune.md) | 26 | 0 | 0 | 0 | 4 | 11 |
-| [Add linter](add-linter.md) | 28 | 3 | 0 | 0 | 8 | 13 |
-| [Scaffold sync](scaffold-sync.md) | 30 | 6 | 0 | 0 | 8 | 14 |
-| [Skillify](skillify.md) | 30 | 4 | 0 | 0 | 4 | 14 |
-| [Retro](retro.md) | 35 | 1 | 0 | 0 | 9 | 1 |
+| [Add linter](add-linter.md) | 31 | 2 | 0 | 0 | 9 | 13 |
+| [Scaffold sync](scaffold-sync.md) | 38 | 3 | 0 | 0 | 9 | 14 |
+| [Skillify](skillify.md) | 36 | 1 | 0 | 0 | 4 | 14 |
+| [Retro](retro.md) | 44 | 1 | 0 | 0 | 9 | 1 |
 | [Council](council.md) | 43 | 1 | 0 | 0 | 4 | 6 |
-| [Mind meld](mind-meld.md) | 46 | 1 | 1 | 0 | 8 | 14 |
-| **All flows** | **573** | **62** | **2** | **0** | **131** | **196** |
+| [Mind meld](mind-meld.md) | 45 | 1 | 0 | 0 | 6 | 14 |
+| **All flows** | **645** | **32** | **0** | **0** | **124** | **196** |
 
 The verdicts and explanations were written by an agent and are judgments. Quotes and code are read from the repo when the pages are built, and `npm test` fails when a quoted line or an explained block of code changes.
 

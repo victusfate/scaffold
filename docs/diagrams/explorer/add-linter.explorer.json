@@ -3,7 +3,7 @@
   "lede": "How /add-linter adds linter configs and CI workflows for the languages in a repo, without changing a config you already have until you approve a merge.",
   "detail": "../generated/add-linter.svg",
   "sources": ["docs/diagrams/src/add-linter.mmd", "skills/add-linter.md"],
-  "reviewed": "71c5ce175e88",
+  "reviewed": "21aa5ae5b833",
   "lanes": [
     { "id": "choose", "name": "Choose" },
     { "id": "write", "name": "Write" }
@@ -34,10 +34,10 @@
       ["detect", "ask", "Actionable languages found", "language states"],
       ["ask", "emit", "Languages confirmed", "confirmed list"],
       ["emit", "merge", "Sidecars written for existing configs", ".scaffold-new files"],
-      ["merge", "finish", "Merges approved or declined", "merged configs"]] }
+      ["merge", "finish", "Merges approved or declined", "written or merged configs"]] }
   ],
   "glossary": {
-    "sidecar": { "t": "Sidecar", "a": ["sidecar"], "d": "A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten." },
+    "sidecar": { "t": "Sidecar", "a": ["sidecar"], "d": "A .scaffold-new copy of scaffold's version saved beside your file for review; writing it leaves your file unchanged." },
     "marker": { "t": "Marker", "a": ["marker"], "d": "A hash-stamped line that tags a config as scaffold's." },
     "threshold": { "t": "Threshold", "a": ["thresholds"], "d": "A rule limit, such as max line length." }
   },
