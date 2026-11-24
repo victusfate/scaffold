@@ -381,12 +381,12 @@
       {
         "node": "local",
         "file": "package.json",
-        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check\",",
+        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict",
         "before": 5,
         "count": 6,
-        "hash": "6fe07c598258",
+        "hash": "97a7a2b9107c",
         "title": "npm test: the local test and check commands",
-        "explain": "test runs four parts in order and stops at the first failure: the node tests one file at a time, the tool tests, every scripts/test-*.sh, and the repo checks (resolver, skills doc, agents detail, handoff, guidelines, explorer pages, diagrams). test:integration is separate and needs RUN_INTEGRATION=1.",
+        "explain": "test runs four parts in order and stops at the first failure: the node tests one file at a time, the tool tests, every scripts/test-*.sh, and the repo checks (resolver, skills doc, agents detail, handoff, guidelines, explorer pages, diagrams, C4 files). test:integration is separate and needs RUN_INTEGRATION=1.",
         "why": "These are the commands the local gates run in this repo, and the same ones CI runs. The skill looks for `make ci` or scripts/ci-local.sh first; neither exists here, so the agent runs these directly.",
         "kind": "implements"
       },

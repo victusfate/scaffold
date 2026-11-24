@@ -443,6 +443,18 @@
     ],
     "promptOnly": [
       {
+        "node": "owner",
+        "what": "the owner is a person."
+      },
+      {
+        "node": "github",
+        "what": "GitHub is an outside service."
+      },
+      {
+        "node": "target",
+        "what": "the target repo is whichever repository the task names."
+      },
+      {
         "node": "ING",
         "what": "Not built: /queue ingest with its alignment loop and slicer, automated watcher/cron/telemetry ingestion with the context-collision check and deferral count, and assistant proposals with a proposed state; an agent breaks work into tasks by hand from skills/queue.md and adds them one at a time."
       },

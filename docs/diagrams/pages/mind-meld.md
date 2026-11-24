@@ -1792,9 +1792,9 @@ function lede(bundle: MeldBundle): string {
 </details>
 
 <details>
-<summary><code>ExplorerSpec</code> · type · scripts/explorer-spec.ts:50</summary>
+<summary><code>ExplorerSpec</code> · type · scripts/explorer-spec.ts:55</summary>
 
-The type of the JSON that describes one explorer page. It requires a title, a list of lanes and a map of nodes, and optionally carries an eyebrow, lede, flows, glossary, timeline, topics, Q&amp;A framing, a start node or flow, a detail image path, and the source files the page summarizes with the hash recorded at last review.
+The type of the JSON that describes one explorer page. It requires a title, a list of lanes and a map of nodes, and optionally carries an eyebrow, lede, flows, glossary, timeline, topics, Q&amp;A framing, a start node or flow, a detail image path, the source files the page summarizes with the hash recorded at last review, and a `c4` field that opts the page into C4 output by naming the software system its nodes are parts of.
 
 ```ts
 export type ExplorerSpec = {
@@ -1816,17 +1816,20 @@ export type ExplorerSpec = {
   // edit flags the page for review (render-explorer-pages); the hash is refreshed by acknowledging it.
   sources?: string[];
   reviewed?: string;
+  // Opts the page into C4 output (scripts/render-c4.ts): the software system its nodes are the parts of.
+  // For pages about running software; a process flow's stages are not parts of a system.
+  c4?: { system: string; description?: string };
 };
 ```
 
-[`scripts/explorer-spec.ts:50-69`](https://github.com/victusfate/scaffold/blob/main/scripts/explorer-spec.ts#L50-L69)
+[`scripts/explorer-spec.ts:55-77`](https://github.com/victusfate/scaffold/blob/main/scripts/explorer-spec.ts#L55-L77)
 
 </details>
 
 <details>
-<summary><code>validateSpec</code> · function · scripts/explorer-spec.ts:149</summary>
+<summary><code>validateSpec</code> · function · scripts/explorer-spec.ts:164</summary>
 
-Takes an ExplorerSpec and returns a list of problem strings, empty when the spec is valid. If the title, lanes, nodes or (with sources) the reviewed hash are missing it returns only those errors; otherwise it reports nodes without a name, role or known lane, lanes with no nodes, duplicate or empty flows and malformed steps, incomplete glossary terms and aliases claimed twice, out-of-range timeline tracks, and any reference to an unknown node, topic or flow. It does not throw for these problems and has no side effects.
+Takes an ExplorerSpec and returns a list of problem strings, empty when the spec is valid. If the title, lanes, nodes or (with sources) the reviewed hash are missing it returns only those errors; otherwise it reports nodes without a name, role or known lane, lanes with no nodes, duplicate or empty flows and malformed steps, incomplete glossary terms and aliases claimed twice, out-of-range timeline tracks, any reference to an unknown node, topic or flow, a `c4` field with no system name, and a node whose `c4.as` is not one of person, external, database or queue. It does not throw for these problems and has no side effects.
 
 Comment in the source: Returns every problem found; an empty list means the spec renders cleanly.
 
@@ -1845,11 +1848,12 @@ export function validateSpec(s: ExplorerSpec): string[] {
   checkTopics(s, refs, errs);
   checkTimeline(s, refs, errs);
   checkStart(s, refs, errs);
+  checkC4(s, errs);
   return errs;
 }
 ```
 
-[`scripts/explorer-spec.ts:149-164`](https://github.com/victusfate/scaffold/blob/main/scripts/explorer-spec.ts#L149-L164)
+[`scripts/explorer-spec.ts:164-180`](https://github.com/victusfate/scaffold/blob/main/scripts/explorer-spec.ts#L164-L180)
 
 </details>
 

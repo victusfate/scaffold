@@ -315,10 +315,10 @@
       {
         "node": "tdd",
         "file": "package.json",
-        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check\",",
+        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict",
         "before": 4,
         "count": 6,
-        "hash": "225da6d9f285",
+        "hash": "923568a2668b",
         "title": "package.json: what \"the full suite\" runs",
         "explain": "npm test chains four scripts. test:node runs every *.test.ts under scripts/, tools/ and lib/ with node --test. test:tools runs each tool's own test file, test:shell runs every scripts/test-*.sh, and test:checks runs the repo checks. test:integration is separate and is not part of npm test.",
         "why": "/tdd runs /code-refiner only when the full suite is green. These scripts define that suite.",

@@ -405,10 +405,10 @@
       {
         "node": "gate",
         "file": "package.json",
-        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check\",",
+        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict",
         "before": 5,
         "count": 10,
-        "hash": "b3525b4ad386",
+        "hash": "f38a85241df0",
         "title": "npm test runs the handoff check",
         "explain": "The `test` script runs four groups in order. The last, `test:checks`, chains the repo's check scripts and includes `node scripts/check-handoff.ts`. Any failing check fails the chain.",
         "why": "The gate does not rely only on the agent remembering to run it: a branch that carries a bad handoff fails `npm test`.",

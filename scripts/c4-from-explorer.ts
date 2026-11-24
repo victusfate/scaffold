@@ -38,7 +38,8 @@ export function explorerToC4(spec: ExplorerSpec): { model?: C4Model; problems: s
   const first = new Map<string, C4Relationship>();
   for (const step of dynamics.flatMap(view => view.steps)) if (!first.has(`${step.from} ${step.to}`)) first.set(`${step.from} ${step.to}`, step);
   const model: C4Model = {
-    name: spec.title, description: spec.lede,
+    // The spec's lede describes its page, so the workspace takes the system's own description.
+    name: spec.title, description: spec.c4.description,
     system: { name: spec.c4.system, ...(spec.c4.description ? { description: spec.c4.description } : {}) },
     elements, relationships: [...first.values()], dynamics,
   };
