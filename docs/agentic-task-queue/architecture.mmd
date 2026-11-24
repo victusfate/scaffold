@@ -60,8 +60,8 @@ flowchart TB
     REC -- "clean validated merge" --> DONE
     REC -- "cannot merge safely" --> FAIL
 
-    DONE -. "close issue" .-> Q
-    FAIL -. "label failed" .-> Q
+    DONE -. "mark completed, open until archived" .-> Q
+    FAIL -. "failed status recorded as label" .-> Q
 
     %% ---------------- Styling ----------------
     classDef store fill:#2563eb,stroke:#1e3a8a,color:#ffffff;

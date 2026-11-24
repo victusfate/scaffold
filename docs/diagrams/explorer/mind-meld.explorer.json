@@ -32,7 +32,7 @@
     "tour": { "lane": "explain", "name": "Tour and narrate", "role": "A guided tour follows input through ownership and mutations to output, citing source lines.",
       "details": ["Narration cites file:line and event ids, and separates a possible dependency from an observed call.", "Reproduce a relevant failure and explain how to diagnose and repair it."],
       "risks": ["The model must never invent an edge, value, timing, mutation or successful run."] },
-    "view": { "lane": "explain", "name": "Verify and view offline", "role": "Check the recording still matches the source, then open the tour as one offline page.",
+    "view": { "lane": "explain", "name": "Verify and view offline", "role": "Check the recording against the source before trusting it, and open the tour as one offline page.",
       "details": ["verify fails if any recorded source differs from the checkout or escapes it.", "view writes tour.html, which needs no server or network.", "The page shows its snapshot hash and says freshness is unknown offline.", "pages writes the same evidence as a GitHub markdown page (call path, source links, recorded calls, an LLM block), facts only."] }
   },
   "flows": [
