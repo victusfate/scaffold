@@ -13,7 +13,7 @@ deliveryAccepted: false
 resumeAt: 
 idlePoll: 20m
 pausePoll: 30m
-nextId: 10
+nextId: 15
 -->
 
 Order = priority (top first). Checkboxes: `[ ]` pending · `[~]` parked (work exists on its branch, no lane on it) · `[>]` active · `[x]` done · `[!]` failed.
