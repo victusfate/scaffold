@@ -376,6 +376,14 @@ scripts/mind-meld-pages.ts
 scripts/mind-meld-pages.test.ts
 scripts/mind-meld-map.ts
 scripts/mind-meld-map.test.ts
+scripts/mind-meld-c4.ts
+scripts/mind-meld-c4.test.ts
+scripts/c4-model.ts
+scripts/c4-structurizr.ts
+scripts/c4-mermaid.ts
+scripts/c4-from-explorer.ts
+scripts/render-c4.ts
+scripts/c4.test.ts
 scripts/mind-meld-langs.ts
 scripts/mind-meld.test.ts
 skills/mind-meld.md

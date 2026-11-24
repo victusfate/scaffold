@@ -151,14 +151,14 @@ export function index(): MeldBundle {
 }
 ```
 
-[`scripts/mind-meld.ts:42-66`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L42-L66)
+[`scripts/mind-meld.ts:44-68`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L44-L68)
 
 **Why it matters.** This is the "index adapter" half of the stage: nodes, static call edges, source bytes and hashes. It only indexes the reference example, so a real repo still has to write its own.
 
 **Methods and helpers used here**
 
 <details>
-<summary><code>ROOT</code> · const · scripts/mind-meld.ts:20</summary>
+<summary><code>ROOT</code> · const · scripts/mind-meld.ts:22</summary>
 
 The absolute path of the repository root, computed as the parent of the directory containing this script. Source files are read and snapshots verified relative to it.
 
@@ -166,12 +166,12 @@ The absolute path of the repository root, computed as the parent of the director
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 ```
 
-[`scripts/mind-meld.ts:20`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L20)
+[`scripts/mind-meld.ts:22`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L22)
 
 </details>
 
 <details>
-<summary><code>EXAMPLE</code> · const · scripts/mind-meld.ts:21</summary>
+<summary><code>EXAMPLE</code> · const · scripts/mind-meld.ts:23</summary>
 
 The repo-relative path 'scripts/mind-meld-example.ts', the example program that index() parses for nodes and edges and that runs execute in the sandbox.
 
@@ -179,12 +179,12 @@ The repo-relative path 'scripts/mind-meld-example.ts', the example program that 
 const EXAMPLE = 'scripts/mind-meld-example.ts';
 ```
 
-[`scripts/mind-meld.ts:21`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L21)
+[`scripts/mind-meld.ts:23`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L23)
 
 </details>
 
 <details>
-<summary><code>IMPLEMENTATION</code> · const · scripts/mind-meld.ts:24</summary>
+<summary><code>IMPLEMENTATION</code> · const · scripts/mind-meld.ts:26</summary>
 
 The five mind-meld file names under scripts/ whose contents index() reads into the bundle's sources, so they all feed the snapshot hash.
 
@@ -192,12 +192,12 @@ The five mind-meld file names under scripts/ whose contents index() reads into t
 const IMPLEMENTATION = ['mind-meld.ts', 'mind-meld-schema.ts', 'mind-meld-sandbox.ts', 'mind-meld-example.ts', 'mind-meld-viewer.ts'];
 ```
 
-[`scripts/mind-meld.ts:24`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L24)
+[`scripts/mind-meld.ts:26`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L26)
 
 </details>
 
 <details>
-<summary><code>compiler</code> · const · scripts/mind-meld.ts:26</summary>
+<summary><code>compiler</code> · const · scripts/mind-meld.ts:28</summary>
 
 The TypeScript compiler module returned by loadTypeScript() at module load, or a falsy value when the package is not available. index() parses source with it and cacheKey() includes its version.
 
@@ -205,12 +205,12 @@ The TypeScript compiler module returned by loadTypeScript() at module load, or a
 const compiler = await loadTypeScript();   // optional: only index() parses source
 ```
 
-[`scripts/mind-meld.ts:26`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L26)
+[`scripts/mind-meld.ts:28`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L28)
 
 </details>
 
 <details>
-<summary><code>missingTypeScript</code> · function · scripts/mind-meld.ts:27</summary>
+<summary><code>missingTypeScript</code> · function · scripts/mind-meld.ts:29</summary>
 
 Always throws an Error saying that mind meld index needs the typescript package and how to provide it. It never returns.
 
@@ -220,7 +220,7 @@ function missingTypeScript(): never {
 }
 ```
 
-[`scripts/mind-meld.ts:27-29`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L27-L29)
+[`scripts/mind-meld.ts:29-31`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L29-L31)
 
 </details>
 
@@ -309,14 +309,14 @@ export function run_piece(target: string, value: unknown, fakes: { save: string 
 }
 ```
 
-[`scripts/mind-meld.ts:96-103`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L96-L103)
+[`scripts/mind-meld.ts:98-105`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L98-L105)
 
 **Why it matters.** This is the rule that an execution adapter runs only targets it has registered. Without it a question could be turned into an arbitrary command.
 
 **Methods and helpers used here**
 
 <details>
-<summary><code>run</code> · function · scripts/mind-meld.ts:83</summary>
+<summary><code>run</code> · function · scripts/mind-meld.ts:85</summary>
 
 Takes a mode ('flow' or 'piece') and an inputs value, and returns the recorded MeldRun, from the in-process cache when the key matches. Otherwise it re-indexes the sources, executes the example file in the sandbox, validates the result and caches it. Throws on invalid inputs, on a sandbox or validation failure, or if the sources changed during execution.
 
@@ -336,7 +336,7 @@ function run(mode: 'flow' | 'piece', value: unknown): MeldRun {
 }
 ```
 
-[`scripts/mind-meld.ts:83-95`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L83-L95)
+[`scripts/mind-meld.ts:85-97`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L85-L97)
 
 </details>
 
@@ -840,14 +840,14 @@ function run(mode: 'flow' | 'piece', value: unknown): MeldRun {
 }
 ```
 
-[`scripts/mind-meld.ts:78-95`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L78-L95)
+[`scripts/mind-meld.ts:80-97`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L80-L97)
 
 **Why it matters.** This is the rule that a recording is never reused under a new source hash. The cache lives only for one process; nothing is stored on disk.
 
 **Methods and helpers used here**
 
 <details>
-<summary><code>ROOT</code> · const · scripts/mind-meld.ts:20</summary>
+<summary><code>ROOT</code> · const · scripts/mind-meld.ts:22</summary>
 
 The absolute path of the repository root, computed as the parent of the directory containing this script. Source files are read and snapshots verified relative to it.
 
@@ -855,12 +855,12 @@ The absolute path of the repository root, computed as the parent of the director
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 ```
 
-[`scripts/mind-meld.ts:20`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L20)
+[`scripts/mind-meld.ts:22`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L22)
 
 </details>
 
 <details>
-<summary><code>EXAMPLE</code> · const · scripts/mind-meld.ts:21</summary>
+<summary><code>EXAMPLE</code> · const · scripts/mind-meld.ts:23</summary>
 
 The repo-relative path 'scripts/mind-meld-example.ts', the example program that index() parses for nodes and edges and that runs execute in the sandbox.
 
@@ -868,12 +868,12 @@ The repo-relative path 'scripts/mind-meld-example.ts', the example program that 
 const EXAMPLE = 'scripts/mind-meld-example.ts';
 ```
 
-[`scripts/mind-meld.ts:21`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L21)
+[`scripts/mind-meld.ts:23`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L23)
 
 </details>
 
 <details>
-<summary><code>cache</code> · const · scripts/mind-meld.ts:25</summary>
+<summary><code>cache</code> · const · scripts/mind-meld.ts:27</summary>
 
 An in-process Map from run cache key to recorded MeldRun. run() returns a clone from it on a key match and stores a clone after each new sandbox run; it is not saved between processes.
 
@@ -881,12 +881,12 @@ An in-process Map from run cache key to recorded MeldRun. run() returns a clone 
 const cache = new Map<string, MeldRun>();
 ```
 
-[`scripts/mind-meld.ts:25`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L25)
+[`scripts/mind-meld.ts:27`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L27)
 
 </details>
 
 <details>
-<summary><code>compiler</code> · const · scripts/mind-meld.ts:26</summary>
+<summary><code>compiler</code> · const · scripts/mind-meld.ts:28</summary>
 
 The TypeScript compiler module returned by loadTypeScript() at module load, or a falsy value when the package is not available. index() parses source with it and cacheKey() includes its version.
 
@@ -894,12 +894,12 @@ The TypeScript compiler module returned by loadTypeScript() at module load, or a
 const compiler = await loadTypeScript();   // optional: only index() parses source
 ```
 
-[`scripts/mind-meld.ts:26`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L26)
+[`scripts/mind-meld.ts:28`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L28)
 
 </details>
 
 <details>
-<summary><code>inputs</code> · function · scripts/mind-meld.ts:31</summary>
+<summary><code>inputs</code> · function · scripts/mind-meld.ts:33</summary>
 
 Takes an unknown value and returns { hp, damage } when it is an object with exactly those two keys, both finite non-negative numbers. Throws an Error describing the problem otherwise.
 
@@ -915,12 +915,12 @@ function inputs(value: unknown): Inputs {
 }
 ```
 
-[`scripts/mind-meld.ts:31-39`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L31-L39)
+[`scripts/mind-meld.ts:33-41`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L33-L41)
 
 </details>
 
 <details>
-<summary><code>index</code> · function · scripts/mind-meld.ts:42</summary>
+<summary><code>index</code> · function · scripts/mind-meld.ts:44</summary>
 
 Reads the five mind-meld source files from scripts/, parses the example file with the TypeScript compiler, and returns a bundle holding one node per exported function, one edge per direct call between those functions, the sources with their hashes, and no runs. Throws if the typescript package is not available.
 
@@ -953,7 +953,7 @@ export function index(): MeldBundle {
   return { version: 1, nodes, edges, sources, ...sourceManifest(sources), runs: [] };
 ```
 
-[`scripts/mind-meld.ts:42-65`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L42-L65) (first 24 lines shown)
+[`scripts/mind-meld.ts:44-67`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L44-L67) (first 24 lines shown)
 
 </details>
 
@@ -1344,7 +1344,7 @@ export function diff(a: MeldRun, b: MeldRun): { pathA: string[]; pathB: string[]
 }
 ```
 
-[`scripts/mind-meld.ts:104-107`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L104-L107)
+[`scripts/mind-meld.ts:106-109`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L106-L109)
 
 **Why it matters.** This is the diff operation of the bundle stage: paths, outputs and state mutations from each run. The agent reads the difference; the code only lays it out.
 
@@ -1385,14 +1385,14 @@ export function verifySnapshot(bundle: MeldBundle, root = ROOT): void {
 }
 ```
 
-[`scripts/mind-meld.ts:68-76`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L68-L76)
+[`scripts/mind-meld.ts:70-78`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L70-L78)
 
 **Why it matters.** This is the verify step. Without it an old tour could be read as a statement about today's code.
 
 **Methods and helpers used here**
 
 <details>
-<summary><code>ROOT</code> · const · scripts/mind-meld.ts:20</summary>
+<summary><code>ROOT</code> · const · scripts/mind-meld.ts:22</summary>
 
 The absolute path of the repository root, computed as the parent of the directory containing this script. Source files are read and snapshots verified relative to it.
 
@@ -1400,7 +1400,7 @@ The absolute path of the repository root, computed as the parent of the director
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 ```
 
-[`scripts/mind-meld.ts:20`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L20)
+[`scripts/mind-meld.ts:22`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld.ts#L22)
 
 </details>
 
@@ -1905,7 +1905,7 @@ The mind-meld page matches skills/mind-meld.md closely: every stage, rule and st
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 45 | 1 | 0 | 0 | 6 | 14 |
+| 45 | 1 | 0 | 0 | 7 | 14 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
@@ -1917,32 +1917,32 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Name what a reader needs to understand and find the real code that answers it.
   > \1. Name the question a reader needs to answer and the observable result that answers it.
   >
-  > [`skills/mind-meld.md:62`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L62)
+  > [`skills/mind-meld.md:75`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L75)
 
 - **Confirmed**: Name the question and the observable result that answers it.
   > \1. Name the question a reader needs to answer and the observable result that answers it.
   >
-  > [`skills/mind-meld.md:62`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L62)
+  > [`skills/mind-meld.md:75`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L75)
 
 - **Confirmed**: Find the actual user entry point, integration test and state owner in source.
   > \2. Find the actual user entry point, integration test and state owner in source.
   >
-  > [`skills/mind-meld.md:63`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L63)
+  > [`skills/mind-meld.md:76`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L76)
 
 - **Confirmed**: Pick an existing test or a small flow that reaches that code.
   > \3. Pick an existing test or a small flow that reaches that code.
   >
-  > [`skills/mind-meld.md:64`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L64)
+  > [`skills/mind-meld.md:77`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L77)
 
 - **Confirmed**: Scaffold supplies the method, schema, viewer and a reference adapter; each repo writes its own adapters.
   > Scaffold supplies the method, exchange schema, offline viewer and reference adapter.
   >
-  > [`skills/mind-meld.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L57)
+  > [`skills/mind-meld.md:70`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L70)
 
 - **Confirmed**: question -&gt; adapters: Entry point and test chosen (target flow)
   > \3. Pick an existing test or a small flow that reaches that code.
   >
-  > [`skills/mind-meld.md:64`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L64)
+  > [`skills/mind-meld.md:77`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L77)
 
 </details>
 
@@ -1954,57 +1954,57 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Repo-specific code indexes the source in its language and runs it in its runtime.
   > \4. Build an index adapter for the repo's language and an execution adapter for its runtime.
   >
-  > [`skills/mind-meld.md:65`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L65)
+  > [`skills/mind-meld.md:78`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L78)
 
 - **Confirmed**: An index adapter records nodes, static call edges, source bytes and hashes.
   > A validated version 1 bundle with nodes, static edges, source bytes and hashes
   >
-  > [`skills/mind-meld.md:135`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L135)
+  > [`skills/mind-meld.md:148`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L148)
 
 - **Confirmed**: An execution adapter runs only targets it has registered.
   > with \`{save: "memory"}\` as its boundary policy. Reject other targets and fake policies.
   >
-  > [`skills/mind-meld.md:141`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L141)
+  > [`skills/mind-meld.md:154`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L154)
 
 - **Confirmed**: Never turn a natural-language question into an arbitrary shell command.
   > A child adapter registers its own allowed targets; never turn a natural-language
   >
-  > [`skills/mind-meld.md:142`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L142)
+  > [`skills/mind-meld.md:155`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L155)
 
 - **Confirmed**: Adapter contract: index() -&gt; A validated version 1 bundle with nodes, static edges, source bytes and hashes
   > \| \`index()\` \| Repo snapshot supplied by the adapter \| A validated version 1 bundle with nodes, static edges, source bytes and hashes \|
   >
-  > [`skills/mind-meld.md:135`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L135)
+  > [`skills/mind-meld.md:148`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L148)
 
 - **Confirmed**: Adapter contract: run_flow(entry, inputs) -&gt; A recorded run bound to the exact indexed source snapshot
   > \| \`run\_flow(entry, inputs)\` \| A named allowed integration entry and validated inputs \| A recorded run bound to the exact indexed source snapshot \|
   >
-  > [`skills/mind-meld.md:136`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L136)
+  > [`skills/mind-meld.md:149`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L149)
 
 - **Confirmed**: Adapter contract: run_piece(target, inputs, fakes) -&gt; A recorded isolated run, with the fake policy in its cache identity
   > A recorded isolated run with the fake policy in its cache identity
   >
-  > [`skills/mind-meld.md:137`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L137)
+  > [`skills/mind-meld.md:150`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L150)
 
 - **Confirmed**: Adapter contract: diff(runA, runB) -&gt; Ordered paths, outputs and state mutations from each run
   > \| \`diff(runA, runB)\` \| Two validated recordings, possibly from different snapshots \| Ordered paths, outputs and state mutations from each run \|
   >
-  > [`skills/mind-meld.md:138`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L138)
+  > [`skills/mind-meld.md:151`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L151)
 
 - **Confirmed**: adapters -&gt; run: Targets registered (index + runner)
   > A child adapter registers its own allowed targets; never turn a natural-language
   >
-  > [`skills/mind-meld.md:142`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L142)
+  > [`skills/mind-meld.md:155`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L155)
 
 - **Confirmed**: Adapter: Repo-specific code that indexes or runs one language or runtime.
   > The child repo owns its stack adapters and its runnable instance.
   >
-  > [`skills/mind-meld.md:58`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L58)
+  > [`skills/mind-meld.md:71`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L71)
 
 - **Confirmed** (from the diagram): Legend: static edge - a call that might happen, read from source, not an observed call
   > expressions. A static call edge means a possible dependency, not an observed call.
   >
-  > [`skills/mind-meld.md:148`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L148)
+  > [`skills/mind-meld.md:161`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L161)
 
 </details>
 
@@ -2013,7 +2013,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Partly** (from the diagram): Legend: flow / piece - a full integration run / one function run alone with fakes
   > \| \`run\_piece(target, inputs, fakes)\` \| A named allowed function/system and explicit boundary replacements \|
   >
-  > [`skills/mind-meld.md:137`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L137)
+  > [`skills/mind-meld.md:150`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L150)
 
   The source says a piece is a named allowed function or system, not only one function.
 
@@ -2023,47 +2023,47 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Run the code in a locked-down sandbox and record what actually happened.
   > It uses a pinned pre-pulled image, no network, a read-only root, an unprivileged
   >
-  > [`skills/mind-meld.md:175`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L175)
+  > [`skills/mind-meld.md:188`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L188)
 
 - **Confirmed**: Three runs: A full flow, one isolated piece with fakes, and a contrasting run that tests an assumption.
   > \5. Record a real flow, one isolated piece, and a contrasting run that tests an assumption.
   >
-  > [`skills/mind-meld.md:66`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L66)
+  > [`skills/mind-meld.md:79`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L79)
 
 - **Confirmed**: Sandbox: Pinned image, no network, read-only source, time and resource limits.
   > It uses a pinned pre-pulled image, no network, a read-only root, an unprivileged
   >
-  > [`skills/mind-meld.md:175`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L175)
+  > [`skills/mind-meld.md:188`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L188)
 
 - **Confirmed**: Sandbox: It never mounts the Docker socket, home, credentials or production data.
   > the child. It never mounts the Docker socket, home, credentials or production data.
   >
-  > [`skills/mind-meld.md:181`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L181)
+  > [`skills/mind-meld.md:194`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L194)
 
 - **Confirmed**: Failed runs and their inputs are kept as evidence.
   > A failed run is useful evidence; retain the failure and its inputs instead of hiding it.
   >
-  > [`skills/mind-meld.md:75`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L75)
+  > [`skills/mind-meld.md:88`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L88)
 
 - **Confirmed**: If the sandbox is unavailable, execution is blocked; static browsing still works and the limitation is stated.
   > execution; retain static browsing and state the limitation without an unsafe fallback.
   >
-  > [`skills/mind-meld.md:189`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L189)
+  > [`skills/mind-meld.md:202`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L202)
 
 - **Confirmed**: run -&gt; bundle: Runs recorded (recorded events)
   > static call sites, recorded events and snapshot identity. Link to those contracts
   >
-  > [`skills/mind-meld.md:158`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L158)
+  > [`skills/mind-meld.md:171`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L171)
 
 - **Confirmed**: Sandbox: An isolated container that cannot touch the network or real data.
   > It uses a pinned pre-pulled image, no network, a read-only root, an unprivileged
   >
-  > [`skills/mind-meld.md:175`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L175)
+  > [`skills/mind-meld.md:188`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L188)
 
 - **Confirmed**: Fakes: Stand-ins for outside boundaries, such as an in-memory save.
   > \| \`run\_piece(target, inputs, fakes)\` \| A named allowed function/system and explicit boundary replacements \|
   >
-  > [`skills/mind-meld.md:137`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L137)
+  > [`skills/mind-meld.md:150`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L150)
 
 </details>
 
@@ -2082,22 +2082,22 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Recordings are cached by what could change them: source, dependencies, versions, inputs, fakes, runtime and sandbox policy.
   > instrumentation versions, compiler/runtime/image identity, sandbox policy, entry,
   >
-  > [`skills/mind-meld.md:195`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L195)
+  > [`skills/mind-meld.md:208`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L208)
 
 - **Confirmed**: diff compares two runs: paths, outputs and state mutations.
   > \| \`diff(runA, runB)\` \| Two validated recordings, possibly from different snapshots \| Ordered paths, outputs and state mutations from each run \|
   >
-  > [`skills/mind-meld.md:138`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L138)
+  > [`skills/mind-meld.md:151`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L151)
 
 - **Confirmed**: A recording is never reused under a new source hash.
   > Re-index/re-run only changed dependencies; never reuse a recording under a new hash.
   >
-  > [`skills/mind-meld.md:200`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L200)
+  > [`skills/mind-meld.md:213`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L213)
 
 - **Confirmed**: bundle -&gt; tour: Schema passes (version 1 bundle)
   > Validate imported bundles before rendering, diffing, or narrating them.
   >
-  > [`skills/mind-meld.md:155`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L155)
+  > [`skills/mind-meld.md:168`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L168)
 
 - **Confirmed**: Bundle: One JSON file holding the index, source bytes and recorded runs.
   > export interface MeldBundle { version: 1; nodes: MeldNode\[\]; sources: Record&lt;string, string&gt;; sourceHashes: Record&lt;string, string&gt;; snapshotHash: string; edges: MeldEdge\[\]; runs: MeldRun\[\] }
@@ -2109,17 +2109,17 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): Legend: snapshot hash - fingerprint of the exact source a run came from
   > The bundle embeds source bytes for offline inspection and binds each run to the
   >
-  > [`skills/mind-meld.md:160`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L160)
+  > [`skills/mind-meld.md:173`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L173)
 
 - **Confirmed** (from the diagram): Legend: schema - the executable rules a bundle must pass before use
   > Validate imported bundles before rendering, diffing, or narrating them.
   >
-  > [`skills/mind-meld.md:155`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L155)
+  > [`skills/mind-meld.md:168`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L168)
 
 - **Confirmed** (from the diagram): Legend: cache key - everything that must match to reuse a past recording
   > The reference \`cacheKey()\` implements this identity and an in-process cache.
   >
-  > [`skills/mind-meld.md:197`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L197)
+  > [`skills/mind-meld.md:210`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L210)
 
 </details>
 
@@ -2131,27 +2131,27 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: A guided tour follows input through ownership and mutations to output, citing source lines.
   > \6. Make a tour that follows input, ownership, mutations, serialization and output.
   >
-  > [`skills/mind-meld.md:67`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L67)
+  > [`skills/mind-meld.md:80`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L80)
 
 - **Confirmed**: Narration cites file:line and event ids, and separates a possible dependency from an observed call.
   > &gt; event ids. Distinguish a possible static dependency from an observed call.
   >
-  > [`skills/mind-meld.md:211`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L211)
+  > [`skills/mind-meld.md:224`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L224)
 
 - **Confirmed**: Reproduce a relevant failure and explain how to diagnose and repair it.
   > \7. Reproduce a relevant failure and explain the path to diagnosis and repair with source citations.
   >
-  > [`skills/mind-meld.md:68`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L68)
+  > [`skills/mind-meld.md:81`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L81)
 
 - **Confirmed**: The model must never invent an edge, value, timing, mutation or successful run.
   > Never synthesize a missing edge, timing, value, mutation or successful run with an LLM.
   >
-  > [`skills/mind-meld.md:169`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L169)
+  > [`skills/mind-meld.md:182`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L182)
 
 - **Confirmed**: tour -&gt; view: Tour written (tour.json)
   > node scripts/mind-meld.ts view "$meld\_dir/tour.json" &gt; "$meld\_dir/tour.html"
   >
-  > [`skills/mind-meld.md:102`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L102)
+  > [`skills/mind-meld.md:115`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L115)
 
 </details>
 
@@ -2163,61 +2163,66 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Check the recording against the source before trusting it, and open the tour as one offline page.
   > \8. Verify the recording's source hashes before treating it as evidence about today's checkout.
   >
-  > [`skills/mind-meld.md:69`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L69)
+  > [`skills/mind-meld.md:82`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L82)
 
 - **Confirmed**: verify fails if any recorded source differs from the checkout or escapes it.
   > \`verify &lt;bundle.json&gt; \[checkout-root\]\` fails if any recorded source differs or escapes the checkout.
   >
-  > [`skills/mind-meld.md:115`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L115)
+  > [`skills/mind-meld.md:128`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L128)
 
 - **Confirmed**: view writes tour.html, which needs no server or network.
   > Open \`$meld\_dir/tour.html\` directly in a browser. It needs no server or network.
   >
-  > [`skills/mind-meld.md:111`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L111)
+  > [`skills/mind-meld.md:124`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L124)
 
 - **Confirmed**: The page shows its snapshot hash and says freshness is unknown offline.
   > The page identifies its snapshot hash and says checkout freshness is unknown offline.
   >
-  > [`skills/mind-meld.md:114`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L114)
+  > [`skills/mind-meld.md:127`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L127)
 
 - **Confirmed**: pages writes the same evidence as a GitHub markdown page (call path, source links, recorded calls, an LLM block), facts only.
   > \`pages\` writes the same evidence as a GitHub markdown page anyone can read: the recorded call path,
   >
-  > [`skills/mind-meld.md:106`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L106)
+  > [`skills/mind-meld.md:119`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L119)
 
 </details>
 
 ## In the source, not shown in the flow
 
+- The static repo map can also be written as a C4 model: a Structurizr workspace and a container view, with folders as containers, files as components and declared imports as relationships.
+  > Writes \`workspace.dsl\`, a Structurizr workspace, and \`c4.md\`, a container view GitHub renders.
+  >
+  > [`skills/mind-meld.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L35)
+
 - The sandbox test run (RUN_MIND_MELD_SANDBOX=1) must pass before anyone claims an execution adapter works; neither the spec nor the diagram shows this gate.
   > The second command must pass before claiming that an execution adapter works.
   >
-  > [`skills/mind-meld.md:124`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L124)
+  > [`skills/mind-meld.md:137`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L137)
 
 - Every adapter needs sandbox and timeout probes, and a child adapter must keep the isolation properties for its whole process tree.
   > Require sandbox and timeout probes for each adapter. An unavailable sandbox blocks
   >
-  > [`skills/mind-meld.md:188`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L188)
+  > [`skills/mind-meld.md:201`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L201)
 
 - Secrets are redacted and payloads bounded before a recording leaves the sandbox, and tours must not hold credentials, production saves or personal data.
   > Keep large payloads bounded and redact secrets before a recording leaves the sandbox.
   >
-  > [`skills/mind-meld.md:167`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L167)
+  > [`skills/mind-meld.md:180`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L180)
 
 - Narration is stored separately from the evidence, with the hashes of the evidence it explains.
   > Store narration separately with the evidence hashes it explains.
   >
-  > [`skills/mind-meld.md:222`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L222)
+  > [`skills/mind-meld.md:235`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L235)
 
 - Nothing is downloaded during indexing, execution or viewing; the pinned image is pulled once beforehand.
   > Do not download dependencies or images during indexing, execution, or viewing.
   >
-  > [`skills/mind-meld.md:84`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L84)
+  > [`skills/mind-meld.md:97`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L97)
 
 - Imported repo code is treated as untrusted, and a language VM does not count as OS isolation.
   > Treat imported repo code as untrusted, and do not confuse a language VM with OS isolation.
   >
-  > [`skills/mind-meld.md:190`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L190)
+  > [`skills/mind-meld.md:203`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L203)
 
 ## Glossary
 

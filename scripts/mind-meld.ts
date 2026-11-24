@@ -137,17 +137,18 @@ function createBundle(command: string, arg: string | undefined): MeldBundle {
   } else if (command !== 'index' || arg) throw new Error('usage: mind-meld.ts map|c4|index|flow|piece|demo|diff|view|pages|verify');
   return bundle;
 }
+// The two views made from a repo's source without running it: the map pages, and the same map as C4.
+function writeRepoView(command: 'map' | 'c4', [, root, out, extra]: string[]): void {
+  if (!root || !out || extra !== undefined) throw new Error(`usage: mind-meld.ts ${command} <repo-root> <out-dir>`);
+  // Map pages link to source by relative path, so they only work on GitHub when written inside the repo.
+  if (command === 'map' && relative(resolve(root), resolve(out)).startsWith('..')) console.error(`mind-meld map: ${out} is outside the repo, so the pages' source links will not work on GitHub`);
+  const written = command === 'map' ? writeMap(root, out).then(files => `repo map: ${files.length} pages in ${out}`)
+    : writeC4(root, out).then(files => `repo C4: ${files.join(', ')} in ${out}`);
+  written.then(line => console.log(line), (error: Error) => { console.error(error.message); process.exitCode = 1; });
+}
 function main(args: string[]): void {
   const [command, arg, other] = args;
-  if (command === 'map' || command === 'c4') {
-    if (!arg || !other || args.length > 3) throw new Error(`usage: mind-meld.ts ${command} <repo-root> <out-dir>`);
-    // Map pages link to source by relative path, so they only work on GitHub when written inside the repo.
-    if (command === 'map' && relative(resolve(arg), resolve(other)).startsWith('..')) console.error(`mind-meld map: ${other} is outside the repo, so the pages' source links will not work on GitHub`);
-    const written = command === 'map' ? writeMap(arg, other).then(files => `repo map: ${files.length} pages in ${other}`)
-      : writeC4(arg, other).then(files => `repo C4: ${files.join(', ')} in ${other}`);
-    written.then(line => console.log(line), (error: Error) => { console.error(error.message); process.exitCode = 1; });
-    return;
-  }
+  if (command === 'map' || command === 'c4') { writeRepoView(command, args); return; }
   if (!command || args.length > (['diff', 'verify', 'pages'].includes(command) ? 3 : 2)) throw new Error('invalid arguments');
   if (fileCommand(command, arg, other)) return;
   const bundle = createBundle(command, arg);

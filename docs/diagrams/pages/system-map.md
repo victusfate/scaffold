@@ -99,8 +99,8 @@ flowchart LR
 | [Skillify](skillify.md) | 36 | 1 | 0 | 0 | 4 | 14 |
 | [Retro](retro.md) | 44 | 1 | 0 | 0 | 9 | 1 |
 | [Council](council.md) | 43 | 1 | 0 | 0 | 4 | 6 |
-| [Mind meld](mind-meld.md) | 45 | 1 | 0 | 0 | 6 | 14 |
-| **All flows** | **645** | **32** | **0** | **0** | **124** | **196** |
+| [Mind meld](mind-meld.md) | 45 | 1 | 0 | 0 | 7 | 14 |
+| **All flows** | **645** | **32** | **0** | **0** | **125** | **196** |
 
 The verdicts and explanations were written by an agent and are judgments. Quotes and code are read from the repo when the pages are built, and `npm test` fails when a quoted line or an explained block of code changes.
 

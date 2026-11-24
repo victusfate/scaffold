@@ -27,6 +27,7 @@
 | The emitted DSL parses in Structurizr | Load a generated file in Structurizr Lite or `structurizr-cli validate` | unknown: no Java or running Docker on the build host; syntax taken from docs.structurizr.com/dsl/language | Fix the emitter; add the failing construct to the tests |
 | Mermaid's native C4 layout is readable enough to be the picture people look at | Render a real 8-container system | observed false: labels overlap and lines cross boxes on both concierge diagrams | Done: the default picture is a flowchart drawn in C4 notation; native C4 syntax is a second file |
 | Only diagrams of running software belong in C4 | Owner review | owner statement (above) | Opt in per spec, so any page can be added or removed |
+| Mermaid wraps SVG label text at about 22 characters | Render a view locally | observed: a 30-character wrap was re-broken mid-phrase | Done: descriptions and arrow labels wrap at 22 |
 | A top-level folder is a fair first guess at a container | Owner or client review of a mind-meld export | unknown | The generated workspace is meant to be extended (`workspace extends`), not edited |
 
 ## Canonical Vocabulary
@@ -84,9 +85,9 @@ space, in both DSL and mermaid.
 ### Callable unit
 - Home: `scripts/` (repo-local, run by a person or the diagram and mind-meld skills).
 - `scripts/render-c4.ts`: no arguments converts every opted-in spec under `docs/diagrams/explorer/` into
-  `docs/diagrams/c4/<slug>.dsl`, `<slug>.md` (C4 picture) and `<slug>.c4.mmd` (native C4).
-  `--check` writes nothing and exits 1 when a file is missing or stale. `<spec>... --out <dir>` converts the
-  named specs. Exit 1 on an invalid spec or model, with one line per problem. Idempotent.
+  `docs/diagrams/c4/<slug>.dsl` and `<slug>.md` (each view as a C4 picture, with native C4 folded under it).
+  `--check` writes nothing and exits 1 when a file is missing or stale. `--specs <dir> --out <dir>` converts
+  another folder. Exit 1 on an invalid spec or model, with one line per problem. Idempotent.
 - `scripts/mind-meld.ts c4 <repo-root> <out-dir>`: writes `workspace.dsl` and `c4.md`; exit 1 when the repo
   has no source in a supported language.
 - Tests: `scripts/c4.test.ts`, `scripts/mind-meld-c4.test.ts`, in `npm test`.
@@ -100,7 +101,7 @@ flowchart LR
     fromMap --> model
     model --> dsl["Structurizr workspace (.dsl)"]
     model --> picture["C4 picture (.md, mermaid flowchart)"]
-    model --> native["native C4 (.c4.mmd)"]
+    model --> native["native C4 (folded in the .md)"]
 ```
 
 ## Edge Cases & Scenarios

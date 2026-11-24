@@ -421,6 +421,11 @@
   ],
   "missing": [
     {
+      "what": "The static repo map can also be written as a C4 model: a Structurizr workspace and a container view, with folders as containers, files as components and declared imports as relationships.",
+      "file": "skills/mind-meld.md",
+      "quote": "Writes `workspace.dsl`, a Structurizr workspace, and `c4.md`, a container view GitHub renders."
+    },
+    {
       "what": "The sandbox test run (RUN_MIND_MELD_SANDBOX=1) must pass before anyone claims an execution adapter works; neither the spec nor the diagram shows this gate.",
       "file": "skills/mind-meld.md",
       "quote": "The second command must pass before claiming that an execution adapter works."

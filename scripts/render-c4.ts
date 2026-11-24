@@ -50,20 +50,27 @@ function renderAll(specs: string, out: string): Rendered & { converted: number }
   return all;
 }
 
+// The generated files that are missing from `out` or differ from what is there.
+function stale(files: Record<string, string>, out: string): string[] {
+  const current = (name: string): boolean => existsSync(join(out, name)) && readFileSync(join(out, name), 'utf8') === files[name];
+  return Object.keys(files).filter(name => !current(name)).map(name => `${name} is stale: run npm run diagrams:c4`);
+}
+
+function write(files: Record<string, string>, out: string): void {
+  if (Object.keys(files).length) mkdirSync(out, { recursive: true });
+  for (const [name, text] of Object.entries(files)) writeFileSync(join(out, name), text);
+}
+
 function main(): number {
   const { values } = parseArgs({ options: { check: { type: 'boolean' }, specs: { type: 'string' }, out: { type: 'string' } } });
   const specs = values.specs ?? join(ROOT, 'docs', 'diagrams', 'explorer'), out = values.out ?? join(ROOT, 'docs', 'diagrams', 'c4');
   const { files, problems, converted } = renderAll(specs, out);
-  if (values.check) {
-    const current = (name: string): boolean => existsSync(join(out, name)) && readFileSync(join(out, name), 'utf8') === files[name];
-    problems.push(...Object.keys(files).filter(name => !current(name)).map(name => `${name} is stale: run npm run diagrams:c4`));
-  }
+  if (values.check) problems.push(...stale(files, out));
   for (const problem of problems) process.stderr.write(`render-c4: ${problem}\n`);
-  if (problems.length || values.check) return problems.length ? 1 : 0;
-  const names = Object.keys(files);
-  if (names.length) mkdirSync(out, { recursive: true });
-  for (const name of names) writeFileSync(join(out, name), files[name]);
-  process.stdout.write(`render-c4: ${converted} spec${converted === 1 ? '' : 's'}, ${names.length} files in ${out}\n`);
+  if (problems.length) return 1;
+  if (values.check) return 0;
+  write(files, out);
+  process.stdout.write(`render-c4: ${converted} spec${converted === 1 ? '' : 's'}, ${Object.keys(files).length} files in ${out}\n`);
   return 0;
 }
 
