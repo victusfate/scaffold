@@ -26,7 +26,7 @@ flowchart TB
   subgraph LOCAL["2 · Local gates"]
     direction TB
     G1["Clean tree, commits<br/>ahead of main"]:::gate
-    G2["Run integration<br/>tests"]:::gate
+    G2["Run integration tests<br/>red after 2 fix rounds<br/>→ stop, no PR"]:::gate
     G3{"make ci green?<br/>no → auto-correct ≤ 2 rounds,<br/>still red → DRAFT PR"}:::gate
     G4["Version bump, push"]:::git
     G1 --> G2 --> G3 --> G4
@@ -34,8 +34,8 @@ flowchart TB
 
   subgraph OPEN["3 · Open the PR — /create-pr"]
     direction TB
-    O1["/simplify: all files<br/>10/10 before opening"]:::gate
-    O2["Body: Summary, Critical<br/>changes, gate status,<br/>Quality Scores"]:::state
+    O1["/simplify: all files 10/10<br/>or approved overrides"]:::gate
+    O2["Body: Summary, Critical<br/>changes, gate status, Quality<br/>Scores, Test plan"]:::state
     O3["gh pr create"]:::git
     O4["Subscribe, or<br/>gh pr checks --watch"]:::orch
     O1 --> O2 --> O3 --> O4
@@ -80,7 +80,7 @@ flowchart TB
     L7["squash merge<br/>one PR<br/>lands as one commit<br/>on main"]:::git
     L8["--match-head-commit<br/>merge only the exact<br/>commit whose checks<br/>were read"]:::git
     L9["Security scan<br/>CI check: gitleaks,<br/>osv-scanner, zizmor on<br/>the changes"]:::git
-    L10["CI<br/>continuous integration:<br/>automated checks run<br/>on every push"]:::git
+    L10["CI<br/>continuous integration:<br/>hosted runs fast unit checks,<br/>heavy gates run locally"]:::git
     L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
   end
 

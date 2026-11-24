@@ -18,7 +18,7 @@ flowchart TB
   subgraph ADD["1 · Owner adds a task"]
     direction TB
     A1["Owner asks for the work"]:::owner
-    A2["Agent: queue add --requested<br/>owner's words + title,<br/>accept, validate"]:::orch
+    A2["Agent: queue add --requested<br/>owner's words + title,<br/>accept, optional validate"]:::orch
     A3[("queue.db store<br/>queue.md view re-rendered")]:::state
     A1 --> A2 --> A3
   end
@@ -33,7 +33,7 @@ flowchart TB
 
   subgraph ACTIVE["3 · active (claimed)"]
     direction TB
-    C1["tick or claim --worker<br/>owner = worker or slot"]:::orch
+    C1["tick marks it active;<br/>claim --worker sets<br/>owner = worker or slot"]:::orch
     C2["Lease clock runs<br/>(age of the claim)"]:::orch
     C3["release --worker, or<br/>park --branch --resume [~]<br/>→ back to pending"]:::orch
     C1 --> C2 --> C3
