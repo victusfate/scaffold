@@ -19,7 +19,7 @@ flowchart LR
 ```
 
 - [Add](#add): The owner asks for work and the agent records it with the owner's words.
-- [Pending](#pending): The task waits its turn; the top eligible line runs first.
+- [Pending](#pending): The task waits its turn; a resumed active task goes first, then the top eligible line.
 - [Active](#active): A worker or slot claims the task and a lease clock starts.
 - [Outcome](#outcome): Running validate on done, or an explicit fail, decides done, retry or failed.
 - [Deliver](#deliver): In per-task mode, the task's PR must merge before the queue moves on.
@@ -30,15 +30,15 @@ The owner asks for work and the agent records it with the owner's words.
 
 Details: [/queue skill](../../../skills/queue.md)
 
-- queue add --requested stores the owner's words with a title, an accept note and a validate command.
+- queue add --requested stores the owner's words with a title, an accept note and an optional validate command.
 - queue.db is the store; queue.md is its committed, readable view, re-rendered on each change.
 
 ## Pending
 
-The task waits its turn; the top eligible line runs first.
+The task waits its turn; a resumed active task goes first, then the top eligible line.
 
 - Three kinds of waiting
-  - Eligible: its deps are done and it is not held.
+  - Eligible: its deps are done, it is not held and delivery allows it.
   - Waiting: a dep or gate is unfinished.
   - Held: set aside; the drain skips it until unheld.
 
@@ -48,7 +48,7 @@ A worker or slot claims the task and a lease clock starts.
 
 Details: [One loop tick](loop-tick.md)
 
-- A tick or claim --worker sets the task's owner to the worker or slot.
+- tick marks the task active; claim --worker sets its owner to the worker or slot.
 - release, or park --resume, returns it to pending.
 
 **Where it breaks**
@@ -79,7 +79,7 @@ In per-task mode, the task's PR must merge before the queue moves on.
 
 Details: [PR workflow](pr-workflow.md)
 
-- PR, real checks, and the owner approves the merge.
+- PR, real checks, and the merge is authorized in session or by standing policy.
 - Then a fresh branch and queue advance --pr --branch.
 
 **Where it breaks**
@@ -2252,42 +2252,40 @@ const run = (...args: string[]) => spawnSync(process.execPath, [cli, ...args], {
 
 ## Checked against the source
 
-The queue lifecycle flow follows skills/queue.md well: 29 of 35 claims are stated and none is contradicted. The weakest point is the park path: `park --resume` and the `[~]` marker appear in the flow but not in skills/queue.md (only in skills/loop.md and the model script), so the skill doc and the flow disagree on the set of commands and markers. The flow also leaves out the needs-spec failure, the two task modes and the fact that advance verifies nothing itself.
+The lifecycle page matches skills/queue.md and the queue model closely; states, markers, lease behaviour, retry cap, auto-archive and the exit-7 delivery gate are all stated in the sources. The differences are small: eligibility also depends on the per-task delivery latch, a resumed active task outranks the top pending line, and the merge needs session or standing authorization rather than an owner approval each time. The most important omission is that in per-task mode a failed task stays selected and a terminal failure blocks the whole queue.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 29 | 6 | 0 | 0 | 10 | 14 |
+| 35 | 1 | 0 | 0 | 8 | 14 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Add: checks
 
-- **Partly**: queue add --requested stores the owner's words with a title, an accept note and a validate command.
-  > agents: add --requested "&lt;human words&gt;" (tasks are human-owned; --parent adds lineage only)
-  >
-  > [`skills/queue.md:125`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L125)
-
-  The flag and the title/accept/validate fields are documented, but skills/queue.md does not say the words are stored (docs/agents-detail.md says the CLI records a `requested-by:human` tag), and validate is an optional flag.
-
 <details>
-<summary>4 confirmed, with the supporting line</summary>
+<summary>5 confirmed, with the supporting line</summary>
 
 - **Confirmed**: The owner asks for work and the agent records it with the owner's words.
   > human-owned: an agent adds one only when the owner asked for it, quoting their words with
   >
   > [`skills/queue.md:266`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L266)
 
+- **Confirmed**: queue add --requested stores the owner's words with a title, an accept note and an optional validate command.
+  >   const note = \[parent &amp;&amp; \`Child of ${parent}.\`, requested &amp;&amp; \`Requested by a human: "${requested}"\`\].filter(Boolean).join(' ');
+  >
+  > [`scripts/queue-task-origin.ts:40`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-task-origin.ts#L40)
+
 - **Confirmed**: queue.db is the store; queue.md is its committed, readable view, re-rendered on each change.
   > \*\*\`queue.md\` is the view\*\*, re-rendered after every mutation and committed so the
   >
   > [`skills/queue.md:43`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L43)
 
-- **Confirmed**: Task recorded (payload: queue.db row)
+- **Confirmed**: add → pending: Task recorded (payload: queue.db row)
   > \*\*The store is the source of truth.\*\* \`queue.db\` holds every task and the config
   >
   > [`skills/queue.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L35)
 
-- **Confirmed** (from the diagram): Legend queue.db: the store (source of truth, git-ignored)
+- **Confirmed** (from the diagram): Legend queue.db / queue.md: the store (source of truth, git-ignored) / its committed, human-readable view
   > lane hands out ids from the same counter. The store is git-ignored: two committed
   >
   > [`skills/queue.md:40`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L40)
@@ -2299,19 +2297,15 @@ An agent judged each claim against the source; each quote is found in its file w
 <details>
 <summary>7 confirmed, with the supporting line</summary>
 
-- **Confirmed**: The task waits its turn; the top eligible line runs first.
+- **Confirmed**: The task waits its turn; a resumed active task goes first, then the top eligible line.
   > A resumed \`active\` task is preferred next wake; otherwise the topmost \*\*eligible\*\*
   >
   > [`skills/queue.md:403`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L403)
 
-  A resumed active task is taken before the top eligible pending one.
-
-- **Confirmed**: Eligible: its deps are done and it is not held.
-  > /\*\* A pending task is eligible only when it isn't held and every dependency is done. \*/
+- **Confirmed**: Eligible: its deps are done, it is not held and delivery allows it.
+  > return task.status === 'pending' &amp;&amp; !task.held &amp;&amp; deliveryAllows(q, task.id)
   >
-  > [`scripts/queue-model.ts:763`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L763)
-
-  skills/queue.md itself only says "all `deps` done"; the held condition is settled in the model file it points to, which also applies the per-task delivery gate.
+  > [`scripts/queue-model.ts:765`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L765)
 
 - **Confirmed**: Waiting: a dep or gate is unfinished.
   > A \*\*gate\*\* is a task that everything else depends on: while it's unfinished,
@@ -2319,14 +2313,14 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/queue.md:156`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L156)
 
 - **Confirmed**: Held: set aside; the drain skips it until unheld.
-  > Blocked parks the card (\`held\` — the drain skips it until dragged out, no
+  >  \* Park or unpark a task: held tasks stay pending but are never eligible, so
   >
-  > [`skills/queue.md:240`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L240)
+  > [`scripts/queue-model.ts:591`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L591)
 
-- **Confirmed**: Claimed by a worker (payload: owner + lease)
-  > \- otherwise it marks the current task \`active\` and prints a \`&lt;queue\_task&gt;\`
+- **Confirmed**: pending → active: Claimed by a worker (payload: owner + lease)
+  >   return mapTask(q, id, t =&gt; ({ ...t, status: 'active', owner, startedAt: nowIso }));
   >
-  > [`skills/queue.md:393`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L393)
+  > [`scripts/queue-model.ts:506`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L506)
 
 - **Confirmed**: Gate: A task every other task depends on, used to block work temporarily.
   > is the mechanical form of a \*\*temporary priority block\*\* — e.g. the 2026
@@ -2342,80 +2336,72 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Active: checks
 
-- **Partly**: A tick or claim --worker sets the task's owner to the worker or slot.
-  > claim &lt;id&gt; \[--worker w\]                \# atomic claim for a parallel worker
-  >
-  > [`skills/queue.md:131`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L131)
-
-  claim --worker is stated; for tick the source only says it marks the task active, not that it sets an owner; slot ids as owners come from skills/loop.md.
-
-- **Partly**: release, or park --resume, returns it to pending.
-  > release &lt;id&gt; --worker w                \# return a confirmed-ended owned claim to pending
-  >
-  > [`skills/queue.md:132`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L132)
-
-  release is stated; park is absent from skills/queue.md (command surface and text) and is documented only in skills/loop.md and scripts/queue-model.ts.
-
-- **Partly** (from the diagram): release --worker, or park --branch --resume [~] -&gt; back to pending
-  > \`node scripts/queue.ts park &lt;id&gt; --branch &lt;b&gt; --resume "&lt;next step&gt;"\` to preserve work and release ownership.
-  >
-  > [`skills/loop.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L53)
-
-  The park command and its flags are in skills/loop.md, not in skills/queue.md; the `[~]` marker is only in scripts/queue-model.ts.
-
 <details>
-<summary>5 confirmed, with the supporting line</summary>
+<summary>8 confirmed, with the supporting line</summary>
 
 - **Confirmed**: A worker or slot claims the task and a lease clock starts.
-  > for cleanup. \`owner\` is a queue label and \`startedAt\` is a lease clock; neither is a
+  > /\*\* Mark a task active and claim it for a worker, stamping the lease clock. \*/
   >
-  > [`skills/queue.md:413`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L413)
+  > [`scripts/queue-model.ts:502`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L502)
+
+- **Confirmed**: tick marks the task active; claim --worker sets its owner to the worker or slot.
+  >    \- otherwise it marks the current task \`active\` and prints a \`&lt;queue\_task&gt;\`
+  >
+  > [`skills/queue.md:393`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L393)
+
+- **Confirmed**: release, or park --resume, returns it to pending.
+  >  \* Park a task whose lane stopped with work in hand: it returns to pending (owner and lease cleared,
+  >
+  > [`scripts/queue-model.ts:573`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L573)
 
 - **Confirmed**: The lease is the age of the claim, not a process id; tick never reclaims an expired lease, it stops and reports.
   > \`tick\` and \`ready\` never reclaim an expired lease: they exit 6 and leave the task active.
   >
   > [`skills/queue.md:416`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L416)
 
-- **Confirmed**: Work finished (payload: validate result)
-  > \6. run \`validate\`, then \`done\`.
+- **Confirmed**: active → outcome: Work finished (payload: validate result)
+  > \3. \*\*Complete:\*\* \`queue done &lt;id&gt;\` (runs \`validate\`; refuses → counts as a failure)
   >
-  > [`skills/queue.md:322`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L322)
+  > [`skills/queue.md:397`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L397)
 
 - **Confirmed**: Lease: How long a claim has been held; not a process id.
   > for cleanup. \`owner\` is a queue label and \`startedAt\` is a lease clock; neither is a
   >
   > [`skills/queue.md:413`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L413)
 
-- **Confirmed** (from the diagram): Legend slot: a worker seat declared in topology.json
-  > names the orchestrator, the tick cadence and the subagent \*\*slots\*\*, with no routing: the orchestrator judges which
+- **Confirmed** (from the diagram): release --worker, or park --branch --resume [~] → back to pending
+  >   \`node scripts/queue.ts park &lt;id&gt; --branch &lt;b&gt; --resume "&lt;next step&gt;"\` to preserve work and release ownership.
   >
-  > [`skills/loop.md:31`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L31)
+  > [`skills/loop.md:54`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L54)
+
+- **Confirmed** (from the diagram): Legend slot: a worker seat declared in topology.json
+  > \`.agent/topology.json\` (consumer-owned; schema \`lib/topology.schema.json\`, reader \`node scripts/topology.ts\`)
+  >
+  > [`skills/loop.md:30`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L30)
 
 </details>
 
 ### Outcome: checks
 
-- **Partly**: A failure below maxFailures goes back to pending for a retry.
+- **Partly** (from the diagram): fail below maxFailures → retry, back to pending
   > current delivery task: retries stay selected; terminal failure blocks advancement
   >
   > [`skills/queue.md:405`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L405)
 
-  Retries before a terminal failure are stated, but not that the task returns to pending; in the default per-task mode the retry stays the selected delivery task, and only batch mode sends it to the back.
-
-- **Partly**: Task markers in queue.md: [ ] pending, [&gt;] active (claimed), [~] parked with a resume note, [x] done, [!] failed
-  > \- \`\[ \]\` pending · \`\[&gt;\]\` active · \`\[x\]\` done · \`\[!\]\` failed
-  >
-  > [`skills/queue.md:74`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L74)
-
-  skills/queue.md lists four markers; `[~]` parked is missing there and appears only in scripts/queue-model.ts.
+  True, but the diagram does not show that in per-task mode the retrying task stays the selected delivery task, while in batch mode it drops to the back.
 
 <details>
-<summary>8 confirmed, with the supporting line</summary>
+<summary>10 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Running validate on done, or an explicit fail, decides done, retry or failed.
   > \3. \*\*Complete:\*\* \`queue done &lt;id&gt;\` (runs \`validate\`; refuses → counts as a failure)
   >
   > [`skills/queue.md:397`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L397)
+
+- **Confirmed**: A failure below maxFailures goes back to pending for a retry.
+  >  \* pending) until it reaches maxFailures, then goes terminal \`failed\`. Either way
+  >
+  > [`scripts/queue-model.ts:520`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L520)
 
 - **Confirmed**: At maxFailures it is marked failed and stays visible; requeue revives it.
   > requeue &lt;id&gt;                           \# revive a failed task (pending again, failures cleared)
@@ -2423,11 +2409,16 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/queue.md:138`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L138)
 
 - **Confirmed**: A done task auto-archives to archive.md, but stays while unfinished work depends on it.
-  > \*\*Completed tasks auto-archive\*\*: \`done\` moves a task straight into \`archive.md\` and
+  > out of \`queue.md\`, so the live queue shrinks to empty as work finishes (a \`done\` task
   >
-  > [`skills/queue.md:104`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L104)
+  > [`skills/queue.md:105`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L105)
 
-- **Confirmed**: Done and archived (payload: PR)
+- **Confirmed**: Task markers in queue.md: [ ] pending, [&gt;] active (claimed), [~] parked with a resume note, [x] done, [!] failed
+  >   'Order = priority (top first). Checkboxes: \`\[ \]\` pending · \`\[\~\]\` parked (work exists on '
+  >
+  > [`scripts/queue-model.ts:403`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L403)
+
+- **Confirmed**: outcome → deliver: Done and archived (payload: PR)
   > \4. \*\*Deliver\*\* through the PR/merge/fresh-branch cycle above, then \`advance\`.
   >
   > [`skills/queue.md:400`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L400)
@@ -2437,12 +2428,10 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/queue.md:75`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L75)
 
-  "For good" is softened by `requeue`, which revives a failed task.
-
 - **Confirmed** (from the diagram): done [x] auto-archives to archive.md, before delivery
-  > integrated branch. \`done\` records implementation acceptance, \*\*not a merge\*\*.
+  >   /\*\* Selected task stays latched through archive until root acknowledges delivery. \*/
   >
-  > [`skills/queue.md:348`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L348)
+  > [`scripts/queue-model.ts:104`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L104)
 
 - **Confirmed** (from the diagram): failed tasks leave via archive sweep
   > DAG never breaks). Terminal \`failed\` tasks stay visible; sweep them with \`archive\`.
@@ -2466,15 +2455,13 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/queue.md:358`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L358)
 
-- **Confirmed**: PR, real checks, and the owner approves the merge.
+- **Confirmed**: PR, real checks, and the merge is authorized in session or by standing policy.
   > \4. Merge only with explicit session authorization or standing project policy.
   >
   > [`skills/queue.md:353`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L353)
 
-  Approval can be standing project policy, not only a per-merge owner approval.
-
 - **Confirmed**: Then a fresh branch and queue advance --pr --branch.
-  > \`queue advance &lt;id&gt; --pr &lt;merged-pr-url&gt; --branch &lt;fresh-working-branch&gt;\`.
+  >    \`queue advance &lt;id&gt; --pr &lt;merged-pr-url&gt; --branch &lt;fresh-working-branch&gt;\`.
   >
   > [`skills/queue.md:361`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L361)
 
@@ -2492,55 +2479,45 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ## In the source, not shown in the flow
 
-- A task has one of two modes, direct or chain; a chain task runs the whole feature-chain with no user input before done.
-  > \- \*\*\`direct\`\*\* (default) — small, self-contained work (bug fixes, chores, config).
+- In per-task mode a failed task remains the current delivery task: retries stay selected and a terminal failure blocks the queue until it is repaired, requeued or the owner changes the plan.
+  > current delivery task: retries stay selected; terminal failure blocks advancement
   >
-  > [`skills/queue.md:310`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L310)
+  > [`skills/queue.md:405`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L405)
 
-- A task the executing agent cannot resolve is failed with a needs-spec note; the agent never asks the user during a drain.
-  > \*\*fails the task with a \`needs-spec: &lt;what's missing&gt;\` note\*\* (\`queue fail &lt;id&gt;
+- A working agent never asks the user; an ambiguous task is failed with a needs-spec note, which is one of the ways a task reaches the fail path.
+  > \2. \*\*No user input during a drain.\*\* Never ask; underspecified → \`fail\` with a
   >
-  > [`skills/queue.md:334`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L334)
+  > [`skills/queue.md:451`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L451)
 
-- A stopped queue does nothing: tick is a no-op until queue start.
-  > \6. \*\*Stopped means stopped\*\* — a \`tick\` does nothing until \`queue start\`.
+- Before a tick claims anything it can end without work: a stopped queue does nothing until queue start, and an idle queue ends the turn.
+  >    \- \`STOPPED\` → do nothing (paused). \`IDLE\` → nothing eligible; end the turn.
   >
-  > [`skills/queue.md:459`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L459)
+  > [`skills/queue.md:390`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L390)
 
-- In per-task mode a terminal failure blocks the queue until the task is repaired or requeued, or the owner changes the delivery plan.
-  > until repaired/requeued or the owner explicitly changes the delivery plan. In
+- A pending task whose dependency failed can never become eligible; this deadlock state is not shown among the kinds of waiting.
+  > /\*\* Pending tasks blocked by a dependency that failed (can never become eligible). \*/
   >
-  > [`skills/queue.md:406`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L406)
+  > [`scripts/queue-model.ts:769`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L769)
 
-- advance does not check GitHub, the branch or CI; the orchestrator must verify those facts before calling it.
+- advance is an acknowledgment that verifies nothing on GitHub; the orchestrator must confirm the merge, branch and CI before calling it.
   > requires evidence references, but \*\*does not query GitHub, verify the branch,
   >
   > [`skills/queue.md:369`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L369)
 
+- Each loop run reconciles lanes before dispatch: an active task without a running subagent is resumed or parked, and an active task owned by a non-slot is adopted or parked.
+  > \- Active task without a running subagent: resume it, or park it with
+  >
+  > [`skills/loop.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L53)
+
 - Without merge authority the ready PR is kept, the missing authorization is reported and the next task stays gated.
-  > authority, keep the ready PR, report the missing authorization, and gate the
+  >    authority, keep the ready PR, report the missing authorization, and gate the
   >
   > [`skills/queue.md:355`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L355)
 
-- When queue.md was hand-edited, every mutating command refuses until the edits are imported or the view is re-rendered.
-  > refuses with a message and saves nothing until you \`import\` the edits or
+- A bare agent add with neither --requested nor --parent is refused (exit 2).
+  > the owner's request. A bare agent add exits 2.
   >
-  > [`skills/queue.md:89`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L89)
-
-- An expired lease is released only by the orchestrator, after confirming the owned subagent ended, with the exact stored owner.
-  > &lt;id&gt; --worker &lt;exact-owner&gt;\` to return unfinished work to pending
-  >
-  > [`skills/queue.md:421`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L421)
-
-- Batch delivery mode is an explicit opt-in alternative to per-task mode, with the old done/failure progression.
-  > \`deliveryMode\` defaults to \`per-task\`; \`batch\` explicitly opts into legacy fan-out.
-  >
-  > [`skills/queue.md:78`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L78)
-
-- done can be forced without validation (done --skip-validate, or operator-done from the console), which the outcome stage does not show.
-  > done &lt;id&gt; \[--skip-validate\]            \# implementation accepted; delivery gate remains
-  >
-  > [`skills/queue.md:133`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L133)
+  > [`skills/queue.md:269`](https://github.com/victusfate/scaffold/blob/main/skills/queue.md#L269)
 
 ## Glossary
 

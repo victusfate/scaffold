@@ -24,7 +24,7 @@ flowchart LR
 - [Record real runs](#record-real-runs): Run the code in a locked-down sandbox and record what actually happened.
 - [Validated bundle](#validated-bundle): Index, source and runs go into one JSON file checked by an executable schema.
 - [Tour and narrate](#tour-and-narrate): A guided tour follows input through ownership and mutations to output, citing source lines.
-- [Verify and view offline](#verify-and-view-offline): Check the recording still matches the source, then open the tour as one offline page.
+- [Verify and view offline](#verify-and-view-offline): Check the recording against the source before trusting it, and open the tour as one offline page.
 
 ## Start with a question
 
@@ -76,7 +76,7 @@ Run the code in a locked-down sandbox and record what actually happened.
 
 Index, source and runs go into one JSON file checked by an executable schema.
 
-- Recordings are cached by everything that could change them: source, dependencies, versions, inputs and fakes.
+- Recordings are cached by what could change them: source, dependencies, versions, inputs, fakes, runtime and sandbox policy.
 - diff compares two runs: paths, outputs and state mutations.
 
 **Where it breaks**
@@ -96,7 +96,7 @@ A guided tour follows input through ownership and mutations to output, citing so
 
 ## Verify and view offline
 
-Check the recording still matches the source, then open the tour as one offline page.
+Check the recording against the source before trusting it, and open the tour as one offline page.
 
 - verify fails if any recorded source differs from the checkout or escapes it.
 - view writes tour.html, which needs no server or network.
@@ -1897,19 +1897,15 @@ export function validateBundle(value: unknown): asserts value is MeldBundle {
 
 ## Checked against the source
 
-The recorded-dive stages match skills/mind-meld.md closely: every spec role, detail, risk, step and glossary entry has a source line. The two diagram-only problems are the "learning IDE" label, which the skill doc never uses, and the verify-to-view gate, which the source states as a gate on trusting the evidence rather than on opening the viewer. The largest gap is what is not shown: the default static map mode has no stage, and the sandbox test gate, secret redaction and no-download rules are absent.
+The mind-meld page matches skills/mind-meld.md closely: every stage, rule and step traces to the doc. The only weak points are the 'one JSON file' wording for the bundle, which is stated only in scripts/mind-meld-schema.ts (not a listed source), and a shortened cache-key list. The page leaves out the sandbox test gate that must pass before an execution adapter is claimed to work, and the redaction rules.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 46 | 1 | 1 | 0 | 8 | 14 |
+| 45 | 1 | 0 | 0 | 6 | 14 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Start with a question: checks
-
-- **Not found** (from the diagram): Title and legend L1: /mind-meld is a "learning IDE" (Integrated Development Environment: a workspace for exploring code)
-
-  skills/mind-meld.md never uses the term IDE; it describes Mind Meld as a visual code walkthrough or a learning REPL (searched the whole file for "IDE").
 
 <details>
 <summary>6 confirmed, with the supporting line</summary>
@@ -1939,7 +1935,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/mind-meld.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L57)
 
-- **Confirmed**: question -&gt; adapters: Entry point and test chosen (payload: target flow)
+- **Confirmed**: question -&gt; adapters: Entry point and test chosen (target flow)
   > \3. Pick an existing test or a small flow that reaches that code.
   >
   > [`skills/mind-meld.md:64`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L64)
@@ -1962,36 +1958,36 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/mind-meld.md:135`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L135)
 
 - **Confirmed**: An execution adapter runs only targets it has registered.
+  > with \`{save: "memory"}\` as its boundary policy. Reject other targets and fake policies.
+  >
+  > [`skills/mind-meld.md:141`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L141)
+
+- **Confirmed**: Never turn a natural-language question into an arbitrary shell command.
   > A child adapter registers its own allowed targets; never turn a natural-language
   >
   > [`skills/mind-meld.md:142`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L142)
 
-- **Confirmed**: Never turn a natural-language question into an arbitrary shell command.
-  > question into an arbitrary shell command.
-  >
-  > [`skills/mind-meld.md:143`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L143)
-
-- **Confirmed**: Adapter contract table: index() -&gt; A validated version 1 bundle with nodes, static edges, source bytes and hashes
+- **Confirmed**: Adapter contract: index() -&gt; A validated version 1 bundle with nodes, static edges, source bytes and hashes
   > \| \`index()\` \| Repo snapshot supplied by the adapter \| A validated version 1 bundle with nodes, static edges, source bytes and hashes \|
   >
   > [`skills/mind-meld.md:135`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L135)
 
-- **Confirmed**: Adapter contract table: run_flow(entry, inputs) -&gt; A recorded run bound to the exact indexed source snapshot
-  > A recorded run bound to the exact indexed source snapshot
+- **Confirmed**: Adapter contract: run_flow(entry, inputs) -&gt; A recorded run bound to the exact indexed source snapshot
+  > \| \`run\_flow(entry, inputs)\` \| A named allowed integration entry and validated inputs \| A recorded run bound to the exact indexed source snapshot \|
   >
   > [`skills/mind-meld.md:136`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L136)
 
-- **Confirmed**: Adapter contract table: run_piece(target, inputs, fakes) -&gt; A recorded isolated run, with the fake policy in its cache identity
+- **Confirmed**: Adapter contract: run_piece(target, inputs, fakes) -&gt; A recorded isolated run, with the fake policy in its cache identity
   > A recorded isolated run with the fake policy in its cache identity
   >
   > [`skills/mind-meld.md:137`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L137)
 
-- **Confirmed**: Adapter contract table: diff(runA, runB) -&gt; Ordered paths, outputs and state mutations from each run
-  > Ordered paths, outputs and state mutations from each run
+- **Confirmed**: Adapter contract: diff(runA, runB) -&gt; Ordered paths, outputs and state mutations from each run
+  > \| \`diff(runA, runB)\` \| Two validated recordings, possibly from different snapshots \| Ordered paths, outputs and state mutations from each run \|
   >
   > [`skills/mind-meld.md:138`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L138)
 
-- **Confirmed**: adapters -&gt; run: Targets registered (payload: index + runner)
+- **Confirmed**: adapters -&gt; run: Targets registered (index + runner)
   > A child adapter registers its own allowed targets; never turn a natural-language
   >
   > [`skills/mind-meld.md:142`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L142)
@@ -2001,7 +1997,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/mind-meld.md:58`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L58)
 
-- **Confirmed** (from the diagram): Legend L5 static edge: a call that might happen, read from source, not an observed call
+- **Confirmed** (from the diagram): Legend: static edge - a call that might happen, read from source, not an observed call
   > expressions. A static call edge means a possible dependency, not an observed call.
   >
   > [`skills/mind-meld.md:148`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L148)
@@ -2010,13 +2006,20 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Record real runs: checks
 
+- **Partly** (from the diagram): Legend: flow / piece - a full integration run / one function run alone with fakes
+  > \| \`run\_piece(target, inputs, fakes)\` \| A named allowed function/system and explicit boundary replacements \|
+  >
+  > [`skills/mind-meld.md:137`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L137)
+
+  The source says a piece is a named allowed function or system, not only one function.
+
 <details>
-<summary>10 confirmed, with the supporting line</summary>
+<summary>9 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Run the code in a locked-down sandbox and record what actually happened.
-  > The map shows what may run. To see what actually runs (values, state changes, timing), record a flow.
+  > It uses a pinned pre-pulled image, no network, a read-only root, an unprivileged
   >
-  > [`skills/mind-meld.md:54`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L54)
+  > [`skills/mind-meld.md:175`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L175)
 
 - **Confirmed**: Three runs: A full flow, one isolated piece with fakes, and a contrasting run that tests an assumption.
   > \5. Record a real flow, one isolated piece, and a contrasting run that tests an assumption.
@@ -2043,23 +2046,18 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/mind-meld.md:189`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L189)
 
-- **Confirmed**: run -&gt; bundle: Runs recorded (payload: recorded events)
-  > The bundle embeds source bytes for offline inspection and binds each run to the
+- **Confirmed**: run -&gt; bundle: Runs recorded (recorded events)
+  > static call sites, recorded events and snapshot identity. Link to those contracts
   >
-  > [`skills/mind-meld.md:160`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L160)
+  > [`skills/mind-meld.md:158`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L158)
 
 - **Confirmed**: Sandbox: An isolated container that cannot touch the network or real data.
-  > the child. It never mounts the Docker socket, home, credentials or production data.
+  > It uses a pinned pre-pulled image, no network, a read-only root, an unprivileged
   >
-  > [`skills/mind-meld.md:181`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L181)
+  > [`skills/mind-meld.md:175`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L175)
 
 - **Confirmed**: Fakes: Stand-ins for outside boundaries, such as an in-memory save.
-  > with \`{save: "memory"}\` as its boundary policy. Reject other targets and fake policies.
-  >
-  > [`skills/mind-meld.md:141`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L141)
-
-- **Confirmed** (from the diagram): Legend L3 flow / piece: a full integration run / one function run alone with fakes
-  > A named allowed function/system and explicit boundary replacements
+  > \| \`run\_piece(target, inputs, fakes)\` \| A named allowed function/system and explicit boundary replacements \|
   >
   > [`skills/mind-meld.md:137`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L137)
 
@@ -2071,14 +2069,16 @@ An agent judged each claim against the source; each quote is found in its file w
 <summary>9 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Index, source and runs go into one JSON file checked by an executable schema.
-  > Use \`scripts/mind-meld-schema.ts\` as the executable schema and validator.
+  > export interface MeldBundle { version: 1; nodes: MeldNode\[\]; sources: Record&lt;string, string&gt;; sourceHashes: Record&lt;string, string&gt;; snapshotHash: string; edges: MeldEdge\[\]; runs: MeldRun\[\] }
   >
-  > [`skills/mind-meld.md:154`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L154)
+  > [`scripts/mind-meld-schema.ts:11`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld-schema.ts#L11)
 
-- **Confirmed**: Recordings are cached by everything that could change them: source, dependencies, versions, inputs and fakes.
-  > Key recordings by source content, transitive runtime dependencies, adapter and
+  skills/mind-meld.md says the bundle embeds source bytes and binds each run, and that the schema is executable, but never says index, source and runs sit in one JSON file (its commands write index.json, flow.json and piece.json separately); the single-object shape is in scripts/mind-meld-schema.ts, which would need adding to sources.
+
+- **Confirmed**: Recordings are cached by what could change them: source, dependencies, versions, inputs, fakes, runtime and sandbox policy.
+  > instrumentation versions, compiler/runtime/image identity, sandbox policy, entry,
   >
-  > [`skills/mind-meld.md:194`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L194)
+  > [`skills/mind-meld.md:195`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L195)
 
 - **Confirmed**: diff compares two runs: paths, outputs and state mutations.
   > \| \`diff(runA, runB)\` \| Two validated recordings, possibly from different snapshots \| Ordered paths, outputs and state mutations from each run \|
@@ -2090,30 +2090,32 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/mind-meld.md:200`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L200)
 
-- **Confirmed**: bundle -&gt; tour: Schema passes (payload: version 1 bundle)
+- **Confirmed**: bundle -&gt; tour: Schema passes (version 1 bundle)
   > Validate imported bundles before rendering, diffing, or narrating them.
   >
   > [`skills/mind-meld.md:155`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L155)
 
 - **Confirmed**: Bundle: One JSON file holding the index, source bytes and recorded runs.
+  > export interface MeldBundle { version: 1; nodes: MeldNode\[\]; sources: Record&lt;string, string&gt;; sourceHashes: Record&lt;string, string&gt;; snapshotHash: string; edges: MeldEdge\[\]; runs: MeldRun\[\] }
+  >
+  > [`scripts/mind-meld-schema.ts:11`](https://github.com/victusfate/scaffold/blob/main/scripts/mind-meld-schema.ts#L11)
+
+  skills/mind-meld.md says the bundle embeds source bytes and binds each run, and that the schema is executable, but never says index, source and runs sit in one JSON file (its commands write index.json, flow.json and piece.json separately); the single-object shape is in scripts/mind-meld-schema.ts, which would need adding to sources.
+
+- **Confirmed** (from the diagram): Legend: snapshot hash - fingerprint of the exact source a run came from
   > The bundle embeds source bytes for offline inspection and binds each run to the
   >
   > [`skills/mind-meld.md:160`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L160)
 
-- **Confirmed** (from the diagram): Legend L8 snapshot hash: fingerprint of the exact source a run came from
-  > same content snapshot. Static dependencies remain separate from observed calls.
-  >
-  > [`skills/mind-meld.md:161`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L161)
-
-- **Confirmed** (from the diagram): Legend L9 schema: the executable rules a bundle must pass before use
+- **Confirmed** (from the diagram): Legend: schema - the executable rules a bundle must pass before use
   > Validate imported bundles before rendering, diffing, or narrating them.
   >
   > [`skills/mind-meld.md:155`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L155)
 
-- **Confirmed** (from the diagram): Legend L10 cache key: everything that must match to reuse a past recording
-  > mode, canonicalized inputs and fake policy. Exclude timings and generated artifacts.
+- **Confirmed** (from the diagram): Legend: cache key - everything that must match to reuse a past recording
+  > The reference \`cacheKey()\` implements this identity and an in-process cache.
   >
-  > [`skills/mind-meld.md:196`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L196)
+  > [`skills/mind-meld.md:197`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L197)
 
 </details>
 
@@ -2126,8 +2128,6 @@ An agent judged each claim against the source; each quote is found in its file w
   > \6. Make a tour that follows input, ownership, mutations, serialization and output.
   >
   > [`skills/mind-meld.md:67`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L67)
-
-  The numbered step also lists serialization, which the spec and diagram box T1 leave out; the narration prompt uses the shorter list.
 
 - **Confirmed**: Narration cites file:line and event ids, and separates a possible dependency from an observed call.
   > &gt; event ids. Distinguish a possible static dependency from an observed call.
@@ -2144,7 +2144,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/mind-meld.md:169`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L169)
 
-- **Confirmed**: tour -&gt; view: Tour written (payload: tour.json)
+- **Confirmed**: tour -&gt; view: Tour written (tour.json)
   > node scripts/mind-meld.ts view "$meld\_dir/tour.json" &gt; "$meld\_dir/tour.html"
   >
   > [`skills/mind-meld.md:102`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L102)
@@ -2153,17 +2153,10 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Verify and view offline: checks
 
-- **Partly** (from the diagram): V1 --&gt;|yes| V2: view (tour.html) is reached only when verify says recorded source matches the checkout
-  > \8. Verify the recording's source hashes before treating it as evidence about today's checkout.
-  >
-  > [`skills/mind-meld.md:69`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L69)
-
-  The source runs verify before view in its command list but gates treating the recording as evidence, not opening the viewer; the page itself says freshness is unknown offline, and the diagram shows no "no" branch.
-
 <details>
 <summary>5 confirmed, with the supporting line</summary>
 
-- **Confirmed**: Check the recording still matches the source, then open the tour as one offline page.
+- **Confirmed**: Check the recording against the source before trusting it, and open the tour as one offline page.
   > \8. Verify the recording's source hashes before treating it as evidence about today's checkout.
   >
   > [`skills/mind-meld.md:69`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L69)
@@ -2192,45 +2185,35 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ## In the source, not shown in the flow
 
-- The sandboxed test run (RUN_MIND_MELD_SANDBOX=1) must pass before anyone claims an execution adapter works; no stage shows this gate.
+- The sandbox test run (RUN_MIND_MELD_SANDBOX=1) must pass before anyone claims an execution adapter works; neither the spec nor the diagram shows this gate.
   > The second command must pass before claiming that an execution adapter works.
   >
   > [`skills/mind-meld.md:124`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L124)
 
-- Recordings must keep payloads bounded and have secrets redacted before leaving the sandbox, and tours must not hold credentials, production saves or personal data.
+- Every adapter needs sandbox and timeout probes, and a child adapter must keep the isolation properties for its whole process tree.
+  > Require sandbox and timeout probes for each adapter. An unavailable sandbox blocks
+  >
+  > [`skills/mind-meld.md:188`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L188)
+
+- Secrets are redacted and payloads bounded before a recording leaves the sandbox, and tours must not hold credentials, production saves or personal data.
   > Keep large payloads bounded and redact secrets before a recording leaves the sandbox.
   >
   > [`skills/mind-meld.md:167`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L167)
-
-- Nothing may be downloaded (dependencies or images) during indexing, execution or viewing; the pinned image is pulled once beforehand.
-  > Do not download dependencies or images during indexing, execution, or viewing.
-  >
-  > [`skills/mind-meld.md:84`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L84)
-
-- A question answered by a new small run must go through the adapter before its result is described.
-  > &gt; inputs and fakes. Run it through the adapter before describing its result.
-  >
-  > [`skills/mind-meld.md:219`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L219)
 
 - Narration is stored separately from the evidence, with the hashes of the evidence it explains.
   > Store narration separately with the evidence hashes it explains.
   >
   > [`skills/mind-meld.md:222`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L222)
 
-- Generated artifacts (index, runs, tour) go in a temporary directory outside the repo.
-  > Put generated artifacts in a temporary directory outside the repo:
+- Nothing is downloaded during indexing, execution or viewing; the pinned image is pulled once beforehand.
+  > Do not download dependencies or images during indexing, execution, or viewing.
   >
-  > [`skills/mind-meld.md:92`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L92)
+  > [`skills/mind-meld.md:84`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L84)
 
-- Every adapter needs its own sandbox and timeout probes, and imported repo code is treated as untrusted.
-  > Require sandbox and timeout probes for each adapter. An unavailable sandbox blocks
+- Imported repo code is treated as untrusted, and a language VM does not count as OS isolation.
+  > Treat imported repo code as untrusted, and do not confuse a language VM with OS isolation.
   >
-  > [`skills/mind-meld.md:188`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L188)
-
-- The default mode, the static repo map (`mind-meld.ts map`, with per-language adapters under `.mind-meld/languages/`), has no stage or box; only the spec lede mentions it.
-  > node scripts/mind-meld.ts map . docs/map    \# no execution, no Docker
-  >
-  > [`skills/mind-meld.md:10`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L10)
+  > [`skills/mind-meld.md:190`](https://github.com/victusfate/scaffold/blob/main/skills/mind-meld.md#L190)
 
 ## Glossary
 

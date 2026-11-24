@@ -2,8 +2,8 @@
   "title": "PR workflow",
   "lede": "How one task becomes one merged PR: local gates first, real checks on GitHub, and a merge only the owner authorizes.",
   "detail": "../generated/pr-workflow.svg",
-  "sources": ["docs/diagrams/src/pr-workflow.mmd", "skills/create-pr.md", "AGENTS.md"],
-  "reviewed": "dbe1dfeb6011",
+  "sources": ["docs/diagrams/src/pr-workflow.mmd", "skills/create-pr.md", "AGENTS.md", "docs/agents-detail.md"],
+  "reviewed": "ab2e49505fd2",
   "lanes": [
     { "id": "agent", "name": "Agent" },
     { "id": "github", "name": "GitHub" },

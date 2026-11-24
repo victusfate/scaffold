@@ -1,5 +1,5 @@
 {
-  "summary": "The council flow matches skills/council.md almost claim for claim: the triggers, the brief, the five lenses, the anonymized review, the chairman rules and the output sections are all in the source. One risk bullet states a consequence the source does not give. The main gap is the optional Jev-accelerated mode for phases 3 and 4, plus the batching rule for clients with fewer than five slots.",
+  "summary": "The council flow tracks skills/council.md almost line for line: phases, lenses, review questions, verdict sections and rules all have source text. Two wording issues remain: 'Three questions, about 200 words each' misreads a per-review limit as per-question, and the brief's risk states a consequence the source does not. The optional Jev-accelerated mode and the batching rule for fewer than five slots are not shown.",
   "checks": [
     {
       "node": "ask",
@@ -59,19 +59,10 @@
       "node": "brief",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Maps the trade space",
-      "verdict": "confirmed",
-      "file": "skills/council.md",
-      "quote": "**Map the shape of the trade space.** Before the advisors weigh in, name the"
-    },
-    {
-      "node": "brief",
-      "origin": "spec",
-      "kind": "detail",
       "claim": "Names the axes the decision balances, such as cost, speed, risk and reversibility.",
       "verdict": "confirmed",
       "file": "skills/council.md",
-      "quote": "dimensions the decision balances (cost vs speed vs risk vs reversibility vs"
+      "quote": "dimensions the decision balances (cost vs speed vs risk vs reversibility vs …),"
     },
     {
       "node": "brief",
@@ -90,7 +81,7 @@
       "verdict": "partial",
       "file": "skills/council.md",
       "quote": "even-handed; do not tip the advisors toward an answer.",
-      "note": "The source gives the rule (keep the brief even-handed) but does not state the consequence the spec asserts."
+      "note": "The source gives the rule (keep it even-handed, do not tip the advisors) but not this consequence; the consequence is the page's own rationale."
     },
     {
       "node": "advisors",
@@ -132,7 +123,7 @@
       "node": "advisors",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Lens table — Contrarian: Assumes the plan breaks, and asks where and why.",
+      "claim": "Contrarian: Assumes the plan breaks, and asks where and why.",
       "verdict": "confirmed",
       "file": "skills/council.md",
       "quote": "| **The Contrarian** | Hunts for what's wrong, missing, or will fail. Assumes the plan breaks — where and why? |"
@@ -141,16 +132,16 @@
       "node": "advisors",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Lens table — First-Principles: Strips assumptions and asks whether this is even the right question.",
+      "claim": "First-Principles: Strips assumptions and asks whether this is even the right question.",
       "verdict": "confirmed",
       "file": "skills/council.md",
-      "quote": "Strips assumptions and rebuilds from the ground up. Challenges whether this is even the right question. |"
+      "quote": "| **The First-Principles Thinker** | Strips assumptions and rebuilds from the ground up. Challenges whether this is even the right question. |"
     },
     {
       "node": "advisors",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Lens table — Expansionist: Hunts hidden upside: what if this works better than expected?",
+      "claim": "Expansionist: Hunts hidden upside: what if this works better than expected?",
       "verdict": "confirmed",
       "file": "skills/council.md",
       "quote": "| **The Expansionist** | Hunts hidden upside and adjacent opportunity. \"What if this works better than expected?\" |"
@@ -159,7 +150,7 @@
       "node": "advisors",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Lens table — Outsider: Brings zero domain context and names what is confusing.",
+      "claim": "Outsider: Brings zero domain context and names what is confusing.",
       "verdict": "confirmed",
       "file": "skills/council.md",
       "quote": "| **The Outsider** | Brings zero domain context. Catches what experts have stopped seeing; names what's confusing. |"
@@ -168,7 +159,7 @@
       "node": "advisors",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Lens table — Executor: Cares only about implementation: what do you do Monday morning?",
+      "claim": "Executor: Cares only about implementation: what do you do Monday morning?",
       "verdict": "confirmed",
       "file": "skills/council.md",
       "quote": "| **The Executor** | Cares only about implementation. \"What do you actually do Monday morning?\" |"
@@ -195,7 +186,7 @@
       "node": "review",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Three questions, about 200 words each",
+      "claim": "Three questions, in about 200 words per review",
       "verdict": "confirmed",
       "file": "skills/council.md",
       "quote": "**~200 words each.** Run concurrently."
@@ -234,7 +225,7 @@
       "claim": "The main agent weighs the advisors and commits to one recommendation and a first step.",
       "verdict": "confirmed",
       "file": "skills/council.md",
-      "quote": "**Phase 4 — Chairman synthesis (main agent).**"
+      "quote": "- The chairman commits to a recommendation; \"it depends\" is not a verdict."
     },
     {
       "node": "chair",
@@ -294,7 +285,7 @@
       "node": "ask",
       "origin": "spec",
       "kind": "step",
-      "claim": "ask -> brief: Decision is worth a council (payload: the question)",
+      "claim": "ask → brief: Decision is worth a council (the question)",
       "verdict": "confirmed",
       "file": "skills/council.md",
       "quote": "- If the question is factual or low-stakes, skip the council and answer."
@@ -303,16 +294,16 @@
       "node": "brief",
       "origin": "spec",
       "kind": "step",
-      "claim": "brief -> advisors: Brief sent to all five (payload: brief + trade space)",
+      "claim": "brief → advisors: Brief sent to all five (brief + trade space)",
       "verdict": "confirmed",
       "file": "skills/council.md",
-      "quote": "Spawn all five **in a single message** so they run concurrently. Each receives"
+      "quote": "its lens definition (below) + the framed brief, and is told: respond"
     },
     {
       "node": "advisors",
       "origin": "spec",
       "kind": "step",
-      "claim": "advisors -> review: Five answers collected (payload: anonymized A to E)",
+      "claim": "advisors → review: Five answers collected (anonymized A to E)",
       "verdict": "confirmed",
       "file": "skills/council.md",
       "quote": "Collect the five responses and **anonymize them A–E in randomized order** (so"
@@ -321,10 +312,10 @@
       "node": "review",
       "origin": "spec",
       "kind": "step",
-      "claim": "review -> chair: Reviews collected (payload: peer reviews)",
+      "claim": "review → chair: Reviews collected (peer reviews)",
       "verdict": "confirmed",
       "file": "skills/council.md",
-      "quote": "- <insights surfaced in the peer-review round>"
+      "quote": "Consolidate everything into a verdict in the exact structure below. Weigh the"
     },
     {
       "node": "advisors",
@@ -342,7 +333,7 @@
       "claim": "Trade space: The axes a decision balances, such as cost, speed and risk.",
       "verdict": "confirmed",
       "file": "skills/council.md",
-      "quote": "dimensions the decision balances (cost vs speed vs risk vs reversibility vs"
+      "quote": "**Map the shape of the trade space.** Before the advisors weigh in, name the"
     },
     {
       "node": "chair",
@@ -363,15 +354,6 @@
       "quote": "where the real tension lives, and roughly where the frontier sits: which options"
     },
     {
-      "node": "brief",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "Legend: frontier — options not beaten on every axis by another",
-      "verdict": "confirmed",
-      "file": "skills/council.md",
-      "quote": "are Pareto-dominated and which are genuine tradeoffs. Include this in the brief so"
-    },
-    {
       "node": "advisors",
       "origin": "diagram",
       "kind": "box",
@@ -390,35 +372,53 @@
       "quote": "**Phase 3 — Peer review (5 isolated subagents, parallel).**"
     },
     {
+      "node": "review",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: anonymized — persona names hidden so reviewers judge the argument",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "- Anonymize before peer review; reviewers must not know which persona wrote what."
+    },
+    {
+      "node": "brief",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Neutral, self-contained brief grounded in repo docs",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "for grounding context (`CLAUDE.md`/`AGENTS.md`, `docs/**`, relevant source) and"
+    },
+    {
       "node": "chair",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Stage 6 Present in chat: Council verdict as inline markdown",
+      "claim": "Present in chat: Council verdict as inline markdown",
       "verdict": "confirmed",
       "file": "skills/council.md",
-      "quote": "**Phase 5 — Present in chat.**"
+      "quote": "## Council verdict — <one-line decision>"
     }
   ],
   "missing": [
     {
-      "what": "The optional Jev-accelerated mode: when a judgment endpoint is reachable, the peer review and the pre-presentation stress test of the synthesis run as batched judgment calls, with a fallback to the generative rounds; neither the spec nor the diagram mentions it.",
+      "what": "The optional Jev-accelerated mode (batched judgment calls replacing the generative peer review and stress-testing the synthesis, with fallback when no endpoint is reachable) appears in neither the spec nor the diagram.",
       "file": "skills/council.md",
       "quote": "skill), Phases 3 and 4 get faster *and* better calibrated. The rule: **Jev"
     },
     {
-      "what": "Advisors are batched when the client has fewer than five concurrent slots; the flow says only \"all at once\" / \"one message, run together\".",
+      "what": "When the client has fewer than five subagent slots the advisors are batched within the concurrency limit, still isolated; the flow says only 'all at once'.",
       "file": "skills/council.md",
       "quote": "- Run advisors concurrently within the client's available slots; batch when fewer than five slots are available. Keep every advisor isolated."
     },
     {
-      "what": "The lenses are deliberately paired to collide (Contrarian vs Expansionist, First-Principles vs Executor) and that tension must not be softened.",
+      "what": "The lenses are deliberately paired to collide (Contrarian vs Expansionist, First-Principles vs Executor) and that tension must not be sanded down.",
       "file": "skills/council.md",
-      "quote": "upside), First-Principles vs Executor (rethink vs ship). Do not sand that tension down."
+      "quote": "The lenses are built to collide: Contrarian vs Expansionist (downside vs"
     },
     {
-      "what": "Each advisor is given its own lens definition together with the framed brief and is told to respond independently and lean fully into its perspective.",
+      "what": "Creative generation is also on the do-not-use list; the spec lists the other four exclusions only.",
       "file": "skills/council.md",
-      "quote": "its lens definition (below) + the framed brief, and is told: respond"
+      "quote": "generation, summarization, or low-stakes advice; a council is wasted ceremony"
     }
   ],
   "code": {

@@ -29,7 +29,7 @@
         ["Executor", "Cares only about implementation: what do you do Monday morning?"]] } }] },
     "review": { "lane": "debate", "name": "Peer review", "role": "Each advisor reviews all five answers with the authors hidden.",
       "details": ["Answers are relabeled A to E in random order so reviewers judge the argument, not the persona.",
-        { "t": "Three questions, about 200 words each", "more": ["Which response is strongest, and why?", "Which has the biggest blind spot?", "What did all five miss?"] }] },
+        { "t": "Three questions, in about 200 words per review", "more": ["Which response is strongest, and why?", "Which has the biggest blind spot?", "What did all five miss?"] }] },
     "chair": { "lane": "decide", "name": "Chairman verdict", "role": "The main agent weighs the advisors and commits to one recommendation and a first step.",
       "details": ["Weighs the advisors and never averages them.", "Names real disagreement instead of papering it into false consensus.",
         { "t": "Shown in chat as markdown", "more": ["Sections: where the council agrees, where it clashes, blind spots caught, the recommendation, the one thing to do first.", "No files and no artifacts; the council edits nothing."] }],

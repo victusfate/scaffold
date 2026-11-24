@@ -23,8 +23,8 @@ flowchart LR
 - [PRD](#prd): Turn the design into user stories and testing decisions, without re-interviewing.
 - [TDD slices](#tdd-slices): Build in thin vertical slices: failing test, minimal code, refactor, commit.
 - [Refine](#refine): Two independent reviewers (correctness, structure) report; one pass applies every fix.
-- [QA](#qa): Run the real app and drive the changed entry points the way a user would.
-- [Owner review](#owner-review): A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.
+- [QA](#qa): Run the real app, drive the changed entry points the way a user would, and fix what breaks.
+- [Owner review](#owner-review): Give the owner a summary, then stop for review or, for a queued task, open its PR; merge only with authority.
 
 ## Design
 
@@ -33,7 +33,7 @@ Agree on what to build and why, one question at a time.
 Details: [/co-plan skill](../../../skills/co-plan.md)
 
 - The agent explores the code first and only asks what the code can't answer, each time with a recommended answer.
-- Resumes at the first missing artifact in `docs/<slug>/`; a supplied document is placed as design.md.
+- Resumes at the first missing artifact in `docs/<slug>/`, or at the first incomplete slice when plan.md exists; a supplied document is placed as design.md.
 - Output: design.md
   - Decisions with rationale, canonical vocabulary, edge cases.
   - Then /design-review patches structural gaps.
@@ -50,7 +50,7 @@ Build in thin vertical slices: failing test, minimal code, refactor, commit.
 
 Details: [TDD](tdd.md)
 
-- Granularity is confirmed once with the owner; after that, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.
+- Granularity is confirmed once with the owner; after that, an interface change is surfaced only if it departs from plan.md, and a large fix is always surfaced.
 
 **Where it breaks**
 
@@ -66,7 +66,7 @@ Details: [Review gates](review-gates.md)
 
 ## QA
 
-Run the real app and drive the changed entry points the way a user would.
+Run the real app, drive the changed entry points the way a user would, and fix what breaks.
 
 Details: [QA](qa.md)
 
@@ -74,11 +74,11 @@ Details: [QA](qa.md)
 
 ## Owner review
 
-A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.
+Give the owner a summary, then stop for review or, for a queued task, open its PR; merge only with authority.
 
 Details: [PR workflow](pr-workflow.md)
 
-- Merging needs explicit owner authorization; a PR is not approval.
+- Merging needs explicit owner authorization; a PR is not approval. Without it, a queued task keeps its ready PR and the next task waits.
 
 ## Detailed flow
 
@@ -716,55 +716,59 @@ export function check(text: string, maxLines = MAX_LINES): string[] {
 
 ## Checked against the source
 
-The feature-chain flow follows skills/feature-chain.md and the skills it delegates to: all six stages, their order and their outputs are in the source. The weakest claim is the owner-review stage, which merges two cases the source keeps apart (a queued task always gets a PR; an interactive feature without merge authority stops first). The flow also leaves out the rule that the chain does not pause between phases, the handling of a supplied document beyond placing it, and that /qa fixes what it finds.
+The feature-chain spec and diagram agree with skills/feature-chain.md and skills/tdd.md on phases, order, gates and merge authority; nothing is contradicted or unsupported. Eight claims are true but rest on files outside the spec's sources (skills/co-plan.md, skills/to-prd.md, skills/code-refiner.md, skills/design-review.md, docs/agents-detail.md). The main omissions are the no-pause-between-phases rule, the architectural contribution mode, and the design feedback loop being absent from the spec.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 30 | 6 | 0 | 0 | 8 | 12 |
+| 38 | 2 | 0 | 0 | 7 | 12 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Design: checks
 
-- **Partly**: Resumes at the first missing artifact in `docs/<slug>/`; a supplied document is placed as design.md.
-  > \| \`plan.md\` exists \| Resume Phase 3 at first incomplete slice \|
-  >
-  > [`skills/feature-chain.md:28`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L28)
-
-  The table matches for design.md and prd.md and for a supplied document, but when plan.md exists the chain resumes at the first incomplete slice, which is not a missing artifact.
-
 <details>
-<summary>10 confirmed, with the supporting line</summary>
+<summary>12 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Agree on what to build and why, one question at a time.
   > \*\*Ask one question at a time.\*\* Wait for feedback before continuing. Provide your recommended answer with each question.
   >
   > [`skills/co-plan.md:10`](https://github.com/victusfate/scaffold/blob/main/skills/co-plan.md#L10)
 
+  The sources only say Phase 1 runs /co-plan and that the grill resolves what to build; the one-question rule is in skills/co-plan.md, which would need adding to sources.
+
 - **Confirmed**: The agent explores the code first and only asks what the code can't answer, each time with a recommended answer.
   > If a question can be answered by exploring the codebase, explore it instead of asking.
   >
   > [`skills/co-plan.md:12`](https://github.com/victusfate/scaffold/blob/main/skills/co-plan.md#L12)
 
-- **Confirmed**: Output: design.md
-  > When a term or decision is resolved, write it to \`./docs/&lt;feature-slug&gt;/design.md\` immediately — don't batch.
+  Stated only in skills/co-plan.md, which would need adding to sources.
+
+- **Confirmed**: Resumes at the first missing artifact in `docs/<slug>/`, or at the first incomplete slice when plan.md exists; a supplied document is placed as design.md.
+  > \| \`plan.md\` exists \| Resume Phase 3 at first incomplete slice \|
   >
-  > [`skills/co-plan.md:26`](https://github.com/victusfate/scaffold/blob/main/skills/co-plan.md#L26)
+  > [`skills/feature-chain.md:28`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L28)
+
+- **Confirmed**: Output: design.md
+  > Run \`/co-plan\`; it owns the interview, the design-tree resolution, and
+  >
+  > [`skills/feature-chain.md:51`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L51)
 
 - **Confirmed**: Decisions with rationale, canonical vocabulary, edge cases.
-  > \`design.md\` is a glossary and decision record — not a spec or implementation plan.
+  > Read \`design.md\` for unresolved decisions, fuzzy vocabulary, or missing edge cases.
   >
-  > [`skills/co-plan.md:74`](https://github.com/victusfate/scaffold/blob/main/skills/co-plan.md#L74)
+  > [`skills/feature-chain.md:44`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L44)
+
+  The sources name decisions, vocabulary and edge cases; 'with rationale' comes from the design.md template in skills/co-plan.md, which is not in sources.
 
 - **Confirmed**: Then /design-review patches structural gaps.
+  > \2. Run \`/design-review\` in auto-fix mode to patch structural gaps.
+  >
+  > [`skills/feature-chain.md:42`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L42)
+
+- **Confirmed**: Design agreed (payload: design.md)
   > \*\*When \`design.md\` is committed:\*\* run \`/design-review\` in auto-fix mode (it
   >
   > [`skills/feature-chain.md:58`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L58)
-
-- **Confirmed**: Design agreed (payload: design.md)
-  > patches \`design.md\` and resolves any blockers), then proceed immediately to
-  >
-  > [`skills/feature-chain.md:59`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L59)
 
 - **Confirmed** (from the diagram): Check docs/slug/ for existing artifacts
   > Check \`./docs/&lt;feature-slug&gt;/\` for existing artifacts and detect whether a document was supplied externally
@@ -781,10 +785,19 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/feature-chain.md:58`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L58)
 
-- **Confirmed** (from the diagram): Legend, slug: short kebab-case name of the feature's docs folder
+- **Confirmed** (from the diagram): Legend slug: short kebab-case name of the feature's docs folder
   > Feature-slug rule: kebab-case, drop articles, keep it under \~30 chars.
   >
   > [`docs/agents-detail.md:558`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L558)
+
+  The sources use the slug as the docs folder name but never say kebab-case; that rule is in docs/agents-detail.md, which would need adding to sources.
+
+- **Confirmed** (from the diagram): Legend vocabulary: agreed precise meaning for each term in the design
+  > \*\*Sharpen fuzzy language.\*\* When the user uses vague or overloaded terms, propose a precise canonical term:
+  >
+  > [`skills/co-plan.md:16`](https://github.com/victusfate/scaffold/blob/main/skills/co-plan.md#L16)
+
+  The sources mention vocabulary terms without defining them; the canonical-term rule is in skills/co-plan.md, which would need adding to sources.
 
 </details>
 
@@ -794,14 +807,16 @@ An agent judged each claim against the source; each quote is found in its file w
 <summary>5 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Turn the design into user stories and testing decisions, without re-interviewing.
-  > Synthesize the current context and codebase into a PRD. \*\*Do not interview the user\*\*
+  > testing-decisions step (including its user confirmations). Do not re-interview
   >
-  > [`skills/to-prd.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/to-prd.md#L3)
+  > [`skills/feature-chain.md:67`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L67)
+
+  Testing decisions and no re-interview are in the source; 'user stories' is stated only in the PRD template in skills/to-prd.md, which is not in sources.
 
 - **Confirmed**: Cross-checks the design against the codebase and confirms with the owner which modules need tests.
-  > \- Confirm with the user which modules need tests.
+  > It cross-references the codebase, catches conflicts with existing code, identifies modules already in place
   >
-  > [`skills/to-prd.md:13`](https://github.com/victusfate/scaffold/blob/main/skills/to-prd.md#L13)
+  > [`skills/feature-chain.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L39)
 
 - **Confirmed**: Stories and tests named (payload: prd.md)
   > \*\*When \`prd.md\` is committed:\*\* proceed immediately to Phase 3.
@@ -813,53 +828,55 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/to-prd.md:24`](https://github.com/victusfate/scaffold/blob/main/skills/to-prd.md#L24)
 
+  The PRD sections (Problem Statement, Solution, User Stories) are defined only in skills/to-prd.md, which would need adding to sources.
+
 - **Confirmed** (from the diagram): Write prd.md, commit docs PRD
-  > Commit \`prd.md\` with message \`docs(&lt;slug&gt;): PRD\`.
+  > Commit \`prd.md\` with message \`docs(&lt;slug&gt;): PRD\`. Then automatically proceed to \`/tdd\` without waiting for permission.
   >
   > [`skills/to-prd.md:63`](https://github.com/victusfate/scaffold/blob/main/skills/to-prd.md#L63)
+
+  The sources say only that prd.md is committed; the commit message is in skills/to-prd.md, which would need adding to sources.
 
 </details>
 
 ### TDD slices: checks
 
-- **Partly**: Granularity is confirmed once with the owner; after that, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.
-  > Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from \`plan.md\`.
+- **Partly**: Writing all tests first verifies imagined behavior; one test at a time keeps them honest.
+  > Tests written in bulk verify imagined behavior and become insensitive to real changes.
   >
-  > [`skills/tdd.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L25)
+  > [`skills/tdd.md:20`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L20)
 
-  tdd.md states the two surfacing conditions but never says slices otherwise run without pausing, and it also stops the loop for /investigate on an unexpected failure.
+  The source states the failure of bulk-written tests and the one-test-at-a-time rule, but 'keeps them honest' is the page's own rationale for the rule.
 
-- **Partly**: Vertical slice: A thin piece of a feature that cuts through every layer and works on its own.
-  > (each cuts through all layers: data → logic → UI → tests)
-  >
-  > [`skills/tdd.md:5`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L5)
-
-  The source says a slice cuts through all layers; it does not say a slice is thin or that it works on its own.
-
-- **Partly** (from the diagram): Legend, REFACTOR: tidy without changing behavior
-  > REFACTOR is a confirmation pass, not a correction pass.
+- **Partly** (from the diagram): Legend TDD: Test-Driven Development: failing test first, then code, then clean up
+  > Never write code that would violate the rubric; REFACTOR is a confirmation pass, not a correction pass.
   >
   > [`skills/tdd.md:48`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L48)
 
-  The source defines REFACTOR as confirming quality scores, a confirmation pass rather than a tidy-up; 'without changing behavior' is not stated.
+  Dictionary-style definition, but 'then clean up' differs from the source, which makes REFACTOR a confirmation pass and not a correction pass.
 
 <details>
-<summary>5 confirmed, with the supporting line</summary>
+<summary>7 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Build in thin vertical slices: failing test, minimal code, refactor, commit.
   > one-time granularity confirmation), the RED → GREEN → REFACTOR loop, per-slice
   >
   > [`skills/feature-chain.md:77`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L77)
 
-- **Confirmed**: Writing all tests first verifies imagined behavior; one test at a time keeps them honest.
-  > Tests written in bulk verify imagined behavior and become insensitive to real changes.
+- **Confirmed**: Granularity is confirmed once with the owner; after that, an interface change is surfaced only if it departs from plan.md, and a large fix is always surfaced.
+  > Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from \`plan.md\`.
   >
-  > [`skills/tdd.md:20`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L20)
+  > [`skills/tdd.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L25)
 
 - **Confirmed**: All slices green (payload: commits)
   > \*\*When all slices are complete and the full test suite passes:\*\* run
   >
   > [`skills/feature-chain.md:80`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L80)
+
+- **Confirmed**: Vertical slice: A piece of a feature that cuts through every layer: data, logic, UI and tests.
+  > (each cuts through all layers: data → logic → UI → tests)
+  >
+  > [`skills/tdd.md:5`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L5)
 
 - **Confirmed** (from the diagram): Commits + tdd-log.md
   > commits, and \`tdd-log.md\`.
@@ -871,6 +888,11 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/feature-chain.md:7`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L7)
 
+- **Confirmed** (from the diagram): Legend RED / GREEN / REFACTOR: test fails / test passes / confirm quality scores
+  > REFACTOR: Confirm quality scores — only after GREEN, never while RED
+  >
+  > [`skills/tdd.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L38)
+
 </details>
 
 ### Refine: checks
@@ -879,38 +901,40 @@ An agent judged each claim against the source; each quote is found in its file w
 <summary>4 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Two independent reviewers (correctness, structure) report; one pass applies every fix.
-  > \*\*Phase 1 — parallel review (two isolated reviewers, find-only):\*\*
+  > It reviews the diff on two parallel isolated tracks — correctness + test-integrity (\`validate\`) and structural quality (\`simplify\`)
   >
-  > [`skills/code-refiner.md:24`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L24)
+  > [`skills/tdd.md:119`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L119)
 
 - **Confirmed**: A test weakened to pass counts as a defect, not a fix.
   > \- A test weakened to reach green is a defect, not a fix (per \`validate\`).
   >
   > [`skills/code-refiner.md:95`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L95)
 
+  The sources only say tests can be weakened during GREEN and the correctness track catches it; the defect-not-a-fix wording is in skills/code-refiner.md, which would need adding to sources.
+
 - **Confirmed**: Fixes applied, re-verified (payload: commits)
   > \*\*Commit the refiner's fixes\*\* (\`refactor(&lt;feature-slug&gt;): code-refiner fixes\`,
   >
   > [`skills/feature-chain.md:88`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L88)
 
-- **Confirmed** (from the diagram): Legend, auto-fix mode: the review applies its own fixes instead of asking first
-  > \- \*\*Auto-fix\*\* (from the chain, or with \`--fix\`): run Phases 1–3, apply, re-verify, report.
+- **Confirmed** (from the diagram): Legend auto-fix mode: the review applies its own fixes instead of asking first
+  > \*\*Auto-fix\*\* (called from the chain): Apply fixes to \`design.md\` directly, then continue without pausing.
   >
-  > [`skills/code-refiner.md:64`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L64)
+  > [`skills/design-review.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/design-review.md#L3)
+
+  The sources name auto-fix mode but define it only in skills/design-review.md (and skills/simplify.md), which would need adding to sources.
 
 </details>
 
 ### QA: checks
 
-- **Partly**: Run the real app and drive the changed entry points the way a user would.
-  > Run the real app, drive the changed entry points the way a user would, then fix
-  >
-  > [`skills/qa.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/qa.md#L3)
-
-  The source's QA also fixes what breaks, each fix with a regression test; the role describes only driving the app.
-
 <details>
-<summary>3 confirmed, with the supporting line</summary>
+<summary>4 confirmed, with the supporting line</summary>
+
+- **Confirmed**: Run the real app, drive the changed entry points the way a user would, and fix what breaks.
+  > app, drives the changed entry points, fixes in-tier issues with a regression test
+  >
+  > [`skills/feature-chain.md:91`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L91)
 
 - **Confirmed**: Skipped, with the reason recorded, when the change has no runtime entry point.
   > when the change has no runtime entry point, and record the reason for Phase 4.
@@ -922,7 +946,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/feature-chain.md:92`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L92)
 
-- **Confirmed** (from the diagram): Legend, entry point: where a user reaches it: page, API endpoint, CLI command, job
+- **Confirmed** (from the diagram): Legend entry point: where a user reaches it: page, API endpoint, CLI command, job
   > user-facing entry point (UI route, API endpoint, CLI command, job). It starts the
   >
   > [`skills/feature-chain.md:90`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L90)
@@ -931,41 +955,51 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Owner review: checks
 
-- **Partly**: A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.
-  > \- Queued task: return to the queue delivery cycle. Create/update its PR, validate locally and on the host, and merge only when explicit session or standing project authorization exists.
+<details>
+<summary>6 confirmed, with the supporting line</summary>
+
+- **Confirmed**: Give the owner a summary, then stop for review or, for a queued task, open its PR; merge only with authority.
+  > Create/update its PR, validate locally and on the host, and merge only when explicit session or standing project authorization exists.
   >
   > [`skills/feature-chain.md:102`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L102)
 
-  The PR/validate/merge path is written for a queued task, and a queued task without merge authority still gets its PR, which is preserved while the next task is gated; only an interactive feature without authority stops before a PR.
-
-<details>
-<summary>3 confirmed, with the supporting line</summary>
-
-- **Confirmed**: Merging needs explicit owner authorization; a PR is not approval.
-  > Never infer merge authority from permission to create a PR.
+- **Confirmed**: Merging needs explicit owner authorization; a PR is not approval. Without it, a queued task keeps its ready PR and the next task waits.
+  > Without merge authority, preserve the ready PR and gate the next independent task.
   >
-  > [`skills/feature-chain.md:126`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L126)
+  > [`skills/feature-chain.md:102`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L102)
+
+  The source words the authority as 'explicit session or standing project authorization' and says not to infer it from permission to create a PR; 'a PR is not approval' is AGENTS.md wording.
 
 - **Confirmed** (from the diagram): Summary: built, tests, QA, deviations
   > \#\#\# Decisions that deviated from the plan
   >
   > [`skills/feature-chain.md:120`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L120)
 
-- **Confirmed** (from the diagram): No → stop: please review before merging
+- **Confirmed** (from the diagram): Merge authority already given?
+  > Wait here unless existing session or standing project policy already authorizes the validated merge.
+  >
+  > [`skills/feature-chain.md:126`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L126)
+
+- **Confirmed** (from the diagram): No → stop: please review before merging (queued task: PR kept ready)
   > When merge authority is absent, prompt: \*\*"All tests pass. Please review the generated source before merging."\*\*
   >
   > [`skills/feature-chain.md:124`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L124)
+
+- **Confirmed** (from the diagram): Yes → PR, validate, merge
+  > Create/update its PR, validate locally and on the host, and merge only when explicit session or standing project authorization exists.
+  >
+  > [`skills/feature-chain.md:102`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L102)
 
 </details>
 
 ## In the source, not shown in the flow
 
-- The chain must not pause for permission between phases; the only pauses are the ones owned by each phase's skill. The flow never states this.
+- The chain does not pause for permission between phases; only the phase skills pause, and the chain stops only at the end.
   > Run the full feature chain end-to-end. \*\*Do not pause for permission between phases.\*\*
   >
   > [`skills/feature-chain.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L3)
 
-- Entry-point detection first honors the task's architectural contribution mode (defaulting to collaborative); no stage shows it.
+- The task's architectural contribution mode is honored before any phase, defaulting to collaborative when none is supplied.
   > Honor the task's architectural contribution mode from the queue, or the builder's
   >
   > [`skills/feature-chain.md:16`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L16)
@@ -975,35 +1009,30 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/feature-chain.md:33`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L33)
 
-- A supplied document is not only placed as design.md: it goes through /design-review, a commit, and a grill limited to its open questions before the PRD.
+- A supplied document is always treated as a design doc and grilled only on its open questions before the PRD phase.
   > \4. \*\*Grill on ambiguity.\*\* Read \`design.md\` for unresolved decisions, fuzzy vocabulary, or missing edge cases.
   >
   > [`skills/feature-chain.md:44`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L44)
 
-- If the feature adds a tool, script, skill or bin command, the design Q&amp;A must settle its home and descriptor contract.
+- A feature that adds a tool, script, skill or bin command must resolve its home and descriptor contract at design time.
   > \- \*\*Callable units — decide at design time.\*\* If the feature adds a tool,
   >
   > [`skills/feature-chain.md:54`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L54)
 
-- /qa fixes in-tier issues, each with a regression test, rather than only driving the entry points.
-  > app, drives the changed entry points, fixes in-tier issues with a regression test
-  >
-  > [`skills/feature-chain.md:91`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L91)
-
-- For a queued task without merge authority, the ready PR is preserved and the next independent task is gated; the flow shows only stop or merge.
-  > Without merge authority, preserve the ready PR and gate the next independent task.
-  >
-  > [`skills/feature-chain.md:102`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L102)
-
-- The agent returns to the owner for unresolved intent or material tradeoffs found mid-chain instead of converting them into a ticket.
+- The design feedback loop (revise design/PRD and the remaining plan when a premise fails, return to the owner for unresolved intent) is in the diagram but not in the explorer spec.
   > Continue within authorized scope; return to the owner for unresolved intent or
   >
   > [`skills/feature-chain.md:9`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L9)
 
+- QA fixes each in-tier issue with a regression test; the flow says only that it fixes what breaks.
+  > app, drives the changed entry points, fixes in-tier issues with a regression test
+  >
+  > [`skills/feature-chain.md:91`](https://github.com/victusfate/scaffold/blob/main/skills/feature-chain.md#L91)
+
 ## Glossary
 
 - **PRD**: Product requirements document: the problem, the solution and the user stories.
-- **Vertical slice**: A thin piece of a feature that cuts through every layer and works on its own.
+- **Vertical slice**: A piece of a feature that cuts through every layer: data, logic, UI and tests.
 
 ## Ask your LLM
 

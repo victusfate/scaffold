@@ -3,7 +3,7 @@
   "lede": "The states a queue task passes through, from the owner's request to a merged PR.",
   "detail": "../generated/queue-lifecycle.svg",
   "sources": ["docs/diagrams/src/queue-lifecycle.mmd", "skills/queue.md", "skills/loop.md", "scripts/queue-model.ts", "scripts/queue-task-origin.ts"],
-  "reviewed": "3b6e6a00a212",
+  "reviewed": "2e0a2d0f0342",
   "lanes": [
     { "id": "owner", "name": "Owner" },
     { "id": "queue", "name": "Queue" },
@@ -12,9 +12,9 @@
   "nodes": {
     "add": { "lane": "owner", "name": "Add", "role": "The owner asks for work and the agent records it with the owner's words.", "link": "../../../skills/queue.md",
       "details": ["queue add --requested stores the owner's words with a title, an accept note and an optional validate command.", "queue.db is the store; queue.md is its committed, readable view, re-rendered on each change."] },
-    "pending": { "lane": "queue", "name": "Pending", "role": "The task waits its turn; the top eligible line runs first.",
+    "pending": { "lane": "queue", "name": "Pending", "role": "The task waits its turn; a resumed active task goes first, then the top eligible line.",
       "details": [
-        { "t": "Three kinds of waiting", "more": ["Eligible: its deps are done and it is not held.", "Waiting: a dep or gate is unfinished.", "Held: set aside; the drain skips it until unheld."] }] },
+        { "t": "Three kinds of waiting", "more": ["Eligible: its deps are done, it is not held and delivery allows it.", "Waiting: a dep or gate is unfinished.", "Held: set aside; the drain skips it until unheld."] }] },
     "active": { "lane": "queue", "name": "Active", "role": "A worker or slot claims the task and a lease clock starts.", "link": "loop-tick.md",
       "details": ["tick marks the task active; claim --worker sets its owner to the worker or slot.", "release, or park --resume, returns it to pending."],
       "risks": ["The lease is the age of the claim, not a process id; tick never reclaims an expired lease, it stops and reports."] },
@@ -22,7 +22,7 @@
       "details": ["A failure below maxFailures goes back to pending for a retry.", "At maxFailures it is marked failed and stays visible; requeue revives it.", "A done task auto-archives to archive.md, but stays while unfinished work depends on it."],
       "deep": [{ "h": "Task markers in queue.md", "table": { "head": ["Marker", "Meaning"], "rows": [["[ ]", "pending"], ["[>]", "active (claimed)"], ["[~]", "parked with a resume note"], ["[x]", "done"], ["[!]", "failed"]] } }] },
     "deliver": { "lane": "ship", "name": "Deliver", "role": "In per-task mode, the task's PR must merge before the queue moves on.", "link": "pr-workflow.md",
-      "details": ["PR, real checks, and the owner approves the merge.", "Then a fresh branch and queue advance --pr --branch."],
+      "details": ["PR, real checks, and the merge is authorized in session or by standing policy.", "Then a fresh branch and queue advance --pr --branch."],
       "risks": ["tick exits 7 until the task is advanced; that means delivery is pending, not that the queue drained."],
       "qs": ["Why does a done task still hold up the queue until its PR merges?"] }
   },

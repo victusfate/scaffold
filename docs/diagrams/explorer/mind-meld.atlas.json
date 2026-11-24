@@ -1,5 +1,5 @@
 {
-  "summary": "The recorded-dive stages match skills/mind-meld.md closely: every spec role, detail, risk, step and glossary entry has a source line. The two diagram-only problems are the \"learning IDE\" label, which the skill doc never uses, and the verify-to-view gate, which the source states as a gate on trusting the evidence rather than on opening the viewer. The largest gap is what is not shown: the default static map mode has no stage, and the sandbox test gate, secret redaction and no-download rules are absent.",
+  "summary": "The mind-meld page matches skills/mind-meld.md closely: every stage, rule and step traces to the doc. The only weak points are the 'one JSON file' wording for the bundle, which is stated only in scripts/mind-meld-schema.ts (not a listed source), and a shortened cache-key list. The page leaves out the sandbox test gate that must pass before an execution adapter is claimed to work, and the redaction rules.",
   "checks": [
     {
       "node": "question",
@@ -71,7 +71,7 @@
       "claim": "An execution adapter runs only targets it has registered.",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "A child adapter registers its own allowed targets; never turn a natural-language"
+      "quote": "with `{save: \"memory\"}` as its boundary policy. Reject other targets and fake policies."
     },
     {
       "node": "adapters",
@@ -80,13 +80,13 @@
       "claim": "Never turn a natural-language question into an arbitrary shell command.",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "question into an arbitrary shell command."
+      "quote": "A child adapter registers its own allowed targets; never turn a natural-language"
     },
     {
       "node": "adapters",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Adapter contract table: index() -> A validated version 1 bundle with nodes, static edges, source bytes and hashes",
+      "claim": "Adapter contract: index() -> A validated version 1 bundle with nodes, static edges, source bytes and hashes",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
       "quote": "| `index()` | Repo snapshot supplied by the adapter | A validated version 1 bundle with nodes, static edges, source bytes and hashes |"
@@ -95,16 +95,16 @@
       "node": "adapters",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Adapter contract table: run_flow(entry, inputs) -> A recorded run bound to the exact indexed source snapshot",
+      "claim": "Adapter contract: run_flow(entry, inputs) -> A recorded run bound to the exact indexed source snapshot",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "A recorded run bound to the exact indexed source snapshot"
+      "quote": "| `run_flow(entry, inputs)` | A named allowed integration entry and validated inputs | A recorded run bound to the exact indexed source snapshot |"
     },
     {
       "node": "adapters",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Adapter contract table: run_piece(target, inputs, fakes) -> A recorded isolated run, with the fake policy in its cache identity",
+      "claim": "Adapter contract: run_piece(target, inputs, fakes) -> A recorded isolated run, with the fake policy in its cache identity",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
       "quote": "A recorded isolated run with the fake policy in its cache identity"
@@ -113,10 +113,10 @@
       "node": "adapters",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Adapter contract table: diff(runA, runB) -> Ordered paths, outputs and state mutations from each run",
+      "claim": "Adapter contract: diff(runA, runB) -> Ordered paths, outputs and state mutations from each run",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "Ordered paths, outputs and state mutations from each run"
+      "quote": "| `diff(runA, runB)` | Two validated recordings, possibly from different snapshots | Ordered paths, outputs and state mutations from each run |"
     },
     {
       "node": "run",
@@ -125,7 +125,7 @@
       "claim": "Run the code in a locked-down sandbox and record what actually happened.",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "The map shows what may run. To see what actually runs (values, state changes, timing), record a flow."
+      "quote": "It uses a pinned pre-pulled image, no network, a read-only root, an unprivileged"
     },
     {
       "node": "run",
@@ -178,17 +178,18 @@
       "kind": "role",
       "claim": "Index, source and runs go into one JSON file checked by an executable schema.",
       "verdict": "confirmed",
-      "file": "skills/mind-meld.md",
-      "quote": "Use `scripts/mind-meld-schema.ts` as the executable schema and validator."
+      "file": "scripts/mind-meld-schema.ts",
+      "quote": "export interface MeldBundle { version: 1; nodes: MeldNode[]; sources: Record<string, string>; sourceHashes: Record<string, string>; snapshotHash: string; edges: MeldEdge[]; runs: MeldRun[] }",
+      "note": "skills/mind-meld.md says the bundle embeds source bytes and binds each run, and that the schema is executable, but never says index, source and runs sit in one JSON file (its commands write index.json, flow.json and piece.json separately); the single-object shape is in scripts/mind-meld-schema.ts, which would need adding to sources."
     },
     {
       "node": "bundle",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Recordings are cached by everything that could change them: source, dependencies, versions, inputs and fakes.",
+      "claim": "Recordings are cached by what could change them: source, dependencies, versions, inputs, fakes, runtime and sandbox policy.",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "Key recordings by source content, transitive runtime dependencies, adapter and"
+      "quote": "instrumentation versions, compiler/runtime/image identity, sandbox policy, entry,"
     },
     {
       "node": "bundle",
@@ -215,8 +216,7 @@
       "claim": "A guided tour follows input through ownership and mutations to output, citing source lines.",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "6. Make a tour that follows input, ownership, mutations, serialization and output.",
-      "note": "The numbered step also lists serialization, which the spec and diagram box T1 leave out; the narration prompt uses the shorter list."
+      "quote": "6. Make a tour that follows input, ownership, mutations, serialization and output."
     },
     {
       "node": "tour",
@@ -249,7 +249,7 @@
       "node": "view",
       "origin": "spec",
       "kind": "role",
-      "claim": "Check the recording still matches the source, then open the tour as one offline page.",
+      "claim": "Check the recording against the source before trusting it, and open the tour as one offline page.",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
       "quote": "8. Verify the recording's source hashes before treating it as evidence about today's checkout."
@@ -294,7 +294,7 @@
       "node": "question",
       "origin": "spec",
       "kind": "step",
-      "claim": "question -> adapters: Entry point and test chosen (payload: target flow)",
+      "claim": "question -> adapters: Entry point and test chosen (target flow)",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
       "quote": "3. Pick an existing test or a small flow that reaches that code."
@@ -303,7 +303,7 @@
       "node": "adapters",
       "origin": "spec",
       "kind": "step",
-      "claim": "adapters -> run: Targets registered (payload: index + runner)",
+      "claim": "adapters -> run: Targets registered (index + runner)",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
       "quote": "A child adapter registers its own allowed targets; never turn a natural-language"
@@ -312,16 +312,16 @@
       "node": "run",
       "origin": "spec",
       "kind": "step",
-      "claim": "run -> bundle: Runs recorded (payload: recorded events)",
+      "claim": "run -> bundle: Runs recorded (recorded events)",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "The bundle embeds source bytes for offline inspection and binds each run to the"
+      "quote": "static call sites, recorded events and snapshot identity. Link to those contracts"
     },
     {
       "node": "bundle",
       "origin": "spec",
       "kind": "step",
-      "claim": "bundle -> tour: Schema passes (payload: version 1 bundle)",
+      "claim": "bundle -> tour: Schema passes (version 1 bundle)",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
       "quote": "Validate imported bundles before rendering, diffing, or narrating them."
@@ -330,7 +330,7 @@
       "node": "tour",
       "origin": "spec",
       "kind": "step",
-      "claim": "tour -> view: Tour written (payload: tour.json)",
+      "claim": "tour -> view: Tour written (tour.json)",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
       "quote": "node scripts/mind-meld.ts view \"$meld_dir/tour.json\" > \"$meld_dir/tour.html\""
@@ -351,7 +351,7 @@
       "claim": "Sandbox: An isolated container that cannot touch the network or real data.",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "the child. It never mounts the Docker socket, home, credentials or production data."
+      "quote": "It uses a pinned pre-pulled image, no network, a read-only root, an unprivileged"
     },
     {
       "node": "run",
@@ -360,7 +360,7 @@
       "claim": "Fakes: Stand-ins for outside boundaries, such as an in-memory save.",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "with `{save: \"memory\"}` as its boundary policy. Reject other targets and fake policies."
+      "quote": "| `run_piece(target, inputs, fakes)` | A named allowed function/system and explicit boundary replacements |"
     },
     {
       "node": "bundle",
@@ -368,41 +368,25 @@
       "kind": "glossary",
       "claim": "Bundle: One JSON file holding the index, source bytes and recorded runs.",
       "verdict": "confirmed",
-      "file": "skills/mind-meld.md",
-      "quote": "The bundle embeds source bytes for offline inspection and binds each run to the"
-    },
-    {
-      "node": "view",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "V1 -->|yes| V2: view (tour.html) is reached only when verify says recorded source matches the checkout",
-      "verdict": "partial",
-      "file": "skills/mind-meld.md",
-      "quote": "8. Verify the recording's source hashes before treating it as evidence about today's checkout.",
-      "note": "The source runs verify before view in its command list but gates treating the recording as evidence, not opening the viewer; the page itself says freshness is unknown offline, and the diagram shows no \"no\" branch."
-    },
-    {
-      "node": "question",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "Title and legend L1: /mind-meld is a \"learning IDE\" (Integrated Development Environment: a workspace for exploring code)",
-      "verdict": "unsupported",
-      "note": "skills/mind-meld.md never uses the term IDE; it describes Mind Meld as a visual code walkthrough or a learning REPL (searched the whole file for \"IDE\")."
+      "file": "scripts/mind-meld-schema.ts",
+      "quote": "export interface MeldBundle { version: 1; nodes: MeldNode[]; sources: Record<string, string>; sourceHashes: Record<string, string>; snapshotHash: string; edges: MeldEdge[]; runs: MeldRun[] }",
+      "note": "skills/mind-meld.md says the bundle embeds source bytes and binds each run, and that the schema is executable, but never says index, source and runs sit in one JSON file (its commands write index.json, flow.json and piece.json separately); the single-object shape is in scripts/mind-meld-schema.ts, which would need adding to sources."
     },
     {
       "node": "run",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend L3 flow / piece: a full integration run / one function run alone with fakes",
-      "verdict": "confirmed",
+      "claim": "Legend: flow / piece - a full integration run / one function run alone with fakes",
+      "verdict": "partial",
       "file": "skills/mind-meld.md",
-      "quote": "A named allowed function/system and explicit boundary replacements"
+      "quote": "| `run_piece(target, inputs, fakes)` | A named allowed function/system and explicit boundary replacements |",
+      "note": "The source says a piece is a named allowed function or system, not only one function."
     },
     {
       "node": "adapters",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend L5 static edge: a call that might happen, read from source, not an observed call",
+      "claim": "Legend: static edge - a call that might happen, read from source, not an observed call",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
       "quote": "expressions. A static call edge means a possible dependency, not an observed call."
@@ -411,16 +395,16 @@
       "node": "bundle",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend L8 snapshot hash: fingerprint of the exact source a run came from",
+      "claim": "Legend: snapshot hash - fingerprint of the exact source a run came from",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "same content snapshot. Static dependencies remain separate from observed calls."
+      "quote": "The bundle embeds source bytes for offline inspection and binds each run to the"
     },
     {
       "node": "bundle",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend L9 schema: the executable rules a bundle must pass before use",
+      "claim": "Legend: schema - the executable rules a bundle must pass before use",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
       "quote": "Validate imported bundles before rendering, diffing, or narrating them."
@@ -429,32 +413,27 @@
       "node": "bundle",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend L10 cache key: everything that must match to reuse a past recording",
+      "claim": "Legend: cache key - everything that must match to reuse a past recording",
       "verdict": "confirmed",
       "file": "skills/mind-meld.md",
-      "quote": "mode, canonicalized inputs and fake policy. Exclude timings and generated artifacts."
+      "quote": "The reference `cacheKey()` implements this identity and an in-process cache."
     }
   ],
   "missing": [
     {
-      "what": "The sandboxed test run (RUN_MIND_MELD_SANDBOX=1) must pass before anyone claims an execution adapter works; no stage shows this gate.",
+      "what": "The sandbox test run (RUN_MIND_MELD_SANDBOX=1) must pass before anyone claims an execution adapter works; neither the spec nor the diagram shows this gate.",
       "file": "skills/mind-meld.md",
       "quote": "The second command must pass before claiming that an execution adapter works."
     },
     {
-      "what": "Recordings must keep payloads bounded and have secrets redacted before leaving the sandbox, and tours must not hold credentials, production saves or personal data.",
+      "what": "Every adapter needs sandbox and timeout probes, and a child adapter must keep the isolation properties for its whole process tree.",
+      "file": "skills/mind-meld.md",
+      "quote": "Require sandbox and timeout probes for each adapter. An unavailable sandbox blocks"
+    },
+    {
+      "what": "Secrets are redacted and payloads bounded before a recording leaves the sandbox, and tours must not hold credentials, production saves or personal data.",
       "file": "skills/mind-meld.md",
       "quote": "Keep large payloads bounded and redact secrets before a recording leaves the sandbox."
-    },
-    {
-      "what": "Nothing may be downloaded (dependencies or images) during indexing, execution or viewing; the pinned image is pulled once beforehand.",
-      "file": "skills/mind-meld.md",
-      "quote": "Do not download dependencies or images during indexing, execution, or viewing."
-    },
-    {
-      "what": "A question answered by a new small run must go through the adapter before its result is described.",
-      "file": "skills/mind-meld.md",
-      "quote": "> inputs and fakes. Run it through the adapter before describing its result."
     },
     {
       "what": "Narration is stored separately from the evidence, with the hashes of the evidence it explains.",
@@ -462,19 +441,14 @@
       "quote": "Store narration separately with the evidence hashes it explains."
     },
     {
-      "what": "Generated artifacts (index, runs, tour) go in a temporary directory outside the repo.",
+      "what": "Nothing is downloaded during indexing, execution or viewing; the pinned image is pulled once beforehand.",
       "file": "skills/mind-meld.md",
-      "quote": "Put generated artifacts in a temporary directory outside the repo:"
+      "quote": "Do not download dependencies or images during indexing, execution, or viewing."
     },
     {
-      "what": "Every adapter needs its own sandbox and timeout probes, and imported repo code is treated as untrusted.",
+      "what": "Imported repo code is treated as untrusted, and a language VM does not count as OS isolation.",
       "file": "skills/mind-meld.md",
-      "quote": "Require sandbox and timeout probes for each adapter. An unavailable sandbox blocks"
-    },
-    {
-      "what": "The default mode, the static repo map (`mind-meld.ts map`, with per-language adapters under `.mind-meld/languages/`), has no stage or box; only the spec lede mentions it.",
-      "file": "skills/mind-meld.md",
-      "quote": "node scripts/mind-meld.ts map . docs/map    # no execution, no Docker"
+      "quote": "Treat imported repo code as untrusted, and do not confuse a language VM with OS isolation."
     }
   ],
   "code": {

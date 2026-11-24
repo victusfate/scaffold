@@ -1,5 +1,5 @@
 {
-  "summary": "The PR workflow flow is well supported: 29 of 34 claims are stated in skills/create-pr.md or AGENTS.md and none is contradicted. The partial ones simplify conditions (quality overrides, extra body sections, the DRAFT and UNVERIFIED branches). The main gaps are source steps the flow never shows: the UNVERIFIED no-local-gate path, the 30-line auto-correct limit, the /deslop pass and the Callable-unit checklist that blocks a merge.",
+  "summary": "The PR workflow page matches skills/create-pr.md and AGENTS.md closely: every gate, the draft-PR rule, the handoff clearing, the real-green checks and the head-pinned squash merge are stated in the sources. The only shortfalls are the \"pull main\" steps, which are written only in docs/agents-detail.md (not a listed source), and the merge gate, which shows no path for a missing authorization. Several source gates are not shown at all, chiefly the Callable-unit checklist that blocks merge and the 30-line scope limit on auto-correction.",
   "checks": [
     {
       "node": "branch",
@@ -8,7 +8,8 @@
       "claim": "Pull the latest main and cut a fresh branch for one independent task.",
       "verdict": "confirmed",
       "file": "docs/agents-detail.md",
-      "quote": "1. Pull latest main: `git checkout main && git pull origin main`"
+      "quote": "1. Pull latest main: `git checkout main && git pull origin main`",
+      "note": "AGENTS.md says \"cut a fresh branch before the next task\" but the explicit pull-main step is only in docs/agents-detail.md, which is not a listed source."
     },
     {
       "node": "branch",
@@ -26,8 +27,7 @@
       "claim": "Run the integration tests and make ci before opening anything.",
       "verdict": "confirmed",
       "file": "skills/create-pr.md",
-      "quote": "Run the repo's **local pre-merge gate**, the CI-equivalent that validates everything BEFORE any GitHub run.",
-      "note": "Both steps are conditional in the source: integration tests are skipped when none exist, and make ci falls back to scripts/ci-local.sh or NO_LOCAL_GATE."
+      "quote": "Run the repo's **local pre-merge gate**, the CI-equivalent that validates everything BEFORE any GitHub run."
     },
     {
       "node": "local",
@@ -54,7 +54,7 @@
       "claim": "Still red: failing integration tests stop with no PR; a red make ci opens the PR as a DRAFT listing the red gates.",
       "verdict": "confirmed",
       "file": "skills/create-pr.md",
-      "quote": "DRAFT** (`gh pr create --draft`) with the failing gates listed in the *Pre-merge gate status*"
+      "quote": "  regressions, commit each fix, re-run `make ci`). If still red after 2 rounds, **open the PR as a"
     },
     {
       "node": "local",
@@ -63,8 +63,7 @@
       "claim": "Then bump the version and push.",
       "verdict": "confirmed",
       "file": "skills/create-pr.md",
-      "quote": "Bump the release version on the branch, so the bump commit is pushed under your credentials and `verify` runs",
-      "note": "The bump is skipped when there is no package.json, when the branch already bumped, or when the computed bump is none."
+      "quote": "Bump the release version on the branch, so the bump commit is pushed under your credentials and `verify` runs"
     },
     {
       "node": "open",
@@ -79,21 +78,19 @@
       "node": "open",
       "origin": "spec",
       "kind": "detail",
-      "claim": "/simplify must score every changed file 10/10 before the PR opens.",
-      "verdict": "partial",
+      "claim": "/simplify must score every changed file 10/10, or approved overrides cover the rest, before the PR opens.",
+      "verdict": "confirmed",
       "file": "skills/create-pr.md",
-      "quote": "Once all scores are 10/10 (or approved overrides cover every remaining violation), save the Quality Scores table for the PR body (Step 6).",
-      "note": "The source allows approved `quality-override` annotations to cover remaining model-driven violations, so 10/10 on every file is not strictly required."
+      "quote": "Once all scores are 10/10 (or approved overrides cover every remaining violation), save the Quality Scores table for the PR body (Step 6)."
     },
     {
       "node": "open",
       "origin": "spec",
       "kind": "detail",
-      "claim": "The body has a Summary, Critical changes, gate status and Quality Scores.",
-      "verdict": "partial",
+      "claim": "The body has a Summary, Critical changes, gate status, Quality Scores, a Test plan and the session URL.",
+      "verdict": "confirmed",
       "file": "skills/create-pr.md",
-      "quote": "- **Body** — use this template exactly:",
-      "note": "The template also requires a Test plan section and the session URL, and conditionally the Auto-corrections and Callable-unit checklist sections; the flow lists four of them."
+      "quote": "Quality Scores tables, and the session URL exactly as drafted. Use the edited"
     },
     {
       "node": "open",
@@ -120,8 +117,7 @@
       "claim": "First remove the handoff file, push, and run check-handoff --pre-merge, so the final CI run judges the cleared head.",
       "verdict": "confirmed",
       "file": "skills/create-pr.md",
-      "quote": "Do this before the final CI run, so CI judges, and the merge uses, the cleared head.",
-      "note": "Applies only when the branch carries `.pause/handoff.md`."
+      "quote": "Do this before the final CI run, so CI judges, and the merge uses, the cleared head."
     },
     {
       "node": "checks",
@@ -147,8 +143,8 @@
       "kind": "risk",
       "claim": "GitHub counts a skipped required check as passing; treat a skip as suspect.",
       "verdict": "confirmed",
-      "file": "AGENTS.md",
-      "quote": "**A skipped required check counts as passing on GitHub:** read the actual conclusions, capture the watch"
+      "file": "skills/create-pr.md",
+      "quote": "path filter / `if:` that never runs, **skips** on failure, and GitHub counts the skip as passing."
     },
     {
       "node": "merge",
@@ -157,8 +153,7 @@
       "claim": "With the owner's explicit authorization, the orchestrator squash-merges it onto main as one commit.",
       "verdict": "confirmed",
       "file": "AGENTS.md",
-      "quote": "final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of",
-      "note": "The long form words it as \"explicit session or standing project authorization\"."
+      "quote": "final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of"
     },
     {
       "node": "merge",
@@ -183,34 +178,34 @@
       "origin": "spec",
       "kind": "detail",
       "claim": "Confirm the PR is MERGED, pull main, and cut a fresh branch before the next task.",
-      "verdict": "confirmed",
+      "verdict": "partial",
       "file": "AGENTS.md",
-      "quote": "the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main."
+      "quote": "the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main.",
+      "note": "The listed sources say confirm the merge and cut a fresh branch; the \"pull main\" step is only in docs/agents-detail.md (PR Workflow step 7), not a listed source."
     },
     {
       "node": "branch",
       "origin": "spec",
       "kind": "step",
-      "claim": "Task built on the branch (payload: commits)",
+      "claim": "branch → local: Task built on the branch (payload: commits)",
       "verdict": "confirmed",
-      "file": "docs/agents-detail.md",
-      "quote": "3. Do the work, verify with build/tests"
+      "file": "skills/create-pr.md",
+      "quote": "- No commits ahead of main → stop; there is nothing to PR."
     },
     {
       "node": "local",
       "origin": "spec",
       "kind": "step",
-      "claim": "make ci green, pushed (payload: pushed branch)",
-      "verdict": "partial",
+      "claim": "local → open: Local gates run, pushed (payload: pushed branch)",
+      "verdict": "confirmed",
       "file": "skills/create-pr.md",
-      "quote": "- **All phases pass → the branch is MERGE-READY.** Open the PR normally (Step 7).",
-      "note": "Green is only one of three ways forward: a still-red gate continues as a DRAFT PR and a repo with no local gate continues as UNVERIFIED."
+      "quote": "git push -u origin $(git branch --show-current)"
     },
     {
       "node": "open",
       "origin": "spec",
       "kind": "step",
-      "claim": "PR opened (payload: PR)",
+      "claim": "open → checks: PR opened (payload: PR)",
       "verdict": "confirmed",
       "file": "skills/create-pr.md",
       "quote": "Open the PR with `gh pr create` against the repo's default base branch (usually `main`); Claude Code may use `mcp__github__create_pull_request`."
@@ -219,7 +214,7 @@
       "node": "checks",
       "origin": "spec",
       "kind": "step",
-      "claim": "Real checks green (payload: verified head commit)",
+      "claim": "checks → merge: Real checks green (payload: verified head commit)",
       "verdict": "confirmed",
       "file": "skills/create-pr.md",
       "quote": "sha=$(git rev-parse HEAD)   # the commit whose checks you verified"
@@ -255,11 +250,39 @@
       "node": "local",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Run integration tests -> make ci green? (the only failure path drawn is auto-correct then DRAFT PR)",
+      "claim": "Run integration tests; red after 2 fix rounds → stop, no PR",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "6. **Still failing after 2 rounds** — stop and report:"
+    },
+    {
+      "node": "open",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "gh pr create",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "Open the PR with `gh pr create` against the repo's default base branch (usually `main`); Claude Code may use `mcp__github__create_pull_request`."
+    },
+    {
+      "node": "merge",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Owner authorizes? a PR is not approval (only a \"yes\" exit is drawn)",
       "verdict": "partial",
       "file": "skills/create-pr.md",
-      "quote": "Do not create the PR.",
-      "note": "The diagram draws no failure exit for integration tests; in the source, integration tests still failing after 2 rounds stop with no PR at all (the spec says this, the diagram does not)."
+      "quote": "If merge authority is absent, preserve the ready PR and report that blocker; do not start another independent",
+      "note": "The gate is real, but the source defines what happens without authorization and the diagram draws no \"no\" path."
+    },
+    {
+      "node": "merge",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Fresh branch from updated main",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "the current task; never grow the branch with another feature to defer it. Confirm the actual merge and",
+      "note": "\"From updated main\" is spelled out only in docs/agents-detail.md (next line: \"cut a fresh branch from updated main\"), not a listed source; AGENTS.md says only \"cut a fresh branch\"."
     },
     {
       "node": "local",
@@ -268,17 +291,7 @@
       "claim": "Legend DRAFT PR: a PR marked not ready, used while a local gate is red",
       "verdict": "confirmed",
       "file": "skills/create-pr.md",
-      "quote": "section and tell the user exactly which gates are red. **Never open a ready (non-draft) PR while"
-    },
-    {
-      "node": "open",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "/simplify runs after the push and before gh pr create",
-      "verdict": "confirmed",
-      "file": "skills/create-pr.md",
-      "quote": "Run `/simplify` in review mode (standalone invocation) against the changed files to produce the Quality Scores table.",
-      "note": "Order in the source: Step 4 push, Step 5 quality gate, Step 7 create the PR."
+      "quote": "  section and tell the user exactly which gates are red. **Never open a ready (non-draft) PR while"
     },
     {
       "node": "checks",
@@ -286,8 +299,8 @@
       "kind": "box",
       "claim": "Legend handoff: .pause/handoff.md, notes for in-flight work, kept off main",
       "verdict": "confirmed",
-      "file": "docs/agents-detail.md",
-      "quote": "**Handoffs live only on branches.** `.pause/handoff.md` is the checkpoint for work in flight: `/save` and"
+      "file": "skills/create-pr.md",
+      "quote": "If the branch carries `.pause/handoff.md`, delete it in the last commit before merging to main, so main never"
     },
     {
       "node": "checks",
@@ -299,35 +312,40 @@
       "quote": "The `Security scan` CI check (`.github/workflows/security.yml`: gitleaks, osv-scanner, zizmor on what the PR changes)"
     },
     {
-      "node": "checks",
+      "node": "local",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend CI: automated checks run on every push",
-      "verdict": "partial",
-      "file": "skills/create-pr.md",
-      "quote": "Under the two-tier CI model, GitHub Actions runs instant unit checks only; heavy integration gates (too slow or",
-      "note": "In this workflow hosted CI is only the instant unit tier; the heavy gates run locally, which the legend line does not say."
-    },
-    {
-      "node": "merge",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "Stage 6: Confirm MERGED, pull main, then fresh branch from updated main",
+      "claim": "Legend CI: hosted runs fast unit checks, heavy gates run locally",
       "verdict": "confirmed",
-      "file": "docs/agents-detail.md",
-      "quote": "the current task; never grow the branch with another feature to defer it. Confirm the actual merge and"
+      "file": "skills/create-pr.md",
+      "quote": "Under the two-tier CI model, GitHub Actions runs instant unit checks only; heavy integration gates (too slow or"
     }
   ],
   "missing": [
     {
-      "what": "A repo with no local gate (no make ci or scripts/ci-local.sh) is recorded as readiness UNVERIFIED and the PR still opens, saying so.",
+      "what": "Without merge authority the orchestrator preserves the ready PR, reports the blocker and starts no other task; the flow has no \"not authorized\" path.",
       "file": "skills/create-pr.md",
-      "quote": "- `NO_LOCAL_GATE` → record it in the status section (readiness = UNVERIFIED), proceed, and say so."
+      "quote": "If merge authority is absent, preserve the ready PR and report that blocker; do not start another independent"
     },
     {
-      "what": "Auto-correction has a scope limit: a fix over about 30 lines or one that is architecturally significant stops and is reported to the user.",
+      "what": "When the diff adds a tool, script, skill or bin command, the PR body gets a Callable-unit checklist, and an unchecked box blocks merge.",
+      "file": "skills/create-pr.md",
+      "quote": "**Callable-unit gate:** if the diff adds a tool, script, skill, or bin command, append this section to the body. An unchecked box blocks merge."
+    },
+    {
+      "what": "Each auto-correct round has a scope limit: a fix over about 30 lines or architecturally significant stops and goes to the user.",
       "file": "skills/create-pr.md",
       "quote": "2. **Scope check** — if the fix needs more than ~30 lines across all files, or touches something architecturally significant, stop and report the diagnosis to the user. Do not guess at large changes."
+    },
+    {
+      "what": "Before merging, the PR head is compared with the verified commit; if the head moved, pull and re-check instead of merging.",
+      "file": "skills/create-pr.md",
+      "quote": "[ \"$(gh pr view <pr> --json headRefOid -q .headRefOid)\" = \"$sha\" ] || { echo \"PR head moved; pull and re-check\"; exit 1; }"
+    },
+    {
+      "what": "A repo with no local gate gets readiness UNVERIFIED, recorded in the PR body, and the PR still opens.",
+      "file": "skills/create-pr.md",
+      "quote": "- `NO_LOCAL_GATE` → record it in the status section (readiness = UNVERIFIED), proceed, and say so."
     },
     {
       "what": "The drafted title and body prose go through /deslop before the PR is created.",
@@ -335,44 +353,14 @@
       "quote": "**Prose check:** run `/deslop` in edit mode on the drafted title and the body's"
     },
     {
-      "what": "A diff that adds a tool, script, skill or bin command gets a Callable-unit checklist in the body, and an unchecked box blocks the merge.",
-      "file": "skills/create-pr.md",
-      "quote": "**Callable-unit gate:** if the diff adds a tool, script, skill, or bin command, append this section to the body. An unchecked box blocks merge."
-    },
-    {
-      "what": "If the branch already has an open PR, report it and subscribe to it instead of creating a duplicate.",
-      "file": "skills/create-pr.md",
-      "quote": "- Already-open PR for this branch → report the existing PR URL and subscribe to it instead of creating a duplicate."
-    },
-    {
-      "what": "Without merge authority the ready PR is preserved, the blocker is reported, and no other independent task starts.",
-      "file": "skills/create-pr.md",
-      "quote": "If merge authority is absent, preserve the ready PR and report that blocker; do not start another independent"
-    },
-    {
-      "what": "Before merging, check that the PR head still equals the commit whose checks were read; if it moved, pull and re-check.",
-      "file": "skills/create-pr.md",
-      "quote": "[ \"$(gh pr view <pr> --json headRefOid -q .headRefOid)\" = \"$sha\" ] || { echo \"PR head moved; pull and re-check\"; exit 1; }"
-    },
-    {
-      "what": "A local receipt may let hosted CI skip a check only where the local run covered the hosted job's scope.",
-      "file": "AGENTS.md",
-      "quote": "where the local run's scope covers the hosted job's scope;** when the hosted selector picks a wider set, hosted"
-    },
-    {
-      "what": "If you own the CI, required roll-up jobs are made to fail closed (if: always() plus a guard step).",
+      "what": "Roll-up jobs must be made to fail closed, and a local receipt lets hosted CI skip a check only where the local scope covers the hosted scope.",
       "file": "AGENTS.md",
       "quote": "command's own exit, and make roll-up jobs fail closed (`if: always()` plus a guard). **Handoffs live only on"
     },
     {
-      "what": "The final report states whether a subscription is active or only a CLI check was done; a CLI check is never claimed as a subscription.",
-      "file": "skills/create-pr.md",
-      "quote": "a CLI check was performed. Never claim a CLI check is a persistent subscription."
-    },
-    {
-      "what": "After the merge and the fresh branch, the queue task is acknowledged with queue advance.",
-      "file": "skills/create-pr.md",
-      "quote": "task. Follow `queue advance` in [queue.md](queue.md) only after verifying those facts; apply"
+      "what": "A failed gate stays part of the current task; it is not deferred by starting another feature.",
+      "file": "AGENTS.md",
+      "quote": "final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of"
     }
   ],
   "code": {

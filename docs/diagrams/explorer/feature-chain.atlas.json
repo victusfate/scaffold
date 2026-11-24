@@ -1,5 +1,5 @@
 {
-  "summary": "The feature-chain flow follows skills/feature-chain.md and the skills it delegates to: all six stages, their order and their outputs are in the source. The weakest claim is the owner-review stage, which merges two cases the source keeps apart (a queued task always gets a PR; an interactive feature without merge authority stops first). The flow also leaves out the rule that the chain does not pause between phases, the handling of a supplied document beyond placing it, and that /qa fixes what it finds.",
+  "summary": "The feature-chain spec and diagram agree with skills/feature-chain.md and skills/tdd.md on phases, order, gates and merge authority; nothing is contradicted or unsupported. Eight claims are true but rest on files outside the spec's sources (skills/co-plan.md, skills/to-prd.md, skills/code-refiner.md, skills/design-review.md, docs/agents-detail.md). The main omissions are the no-pause-between-phases rule, the architectural contribution mode, and the design feedback loop being absent from the spec.",
   "checks": [
     {
       "node": "design",
@@ -8,7 +8,8 @@
       "claim": "Agree on what to build and why, one question at a time.",
       "verdict": "confirmed",
       "file": "skills/co-plan.md",
-      "quote": "**Ask one question at a time.** Wait for feedback before continuing. Provide your recommended answer with each question."
+      "quote": "**Ask one question at a time.** Wait for feedback before continuing. Provide your recommended answer with each question.",
+      "note": "The sources only say Phase 1 runs /co-plan and that the grill resolves what to build; the one-question rule is in skills/co-plan.md, which would need adding to sources."
     },
     {
       "node": "design",
@@ -17,17 +18,17 @@
       "claim": "The agent explores the code first and only asks what the code can't answer, each time with a recommended answer.",
       "verdict": "confirmed",
       "file": "skills/co-plan.md",
-      "quote": "If a question can be answered by exploring the codebase, explore it instead of asking."
+      "quote": "If a question can be answered by exploring the codebase, explore it instead of asking.",
+      "note": "Stated only in skills/co-plan.md, which would need adding to sources."
     },
     {
       "node": "design",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Resumes at the first missing artifact in `docs/<slug>/`; a supplied document is placed as design.md.",
-      "verdict": "partial",
+      "claim": "Resumes at the first missing artifact in `docs/<slug>/`, or at the first incomplete slice when plan.md exists; a supplied document is placed as design.md.",
+      "verdict": "confirmed",
       "file": "skills/feature-chain.md",
-      "quote": "| `plan.md` exists | Resume Phase 3 at first incomplete slice |",
-      "note": "The table matches for design.md and prd.md and for a supplied document, but when plan.md exists the chain resumes at the first incomplete slice, which is not a missing artifact."
+      "quote": "| `plan.md` exists | Resume Phase 3 at first incomplete slice |"
     },
     {
       "node": "design",
@@ -35,8 +36,8 @@
       "kind": "detail",
       "claim": "Output: design.md",
       "verdict": "confirmed",
-      "file": "skills/co-plan.md",
-      "quote": "When a term or decision is resolved, write it to `./docs/<feature-slug>/design.md` immediately — don't batch."
+      "file": "skills/feature-chain.md",
+      "quote": "Run `/co-plan`; it owns the interview, the design-tree resolution, and"
     },
     {
       "node": "design",
@@ -44,8 +45,9 @@
       "kind": "detail",
       "claim": "Decisions with rationale, canonical vocabulary, edge cases.",
       "verdict": "confirmed",
-      "file": "skills/co-plan.md",
-      "quote": "`design.md` is a glossary and decision record — not a spec or implementation plan."
+      "file": "skills/feature-chain.md",
+      "quote": "Read `design.md` for unresolved decisions, fuzzy vocabulary, or missing edge cases.",
+      "note": "The sources name decisions, vocabulary and edge cases; 'with rationale' comes from the design.md template in skills/co-plan.md, which is not in sources."
     },
     {
       "node": "design",
@@ -54,7 +56,7 @@
       "claim": "Then /design-review patches structural gaps.",
       "verdict": "confirmed",
       "file": "skills/feature-chain.md",
-      "quote": "**When `design.md` is committed:** run `/design-review` in auto-fix mode (it"
+      "quote": "2. Run `/design-review` in auto-fix mode to patch structural gaps."
     },
     {
       "node": "prd",
@@ -62,8 +64,9 @@
       "kind": "role",
       "claim": "Turn the design into user stories and testing decisions, without re-interviewing.",
       "verdict": "confirmed",
-      "file": "skills/to-prd.md",
-      "quote": "Synthesize the current context and codebase into a PRD. **Do not interview the user**"
+      "file": "skills/feature-chain.md",
+      "quote": "testing-decisions step (including its user confirmations). Do not re-interview",
+      "note": "Testing decisions and no re-interview are in the source; 'user stories' is stated only in the PRD template in skills/to-prd.md, which is not in sources."
     },
     {
       "node": "prd",
@@ -71,8 +74,8 @@
       "kind": "detail",
       "claim": "Cross-checks the design against the codebase and confirms with the owner which modules need tests.",
       "verdict": "confirmed",
-      "file": "skills/to-prd.md",
-      "quote": "- Confirm with the user which modules need tests."
+      "file": "skills/feature-chain.md",
+      "quote": "It cross-references the codebase, catches conflicts with existing code, identifies modules already in place"
     },
     {
       "node": "tdd",
@@ -87,20 +90,20 @@
       "node": "tdd",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Granularity is confirmed once with the owner; after that, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.",
-      "verdict": "partial",
+      "claim": "Granularity is confirmed once with the owner; after that, an interface change is surfaced only if it departs from plan.md, and a large fix is always surfaced.",
+      "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from `plan.md`.",
-      "note": "tdd.md states the two surfacing conditions but never says slices otherwise run without pausing, and it also stops the loop for /investigate on an unexpected failure."
+      "quote": "Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from `plan.md`."
     },
     {
       "node": "tdd",
       "origin": "spec",
       "kind": "risk",
       "claim": "Writing all tests first verifies imagined behavior; one test at a time keeps them honest.",
-      "verdict": "confirmed",
+      "verdict": "partial",
       "file": "skills/tdd.md",
-      "quote": "Tests written in bulk verify imagined behavior and become insensitive to real changes."
+      "quote": "Tests written in bulk verify imagined behavior and become insensitive to real changes.",
+      "note": "The source states the failure of bulk-written tests and the one-test-at-a-time rule, but 'keeps them honest' is the page's own rationale for the rule."
     },
     {
       "node": "refine",
@@ -108,8 +111,8 @@
       "kind": "role",
       "claim": "Two independent reviewers (correctness, structure) report; one pass applies every fix.",
       "verdict": "confirmed",
-      "file": "skills/code-refiner.md",
-      "quote": "**Phase 1 — parallel review (two isolated reviewers, find-only):**"
+      "file": "skills/tdd.md",
+      "quote": "It reviews the diff on two parallel isolated tracks — correctness + test-integrity (`validate`) and structural quality (`simplify`)"
     },
     {
       "node": "refine",
@@ -118,17 +121,17 @@
       "claim": "A test weakened to pass counts as a defect, not a fix.",
       "verdict": "confirmed",
       "file": "skills/code-refiner.md",
-      "quote": "- A test weakened to reach green is a defect, not a fix (per `validate`)."
+      "quote": "- A test weakened to reach green is a defect, not a fix (per `validate`).",
+      "note": "The sources only say tests can be weakened during GREEN and the correctness track catches it; the defect-not-a-fix wording is in skills/code-refiner.md, which would need adding to sources."
     },
     {
       "node": "qa",
       "origin": "spec",
       "kind": "role",
-      "claim": "Run the real app and drive the changed entry points the way a user would.",
-      "verdict": "partial",
-      "file": "skills/qa.md",
-      "quote": "Run the real app, drive the changed entry points the way a user would, then fix",
-      "note": "The source's QA also fixes what breaks, each fix with a regression test; the role describes only driving the app."
+      "claim": "Run the real app, drive the changed entry points the way a user would, and fix what breaks.",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "app, drives the changed entry points, fixes in-tier issues with a regression test"
     },
     {
       "node": "qa",
@@ -143,20 +146,20 @@
       "node": "review",
       "origin": "spec",
       "kind": "role",
-      "claim": "A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.",
-      "verdict": "partial",
+      "claim": "Give the owner a summary, then stop for review or, for a queued task, open its PR; merge only with authority.",
+      "verdict": "confirmed",
       "file": "skills/feature-chain.md",
-      "quote": "- Queued task: return to the queue delivery cycle. Create/update its PR, validate locally and on the host, and merge only when explicit session or standing project authorization exists.",
-      "note": "The PR/validate/merge path is written for a queued task, and a queued task without merge authority still gets its PR, which is preserved while the next task is gated; only an interactive feature without authority stops before a PR."
+      "quote": "Create/update its PR, validate locally and on the host, and merge only when explicit session or standing project authorization exists."
     },
     {
       "node": "review",
       "origin": "spec",
       "kind": "detail",
-      "claim": "Merging needs explicit owner authorization; a PR is not approval.",
+      "claim": "Merging needs explicit owner authorization; a PR is not approval. Without it, a queued task keeps its ready PR and the next task waits.",
       "verdict": "confirmed",
       "file": "skills/feature-chain.md",
-      "quote": "Never infer merge authority from permission to create a PR."
+      "quote": "Without merge authority, preserve the ready PR and gate the next independent task.",
+      "note": "The source words the authority as 'explicit session or standing project authorization' and says not to infer it from permission to create a PR; 'a PR is not approval' is AGENTS.md wording."
     },
     {
       "node": "design",
@@ -165,7 +168,7 @@
       "claim": "Design agreed (payload: design.md)",
       "verdict": "confirmed",
       "file": "skills/feature-chain.md",
-      "quote": "patches `design.md` and resolves any blockers), then proceed immediately to"
+      "quote": "**When `design.md` is committed:** run `/design-review` in auto-fix mode (it"
     },
     {
       "node": "prd",
@@ -210,17 +213,17 @@
       "claim": "PRD: Product requirements document: the problem, the solution and the user stories.",
       "verdict": "confirmed",
       "file": "skills/to-prd.md",
-      "quote": "The problem from the user's perspective."
+      "quote": "The problem from the user's perspective.",
+      "note": "The PRD sections (Problem Statement, Solution, User Stories) are defined only in skills/to-prd.md, which would need adding to sources."
     },
     {
       "node": "tdd",
       "origin": "spec",
       "kind": "glossary",
-      "claim": "Vertical slice: A thin piece of a feature that cuts through every layer and works on its own.",
-      "verdict": "partial",
+      "claim": "Vertical slice: A piece of a feature that cuts through every layer: data, logic, UI and tests.",
+      "verdict": "confirmed",
       "file": "skills/tdd.md",
-      "quote": "(each cuts through all layers: data → logic → UI → tests)",
-      "note": "The source says a slice cuts through all layers; it does not say a slice is thin or that it works on its own."
+      "quote": "(each cuts through all layers: data → logic → UI → tests)"
     },
     {
       "node": "design",
@@ -256,7 +259,8 @@
       "claim": "Write prd.md, commit docs PRD",
       "verdict": "confirmed",
       "file": "skills/to-prd.md",
-      "quote": "Commit `prd.md` with message `docs(<slug>): PRD`."
+      "quote": "Commit `prd.md` with message `docs(<slug>): PRD`. Then automatically proceed to `/tdd` without waiting for permission.",
+      "note": "The sources say only that prd.md is committed; the commit message is in skills/to-prd.md, which would need adding to sources."
     },
     {
       "node": "tdd",
@@ -289,57 +293,96 @@
       "node": "review",
       "origin": "diagram",
       "kind": "box",
-      "claim": "No → stop: please review before merging",
+      "claim": "Merge authority already given?",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "Wait here unless existing session or standing project policy already authorizes the validated merge."
+    },
+    {
+      "node": "review",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "No → stop: please review before merging (queued task: PR kept ready)",
       "verdict": "confirmed",
       "file": "skills/feature-chain.md",
       "quote": "When merge authority is absent, prompt: **\"All tests pass. Please review the generated source before merging.\"**"
     },
     {
-      "node": "refine",
+      "node": "review",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend, auto-fix mode: the review applies its own fixes instead of asking first",
-      "verdict": "confirmed",
-      "file": "skills/code-refiner.md",
-      "quote": "- **Auto-fix** (from the chain, or with `--fix`): run Phases 1–3, apply, re-verify, report."
-    },
-    {
-      "node": "qa",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "Legend, entry point: where a user reaches it: page, API endpoint, CLI command, job",
+      "claim": "Yes → PR, validate, merge",
       "verdict": "confirmed",
       "file": "skills/feature-chain.md",
-      "quote": "user-facing entry point (UI route, API endpoint, CLI command, job). It starts the"
-    },
-    {
-      "node": "tdd",
-      "origin": "diagram",
-      "kind": "box",
-      "claim": "Legend, REFACTOR: tidy without changing behavior",
-      "verdict": "partial",
-      "file": "skills/tdd.md",
-      "quote": "REFACTOR is a confirmation pass, not a correction pass.",
-      "note": "The source defines REFACTOR as confirming quality scores, a confirmation pass rather than a tidy-up; 'without changing behavior' is not stated."
+      "quote": "Create/update its PR, validate locally and on the host, and merge only when explicit session or standing project authorization exists."
     },
     {
       "node": "design",
       "origin": "diagram",
       "kind": "box",
-      "claim": "Legend, slug: short kebab-case name of the feature's docs folder",
+      "claim": "Legend slug: short kebab-case name of the feature's docs folder",
       "verdict": "confirmed",
       "file": "docs/agents-detail.md",
-      "quote": "Feature-slug rule: kebab-case, drop articles, keep it under ~30 chars."
+      "quote": "Feature-slug rule: kebab-case, drop articles, keep it under ~30 chars.",
+      "note": "The sources use the slug as the docs folder name but never say kebab-case; that rule is in docs/agents-detail.md, which would need adding to sources."
+    },
+    {
+      "node": "tdd",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend TDD: Test-Driven Development: failing test first, then code, then clean up",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "Never write code that would violate the rubric; REFACTOR is a confirmation pass, not a correction pass.",
+      "note": "Dictionary-style definition, but 'then clean up' differs from the source, which makes REFACTOR a confirmation pass and not a correction pass."
+    },
+    {
+      "node": "tdd",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend RED / GREEN / REFACTOR: test fails / test passes / confirm quality scores",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "REFACTOR: Confirm quality scores — only after GREEN, never while RED"
+    },
+    {
+      "node": "refine",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend auto-fix mode: the review applies its own fixes instead of asking first",
+      "verdict": "confirmed",
+      "file": "skills/design-review.md",
+      "quote": "**Auto-fix** (called from the chain): Apply fixes to `design.md` directly, then continue without pausing.",
+      "note": "The sources name auto-fix mode but define it only in skills/design-review.md (and skills/simplify.md), which would need adding to sources."
+    },
+    {
+      "node": "qa",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend entry point: where a user reaches it: page, API endpoint, CLI command, job",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "user-facing entry point (UI route, API endpoint, CLI command, job). It starts the"
+    },
+    {
+      "node": "design",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend vocabulary: agreed precise meaning for each term in the design",
+      "verdict": "confirmed",
+      "file": "skills/co-plan.md",
+      "quote": "**Sharpen fuzzy language.** When the user uses vague or overloaded terms, propose a precise canonical term:",
+      "note": "The sources mention vocabulary terms without defining them; the canonical-term rule is in skills/co-plan.md, which would need adding to sources."
     }
   ],
   "missing": [
     {
-      "what": "The chain must not pause for permission between phases; the only pauses are the ones owned by each phase's skill. The flow never states this.",
+      "what": "The chain does not pause for permission between phases; only the phase skills pause, and the chain stops only at the end.",
       "file": "skills/feature-chain.md",
       "quote": "Run the full feature chain end-to-end. **Do not pause for permission between phases.**"
     },
     {
-      "what": "Entry-point detection first honors the task's architectural contribution mode (defaulting to collaborative); no stage shows it.",
+      "what": "The task's architectural contribution mode is honored before any phase, defaulting to collaborative when none is supplied.",
       "file": "skills/feature-chain.md",
       "quote": "Honor the task's architectural contribution mode from the queue, or the builder's"
     },
@@ -349,29 +392,24 @@
       "quote": "State the slug before writing the first file so the user can correct it."
     },
     {
-      "what": "A supplied document is not only placed as design.md: it goes through /design-review, a commit, and a grill limited to its open questions before the PRD.",
+      "what": "A supplied document is always treated as a design doc and grilled only on its open questions before the PRD phase.",
       "file": "skills/feature-chain.md",
       "quote": "4. **Grill on ambiguity.** Read `design.md` for unresolved decisions, fuzzy vocabulary, or missing edge cases."
     },
     {
-      "what": "If the feature adds a tool, script, skill or bin command, the design Q&A must settle its home and descriptor contract.",
+      "what": "A feature that adds a tool, script, skill or bin command must resolve its home and descriptor contract at design time.",
       "file": "skills/feature-chain.md",
       "quote": "- **Callable units — decide at design time.** If the feature adds a tool,"
     },
     {
-      "what": "/qa fixes in-tier issues, each with a regression test, rather than only driving the entry points.",
-      "file": "skills/feature-chain.md",
-      "quote": "app, drives the changed entry points, fixes in-tier issues with a regression test"
-    },
-    {
-      "what": "For a queued task without merge authority, the ready PR is preserved and the next independent task is gated; the flow shows only stop or merge.",
-      "file": "skills/feature-chain.md",
-      "quote": "Without merge authority, preserve the ready PR and gate the next independent task."
-    },
-    {
-      "what": "The agent returns to the owner for unresolved intent or material tradeoffs found mid-chain instead of converting them into a ticket.",
+      "what": "The design feedback loop (revise design/PRD and the remaining plan when a premise fails, return to the owner for unresolved intent) is in the diagram but not in the explorer spec.",
       "file": "skills/feature-chain.md",
       "quote": "Continue within authorized scope; return to the owner for unresolved intent or"
+    },
+    {
+      "what": "QA fixes each in-tier issue with a regression test; the flow says only that it fixes what breaks.",
+      "file": "skills/feature-chain.md",
+      "quote": "app, drives the changed entry points, fixes in-tier issues with a regression test"
     }
   ],
   "code": {

@@ -74,7 +74,7 @@ Five isolated subagents each argue from one fixed lens, all at once.
 Each advisor reviews all five answers with the authors hidden.
 
 - Answers are relabeled A to E in random order so reviewers judge the argument, not the persona.
-- Three questions, about 200 words each
+- Three questions, in about 200 words per review
   - Which response is strongest, and why?
   - Which has the biggest blind spot?
   - What did all five miss?
@@ -304,7 +304,7 @@ fail(){ echo "  ✗ $1"; FAIL=$((FAIL + 1)); }
 
 ## Checked against the source
 
-The council flow matches skills/council.md almost claim for claim: the triggers, the brief, the five lenses, the anonymized review, the chairman rules and the output sections are all in the source. One risk bullet states a consequence the source does not give. The main gap is the optional Jev-accelerated mode for phases 3 and 4, plus the batching rule for clients with fewer than five slots.
+The council flow tracks skills/council.md almost line for line: phases, lenses, review questions, verdict sections and rules all have source text. Two wording issues remain: 'Three questions, about 200 words each' misreads a per-review limit as per-question, and the brief's risk states a consequence the source does not. The optional Jev-accelerated mode and the batching rule for fewer than five slots are not shown.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
@@ -337,7 +337,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/council.md:18`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L18)
 
-- **Confirmed**: ask -&gt; brief: Decision is worth a council (payload: the question)
+- **Confirmed**: ask → brief: Decision is worth a council (the question)
   > \- If the question is factual or low-stakes, skip the council and answer.
   >
   > [`skills/council.md:126`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L126)
@@ -351,10 +351,10 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/council.md:34`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L34)
 
-  The source gives the rule (keep the brief even-handed) but does not state the consequence the spec asserts.
+  The source gives the rule (keep it even-handed, do not tip the advisors) but not this consequence; the consequence is the page's own rationale.
 
 <details>
-<summary>9 confirmed, with the supporting line</summary>
+<summary>8 confirmed, with the supporting line</summary>
 
 - **Confirmed**: The main agent writes a neutral, self-contained brief grounded in the repo.
   > Turn the user's question into a neutral, self-contained brief. Scan the workspace
@@ -366,13 +366,8 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/council.md:33`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L33)
 
-- **Confirmed**: Maps the trade space
-  > \*\*Map the shape of the trade space.\*\* Before the advisors weigh in, name the
-  >
-  > [`skills/council.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L36)
-
 - **Confirmed**: Names the axes the decision balances, such as cost, speed, risk and reversibility.
-  > dimensions the decision balances (cost vs speed vs risk vs reversibility vs
+  > dimensions the decision balances (cost vs speed vs risk vs reversibility vs …),
   >
   > [`skills/council.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L37)
 
@@ -381,25 +376,25 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/council.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L39)
 
-- **Confirmed**: brief -&gt; advisors: Brief sent to all five (payload: brief + trade space)
-  > Spawn all five \*\*in a single message\*\* so they run concurrently. Each receives
+- **Confirmed**: brief → advisors: Brief sent to all five (brief + trade space)
+  > its lens definition (below) + the framed brief, and is told: respond
   >
-  > [`skills/council.md:43`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L43)
+  > [`skills/council.md:44`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L44)
 
 - **Confirmed**: Trade space: The axes a decision balances, such as cost, speed and risk.
-  > dimensions the decision balances (cost vs speed vs risk vs reversibility vs
+  > \*\*Map the shape of the trade space.\*\* Before the advisors weigh in, name the
   >
-  > [`skills/council.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L37)
+  > [`skills/council.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L36)
 
 - **Confirmed** (from the diagram): Map the trade space: axes, tension, frontier
   > where the real tension lives, and roughly where the frontier sits: which options
   >
   > [`skills/council.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L38)
 
-- **Confirmed** (from the diagram): Legend: frontier — options not beaten on every axis by another
-  > are Pareto-dominated and which are genuine tradeoffs. Include this in the brief so
+- **Confirmed** (from the diagram): Neutral, self-contained brief grounded in repo docs
+  > for grounding context (\`CLAUDE.md\`/\`AGENTS.md\`, \`docs/\*\*\`, relevant source) and
   >
-  > [`skills/council.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L39)
+  > [`skills/council.md:31`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L31)
 
 </details>
 
@@ -428,32 +423,32 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/council.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L25)
 
-- **Confirmed**: Lens table — Contrarian: Assumes the plan breaks, and asks where and why.
+- **Confirmed**: Contrarian: Assumes the plan breaks, and asks where and why.
   > \| \*\*The Contrarian\*\* \| Hunts for what's wrong, missing, or will fail. Assumes the plan breaks — where and why? \|
   >
   > [`skills/council.md:69`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L69)
 
-- **Confirmed**: Lens table — First-Principles: Strips assumptions and asks whether this is even the right question.
-  > Strips assumptions and rebuilds from the ground up. Challenges whether this is even the right question. \|
+- **Confirmed**: First-Principles: Strips assumptions and asks whether this is even the right question.
+  > \| \*\*The First-Principles Thinker\*\* \| Strips assumptions and rebuilds from the ground up. Challenges whether this is even the right question. \|
   >
   > [`skills/council.md:70`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L70)
 
-- **Confirmed**: Lens table — Expansionist: Hunts hidden upside: what if this works better than expected?
+- **Confirmed**: Expansionist: Hunts hidden upside: what if this works better than expected?
   > \| \*\*The Expansionist\*\* \| Hunts hidden upside and adjacent opportunity. "What if this works better than expected?" \|
   >
   > [`skills/council.md:71`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L71)
 
-- **Confirmed**: Lens table — Outsider: Brings zero domain context and names what is confusing.
+- **Confirmed**: Outsider: Brings zero domain context and names what is confusing.
   > \| \*\*The Outsider\*\* \| Brings zero domain context. Catches what experts have stopped seeing; names what's confusing. \|
   >
   > [`skills/council.md:72`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L72)
 
-- **Confirmed**: Lens table — Executor: Cares only about implementation: what do you do Monday morning?
+- **Confirmed**: Executor: Cares only about implementation: what do you do Monday morning?
   > \| \*\*The Executor\*\* \| Cares only about implementation. "What do you actually do Monday morning?" \|
   >
   > [`skills/council.md:73`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L73)
 
-- **Confirmed**: advisors -&gt; review: Five answers collected (payload: anonymized A to E)
+- **Confirmed**: advisors → review: Five answers collected (anonymized A to E)
   > Collect the five responses and \*\*anonymize them A–E in randomized order\*\* (so
   >
   > [`skills/council.md:49`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L49)
@@ -473,7 +468,7 @@ An agent judged each claim against the source; each quote is found in its file w
 ### Peer review: checks
 
 <details>
-<summary>8 confirmed, with the supporting line</summary>
+<summary>9 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Each advisor reviews all five answers with the authors hidden.
   > review judges the argument, not the persona). Give every advisor all five and ask:
@@ -485,7 +480,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/council.md:49`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L49)
 
-- **Confirmed**: Three questions, about 200 words each
+- **Confirmed**: Three questions, in about 200 words per review
   > \*\*\~200 words each.\*\* Run concurrently.
   >
   > [`skills/council.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L55)
@@ -505,15 +500,20 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/council.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L53)
 
-- **Confirmed**: review -&gt; chair: Reviews collected (payload: peer reviews)
-  > \- &lt;insights surfaced in the peer-review round&gt;
+- **Confirmed**: review → chair: Reviews collected (peer reviews)
+  > Consolidate everything into a verdict in the exact structure below. Weigh the
   >
-  > [`skills/council.md:111`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L111)
+  > [`skills/council.md:58`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L58)
 
 - **Confirmed** (from the diagram): Each advisor reviews all five, ~200 words, in parallel
   > \*\*Phase 3 — Peer review (5 isolated subagents, parallel).\*\*
   >
   > [`skills/council.md:48`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L48)
+
+- **Confirmed** (from the diagram): Legend: anonymized — persona names hidden so reviewers judge the argument
+  > \- Anonymize before peer review; reviewers must not know which persona wrote what.
+  >
+  > [`skills/council.md:124`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L124)
 
 </details>
 
@@ -523,9 +523,9 @@ An agent judged each claim against the source; each quote is found in its file w
 <summary>9 confirmed, with the supporting line</summary>
 
 - **Confirmed**: The main agent weighs the advisors and commits to one recommendation and a first step.
-  > \*\*Phase 4 — Chairman synthesis (main agent).\*\*
+  > \- The chairman commits to a recommendation; "it depends" is not a verdict.
   >
-  > [`skills/council.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L57)
+  > [`skills/council.md:125`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L125)
 
 - **Confirmed**: Weighs the advisors and never averages them.
   > Consolidate everything into a verdict in the exact structure below. Weigh the
@@ -562,34 +562,34 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/council.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L57)
 
-- **Confirmed** (from the diagram): Stage 6 Present in chat: Council verdict as inline markdown
-  > \*\*Phase 5 — Present in chat.\*\*
+- **Confirmed** (from the diagram): Present in chat: Council verdict as inline markdown
+  > \#\# Council verdict — &lt;one-line decision&gt;
   >
-  > [`skills/council.md:62`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L62)
+  > [`skills/council.md:102`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L102)
 
 </details>
 
 ## In the source, not shown in the flow
 
-- The optional Jev-accelerated mode: when a judgment endpoint is reachable, the peer review and the pre-presentation stress test of the synthesis run as batched judgment calls, with a fallback to the generative rounds; neither the spec nor the diagram mentions it.
+- The optional Jev-accelerated mode (batched judgment calls replacing the generative peer review and stress-testing the synthesis, with fallback when no endpoint is reachable) appears in neither the spec nor the diagram.
   > skill), Phases 3 and 4 get faster \*and\* better calibrated. The rule: \*\*Jev
   >
   > [`skills/council.md:82`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L82)
 
-- Advisors are batched when the client has fewer than five concurrent slots; the flow says only "all at once" / "one message, run together".
+- When the client has fewer than five subagent slots the advisors are batched within the concurrency limit, still isolated; the flow says only 'all at once'.
   > \- Run advisors concurrently within the client's available slots; batch when fewer than five slots are available. Keep every advisor isolated.
   >
   > [`skills/council.md:123`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L123)
 
-- The lenses are deliberately paired to collide (Contrarian vs Expansionist, First-Principles vs Executor) and that tension must not be softened.
-  > upside), First-Principles vs Executor (rethink vs ship). Do not sand that tension down.
+- The lenses are deliberately paired to collide (Contrarian vs Expansionist, First-Principles vs Executor) and that tension must not be sanded down.
+  > The lenses are built to collide: Contrarian vs Expansionist (downside vs
   >
-  > [`skills/council.md:76`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L76)
+  > [`skills/council.md:75`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L75)
 
-- Each advisor is given its own lens definition together with the framed brief and is told to respond independently and lean fully into its perspective.
-  > its lens definition (below) + the framed brief, and is told: respond
+- Creative generation is also on the do-not-use list; the spec lists the other four exclusions only.
+  > generation, summarization, or low-stakes advice; a council is wasted ceremony
   >
-  > [`skills/council.md:44`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L44)
+  > [`skills/council.md:17`](https://github.com/victusfate/scaffold/blob/main/skills/council.md#L17)
 
 ## Glossary
 

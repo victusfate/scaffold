@@ -528,7 +528,7 @@ export function check(text: string, maxLines = MAX_LINES): string[] {
 
 ## Checked against the source
 
-The prune flow matches skills/prune.md on every claim checked: the five phases, their order, the tags, the slug rule and the single pause all have matching text. Nothing is contradicted or unsupported. What it leaves out is small: the slug is announced first, design.md has scope and edge-case sections, the PRD maps finding IDs to changes, and each phase can be resumed on its own.
+The prune spec and diagram match skills/prune.md on every phase, artifact, tag and pause; all claims are confirmed. Three definitions (PRD sections, the validate and code-refiner legend entries) are true but rest on skills outside the spec's sources. The omissions are minor: stating the slug first, the scope and edge-case sections of the design doc, and per-phase resuming.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
@@ -571,12 +571,14 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/prune.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L3)
 
-- **Confirmed** (from the diagram): Legend, validate: review for correctness bugs and weakened tests
-  > correctness bugs + the test-integrity check (a test weakened to pass is a
+- **Confirmed** (from the diagram): Legend validate: review for correctness bugs and weakened tests
+  > A test weakened to make it pass is a \*\*defect\*\*, not a simplification — and the
   >
-  > [`skills/code-refiner.md:31`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L31)
+  > [`skills/validate.md:46`](https://github.com/victusfate/scaffold/blob/main/skills/validate.md#L46)
 
-- **Confirmed** (from the diagram): Legend, simplify: review for structure: reuse, clarity, altitude
+  skills/prune.md says only 'correctness validation'; the weakened-test check is in skills/validate.md, which would need adding to sources.
+
+- **Confirmed** (from the diagram): Legend simplify: review for structure: reuse, clarity, altitude
   > dimensions plus reuse, simplification, efficiency, altitude, and the
   >
   > [`skills/prune.md:26`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L26)
@@ -594,9 +596,9 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/prune.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L53)
 
 - **Confirmed**: Findings get IDs (F-01 and on) and are grouped by class, not handled one by one.
-  > \| F-01 \| \[validate\] \| … \| … \| high \|
+  > (how each finding class will be addressed — group related findings, not one-by-one)
   >
-  > [`skills/prune.md:50`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L50)
+  > [`skills/prune.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L53)
 
 - **Confirmed**: Written to `docs/quality-<branch-short>/design.md` (the last segment of the branch name), committed, then /design-review auto-fixes it.
   > Default: \`quality-&lt;branch-short&gt;\` where \`&lt;branch-short&gt;\` is the last path segment of the current branch name.
@@ -631,14 +633,16 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/prune.md:75`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L75)
 
 - **Confirmed**: Stories cite findings (payload: prd.md)
-  > Run \`/tdd\` from \`prd.md\`.
+  > \- User Stories: each class of fix as a story, referencing finding IDs.
   >
-  > [`skills/prune.md:85`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L85)
+  > [`skills/prune.md:73`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L73)
 
 - **Confirmed**: PRD: Product requirements document: the problem, the solution and the user stories.
-  > The solution from the user's perspective.
+  > The problem from the user's perspective.
   >
-  > [`skills/to-prd.md:27`](https://github.com/victusfate/scaffold/blob/main/skills/to-prd.md#L27)
+  > [`skills/to-prd.md:24`](https://github.com/victusfate/scaffold/blob/main/skills/to-prd.md#L24)
+
+  skills/prune.md names only the User Stories, Implementation Decisions and Testing Decisions sections; the problem and solution sections are in skills/to-prd.md, which would need adding to sources.
 
 - **Confirmed** (from the diagram): Commit prd.md
   > Commit: \`docs(&lt;slug&gt;): PRD\`
@@ -653,7 +657,7 @@ An agent judged each claim against the source; each quote is found in its file w
 <summary>5 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Build the fixes in slices, one group of fixes per slice, then refine.
-  > Each vertical slice should correspond to one cohesive group of fixes
+  > Run \`/tdd\` from \`prd.md\`. Each vertical slice should correspond to one cohesive group of fixes
   >
   > [`skills/prune.md:85`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L85)
 
@@ -672,10 +676,12 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/prune.md:87`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L87)
 
-- **Confirmed** (from the diagram): Legend, code-refiner: validate + simplify review, then one fix pass
+- **Confirmed** (from the diagram): Legend code-refiner: validate + simplify review, then one fix pass
   > \*\*in parallel\*\*, merge their findings, then apply every fix in a \*\*single serial
   >
   > [`skills/code-refiner.md:5`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L5)
+
+  skills/prune.md gives only '(validate + simplify)'; the single fix pass is in skills/code-refiner.md, which would need adding to sources.
 
 </details>
 
@@ -685,7 +691,7 @@ An agent judged each claim against the source; each quote is found in its file w
 <summary>3 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Open a PR whose body lists the findings and which IDs were addressed.
-  > The PR body includes the findings summary and lists which finding IDs were addressed.
+  > Run \`/create-pr\`. The PR body includes the findings summary and lists which finding IDs were addressed.
   >
   > [`skills/prune.md:93`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L93)
 
@@ -695,7 +701,7 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/prune.md:99`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L99)
 
 - **Confirmed** (from the diagram): /create-pr
-  > Run \`/create-pr\`. The PR body includes the findings summary
+  > Run \`/create-pr\`. The PR body includes the findings summary and lists which finding IDs were addressed.
   >
   > [`skills/prune.md:93`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L93)
 
@@ -703,22 +709,22 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ## In the source, not shown in the flow
 
-- The slug is stated before design.md is written, and quality-&lt;branch-short&gt; is only the default.
+- The slug is stated before design.md is written, and quality-&lt;branch-short&gt; is only its default.
   > State the slug before writing. Default: \`quality-&lt;branch-short&gt;\` where \`&lt;branch-short&gt;\` is the last path segment of the current branch name.
   >
   > [`skills/prune.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L36)
 
-- design.md also carries a Scope (in/out) section and Edge Cases the fixes must not break; the flow mentions only findings and decisions.
+- The design doc also records scope (in and out) and the edge cases the fixes must not break.
   > (anything fragile the fixes must not break)
   >
   > [`skills/prune.md:60`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L60)
 
-- The PRD's Implementation Decisions map each finding ID to a concrete change.
+- The PRD maps finding IDs to concrete changes under Implementation Decisions.
   > \- Implementation Decisions: map finding IDs to concrete changes.
   >
   > [`skills/prune.md:74`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L74)
 
-- Each phase can be resumed on its own (re-run the audit, edit design.md then /design-review, /to-prd, /tdd, /create-pr); the flow shows stopping but not resuming.
+- Each phase can be resumed on its own (re-run the audit, edit design.md and re-run /design-review, /to-prd, /tdd, /create-pr).
   > \- Design: edit \`design.md\` directly, then re-run \`/design-review\`
   >
   > [`skills/prune.md:104`](https://github.com/victusfate/scaffold/blob/main/skills/prune.md#L104)

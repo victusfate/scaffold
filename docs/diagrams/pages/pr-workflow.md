@@ -48,8 +48,8 @@ Details: [/create-pr skill](../../../skills/create-pr.md)
 
 Details: [Review gates](review-gates.md)
 
-- /simplify must score every changed file 10/10 before the PR opens.
-- The body has a Summary, Critical changes, gate status and Quality Scores.
+- /simplify must score every changed file 10/10, or approved overrides cover the rest, before the PR opens.
+- The body has a Summary, Critical changes, gate status, Quality Scores, a Test plan and the session URL.
 - Subscribe to the PR, or run gh pr checks --watch.
 
 ## Verify checks
@@ -625,11 +625,11 @@ export function drainKick(q: Queue): string {
 
 ## Checked against the source
 
-The PR workflow flow is well supported: 29 of 34 claims are stated in skills/create-pr.md or AGENTS.md and none is contradicted. The partial ones simplify conditions (quality overrides, extra body sections, the DRAFT and UNVERIFIED branches). The main gaps are source steps the flow never shows: the UNVERIFIED no-local-gate path, the 30-line auto-correct limit, the /deslop pass and the Callable-unit checklist that blocks a merge.
+The PR workflow page matches skills/create-pr.md and AGENTS.md closely: every gate, the draft-PR rule, the handoff clearing, the real-green checks and the head-pinned squash merge are stated in the sources. The only shortfalls are the "pull main" steps, which are written only in docs/agents-detail.md (not a listed source), and the merge gate, which shows no path for a missing authorization. Several source gates are not shown at all, chiefly the Callable-unit checklist that blocks merge and the 30-line scope limit on auto-correction.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 29 | 5 | 0 | 0 | 11 | 13 |
+| 33 | 2 | 0 | 0 | 8 | 13 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
@@ -643,43 +643,29 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`docs/agents-detail.md:605`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L605)
 
+  AGENTS.md says "cut a fresh branch before the next task" but the explicit pull-main step is only in docs/agents-detail.md, which is not a listed source.
+
 - **Confirmed**: One task per PR and merge cycle.
   > \*\*One independent task per PR/merge cycle.\*\* Validate locally, open the PR, verify real required checks on the
   >
   > [`AGENTS.md:190`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L190)
 
-- **Confirmed**: Task built on the branch (payload: commits)
-  > \3. Do the work, verify with build/tests
+- **Confirmed**: branch → local: Task built on the branch (payload: commits)
+  > \- No commits ahead of main → stop; there is nothing to PR.
   >
-  > [`docs/agents-detail.md:607`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L607)
+  > [`skills/create-pr.md:18`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L18)
 
 </details>
 
 ### Local gates: checks
 
-- **Partly**: make ci green, pushed (payload: pushed branch)
-  > \- \*\*All phases pass → the branch is MERGE-READY.\*\* Open the PR normally (Step 7).
-  >
-  > [`skills/create-pr.md:75`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L75)
-
-  Green is only one of three ways forward: a still-red gate continues as a DRAFT PR and a repo with no local gate continues as UNVERIFIED.
-
-- **Partly** (from the diagram): Run integration tests -&gt; make ci green? (the only failure path drawn is auto-correct then DRAFT PR)
-  > Do not create the PR.
-  >
-  > [`skills/create-pr.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L53)
-
-  The diagram draws no failure exit for integration tests; in the source, integration tests still failing after 2 rounds stop with no PR at all (the spec says this, the diagram does not).
-
 <details>
-<summary>7 confirmed, with the supporting line</summary>
+<summary>10 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Run the integration tests and make ci before opening anything.
   > Run the repo's \*\*local pre-merge gate\*\*, the CI-equivalent that validates everything BEFORE any GitHub run.
   >
   > [`skills/create-pr.md:61`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L61)
-
-  Both steps are conditional in the source: integration tests are skipped when none exist, and make ci falls back to scripts/ci-local.sh or NO_LOCAL_GATE.
 
 - **Confirmed**: Start from a clean tree with commits ahead of main.
   > \- Uncommitted changes → stop and tell the user to commit or stash first.
@@ -692,59 +678,68 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/create-pr.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L37)
 
 - **Confirmed**: Still red: failing integration tests stop with no PR; a red make ci opens the PR as a DRAFT listing the red gates.
-  > DRAFT\*\* (\`gh pr create --draft\`) with the failing gates listed in the \*Pre-merge gate status\*
+  >   regressions, commit each fix, re-run \`make ci\`). If still red after 2 rounds, \*\*open the PR as a
   >
-  > [`skills/create-pr.md:78`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L78)
+  > [`skills/create-pr.md:77`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L77)
 
 - **Confirmed**: Then bump the version and push.
   > Bump the release version on the branch, so the bump commit is pushed under your credentials and \`verify\` runs
   >
   > [`skills/create-pr.md:95`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L95)
 
-  The bump is skipped when there is no package.json, when the branch already bumped, or when the computed bump is none.
+- **Confirmed**: local → open: Local gates run, pushed (payload: pushed branch)
+  > git push -u origin $(git branch --show-current)
+  >
+  > [`skills/create-pr.md:142`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L142)
 
 - **Confirmed**: make ci: The local pre-merge gate: unit and heavy integration checks.
   > \# full local gate: Tier-1 unit + Tier-2 heavy integration. Prefer \`make ci\`.
   >
   > [`skills/create-pr.md:67`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L67)
 
+- **Confirmed** (from the diagram): Run integration tests; red after 2 fix rounds → stop, no PR
+  > \6. \*\*Still failing after 2 rounds\*\* — stop and report:
+  >
+  > [`skills/create-pr.md:49`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L49)
+
 - **Confirmed** (from the diagram): Legend DRAFT PR: a PR marked not ready, used while a local gate is red
-  > section and tell the user exactly which gates are red. \*\*Never open a ready (non-draft) PR while
+  >   section and tell the user exactly which gates are red. \*\*Never open a ready (non-draft) PR while
   >
   > [`skills/create-pr.md:79`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L79)
+
+- **Confirmed** (from the diagram): Legend CI: hosted runs fast unit checks, heavy gates run locally
+  > Under the two-tier CI model, GitHub Actions runs instant unit checks only; heavy integration gates (too slow or
+  >
+  > [`skills/create-pr.md:62`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L62)
 
 </details>
 
 ### Open the PR: checks
 
-- **Partly**: /simplify must score every changed file 10/10 before the PR opens.
-  > Once all scores are 10/10 (or approved overrides cover every remaining violation), save the Quality Scores table for the PR body (Step 6).
-  >
-  > [`skills/create-pr.md:158`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L158)
-
-  The source allows approved `quality-override` annotations to cover remaining model-driven violations, so 10/10 on every file is not strictly required.
-
-- **Partly**: The body has a Summary, Critical changes, gate status and Quality Scores.
-  > \- \*\*Body\*\* — use this template exactly:
-  >
-  > [`skills/create-pr.md:165`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L165)
-
-  The template also requires a Test plan section and the session URL, and conditionally the Auto-corrections and Callable-unit checklist sections; the flow lists four of them.
-
 <details>
-<summary>5 confirmed, with the supporting line</summary>
+<summary>7 confirmed, with the supporting line</summary>
 
 - **Confirmed**: /create-pr opens the PR with a structured body and starts watching its checks.
   > Create a pull request for the current branch and immediately set up monitoring: subscribe when a subscription
   >
   > [`skills/create-pr.md:6`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L6)
 
+- **Confirmed**: /simplify must score every changed file 10/10, or approved overrides cover the rest, before the PR opens.
+  > Once all scores are 10/10 (or approved overrides cover every remaining violation), save the Quality Scores table for the PR body (Step 6).
+  >
+  > [`skills/create-pr.md:158`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L158)
+
+- **Confirmed**: The body has a Summary, Critical changes, gate status, Quality Scores, a Test plan and the session URL.
+  > Quality Scores tables, and the session URL exactly as drafted. Use the edited
+  >
+  > [`skills/create-pr.md:206`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L206)
+
 - **Confirmed**: Subscribe to the PR, or run gh pr checks --watch.
   > \- Otherwise run \`gh pr checks &lt;pr&gt; --watch\` to wait for CI. Capture its exit status directly; poll the running
   >
   > [`skills/create-pr.md:247`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L247)
 
-- **Confirmed**: PR opened (payload: PR)
+- **Confirmed**: open → checks: PR opened (payload: PR)
   > Open the PR with \`gh pr create\` against the repo's default base branch (usually \`main\`); Claude Code may use \`mcp\_\_github\_\_create\_pull\_request\`.
   >
   > [`skills/create-pr.md:233`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L233)
@@ -754,23 +749,14 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`AGENTS.md:127`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L127)
 
-- **Confirmed** (from the diagram): /simplify runs after the push and before gh pr create
-  > Run \`/simplify\` in review mode (standalone invocation) against the changed files to produce the Quality Scores table.
+- **Confirmed** (from the diagram): gh pr create
+  > Open the PR with \`gh pr create\` against the repo's default base branch (usually \`main\`); Claude Code may use \`mcp\_\_github\_\_create\_pull\_request\`.
   >
-  > [`skills/create-pr.md:149`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L149)
-
-  Order in the source: Step 4 push, Step 5 quality gate, Step 7 create the PR.
+  > [`skills/create-pr.md:233`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L233)
 
 </details>
 
 ### Verify checks: checks
-
-- **Partly** (from the diagram): Legend CI: automated checks run on every push
-  > Under the two-tier CI model, GitHub Actions runs instant unit checks only; heavy integration gates (too slow or
-  >
-  > [`skills/create-pr.md:62`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L62)
-
-  In this workflow hosted CI is only the instant unit tier; the heavy gates run locally, which the legend line does not say.
 
 <details>
 <summary>8 confirmed, with the supporting line</summary>
@@ -785,8 +771,6 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/create-pr.md:276`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L276)
 
-  Applies only when the branch carries `.pause/handoff.md`.
-
 - **Confirmed**: Capture the watch command's own exit code.
   > \- \*\*Capture the watch's own exit\*\*, not a wrapper's:
   >
@@ -798,19 +782,19 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`AGENTS.md:206`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L206)
 
 - **Confirmed**: GitHub counts a skipped required check as passing; treat a skip as suspect.
-  > \*\*A skipped required check counts as passing on GitHub:\*\* read the actual conclusions, capture the watch
+  > path filter / \`if:\` that never runs, \*\*skips\*\* on failure, and GitHub counts the skip as passing.
   >
-  > [`AGENTS.md:195`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L195)
+  > [`skills/create-pr.md:291`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L291)
 
-- **Confirmed**: Real checks green (payload: verified head commit)
+- **Confirmed**: checks → merge: Real checks green (payload: verified head commit)
   > sha=$(git rev-parse HEAD)   \# the commit whose checks you verified
   >
   > [`skills/create-pr.md:283`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L283)
 
 - **Confirmed** (from the diagram): Legend handoff: .pause/handoff.md, notes for in-flight work, kept off main
-  > \*\*Handoffs live only on branches.\*\* \`.pause/handoff.md\` is the checkpoint for work in flight: \`/save\` and
+  > If the branch carries \`.pause/handoff.md\`, delete it in the last commit before merging to main, so main never
   >
-  > [`docs/agents-detail.md:645`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L645)
+  > [`skills/create-pr.md:267`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L267)
 
 - **Confirmed** (from the diagram): Legend Security scan: CI check: gitleaks, osv-scanner, zizmor on the changes
   > The \`Security scan\` CI check (\`.github/workflows/security.yml\`: gitleaks, osv-scanner, zizmor on what the PR changes)
@@ -821,15 +805,27 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Authorized merge: checks
 
+- **Partly**: Confirm the PR is MERGED, pull main, and cut a fresh branch before the next task.
+  > the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main.
+  >
+  > [`AGENTS.md:192`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L192)
+
+  The listed sources say confirm the merge and cut a fresh branch; the "pull main" step is only in docs/agents-detail.md (PR Workflow step 7), not a listed source.
+
+- **Partly** (from the diagram): Owner authorizes? a PR is not approval (only a "yes" exit is drawn)
+  > If merge authority is absent, preserve the ready PR and report that blocker; do not start another independent
+  >
+  > [`skills/create-pr.md:261`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L261)
+
+  The gate is real, but the source defines what happens without authorization and the diagram draws no "no" path.
+
 <details>
-<summary>6 confirmed, with the supporting line</summary>
+<summary>5 confirmed, with the supporting line</summary>
 
 - **Confirmed**: With the owner's explicit authorization, the orchestrator squash-merges it onto main as one commit.
   > final head, and merge \*\*only with explicit authorization\*\* (a PR is not approval). A failed gate stays part of
   >
   > [`AGENTS.md:191`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L191)
-
-  The long form words it as "explicit session or standing project authorization".
 
 - **Confirmed**: A PR is not approval.
   > PR creation is not merge authorization. In the default queue flow, the orchestrator keeps this task current until local and required hosted
@@ -841,79 +837,61 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/create-pr.md:280`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L280)
 
-- **Confirmed**: Confirm the PR is MERGED, pull main, and cut a fresh branch before the next task.
-  > the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main.
-  >
-  > [`AGENTS.md:192`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L192)
-
 - **Confirmed**: Squash merge: One PR lands as one commit on main.
   > \*\*Merge by squash:\*\* one commit per PR on main, titled with the PR title; publication follows
   >
   > [`AGENTS.md:193`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L193)
 
-- **Confirmed** (from the diagram): Stage 6: Confirm MERGED, pull main, then fresh branch from updated main
+- **Confirmed** (from the diagram): Fresh branch from updated main
   > the current task; never grow the branch with another feature to defer it. Confirm the actual merge and
   >
   > [`docs/agents-detail.md:599`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L599)
+
+  "From updated main" is spelled out only in docs/agents-detail.md (next line: "cut a fresh branch from updated main"), not a listed source; AGENTS.md says only "cut a fresh branch".
 
 </details>
 
 ## In the source, not shown in the flow
 
-- A repo with no local gate (no make ci or scripts/ci-local.sh) is recorded as readiness UNVERIFIED and the PR still opens, saying so.
-  > \- \`NO\_LOCAL\_GATE\` → record it in the status section (readiness = UNVERIFIED), proceed, and say so.
+- Without merge authority the orchestrator preserves the ready PR, reports the blocker and starts no other task; the flow has no "not authorized" path.
+  > If merge authority is absent, preserve the ready PR and report that blocker; do not start another independent
   >
-  > [`skills/create-pr.md:81`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L81)
+  > [`skills/create-pr.md:261`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L261)
 
-- Auto-correction has a scope limit: a fix over about 30 lines or one that is architecturally significant stops and is reported to the user.
+- When the diff adds a tool, script, skill or bin command, the PR body gets a Callable-unit checklist, and an unchecked box blocks merge.
+  > \*\*Callable-unit gate:\*\* if the diff adds a tool, script, skill, or bin command, append this section to the body. An unchecked box blocks merge.
+  >
+  > [`skills/create-pr.md:217`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L217)
+
+- Each auto-correct round has a scope limit: a fix over about 30 lines or architecturally significant stops and goes to the user.
   > \2. \*\*Scope check\*\* — if the fix needs more than \~30 lines across all files, or touches something architecturally significant, stop and report the diagnosis to the user. Do not guess at large changes.
   >
   > [`skills/create-pr.md:40`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L40)
+
+- Before merging, the PR head is compared with the verified commit; if the head moved, pull and re-check instead of merging.
+  > \[ "$(gh pr view &lt;pr&gt; --json headRefOid -q .headRefOid)" = "$sha" \] \|\| { echo "PR head moved; pull and re-check"; exit 1; }
+  >
+  > [`skills/create-pr.md:284`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L284)
+
+- A repo with no local gate gets readiness UNVERIFIED, recorded in the PR body, and the PR still opens.
+  > \- \`NO\_LOCAL\_GATE\` → record it in the status section (readiness = UNVERIFIED), proceed, and say so.
+  >
+  > [`skills/create-pr.md:81`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L81)
 
 - The drafted title and body prose go through /deslop before the PR is created.
   > \*\*Prose check:\*\* run \`/deslop\` in edit mode on the drafted title and the body's
   >
   > [`skills/create-pr.md:204`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L204)
 
-- A diff that adds a tool, script, skill or bin command gets a Callable-unit checklist in the body, and an unchecked box blocks the merge.
-  > \*\*Callable-unit gate:\*\* if the diff adds a tool, script, skill, or bin command, append this section to the body. An unchecked box blocks merge.
-  >
-  > [`skills/create-pr.md:217`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L217)
-
-- If the branch already has an open PR, report it and subscribe to it instead of creating a duplicate.
-  > \- Already-open PR for this branch → report the existing PR URL and subscribe to it instead of creating a duplicate.
-  >
-  > [`skills/create-pr.md:308`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L308)
-
-- Without merge authority the ready PR is preserved, the blocker is reported, and no other independent task starts.
-  > If merge authority is absent, preserve the ready PR and report that blocker; do not start another independent
-  >
-  > [`skills/create-pr.md:261`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L261)
-
-- Before merging, check that the PR head still equals the commit whose checks were read; if it moved, pull and re-check.
-  > \[ "$(gh pr view &lt;pr&gt; --json headRefOid -q .headRefOid)" = "$sha" \] \|\| { echo "PR head moved; pull and re-check"; exit 1; }
-  >
-  > [`skills/create-pr.md:284`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L284)
-
-- A local receipt may let hosted CI skip a check only where the local run covered the hosted job's scope.
-  > where the local run's scope covers the hosted job's scope;\*\* when the hosted selector picks a wider set, hosted
-  >
-  > [`AGENTS.md:199`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L199)
-
-- If you own the CI, required roll-up jobs are made to fail closed (if: always() plus a guard step).
+- Roll-up jobs must be made to fail closed, and a local receipt lets hosted CI skip a check only where the local scope covers the hosted scope.
   > command's own exit, and make roll-up jobs fail closed (\`if: always()\` plus a guard). \*\*Handoffs live only on
   >
   > [`AGENTS.md:196`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L196)
 
-- The final report states whether a subscription is active or only a CLI check was done; a CLI check is never claimed as a subscription.
-  > a CLI check was performed. Never claim a CLI check is a persistent subscription.
+- A failed gate stays part of the current task; it is not deferred by starting another feature.
+  > final head, and merge \*\*only with explicit authorization\*\* (a PR is not approval). A failed gate stays part of
   >
-  > [`skills/create-pr.md:255`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L255)
-
-- After the merge and the fresh branch, the queue task is acknowledged with queue advance.
-  > task. Follow \`queue advance\` in \[queue.md\](queue.md) only after verifying those facts; apply
-  >
-  > [`skills/create-pr.md:262`](https://github.com/victusfate/scaffold/blob/main/skills/create-pr.md#L262)
+  > [`AGENTS.md:191`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L191)
 
 ## Glossary
 

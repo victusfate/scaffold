@@ -345,18 +345,18 @@ No code here: The agent re-runs the new test, the original command and the nearb
 
 ## Checked against the source
 
-The spec and diagram match skills/investigate.md almost claim for claim; the one unsupported element is the stated reason for not stacking changes, which the source does not give. The gaps are omissions: the 'Not a root cause' rules for flaky and environment explanations, external-cause handling, and the non-test rows of the evidence table (CI fixed, subagent fixed) are not shown.
+The investigate flow matches skills/investigate.md closely: every stage, step and gate has a direct line in the skill. The one non-confirmed claim is the hypothesis risk, whose reason ("hides which change mattered") is the page's own. The largest gaps are the unshown "Not a root cause" rules (flaky, environment, external cause) and the non-reproducible-failure branch.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 31 | 1 | 0 | 0 | 7 | 6 |
+| 32 | 1 | 0 | 0 | 6 | 6 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Reproduce: checks
 
 <details>
-<summary>10 confirmed, with the supporting line</summary>
+<summary>11 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Read the whole error, reproduce it on demand, and trace back to where it first goes wrong.
   > that, until you reach the first place behavior diverges from intent. That is
@@ -388,7 +388,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/investigate.md:28`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L28)
 
-- **Confirmed**: Reproduces on demand — exact steps
+- **Confirmed**: repro → compare: Reproduces on demand (payload: exact steps)
   > \2. \*\*Reproduce on demand.\*\* Write down the exact command or steps. If it does not
   >
   > [`skills/investigate.md:21`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L21)
@@ -398,15 +398,20 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/investigate.md:31`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L31)
 
-- **Confirmed** (from the diagram): boundary: where data passes between components, logged in/out
+- **Confirmed** (from the diagram): Legend: boundary — where data passes between components, logged in/out
   > \4. \*\*Instrument boundaries.\*\* When data crosses components (CI → script → tool,
   >
   > [`skills/investigate.md:27`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L27)
 
-- **Confirmed** (from the diagram): env: environment: OS, runtime, CI vs local machine
+- **Confirmed** (from the diagram): Legend: env — environment: OS, runtime, CI vs local machine
   > dependency or config changes, and environment differences (CI vs local, OS,
   >
   > [`skills/investigate.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L25)
+
+- **Confirmed** (from the diagram): Title: /investigate — root cause before any fix
+  > \*\*No fix without a root cause.\*\* Until Phase 1 is done you may add logging or
+  >
+  > [`skills/investigate.md:11`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L11)
 
 </details>
 
@@ -430,7 +435,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/investigate.md:40`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L40)
 
-- **Confirmed**: Differences listed — difference list
+- **Confirmed**: compare → hypothesis: Differences listed (payload: difference list)
   > \- Find similar code in the same repo that works. List every difference between it
   >
   > [`skills/investigate.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L36)
@@ -444,7 +449,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/investigate.md:46`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L46)
 
-  The source forbids stacking a second change on an unconfirmed first one but gives no reason; 'hides which change mattered' is the spec's own rationale.
+  The source forbids stacking a second change on an unconfirmed first one, but "hides which change mattered" is the page's own rationale; the source gives no reason.
 
 <details>
 <summary>5 confirmed, with the supporting line</summary>
@@ -464,7 +469,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/investigate.md:45`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L45)
 
-- **Confirmed**: Cause confirmed — root cause
+- **Confirmed**: hypothesis → fix: Cause confirmed (payload: root cause)
   > \- Confirmed → Phase 4. Refuted → new hypothesis from the evidence. Do not stack a
   >
   > [`skills/investigate.md:46`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L46)
@@ -482,9 +487,9 @@ An agent judged each claim against the source; each quote is found in its file w
 <summary>4 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Write a failing regression test, then make one fix at the root cause.
-  > \2. \*\*One fix at the root cause.\*\* No bundled refactors or "while I'm here" edits.
+  > \1. \*\*Write the failing test first.\*\* The smallest reproduction as an automated
   >
-  > [`skills/investigate.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L55)
+  > [`skills/investigate.md:52`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L52)
 
 - **Confirmed**: The test must fail for the named reason, not a bad fixture or import.
   > and see it fail for the reason you identified, not a bad fixture or import.
@@ -496,7 +501,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/investigate.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L55)
 
-- **Confirmed**: Test fails, then passes — regression test
+- **Confirmed**: fix → verify: Test fails, then passes (payload: regression test)
   > \| Regression test works \| It failed before the fix and passes after \| It passes once \|
   >
   > [`skills/investigate.md:73`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L73)
@@ -552,40 +557,35 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ## In the source, not shown in the flow
 
-- 'Flaky' and 'environment' are not accepted as root causes: timing failures have causes to find, and an environment cause must be proven by the same commit passing in one environment and failing in another.
-  > \- \*\*"Flaky."\*\* Timing-dependent failures have causes: shared state, ordering,
-  >
-  > [`skills/investigate.md:82`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L82)
-
-- When the investigation ends at an external cause: record what was checked, add handling (clear error, bounded retry, timeout) and logging.
-  > If the investigation ends at an external cause, record what you checked,
-  >
-  > [`skills/investigate.md:88`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L88)
-
-- If the failure does not reproduce reliably, gather more data (run N times, vary inputs, capture timing) rather than guess.
+- A failure that does not reproduce reliably calls for more data (repeat runs, varied inputs, timing), not a guess; the flow shows only the reproducible case.
   > reproduce reliably, gather more data (run it N times, vary inputs, capture
   >
   > [`skills/investigate.md:22`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L22)
 
-- Evidence table requirements beyond tests: 'CI fixed' needs the failing job re-run green on the new commit, and a subagent's fix needs the diff read and the check re-run.
-  > \| CI fixed \| The failing job re-run green on the new commit \| Local tests green \|
+- "Flaky" and "environment" are not accepted as root causes without proof, and an external cause still needs recorded checks, handling and logging; the flow has nothing on this.
+  > \- \*\*"Flaky."\*\* Timing-dependent failures have causes: shared state, ordering,
   >
-  > [`skills/investigate.md:74`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L74)
+  > [`skills/investigate.md:82`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L82)
 
-- Phase 2 also requires reading a reference implementation or documented pattern in full before applying it.
+- A reference implementation or documented pattern must be read in full before it is applied (Phase 2).
   > \- When following a reference implementation or documented pattern, read all of it
   >
   > [`skills/investigate.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L38)
 
-- After instrumenting, investigate only the boundary that breaks.
+- The evidence table sets specific proof per claim, e.g. a CI fix needs the failing job re-run green on the new commit and a subagent fix needs the diff read and the check re-run.
+  > \| CI fixed \| The failing job re-run green on the new commit \| Local tests green \|
+  >
+  > [`skills/investigate.md:74`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L74)
+
+- The skill is called from other skills: /create-pr uses Phases 1–3 to diagnose a failing integration test, and /tdd uses it for an unpredicted failure.
+  > \- \`/create-pr\` Step 2 uses Phases 1–3 for its "Diagnose" step when an integration
+  >
+  > [`skills/investigate.md:105`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L105)
+
+- The instrumented run identifies the one boundary that breaks, and only that boundary is investigated.
   > The run shows which boundary breaks; investigate only that one.
   >
   > [`skills/investigate.md:29`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L29)
-
-- The skill applies every time, including simple-looking bugs, time pressure, and after one fix has already failed.
-  > Use it every time, including when the bug looks simple, when there is time
-  >
-  > [`skills/investigate.md:14`](https://github.com/victusfate/scaffold/blob/main/skills/investigate.md#L14)
 
 ## Glossary
 

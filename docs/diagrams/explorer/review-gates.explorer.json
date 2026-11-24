@@ -2,8 +2,8 @@
   "title": "Review gates",
   "lede": "How a diff gets reviewed, fixed and verified before merge: two independent reviewers, one fixer, and a receipt so the same code is not checked twice.",
   "detail": "../generated/review-gates.svg",
-  "sources": ["docs/diagrams/src/review-gates.mmd", "skills/code-refiner.md", "AGENTS.md", "docs/agents-detail.md"],
-  "reviewed": "cc6a48835f66",
+  "sources": ["docs/diagrams/src/review-gates.mmd", "skills/code-refiner.md", "AGENTS.md", "docs/agents-detail.md", "skills/audit.md", "skills/simplify.md"],
+  "reviewed": "f81b9bb7542b",
   "lanes": [
     { "id": "review", "name": "Review" },
     { "id": "fix", "name": "Fix" },

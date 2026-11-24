@@ -33,7 +33,7 @@ Split the PRD into vertical slices and confirm their size once with the user.
 - If plan.md is missing, the agent writes it from prd.md first.
 - Each slice cuts through every layer
   - Data, logic, UI and tests together.
-  - After the size is confirmed, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.
+  - After the size is confirmed, an interface change is surfaced only if it departs from plan.md; a large fix is always surfaced.
 
 ## Before code
 
@@ -62,13 +62,13 @@ Details: [Investigate](investigate.md)
 
 Score each touched file on the four-part rubric and audit the tests before committing.
 
-- Every score must be 10/10
+- Aim for 10/10 on every score
   - A fix under 30 lines is applied in place, then re-tested and re-scored.
-  - A bigger fix is surfaced to the user, never silently patched.
+  - A bigger fix is flagged to the user for cleanup, never silently patched.
 - Test self-audit
   - Assertions use sentinel values, not defaults.
   - Every form of a new flag is covered.
-  - At least one test is written from the caller's side.
+  - A missing caller-side test is flagged for the integration suite.
 
 ## Commit and log
 
@@ -453,32 +453,18 @@ fi
 
 ## Checked against the source
 
-The TDD flow matches skills/tdd.md closely: every stage, gate and commit rule is in the source. The differences are overstatements ("every score must be 10/10" although surfaced violations may be committed, a caller-side test presented as required, slices said to run "without pausing") and the diagram calling REFACTOR a tidy-up when the source calls it a confirmation pass. The main thing not shown is that the rubric is loaded before GREEN code is written, plus the optional integration-test step.
+The TDD spec and diagram match skills/tdd.md closely; every stage, gate, threshold and artifact is stated in the source. The only non-confirmed items are small teaching glosses ('keeps them honest', TDD as 'then clean up', RED 'because the behavior doesn't exist yet'). The main omission is that the rubric is loaded before GREEN code is written, plus the optional integration-test section.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 37 | 6 | 0 | 0 | 4 | 11 |
+| 43 | 3 | 0 | 0 | 4 | 11 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Plan the slices: checks
 
-- **Partly**: After the size is confirmed, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.
-  > Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from \`plan.md\`.
-  >
-  > [`skills/tdd.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L25)
-
-  tdd.md states the two surfacing conditions but never says slices otherwise run without pausing, and it also stops the loop for /investigate on an unexpected failure.
-
-- **Partly**: Vertical slice: A thin piece of a feature that cuts through every layer and works on its own.
-  > (each cuts through all layers: data → logic → UI → tests)
-  >
-  > [`skills/tdd.md:5`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L5)
-
-  The source says a slice cuts through all layers; it does not say a slice is thin or that it works on its own.
-
 <details>
-<summary>5 confirmed, with the supporting line</summary>
+<summary>7 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Split the PRD into vertical slices and confirm their size once with the user.
   > Confirm granularity once with the user before coding.
@@ -500,10 +486,20 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/tdd.md:5`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L5)
 
-- **Confirmed**: Slice size confirmed (payload: plan.md)
-  > Granularity was confirmed once at plan time
+- **Confirmed**: After the size is confirmed, an interface change is surfaced only if it departs from plan.md; a large fix is always surfaced.
+  > Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from \`plan.md\`.
   >
   > [`skills/tdd.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L25)
+
+- **Confirmed**: Slice size confirmed (payload: plan.md)
+  > Confirm granularity once with the user before coding.
+  >
+  > [`skills/tdd.md:5`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L5)
+
+- **Confirmed**: Vertical slice: A piece of a feature that cuts through every layer: data, logic, UI and tests.
+  > (each cuts through all layers: data → logic → UI → tests)
+  >
+  > [`skills/tdd.md:5`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L5)
 
 </details>
 
@@ -528,14 +524,14 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/tdd.md:27`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L27)
 
 - **Confirmed**: Use the design's evidence, or mark it unknown.
-  > evidence, or mark it unknown.
+  > evidence, or mark it unknown. If a probe contradicts intent, revise design/PRD
   >
   > [`skills/tdd.md:28`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L28)
 
 - **Confirmed**: If a probe contradicts the intent, revise the design, PRD and unfinished slices first.
-  > If a probe contradicts intent, revise design/PRD
+  > and unfinished slices before implementing more of that premise.
   >
-  > [`skills/tdd.md:28`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L28)
+  > [`skills/tdd.md:29`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L29)
 
 - **Confirmed**: Behaviors listed (payload: test list)
   > \- List behaviors to test, not implementation steps.
@@ -545,6 +541,27 @@ An agent judged each claim against the source; each quote is found in its file w
 </details>
 
 ### Red, then green: checks
+
+- **Partly**: Writing all tests first verifies imagined behavior; one test at a time keeps them honest.
+  > Tests written in bulk verify imagined behavior and become insensitive to real changes.
+  >
+  > [`skills/tdd.md:20`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L20)
+
+  The source states the failure of bulk-written tests and the one-test-at-a-time rule, but 'keeps them honest' is the page's own rationale for the rule.
+
+- **Partly** (from the diagram): Legend TDD: Test-Driven Development: failing test first, then code, then clean up
+  > Never write code that would violate the rubric; REFACTOR is a confirmation pass, not a correction pass.
+  >
+  > [`skills/tdd.md:48`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L48)
+
+  Dictionary-style definition, but 'then clean up' differs from the source, which makes REFACTOR a confirmation pass and not a correction pass.
+
+- **Partly** (from the diagram): Legend RED: a new test that fails because the behavior doesn't exist yet
+  > RED:      Write next test → confirm it fails
+  >
+  > [`skills/tdd.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L36)
+
+  The source says the new test must be confirmed to fail and must fail for the reason it was written for; 'because the behavior doesn't exist yet' is the page's own gloss.
 
 <details>
 <summary>9 confirmed, with the supporting line</summary>
@@ -560,14 +577,9 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/tdd.md:32`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L32)
 
 - **Confirmed**: Tests use the public interface only, so they survive an internal refactor.
-  > A good test reads like a specification and survives internal refactors
+  > Tests verify \*\*behavior through public interfaces\*\*, not implementation details. A good test reads like a specification and survives internal refactors
   >
   > [`skills/tdd.md:9`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L9)
-
-- **Confirmed**: Writing all tests first verifies imagined behavior; one test at a time keeps them honest.
-  > Tests written in bulk verify imagined behavior and become insensitive to real changes.
-  >
-  > [`skills/tdd.md:20`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L20)
 
 - **Confirmed**: A test that fails for a different reason, or an old test that breaks, stops the loop for /investigate.
   > or a previously green test breaks, stop the loop and run \`/investigate\` to find the root cause before writing more code.
@@ -575,7 +587,7 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/tdd.md:42`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L42)
 
 - **Confirmed**: Tests green (payload: code + tests)
-  > Confirm quality scores — only after GREEN, never while RED
+  > REFACTOR: Confirm quality scores — only after GREEN, never while RED
   >
   > [`skills/tdd.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L38)
 
@@ -585,12 +597,17 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/tdd.md:32`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L32)
 
 - **Confirmed** (from the diagram): RED: next test, confirm it fails
-  > Write next test → confirm it fails
+  > RED:      Write next test → confirm it fails
   >
   > [`skills/tdd.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L36)
 
 - **Confirmed** (from the diagram): GREEN: minimal code, confirm it passes
-  > Write minimal code to pass → confirm it passes
+  > GREEN:    Write minimal code to pass → confirm it passes
+  >
+  > [`skills/tdd.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L37)
+
+- **Confirmed** (from the diagram): Legend GREEN: just enough code to make that test pass
+  > GREEN:    Write minimal code to pass → confirm it passes
   >
   > [`skills/tdd.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L37)
 
@@ -598,41 +615,25 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Refactor check: checks
 
-- **Partly**: Every score must be 10/10
-  > \- Do not commit until all scores are 10/10 or violations are explicitly surfaced.
-  >
-  > [`skills/tdd.md:72`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L72)
-
-  The source allows a commit below 10/10 when the violation is explicitly surfaced to the user, so "must" overstates it.
-
-- **Partly**: At least one test is written from the caller's side.
-  > If not, flag it for the integration test suite.
-  >
-  > [`skills/tdd.md:77`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L77)
-
-  The source asks whether such a test exists and, if not, has it flagged for the integration test suite; it is not a hard requirement of the slice.
-
-- **Partly** (from the diagram): Stage title and legend: REFACTOR confirms quality / check and tidy the code without changing behavior
-  > REFACTOR is a confirmation pass, not a correction pass.
-  >
-  > [`skills/tdd.md:48`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L48)
-
-  The source defines REFACTOR as confirming quality scores, a confirmation pass rather than a tidy-up; 'without changing behavior' is not stated.
-
 <details>
-<summary>9 confirmed, with the supporting line</summary>
+<summary>12 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Score each touched file on the four-part rubric and audit the tests before committing.
   > Score every file touched in this slice against the four rubric dimensions. Emit the score table:
   >
   > [`skills/tdd.md:59`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L59)
 
+- **Confirmed**: Aim for 10/10 on every score
+  > \- Do not commit until all scores are 10/10 or violations are explicitly surfaced.
+  >
+  > [`skills/tdd.md:72`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L72)
+
 - **Confirmed**: A fix under 30 lines is applied in place, then re-tested and re-scored.
   > \- Fix &lt;30 lines: apply in place, re-run tests, re-score.
   >
   > [`skills/tdd.md:70`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L70)
 
-- **Confirmed**: A bigger fix is surfaced to the user, never silently patched.
+- **Confirmed**: A bigger fix is flagged to the user for cleanup, never silently patched.
   > \- Fix &gt;30 lines or requires architectural rethinking: surface to the user with the citation; do not silently patch.
   >
   > [`skills/tdd.md:71`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L71)
@@ -643,7 +644,7 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/tdd.md:74`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L74)
 
 - **Confirmed**: Assertions use sentinel values, not defaults.
-  > Replace it with a sentinel (non-default) value
+  > Does any assertion use the default value for the field it verifies? Replace it with a sentinel (non-default) value
   >
   > [`skills/tdd.md:75`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L75)
 
@@ -651,6 +652,11 @@ An agent judged each claim against the source; each quote is found in its file w
   > \- For every new flag or optional argument: is each form covered?
   >
   > [`skills/tdd.md:76`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L76)
+
+- **Confirmed**: A missing caller-side test is flagged for the integration suite.
+  > If not, flag it for the integration test suite.
+  >
+  > [`skills/tdd.md:77`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L77)
 
 - **Confirmed**: All 10/10 or surfaced (payload: score table)
   > \- Do not commit until all scores are 10/10 or violations are explicitly surfaced.
@@ -667,24 +673,22 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/tdd.md:75`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L75)
 
+- **Confirmed** (from the diagram): Legend REFACTOR: confirm the quality scores after GREEN, before committing
+  > \*\*Quality confirmation (run at REFACTOR, before committing):\*\*
+  >
+  > [`skills/tdd.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L57)
+
 </details>
 
 ### Commit and log: checks
 
-- **Partly**: No slices left (payload: tdd-log.md)
-  > When the full test suite is green, run \`/code-refiner\` in auto-fix mode.
-  >
-  > [`skills/tdd.md:119`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L119)
-
-  The final stage is gated on all slices passing and the full suite being green; the source does not say tdd-log.md is what is handed to it.
-
 <details>
-<summary>4 confirmed, with the supporting line</summary>
+<summary>5 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Commit the red, green and refactor steps, log the slice, then start the next one.
-  > Append to \`./docs/&lt;feature-slug&gt;/tdd-log.md\`:
+  > Execute \`./docs/&lt;feature-slug&gt;/plan.md\` using TDD, one vertical slice at a time.
   >
-  > [`skills/tdd.md:88`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L88)
+  > [`skills/tdd.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L3)
 
 - **Confirmed**: Commits: test (red), feat (green), and refactor only if something was refactored.
   > refactor(&lt;slug&gt;): slice N — &lt;what changed&gt;   \# only if refactor happened
@@ -696,10 +700,15 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/tdd.md:88`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L88)
 
-- **Confirmed** (from the diagram): More slices? yes → back to stage 2
-  > Execute \`./docs/&lt;feature-slug&gt;/plan.md\` using TDD, one vertical slice at a time.
+- **Confirmed**: No slices left (payload: commits)
+  > \#\#\# When all slices pass
   >
-  > [`skills/tdd.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L3)
+  > [`skills/tdd.md:117`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L117)
+
+- **Confirmed** (from the diagram): More slices? yes → back to stage 2
+  > \#\#\# Workflow per slice
+  >
+  > [`skills/tdd.md:22`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L22)
 
 </details>
 
@@ -714,7 +723,7 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/tdd.md:119`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L119)
 
 - **Confirmed**: /code-refiner runs in auto-fix mode: correctness and structure reviews, then one fix pass.
-  > merges the findings, applies them in one coherent pass, and re-verifies (correctness clear, all rubric dimensions 10/10)
+  > correctness + test-integrity (\`validate\`) and structural quality (\`simplify\`) — merges the findings, applies them in one coherent pass
   >
   > [`skills/tdd.md:119`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L119)
 
@@ -732,29 +741,29 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ## In the source, not shown in the flow
 
-- Before writing GREEN code the agent loads the quality rubric and writes to it from the start; neither the spec nor the diagram shows the rubric being applied before REFACTOR.
+- The quality rubric is loaded before writing GREEN code and code is written to it from the start; the flow shows the rubric only as a score after GREEN.
   > \*\*The rubric is the generative voice, not a post-hoc judge.\*\* Before writing GREEN code, load the quality rubric:
   >
   > [`skills/tdd.md:44`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L44)
 
-- The source has an optional integration-test step with its own rules (when to write one, env-var gate, real empty temp directory) that the flow does not show.
-  > \#\#\# Integration tests (optional, not always run)
+- The optional integration-test path (separate file, env-var gated, written when a feature crosses a system boundary) is not shown beyond the caller-side flag.
+  > \- The feature crosses a system boundary (writes files a downstream consumer reads, curls a remote, spawns a subprocess)
   >
-  > [`skills/tdd.md:95`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L95)
+  > [`skills/tdd.md:104`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L104)
 
-- The per-cycle checklist forbids speculative features and anticipating future tests; the flow shows only 'minimal code'.
-  > \- No speculative features added
-  >
-  > [`skills/tdd.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L55)
-
-- A green test of the wrong acceptance criterion does not close the gap; the flow shows the revise step but not this rule.
+- A green test of the wrong acceptance criterion does not close the gap; the flow shows the premise revision but not this rule.
   > the wrong acceptance criterion does not close the gap.
   >
   > [`skills/tdd.md:30`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L30)
 
+- The per-cycle checklist rule against speculative code (no speculative features, do not anticipate future tests) is not shown.
+  > \- No speculative features added
+  >
+  > [`skills/tdd.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/tdd.md#L55)
+
 ## Glossary
 
-- **Vertical slice**: A thin piece of a feature that cuts through every layer and works on its own.
+- **Vertical slice**: A piece of a feature that cuts through every layer: data, logic, UI and tests.
 - **Rubric**: Four scores for code: Quality, Readability, Encapsulation, Clarity.
 - **Sentinel value**: A non-default test value, so a bug that silently resets a field can't hide.
 - **Tracer bullet**: The first test, which proves the path works end to end.

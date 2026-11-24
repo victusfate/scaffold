@@ -2,15 +2,15 @@
 
 # One loop tick
 
-What the orchestrator does each time its loop wakes: handle finished work, fill free slots, and make sure work is moving.
+What the orchestrator does each time its loop wakes: handle finished work, reconcile, fill free slots, and make sure work is moving.
 
 ```mermaid
 flowchart LR
   n_wake["Wake"] --> n_topology["Read topology"]
   n_topology["Read topology"] --> n_review["Finished slots"]
-  n_review["Finished slots"] --> n_dispatch["Free slots"]
-  n_dispatch["Free slots"] --> n_reconcile["Reconcile"]
-  n_reconcile["Reconcile"] --> n_supervise["Supervise"]
+  n_review["Finished slots"] --> n_reconcile["Reconcile"]
+  n_reconcile["Reconcile"] --> n_dispatch["Free slots"]
+  n_dispatch["Free slots"] --> n_supervise["Supervise"]
   classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
   classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
   classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
@@ -22,8 +22,8 @@ flowchart LR
 - [Wake](#wake): A native /loop or an external driver fires the tick.
 - [Read topology](#read-topology): The orchestrator reads which worker slots exist from topology.json.
 - [Finished slots](#finished-slots): Review each finished slot's work, integrate or ship it, and set the task status.
-- [Free slots](#free-slots): Give each free slot a suited task in a new worktree.
-- [Reconcile](#reconcile): Make active tasks match live subagents, then clean up leftovers.
+- [Reconcile](#reconcile): Make active tasks match live subagents and resolve leftover worktrees.
+- [Free slots](#free-slots): Give each free slot the highest-priority task it suits, in a new worktree.
 - [Supervise](#supervise): Check that each job advanced since the last tick, not just that it is running.
 
 ## Wake
@@ -54,24 +54,24 @@ Details: [Orchestration](orchestration.md)
 - Integration and shipping stay within existing authorization.
 - Status becomes done, fail, or park --resume.
 
+## Reconcile
+
+Make active tasks match live subagents and resolve leftover worktrees.
+
+- Compare live handles, active tasks and the git worktree list
+  - Task with no subagent: resume or park.
+  - Zombie worktree: integrate, park or clean.
+  - Orphan owner: adopt into a slot or park.
+
 ## Free slots
 
-Give each free slot a suited task in a new worktree.
+Give each free slot the highest-priority task it suits, in a new worktree.
 
 Details: [Queue task lifecycle](queue-lifecycle.md)
 
 - A slot is free when no active task is owned by its id.
 - Order: create the worktree, claim the task for the slot, then start the slot's harness and model there.
 - No suited task? Leave the slot free.
-
-## Reconcile
-
-Make active tasks match live subagents, then clean up leftovers.
-
-- Compare live handles, active tasks and the git worktree list
-  - Task with no subagent: resume or park.
-  - Zombie worktree: integrate, park or clean.
-  - Orphan owner: adopt into a slot or park.
 
 ## Supervise
 
@@ -965,6 +965,350 @@ function mapTask(q: Queue, id: string, fn: (t: Task) => Task): Queue {
 
 </details>
 
+### Reconcile: code
+
+#### slotViews: find orphan owners
+
+*Carries out the step.* It builds the set of slot ids. When the topology has slots, every active task with no owner, or an owner that is not a slot id, is listed as an orphan. The slots and orphans are returned together.
+
+```ts
+  const ids = new Set(topology.slots.map(s => s.id));
+  const orphans = topology.slots.length === 0 ? [] : active.filter(t => !t.owner || !ids.has(t.owner))
+    .map(t => ({ id: t.id, title: t.title, owner: t.owner }));
+  return { slots, orphans };
+}
+```
+
+[`scripts/queue-console-slots.ts:33-37`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-console-slots.ts#L33-L37)
+
+**Why it matters.** Reconcile says an active task whose owner is not a slot must be adopted or parked. This surfaces those tasks; the agent still does the adopting or parking.
+
+#### dispatchGate: stop dispatch on pause or expired lease
+
+*Enforces the rule.* It first resumes a usage pause whose time has passed. If the queue is stopped or paused it returns a blocking exit code. If any active task has been held longer than the lease it prints OWNERSHIP CONFLICT and blocks. It also blocks while a delivery cycle is unfinished.
+
+```ts
+function dispatchGate(q: Queue): { queue: Queue; blocked: number | null } {
+  const due = resumeIfDue(q, now());
+  if (due.resumed) { q = due.queue; save(q); log('auto-resumed (usage window reopened)'); }
+  if (q.config.status === 'stopped') {
+    if (q.config.resumeAt) {
+      console.log(`queue: PAUSED until ${q.config.resumeAt} (usage window) — auto-resumes after`);
+      return { queue: q, blocked: EXIT.PAUSED };
+    }
+    console.log('queue: STOPPED — run `queue start` to resume');
+    return { queue: q, blocked: EXIT.STOPPED };
+  }
+  const expired = staleLeases(q, now(), q.config.leaseMinutes);
+  if (expired.length) {
+    console.log(`queue: OWNERSHIP CONFLICT — expired lease(s) remain active: ${expired
+      .map(t => t.id).join(', ')}. Do not reclaim or dispatch; resolve ownership explicitly.`);
+    return { queue: q, blocked: EXIT.CONFLICT };
+  }
+  if (q.config.deliveryMode !== 'batch' && q.config.deliveryTask && !nextActionable(q)) {
+    console.log(`queue: DELIVERY PENDING — ${q.config.deliveryTask}; finish its PR/merge cycle and fresh branch, then advance`);
+    return { queue: q, blocked: EXIT.DELIVERY };
+  }
+  return { queue: q, blocked: null };
+}
+```
+
+[`scripts/queue.ts:103-125`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L103-L125)
+
+**Why it matters.** An active task with no live owner is a mismatch the tick must resolve before starting more work. The gate blocks `tick` and `ready` instead of reclaiming the task, so ambiguous ownership is never taken over by code.
+
+**Methods and helpers used here**
+
+<details>
+<summary><code>EXIT</code> · const · scripts/queue.ts:78</summary>
+
+The exit codes the queue's loop commands return so a driver can decide what to do next: DISPATCHED 0, IDLE 3, PAUSED 4 (usage window), STOPPED 5, CONFLICT 6 (expired lease still active) and DELIVERY 7 (a delivery cycle is pending).
+
+Comment in the source: Exit codes for the loop entry points (tick, ready, signal) so a driver can branch its next cadence without parsing text: 0 = work dispatched/wanted → continue; 3 = idle → back off to a long fallback; 4 = paused for a usage window → slow-poll; 5 = stopped → halt; 6 = ownership conflict → stop and report. A bare `return 1` stays the usage/error code.
+
+```ts
+const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5, CONFLICT: 6, DELIVERY: 7 } as const;
+```
+
+[`scripts/queue.ts:78`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L78)
+
+</details>
+
+<details>
+<summary><code>dispatch</code> · function · scripts/queue.ts:304</summary>
+
+Takes the CLI arguments (and, for add-many, lines read from stdin), loads the queue, and runs the one subcommand named by the first argument, defaulting to `list`. Depending on the subcommand it saves the queue, appends to the queue log, writes lane or archive files, or runs git, and it prints the result to the console. It returns the process exit code: 0 on success, 1 or 2 for usage and input errors or an unknown command, and the EXIT codes for tick, ready and signal.
+
+```ts
+function dispatch(argv: string[], stdinItems?: string[]): number {
+  const [cmd = 'list', ...rest] = argv;
+  const f = parse(rest);
+  const id = f.positionals[0];
+  let q = load();
+  const needId = (): boolean => Boolean(id && q.tasks.some(t => t.id === id));
+
+  switch (cmd) {
+    case 'list': case 'status': {
+      const tag = f.flags.get('tag');
+      if (tag === '') { console.error('queue: list --tag needs a tag name'); return 2; }
+      console.log(renderModel(tag ? { ...q, tasks: q.tasks.filter(t => t.tags.includes(tag)) } : q));
+      return 0;
+    }
+    case 'show':
+      if (!needId()) { console.error('show: unknown task id'); return 1; }
+      console.log(showTask(q.tasks.find(t => t.id === id)!)); return 0;
+
+    case 'add': {
+      const title = f.positionals.join(' ').trim();
+      if (!title) { console.error('usage: queue add "<title>" [--parent <id> | --requested "<human words>"] [flags]'); return 1; }
+      const origin = taskOrigin(q, f);
+      if (!origin.ok) { console.error(origin.error); return 2; }
+      q = addTask(q, title, { top: f.bools.has('top'), ...withOrigin(taskOverrides(f), origin.patch) });
+```
+
+[`scripts/queue.ts:304-327`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L304-L327) (first 24 lines shown)
+
+</details>
+
+<details>
+<summary><code>now</code> · function · scripts/queue-io.ts:67</summary>
+
+Returns the current time as an ISO 8601 string.
+
+```ts
+export function now(): string { return new Date().toISOString(); }
+```
+
+[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L67)
+
+</details>
+
+<details>
+<summary><code>save</code> · function · scripts/queue-io.ts:296</summary>
+
+Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
+
+Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
+
+```ts
+export function save(q: Queue): void {
+  withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
+}
+```
+
+[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
+
+</details>
+
+<details>
+<summary><code>log</code> · function · scripts/queue-io.ts:377</summary>
+
+Appends one line, '- &lt;ISO timestamp&gt; &lt;message&gt;', to log.md beside the queue file. Returns nothing.
+
+```ts
+export function log(msg: string): void {
+  appendFileSync(sidecar('log.md'), `- ${now()} ${msg}\n`);
+}
+```
+
+[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
+
+</details>
+
+<details>
+<summary><code>Queue</code> · interface · scripts/queue-model.ts:121</summary>
+
+The whole work queue in memory: a config object (run status, intervals, failure and lease limits, parallelism, delivery state, the next id counter) plus the ordered list of tasks, where list order is priority. It is what load returns, what save persists, and what every queue operation takes and returns.
+
+```ts
+export interface Queue {
+  config: QueueConfig;
+  tasks: Task[];
+}
+```
+
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
+
+</details>
+
+<details>
+<summary><code>resumeIfDue</code> · function · scripts/queue-model.ts:634</summary>
+
+Takes a queue and a current ISO time and returns { queue, resumed }. If the queue is stopped with a resumeAt time that has been reached, the returned queue is set to running with resumeAt cleared and resumed is true; otherwise the queue is returned unchanged with resumed false, including for a stop that has no resumeAt.
+
+Comment in the source: If the queue is paused-until and that time has arrived, resume it (clearing resumeAt). A plain manual stop (no resumeAt) is left untouched.
+
+```ts
+export function resumeIfDue(q: Queue, nowIso: string): { queue: Queue; resumed: boolean } {
+  const { status, resumeAt } = q.config;
+  if (status === 'stopped' && resumeAt && Date.parse(nowIso) >= Date.parse(resumeAt)) {
+    return { queue: setConfig(q, { status: 'running', resumeAt: '' }), resumed: true };
+  }
+  return { queue: q, resumed: false };
+}
+```
+
+[`scripts/queue-model.ts:634-640`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L634-L640)
+
+</details>
+
+<details>
+<summary><code>staleLeases</code> · function · scripts/queue-model.ts:648</summary>
+
+Takes a queue, a current ISO time and a lease length in minutes, and returns the active tasks whose startedAt is at least that many minutes old. An active task with no startedAt counts as age zero. Nothing is changed or released.
+
+Comment in the source: Expired leases identify ownership conflicts; they never authorize releasing claims.
+
+```ts
+export function staleLeases(
+  q: Queue, nowIso: string, leaseMinutes: number,
+): Task[] {
+  return q.tasks.filter(t => t.status === 'active' && ageMinutes(t.startedAt, nowIso) >= leaseMinutes);
+}
+```
+
+[`scripts/queue-model.ts:648-652`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L648-L652)
+
+</details>
+
+<details>
+<summary><code>nextActionable</code> · function · scripts/queue-model.ts:817</summary>
+
+Takes a queue and returns the one task to work on now: the first active task the delivery cycle permits, otherwise the first eligible pending task in list order. Returns null when the queue is stopped or no such task exists.
+
+Comment in the source: The single task a serial worker should act on now: resume an active task if one exists, else the topmost eligible pending task. Null if stopped or drained.
+
+```ts
+export function nextActionable(q: Queue): Task | null {
+  if (q.config.status === 'stopped') return null;
+  return q.tasks.find(t => t.status === 'active' && deliveryAllows(q, t.id))
+    ?? q.tasks.find(t => isEligible(t, q))
+    ?? null;
+}
+```
+
+[`scripts/queue-model.ts:817-822`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L817-L822)
+
+</details>
+
+#### queue links: report or clear links to deleted branches
+
+*Enforces the rule.* It lists unfinished tasks whose linked branch is not a local branch. With none it prints OK and exits 0. Otherwise it prints each dangling link and exits 1, or with --fix clears the branch field and saves.
+
+```ts
+export function cmdLinks(q: Queue, fix: boolean, branches: ReadonlySet<string> = localBranches()): number {
+  const stale = danglingLinks(q, branches);
+  if (stale.length === 0) { console.log('queue links: every task branch link names a live branch'); return 0; }
+  for (const s of stale) console.log(`${fix ? 'cleared' : 'DANGLING'} ${s.id} -> ${s.branch} (branch gone)`);
+  if (!fix) { console.log('queue links: run `queue links --fix` to clear them (tasks keep their status)'); return 1; }
+  let next = q;
+  for (const s of stale) next = setField(next, s.id, { branch: '' });
+  save(next); log(`links: cleared ${stale.length} dangling branch link(s)`);
+  return 0;
+}
+```
+
+[`scripts/queue-links.ts:20-29`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-links.ts#L20-L29)
+
+**Why it matters.** Housekeeping after reconcile: a task must link only a live branch. A stale link would mislead the next dispatch and the branch count.
+
+**Methods and helpers used here**
+
+<details>
+<summary><code>danglingLinks</code> · function · scripts/queue-links.ts:10</summary>
+
+Takes a queue and the set of branch names that exist, and returns an { id, branch } pair for every task that is not done and whose branch field names a branch outside that set. Tasks with an empty branch are not reported; nothing is changed.
+
+```ts
+export function danglingLinks(q: Queue, liveBranches: ReadonlySet<string>): { id: string; branch: string }[] {
+  return q.tasks.flatMap(t =>
+    t.status !== 'done' && t.branch && !liveBranches.has(t.branch) ? [{ id: t.id, branch: t.branch }] : []);
+}
+```
+
+[`scripts/queue-links.ts:10-13`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-links.ts#L10-L13)
+
+</details>
+
+<details>
+<summary><code>localBranches</code> · function · scripts/queue-links.ts:15</summary>
+
+Runs `git for-each-ref` on refs/heads in the repo root and returns the set of local branch names. It throws if the git command fails.
+
+```ts
+function localBranches(): Set<string> {
+  const out = execSync("git for-each-ref --format='%(refname:short)' refs/heads", { cwd: ROOT, encoding: 'utf8', stdio: 'pipe' });
+  return new Set(out.split('\n').map(s => s.trim()).filter(Boolean));
+}
+```
+
+[`scripts/queue-links.ts:15-18`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-links.ts#L15-L18)
+
+</details>
+
+<details>
+<summary><code>save</code> · function · scripts/queue-io.ts:296</summary>
+
+Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
+
+Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
+
+```ts
+export function save(q: Queue): void {
+  withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
+}
+```
+
+[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
+
+</details>
+
+<details>
+<summary><code>log</code> · function · scripts/queue-io.ts:377</summary>
+
+Appends one line, '- &lt;ISO timestamp&gt; &lt;message&gt;', to log.md beside the queue file. Returns nothing.
+
+```ts
+export function log(msg: string): void {
+  appendFileSync(sidecar('log.md'), `- ${now()} ${msg}\n`);
+}
+```
+
+[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
+
+</details>
+
+<details>
+<summary><code>Queue</code> · interface · scripts/queue-model.ts:121</summary>
+
+The whole work queue in memory: a config object (run status, intervals, failure and lease limits, parallelism, delivery state, the next id counter) plus the ordered list of tasks, where list order is priority. It is what load returns, what save persists, and what every queue operation takes and returns.
+
+```ts
+export interface Queue {
+  config: QueueConfig;
+  tasks: Task[];
+}
+```
+
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
+
+</details>
+
+<details>
+<summary><code>setField</code> · function · scripts/queue-model.ts:472</summary>
+
+Takes a queue, a task id and a partial task, and returns a new queue in which that task has the given fields overwritten. An unknown id leaves the tasks unchanged, and nothing is saved.
+
+```ts
+export function setField(q: Queue, id: string, patch: Partial<Task>): Queue {
+  return mapTask(q, id, t => ({ ...t, ...patch }));
+}
+```
+
+[`scripts/queue-model.ts:472-474`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L472-L474)
+
+</details>
+
 ### Free slots: code
 
 #### slotViews: a slot is busy when an active task is owned by its id
@@ -1446,350 +1790,6 @@ export function taskBlock(t: Task): string {
 
 </details>
 
-### Reconcile: code
-
-#### slotViews: find orphan owners
-
-*Carries out the step.* It builds the set of slot ids. When the topology has slots, every active task with no owner, or an owner that is not a slot id, is listed as an orphan. The slots and orphans are returned together.
-
-```ts
-  const ids = new Set(topology.slots.map(s => s.id));
-  const orphans = topology.slots.length === 0 ? [] : active.filter(t => !t.owner || !ids.has(t.owner))
-    .map(t => ({ id: t.id, title: t.title, owner: t.owner }));
-  return { slots, orphans };
-}
-```
-
-[`scripts/queue-console-slots.ts:33-37`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-console-slots.ts#L33-L37)
-
-**Why it matters.** Reconcile says an active task whose owner is not a slot must be adopted or parked. This surfaces those tasks; the agent still does the adopting or parking.
-
-#### dispatchGate: stop dispatch on pause or expired lease
-
-*Enforces the rule.* It first resumes a usage pause whose time has passed. If the queue is stopped or paused it returns a blocking exit code. If any active task has been held longer than the lease it prints OWNERSHIP CONFLICT and blocks. It also blocks while a delivery cycle is unfinished.
-
-```ts
-function dispatchGate(q: Queue): { queue: Queue; blocked: number | null } {
-  const due = resumeIfDue(q, now());
-  if (due.resumed) { q = due.queue; save(q); log('auto-resumed (usage window reopened)'); }
-  if (q.config.status === 'stopped') {
-    if (q.config.resumeAt) {
-      console.log(`queue: PAUSED until ${q.config.resumeAt} (usage window) — auto-resumes after`);
-      return { queue: q, blocked: EXIT.PAUSED };
-    }
-    console.log('queue: STOPPED — run `queue start` to resume');
-    return { queue: q, blocked: EXIT.STOPPED };
-  }
-  const expired = staleLeases(q, now(), q.config.leaseMinutes);
-  if (expired.length) {
-    console.log(`queue: OWNERSHIP CONFLICT — expired lease(s) remain active: ${expired
-      .map(t => t.id).join(', ')}. Do not reclaim or dispatch; resolve ownership explicitly.`);
-    return { queue: q, blocked: EXIT.CONFLICT };
-  }
-  if (q.config.deliveryMode !== 'batch' && q.config.deliveryTask && !nextActionable(q)) {
-    console.log(`queue: DELIVERY PENDING — ${q.config.deliveryTask}; finish its PR/merge cycle and fresh branch, then advance`);
-    return { queue: q, blocked: EXIT.DELIVERY };
-  }
-  return { queue: q, blocked: null };
-}
-```
-
-[`scripts/queue.ts:103-125`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L103-L125)
-
-**Why it matters.** An active task with no live owner is a mismatch the tick must resolve before starting more work. The gate blocks `tick` and `ready` instead of reclaiming the task, so ambiguous ownership is never taken over by code.
-
-**Methods and helpers used here**
-
-<details>
-<summary><code>EXIT</code> · const · scripts/queue.ts:78</summary>
-
-The exit codes the queue's loop commands return so a driver can decide what to do next: DISPATCHED 0, IDLE 3, PAUSED 4 (usage window), STOPPED 5, CONFLICT 6 (expired lease still active) and DELIVERY 7 (a delivery cycle is pending).
-
-Comment in the source: Exit codes for the loop entry points (tick, ready, signal) so a driver can branch its next cadence without parsing text: 0 = work dispatched/wanted → continue; 3 = idle → back off to a long fallback; 4 = paused for a usage window → slow-poll; 5 = stopped → halt; 6 = ownership conflict → stop and report. A bare `return 1` stays the usage/error code.
-
-```ts
-const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5, CONFLICT: 6, DELIVERY: 7 } as const;
-```
-
-[`scripts/queue.ts:78`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L78)
-
-</details>
-
-<details>
-<summary><code>dispatch</code> · function · scripts/queue.ts:304</summary>
-
-Takes the CLI arguments (and, for add-many, lines read from stdin), loads the queue, and runs the one subcommand named by the first argument, defaulting to `list`. Depending on the subcommand it saves the queue, appends to the queue log, writes lane or archive files, or runs git, and it prints the result to the console. It returns the process exit code: 0 on success, 1 or 2 for usage and input errors or an unknown command, and the EXIT codes for tick, ready and signal.
-
-```ts
-function dispatch(argv: string[], stdinItems?: string[]): number {
-  const [cmd = 'list', ...rest] = argv;
-  const f = parse(rest);
-  const id = f.positionals[0];
-  let q = load();
-  const needId = (): boolean => Boolean(id && q.tasks.some(t => t.id === id));
-
-  switch (cmd) {
-    case 'list': case 'status': {
-      const tag = f.flags.get('tag');
-      if (tag === '') { console.error('queue: list --tag needs a tag name'); return 2; }
-      console.log(renderModel(tag ? { ...q, tasks: q.tasks.filter(t => t.tags.includes(tag)) } : q));
-      return 0;
-    }
-    case 'show':
-      if (!needId()) { console.error('show: unknown task id'); return 1; }
-      console.log(showTask(q.tasks.find(t => t.id === id)!)); return 0;
-
-    case 'add': {
-      const title = f.positionals.join(' ').trim();
-      if (!title) { console.error('usage: queue add "<title>" [--parent <id> | --requested "<human words>"] [flags]'); return 1; }
-      const origin = taskOrigin(q, f);
-      if (!origin.ok) { console.error(origin.error); return 2; }
-      q = addTask(q, title, { top: f.bools.has('top'), ...withOrigin(taskOverrides(f), origin.patch) });
-```
-
-[`scripts/queue.ts:304-327`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L304-L327) (first 24 lines shown)
-
-</details>
-
-<details>
-<summary><code>now</code> · function · scripts/queue-io.ts:67</summary>
-
-Returns the current time as an ISO 8601 string.
-
-```ts
-export function now(): string { return new Date().toISOString(); }
-```
-
-[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L67)
-
-</details>
-
-<details>
-<summary><code>save</code> · function · scripts/queue-io.ts:296</summary>
-
-Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
-
-Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
-
-```ts
-export function save(q: Queue): void {
-  withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
-}
-```
-
-[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
-
-</details>
-
-<details>
-<summary><code>log</code> · function · scripts/queue-io.ts:377</summary>
-
-Appends one line, '- &lt;ISO timestamp&gt; &lt;message&gt;', to log.md beside the queue file. Returns nothing.
-
-```ts
-export function log(msg: string): void {
-  appendFileSync(sidecar('log.md'), `- ${now()} ${msg}\n`);
-}
-```
-
-[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
-
-</details>
-
-<details>
-<summary><code>Queue</code> · interface · scripts/queue-model.ts:121</summary>
-
-The whole work queue in memory: a config object (run status, intervals, failure and lease limits, parallelism, delivery state, the next id counter) plus the ordered list of tasks, where list order is priority. It is what load returns, what save persists, and what every queue operation takes and returns.
-
-```ts
-export interface Queue {
-  config: QueueConfig;
-  tasks: Task[];
-}
-```
-
-[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
-
-</details>
-
-<details>
-<summary><code>resumeIfDue</code> · function · scripts/queue-model.ts:634</summary>
-
-Takes a queue and a current ISO time and returns { queue, resumed }. If the queue is stopped with a resumeAt time that has been reached, the returned queue is set to running with resumeAt cleared and resumed is true; otherwise the queue is returned unchanged with resumed false, including for a stop that has no resumeAt.
-
-Comment in the source: If the queue is paused-until and that time has arrived, resume it (clearing resumeAt). A plain manual stop (no resumeAt) is left untouched.
-
-```ts
-export function resumeIfDue(q: Queue, nowIso: string): { queue: Queue; resumed: boolean } {
-  const { status, resumeAt } = q.config;
-  if (status === 'stopped' && resumeAt && Date.parse(nowIso) >= Date.parse(resumeAt)) {
-    return { queue: setConfig(q, { status: 'running', resumeAt: '' }), resumed: true };
-  }
-  return { queue: q, resumed: false };
-}
-```
-
-[`scripts/queue-model.ts:634-640`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L634-L640)
-
-</details>
-
-<details>
-<summary><code>staleLeases</code> · function · scripts/queue-model.ts:648</summary>
-
-Takes a queue, a current ISO time and a lease length in minutes, and returns the active tasks whose startedAt is at least that many minutes old. An active task with no startedAt counts as age zero. Nothing is changed or released.
-
-Comment in the source: Expired leases identify ownership conflicts; they never authorize releasing claims.
-
-```ts
-export function staleLeases(
-  q: Queue, nowIso: string, leaseMinutes: number,
-): Task[] {
-  return q.tasks.filter(t => t.status === 'active' && ageMinutes(t.startedAt, nowIso) >= leaseMinutes);
-}
-```
-
-[`scripts/queue-model.ts:648-652`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L648-L652)
-
-</details>
-
-<details>
-<summary><code>nextActionable</code> · function · scripts/queue-model.ts:817</summary>
-
-Takes a queue and returns the one task to work on now: the first active task the delivery cycle permits, otherwise the first eligible pending task in list order. Returns null when the queue is stopped or no such task exists.
-
-Comment in the source: The single task a serial worker should act on now: resume an active task if one exists, else the topmost eligible pending task. Null if stopped or drained.
-
-```ts
-export function nextActionable(q: Queue): Task | null {
-  if (q.config.status === 'stopped') return null;
-  return q.tasks.find(t => t.status === 'active' && deliveryAllows(q, t.id))
-    ?? q.tasks.find(t => isEligible(t, q))
-    ?? null;
-}
-```
-
-[`scripts/queue-model.ts:817-822`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L817-L822)
-
-</details>
-
-#### queue links: report or clear links to deleted branches
-
-*Enforces the rule.* It lists unfinished tasks whose linked branch is not a local branch. With none it prints OK and exits 0. Otherwise it prints each dangling link and exits 1, or with --fix clears the branch field and saves.
-
-```ts
-export function cmdLinks(q: Queue, fix: boolean, branches: ReadonlySet<string> = localBranches()): number {
-  const stale = danglingLinks(q, branches);
-  if (stale.length === 0) { console.log('queue links: every task branch link names a live branch'); return 0; }
-  for (const s of stale) console.log(`${fix ? 'cleared' : 'DANGLING'} ${s.id} -> ${s.branch} (branch gone)`);
-  if (!fix) { console.log('queue links: run `queue links --fix` to clear them (tasks keep their status)'); return 1; }
-  let next = q;
-  for (const s of stale) next = setField(next, s.id, { branch: '' });
-  save(next); log(`links: cleared ${stale.length} dangling branch link(s)`);
-  return 0;
-}
-```
-
-[`scripts/queue-links.ts:20-29`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-links.ts#L20-L29)
-
-**Why it matters.** Housekeeping after reconcile: a task must link only a live branch. A stale link would mislead the next dispatch and the branch count.
-
-**Methods and helpers used here**
-
-<details>
-<summary><code>danglingLinks</code> · function · scripts/queue-links.ts:10</summary>
-
-Takes a queue and the set of branch names that exist, and returns an { id, branch } pair for every task that is not done and whose branch field names a branch outside that set. Tasks with an empty branch are not reported; nothing is changed.
-
-```ts
-export function danglingLinks(q: Queue, liveBranches: ReadonlySet<string>): { id: string; branch: string }[] {
-  return q.tasks.flatMap(t =>
-    t.status !== 'done' && t.branch && !liveBranches.has(t.branch) ? [{ id: t.id, branch: t.branch }] : []);
-}
-```
-
-[`scripts/queue-links.ts:10-13`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-links.ts#L10-L13)
-
-</details>
-
-<details>
-<summary><code>localBranches</code> · function · scripts/queue-links.ts:15</summary>
-
-Runs `git for-each-ref` on refs/heads in the repo root and returns the set of local branch names. It throws if the git command fails.
-
-```ts
-function localBranches(): Set<string> {
-  const out = execSync("git for-each-ref --format='%(refname:short)' refs/heads", { cwd: ROOT, encoding: 'utf8', stdio: 'pipe' });
-  return new Set(out.split('\n').map(s => s.trim()).filter(Boolean));
-}
-```
-
-[`scripts/queue-links.ts:15-18`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-links.ts#L15-L18)
-
-</details>
-
-<details>
-<summary><code>save</code> · function · scripts/queue-io.ts:296</summary>
-
-Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
-
-Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
-
-```ts
-export function save(q: Queue): void {
-  withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
-}
-```
-
-[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
-
-</details>
-
-<details>
-<summary><code>log</code> · function · scripts/queue-io.ts:377</summary>
-
-Appends one line, '- &lt;ISO timestamp&gt; &lt;message&gt;', to log.md beside the queue file. Returns nothing.
-
-```ts
-export function log(msg: string): void {
-  appendFileSync(sidecar('log.md'), `- ${now()} ${msg}\n`);
-}
-```
-
-[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
-
-</details>
-
-<details>
-<summary><code>Queue</code> · interface · scripts/queue-model.ts:121</summary>
-
-The whole work queue in memory: a config object (run status, intervals, failure and lease limits, parallelism, delivery state, the next id counter) plus the ordered list of tasks, where list order is priority. It is what load returns, what save persists, and what every queue operation takes and returns.
-
-```ts
-export interface Queue {
-  config: QueueConfig;
-  tasks: Task[];
-}
-```
-
-[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
-
-</details>
-
-<details>
-<summary><code>setField</code> · function · scripts/queue-model.ts:472</summary>
-
-Takes a queue, a task id and a partial task, and returns a new queue in which that task has the given fields overwritten. An unknown id leaves the tasks unchanged, and nothing is saved.
-
-```ts
-export function setField(q: Queue, id: string, patch: Partial<Task>): Queue {
-  return mapTask(q, id, t => ({ ...t, ...patch }));
-}
-```
-
-[`scripts/queue-model.ts:472-474`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L472-L474)
-
-</details>
-
 ### Supervise: code
 
 #### beatLane: heartbeat with the current step
@@ -2055,54 +2055,50 @@ export function status(dir: string): object {
 
 ## Checked against the source
 
-Stages 2 to 5 (topology, finished slots, free slots, reconcile) match skills/loop.md closely. The supervise stage and the three timer cases are not in skills/loop.md at all; they come from docs/agents-detail.md (Continuous execution), so the spec's sources list is incomplete. The flow also shows reconcile only after dispatch while the source section is titled 'Reconcile lanes before dispatch', and it omits the 'running subagent without an active task' case and the highest-priority rule.
+The tick matches the loop skill and agents-detail closely: every stage claim has source text. The gaps are ordering glosses (supervise after dispatch, "housekeeping" before dispatch where agents-detail puts it after), the "zombie" label applied to a broader case than the source defines, and omitted reconcile rules (subagent without a task, ownership check before cleanup, linking a harness-named branch).
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 30 | 5 | 0 | 0 | 6 | 14 |
+| 39 | 1 | 0 | 0 | 7 | 14 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Wake: checks
 
-- **Confirmed** (outside tracked sources): Timers are only for external gating, a usage-limit window or a crash re-arm.
-  > which has nothing to wait for. A timer IS correct in three cases:
-  >
-  > [`docs/agents-detail.md:115`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L115)
-
-  Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Confirmed** (outside tracked sources) (from the diagram): usage window: rolling usage limit; wake after it resets
-  >   \- \*\*Usage-limit windows:\*\* when closing in on 100% of the rolling 5-hour usage limit, schedule a
-  >
-  > [`docs/agents-detail.md:118`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L118)
-
-  Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
 <details>
-<summary>3 confirmed, with the supporting line</summary>
+<summary>5 confirmed, with the supporting line</summary>
 
 - **Confirmed**: A native /loop or an external driver fires the tick.
   > When native recurrence suffices, apply the shared rules below without loading the external-driver reference.
   >
   > [`skills/loop.md:10`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L10)
 
-- **Confirmed**: A timer is never used to pace the agent's own work; that work runs continuously.
-  > Continue useful authorized work during each run; an interval restarts ended work rather than pacing live work.
+- **Confirmed**: Timers are only for external gating, a usage-limit window or a crash re-arm.
+  > which has nothing to wait for. A timer IS correct in three cases:
   >
-  > [`skills/loop.md:24`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L24)
+  > [`docs/agents-detail.md:115`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L115)
 
-- **Confirmed**: Tick fires (trigger): wake → topology
-  > \1. Read and validate the topology; an invalid file is a blocker to report. No file: orchestrator only.
+- **Confirmed**: A timer is never used to pace the agent's own work; that work runs continuously.
+  > \- \*\*Don't insert a \`ScheduleWakeup\`/timer delay to \*pace\* self-contained work.\*\* A wakeup delay is for
   >
-  > [`skills/loop.md:34`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L34)
+  > [`docs/agents-detail.md:113`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L113)
+
+- **Confirmed**: Tick fires (trigger)
+  > task suits which slot. Swapping resources edits that file, never the scheduled prompt. Each tick:
+  >
+  > [`skills/loop.md:32`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L32)
+
+- **Confirmed** (from the diagram): Legend: usage window = rolling usage limit; wake after it resets
+  > \- \*\*Usage-limit windows:\*\* when closing in on 100% of the rolling 5-hour usage limit, schedule a
+  >
+  > [`docs/agents-detail.md:118`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L118)
 
 </details>
 
 ### Read topology: checks
 
 <details>
-<summary>5 confirmed, with the supporting line</summary>
+<summary>6 confirmed, with the supporting line</summary>
 
 - **Confirmed**: The orchestrator reads which worker slots exist from topology.json.
   > names the orchestrator, the tick cadence and the subagent \*\*slots\*\*, with no routing: the orchestrator judges which
@@ -2110,24 +2106,29 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/loop.md:31`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L31)
 
 - **Confirmed**: node scripts/topology.ts validates the file.
-  > //   node scripts/topology.ts \[path\]    \# validate and print the topology as JSON (exit 1 on error)
+  > (\`scripts/topology.ts\`, \`node scripts/topology.ts\` validates), and never creates or overwrites the file.
   >
-  > [`scripts/topology.ts:10`](https://github.com/victusfate/scaffold/blob/main/scripts/topology.ts#L10)
+  > [`docs/agents-detail.md:920`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L920)
 
 - **Confirmed**: An invalid file is a blocker to report. No file means the orchestrator works alone.
   > \1. Read and validate the topology; an invalid file is a blocker to report. No file: orchestrator only.
   >
   > [`skills/loop.md:34`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L34)
 
+- **Confirmed**: Slots known (topology.json)
+  > \`.agent/topology.json\` (consumer-owned; schema \`lib/topology.schema.json\`, reader \`node scripts/topology.ts\`)
+  >
+  > [`skills/loop.md:30`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L30)
+
 - **Confirmed** (from the diagram): topology.json: orchestrator, tick, slots; no routing
-  > names the orchestrator, the tick cadence and the subagent \*\*slots\*\*, with no routing: the orchestrator judges which
+  > names the orchestrator, the tick cadence and the subagent \*\*slots\*\*, with no routing
   >
   > [`skills/loop.md:31`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L31)
 
-- **Confirmed**: Slots known (topology.json): topology → review
-  > \2. For each slot whose task finished, review it, integrate or ship it within existing authorization, and set the
+- **Confirmed** (from the diagram): Legend: topology.json = repo file naming the orchestrator and its worker slots
+  > \`.agent/topology.json\` declares who does the work. Like \`.agent/default-language.md\` it is \*\*consumer-owned\*\*:
   >
-  > [`skills/loop.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L35)
+  > [`docs/agents-detail.md:918`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L918)
 
 </details>
 
@@ -2142,7 +2143,7 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/loop.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L35)
 
 - **Confirmed**: Integration and shipping stay within existing authorization.
-  > \2. For each slot whose task finished, review it, integrate or ship it within existing authorization, and set the
+  > review it, integrate or ship it within existing authorization
   >
   > [`skills/loop.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L35)
 
@@ -2151,187 +2152,205 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/loop.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L36)
 
-- **Confirmed**: Finished work handled (task statuses): review → dispatch
-  > \3. For each free slot (no \`\[&gt;\]\` task owned by its id), claim the highest-priority task it suits with
+- **Confirmed**: Finished work handled (task statuses)
+  > \3. Reconcile (below), before any new dispatch.
   >
   > [`skills/loop.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L37)
 
 - **Confirmed**: Park: Return a task to pending, keeping its branch and a resume note.
-  >  \* Park a task whose lane stopped with work in hand: it returns to pending (owner and lease cleared,
+  > assert('park returns an active task to pending', t.status === 'pending');
   >
-  > [`scripts/queue-model.ts:573`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L573)
+  > [`scripts/queue-park.test.ts:20`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-park.test.ts#L20)
 
-</details>
-
-### Free slots: checks
-
-- **Partly**: Give each free slot a suited task in a new worktree.
-  > \3. For each free slot (no \`\[&gt;\]\` task owned by its id), claim the highest-priority task it suits with
-  >
-  > [`skills/loop.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L37)
-
-  The source says the highest-priority suited task; the spec and diagram drop the priority rule.
-
-- **Partly**: Free slots filled (claims + worktrees): dispatch → reconcile
-  > A subagent that replied and went idle is not a running lane; resolve each mismatch before spawning more work:
-  >
-  > [`skills/loop.md:50`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L50)
-
-  The numbered tick list puts Reconcile fourth, after dispatch, but the section is titled "Reconcile lanes before dispatch" and requires mismatches resolved before spawning more work; the flow shows only the after-dispatch order.
-
-- **Partly**: Harness: The agent tool a slot runs: claude, codex, agy or pi.
-  > is \`claude\`, \`codex\`, \`agy\`, \`pi\` or another name the repo's dispatcher understands.
-  >
-  > [`docs/agents-detail.md:934`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L934)
-
-  loop.md does not list harness names; docs/agents-detail.md (not a listed source) lists these four plus any other name the dispatcher understands, so the list is not closed.
-
-<details>
-<summary>5 confirmed, with the supporting line</summary>
-
-- **Confirmed**: A slot is free when no active task is owned by its id.
-  > \3. For each free slot (no \`\[&gt;\]\` task owned by its id), claim the highest-priority task it suits with
-  >
-  > [`skills/loop.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L37)
-
-- **Confirmed**: Order: create the worktree, claim the task for the slot, then start the slot's harness and model there.
-  > that branch's worktree. Create the worktree first so the claim links its branch in the same write; when the
-  >
-  > [`skills/loop.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L39)
-
-- **Confirmed**: No suited task? Leave the slot free.
-  > rather than send it a task it should not take.
-  >
-  > [`skills/loop.md:42`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L42)
-
-- **Confirmed** (from the diagram): claim id --worker slot --branch b
-  > \`node scripts/queue.ts claim &lt;id&gt; --worker &lt;slot-id&gt; --branch &lt;branch&gt;\` and start that slot's harness/model in
-  >
-  > [`skills/loop.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L38)
-
-- **Confirmed**: Slot: A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner.
-  > \`node scripts/queue.ts claim &lt;id&gt; --worker &lt;slot-id&gt; --branch &lt;branch&gt;\` and start that slot's harness/model in
-  >
-  > [`skills/loop.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L38)
+  The sources only say park preserves work and releases ownership (skills/loop.md); "to pending" is stated in scripts/queue-park.test.ts, which would need adding to sources.
 
 </details>
 
 ### Reconcile: checks
 
-- **Partly**: Tasks match subagents (live handles): reconcile → supervise
-  > \- End each run with the active-task count matching the live subagent count.
-  >
-  > [`skills/loop.md:56`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L56)
-
-  The matching count is confirmed, but loop.md has no supervise stage after reconcile; its tick list ends at step 4 (Reconcile).
-
 <details>
-<summary>7 confirmed, with the supporting line</summary>
+<summary>11 confirmed, with the supporting line</summary>
 
-- **Confirmed**: Make active tasks match live subagents, then clean up leftovers.
+- **Confirmed**: Make active tasks match live subagents and resolve leftover worktrees.
   > \- End each run with the active-task count matching the live subagent count.
   >
-  > [`skills/loop.md:56`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L56)
+  > [`skills/loop.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L57)
 
 - **Confirmed**: Compare live handles, active tasks and the git worktree list
   > Compare current-session live subagent handles, queue \`\[&gt;\]\` tasks, and \`git worktree list\` every run.
   >
-  > [`skills/loop.md:49`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L49)
+  > [`skills/loop.md:50`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L50)
 
 - **Confirmed**: Task with no subagent: resume or park.
   > \- Active task without a running subagent: resume it, or park it with
   >
-  > [`skills/loop.md:52`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L52)
+  > [`skills/loop.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L53)
 
 - **Confirmed**: Zombie worktree: integrate, park or clean.
   > \- Worktree without a task or subagent: integrate, park, or clean it under the repository's branch rules.
   >
-  > [`skills/loop.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L55)
+  > [`skills/loop.md:56`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L56)
 
 - **Confirmed**: Orphan owner: adopt into a slot or park.
-  > \4. Reconcile (below). An active task whose owner is not a slot id is orphaned: adopt it into a free slot or park it.
+  > An active task whose owner is not a slot id is orphaned: adopt it
   >
-  > [`skills/loop.md:43`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L43)
+  > [`skills/loop.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L37)
 
-- **Confirmed** (from the diagram): orphan owner: active task owned by a name that is no slot
-  > \4. Reconcile (below). An active task whose owner is not a slot id is orphaned: adopt it into a free slot or park it.
+- **Confirmed**: Tasks match subagents (live handles)
+  > A subagent that replied and went idle is not a running lane; resolve each mismatch before spawning more work:
   >
-  > [`skills/loop.md:43`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L43)
+  > [`skills/loop.md:51`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L51)
 
-- **Confirmed**: Zombie worktree: A checkout with no task and no running subagent.
-  > \- Worktree without a task or subagent: integrate, park, or clean it under the repository's branch rules.
+- **Confirmed**: Zombie worktree: A worktree an interrupted session left behind.
+  > \- \*\*Reap zombie worktrees after an interrupted session.\*\* The normal merge step deletes each lane's
   >
-  > [`skills/loop.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L55)
+  > [`docs/agents-detail.md:886`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L886)
+
+- **Confirmed** (from the diagram): Stage title "4 · Reconcile, housekeeping", placed before dispatch
+  > slots, reconcile lanes, then dispatch the next priority task to every free slot. Changing models or the slot mix
+  >
+  > [`docs/agents-detail.md:938`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L938)
+
+- **Confirmed** (from the diagram): Active tasks = live subagents? (decision at the end of reconcile)
+  > \- End each run with the active-task count matching the live subagent count.
+  >
+  > [`skills/loop.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L57)
+
+- **Confirmed** (from the diagram): Legend: orphan owner = active task owned by a name that is no slot
+  > is owned by its id, and an active task owned by a non-slot is flagged as orphaned. Orchestrator and subagents
+  >
+  > [`docs/agents-detail.md:941`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L941)
+
+- **Confirmed** (from the diagram): Legend: handle = the session's own reference to a running subagent
+  > Compare current-session live subagent handles, queue \`\[&gt;\]\` tasks, and \`git worktree list\` every run.
+  >
+  > [`skills/loop.md:50`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L50)
+
+</details>
+
+### Free slots: checks
+
+- **Partly**: Free slots filled (claims + worktrees)
+  > \- \*\*Supervise background work by progress, not liveness.\*\* When a tick checks on running jobs, "the
+  >
+  > [`docs/agents-detail.md:132`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L132)
+
+  The source says a tick supervises running jobs but never places that after dispatch; the loop skill's tick has four steps and ends at dispatch, so the order is the page's own.
+
+<details>
+<summary>7 confirmed, with the supporting line</summary>
+
+- **Confirmed**: Give each free slot the highest-priority task it suits, in a new worktree.
+  > \4. For each free slot (no \`\[&gt;\]\` task owned by its id), claim the highest-priority task it suits with
+  >
+  > [`skills/loop.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L39)
+
+- **Confirmed**: A slot is free when no active task is owned by its id.
+  > For each free slot (no \`\[&gt;\]\` task owned by its id)
+  >
+  > [`skills/loop.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L39)
+
+- **Confirmed**: Order: create the worktree, claim the task for the slot, then start the slot's harness and model there.
+  > that branch's worktree. Create the worktree first so the claim links its branch in the same write; when the
+  >
+  > [`skills/loop.md:41`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L41)
+
+- **Confirmed**: No suited task? Leave the slot free.
+  > rather than send it a task it should not take.
+  >
+  > [`skills/loop.md:44`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L44)
+
+- **Confirmed**: Harness: The agent tool a slot runs, such as claude, codex, agy or pi.
+  > is \`claude\`, \`codex\`, \`agy\`, \`pi\` or another name the repo's dispatcher understands.
+  >
+  > [`docs/agents-detail.md:934`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L934)
+
+- **Confirmed** (from the diagram): Highest-priority suited task: claim id --worker slot --branch b
+  > \`node scripts/queue.ts claim &lt;id&gt; --worker &lt;slot-id&gt; --branch &lt;branch&gt;\` and start that slot's harness/model in
+  >
+  > [`skills/loop.md:40`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L40)
+
+- **Confirmed** (from the diagram): Legend: worktree = isolated git checkout per worker
+  > \- \*\*Never park a worker branch.\*\* Keep at most one branch (and worktree) per active subagent, plus
+  >
+  > [`docs/agents-detail.md:715`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L715)
 
 </details>
 
 ### Supervise: checks
 
-- **Confirmed** (outside tracked sources): Check that each job advanced since the last tick, not just that it is running.
-  > \- \*\*Supervise background work by progress, not liveness.\*\* When a tick checks on running jobs, "the
+<details>
+<summary>5 confirmed, with the supporting line</summary>
+
+- **Confirmed**: Check that each job advanced since the last tick, not just that it is running.
+  > \- \*\*Did it advance since the last tick?\*\* Compare a progress counter (items finished, commits, CPU
   >
-  > [`docs/agents-detail.md:132`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L132)
+  > [`docs/agents-detail.md:135`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L135)
 
-  Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Confirmed** (outside tracked sources): Check the leaf step, orphans, and who holds a shared budget.
-  >   \- \*\*What is each job doing right now?\*\* Look at the leaf process or current step. A \`sleep\` inside a
+- **Confirmed**: Check the leaf step, orphans, and who holds a shared budget.
+  > \- \*\*What is each job doing right now?\*\* Look at the leaf process or current step. A \`sleep\` inside a
   >
   > [`docs/agents-detail.md:138`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L138)
 
-  Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Confirmed** (outside tracked sources): A probe exits non-zero on an anomaly, which starts an investigation.
-  >   Encode these as a small probe script run every tick that exits non-zero on anomalies, and
+- **Confirmed**: A probe exits non-zero on an anomaly, which starts an investigation.
+  > Encode these as a small probe script run every tick that exits non-zero on anomalies, and
   >
   > [`docs/agents-detail.md:146`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L146)
 
-  Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Partly**: A running process is not proof that work is moving.
-  > Inspect productive progress as well as scheduler status; changing configuration requires stop, wait/cancel, then restart.
+- **Confirmed**: A running process is not proof that work is moving.
+  > A job can be alive and stuck: in a retry/wait loop, or blocked on a
   >
-  > [`skills/loop.md:71`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L71)
+  > [`docs/agents-detail.md:133`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L133)
 
-  loop.md says to inspect progress as well as scheduler status but never states that a live process is not health; that wording is in docs/agents-detail.md.
+- **Confirmed**: Slot: A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner.
+  > \- \`slots\[\].id\` is unique kebab-case and doubles as the queue task \*\*owner\*\* while the slot is busy. \`harness\`
+  >
+  > [`docs/agents-detail.md:933`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L933)
+
+</details>
 
 ## In the source, not shown in the flow
 
-- Reconcile has a fourth mismatch case the flow omits: a running subagent with no active task must be claimed or stopped.
+- Reconcile has a fourth mismatch the flow omits: a running subagent with no active task must have its task claimed or its assignment stopped.
   > \- Running subagent without an active task: claim its task or stop that owned assignment.
   >
-  > [`skills/loop.md:54`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L54)
+  > [`skills/loop.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L55)
 
-- When the harness names its own worktree branch, the orchestrator must link it with `queue set` in the same step, or the Slots panel and branch accounting break.
+- When the harness names its own worktree branch, the branch must be linked with queue set right after dispatch; an unlinked active branch breaks the Slots panel.
   > harness names its own worktree branch, link it with \`queue set &lt;id&gt; branch &lt;b&gt;\` right after dispatch, in
   >
-  > [`skills/loop.md:40`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L40)
+  > [`skills/loop.md:42`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L42)
 
-- The topology's slot list is the ceiling on concurrent subagents, alongside client slots, host limits and the memory guard.
+- The slot list is the ceiling on concurrent subagents, alongside client slots, host limits and the memory guard.
   > Treat the topology's slot list as the ceiling on concurrent subagents; respect client slots, host limits, and the repo's memory guard.
   >
-  > [`skills/loop.md:58`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L58)
+  > [`skills/loop.md:59`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L59)
 
-- Changing models or the slot mix edits the topology file, never the scheduled prompt.
-  > task suits which slot. Swapping resources edits that file, never the scheduled prompt. Each tick:
+- Worktree cleanup needs an ownership check first: staleness grants no authority, and the subagent must be verified as ended before cleaning.
+  > session; verify ownership and actual subagent end before cleanup:
   >
-  > [`skills/loop.md:32`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L32)
+  > [`docs/agents-detail.md:894`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L894)
 
-- A subagent that replied and went idle does not count as a running lane when reconciling.
+- Each tick lists the worktree roots this session owns and flags each directory with its size and age.
+  > 146 GB. On session start or resume, and on each loop tick, list the worktree roots owned by this
+  >
+  > [`docs/agents-detail.md:892`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L892)
+
+- Every anomaly the probe reports is investigated before the tick ends.
+  > investigate each anomaly before ending the tick. A human asking "how's X holding up?" is this probe;
+  >
+  > [`docs/agents-detail.md:147`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L147)
+
+- A subagent that replied and went idle does not count as a running lane during reconcile.
   > A subagent that replied and went idle is not a running lane; resolve each mismatch before spawning more work:
   >
-  > [`skills/loop.md:50`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L50)
-
-- At completion or a blocker needing user direction, the loop checkpoints and ends recurrence.
-  > At completion or a blocker needing user direction, checkpoint and end recurrence with that outcome.
-  >
-  > [`skills/loop.md:70`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L70)
+  > [`skills/loop.md:51`](https://github.com/victusfate/scaffold/blob/main/skills/loop.md#L51)
 
 ## Glossary
 
 - **Slot**: A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner.
-- **Harness**: The agent tool a slot runs: claude, codex, agy or pi.
-- **Zombie worktree**: A checkout with no task and no running subagent.
+- **Harness**: The agent tool a slot runs, such as claude, codex, agy or pi.
+- **Zombie worktree**: A worktree an interrupted session left behind.
 - **Park**: Return a task to pending, keeping its branch and a resume note.
 
 ## Ask your LLM

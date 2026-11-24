@@ -31,7 +31,7 @@ Rebuild what the session did without asking the user to re-explain.
 Details: [/skillify skill](../../../skills/skillify.md)
 
 - Reads the conversation, project manifests, git diff --stat and git log.
-- Writes a one-paragraph recap that the user confirms in one line.
+- Writes a one-paragraph recap and confirms it in one line.
 
 ## Interview
 
@@ -1376,25 +1376,18 @@ git fetch scaffold main --quiet
 
 ## Checked against the source
 
-The skillify flow matches skills/skillify.md closely: every stage, file, gate and PR detail is in the source. The differences are in framing: the spec presents "Name and dedupe" as a stage with a slug confirmation, where the source has hard rules that only require stating the slug before the first file, and the recap is confirmed by the agent in one line rather than explicitly by the user. The main omission is the fallback for a missing scaffold remote.
+The skillify flow matches skills/skillify.md and the validator code closely; every stage, file, registration item and PR rule has a source line. The only soft spot is that 'Name and dedupe' is drawn as a stage after the interview, while the source states those as Hard rules that apply before generation. The most useful omission is the precondition to add the scaffold remote via bin/sync-from-scaffold.sh.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 30 | 4 | 0 | 0 | 4 | 14 |
+| 36 | 1 | 0 | 0 | 4 | 14 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Reconstruct context: checks
 
-- **Partly**: Writes a one-paragraph recap that the user confirms in one line.
-  > Produce a one-paragraph reconstruction and confirm it in a single line before
-  >
-  > [`skills/skillify.md:41`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L41)
-
-  The source tells the agent to confirm the recap in a single line; it does not say the user is the one who replies in one line.
-
 <details>
-<summary>4 confirmed, with the supporting line</summary>
+<summary>6 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Rebuild what the session did without asking the user to re-explain.
   > Rebuild what happened without asking the user to re-explain:
@@ -1406,10 +1399,20 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/skillify.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L38)
 
-- **Confirmed**: context -&gt; interview: Recap confirmed (payload: one-paragraph recap)
+- **Confirmed**: Writes a one-paragraph recap and confirms it in one line.
   > Produce a one-paragraph reconstruction and confirm it in a single line before
   >
   > [`skills/skillify.md:41`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L41)
+
+- **Confirmed**: context → interview: Recap confirmed (one-paragraph recap)
+  > Produce a one-paragraph reconstruction and confirm it in a single line before
+  >
+  > [`skills/skillify.md:41`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L41)
+
+- **Confirmed** (from the diagram): Read conversation history: what worked
+  > \- Recent conversation history: what the user was trying to achieve, what worked.
+  >
+  > [`skills/skillify.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L35)
 
 - **Confirmed** (from the diagram): Legend: skill — a reusable instruction file an agent can invoke
   > Turn a completed piece of work into a durable skill: a file other agents
@@ -1420,15 +1423,15 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Interview: checks
 
-- **Partly**: interview -&gt; name: Intent, inputs, steps, edge cases (payload: answers)
+- **Partly**: interview → name: Intent, inputs, steps, edge cases (answers)
   > \- \*\*Stay MECE.\*\* Before generating, scan RESOLVER for a skill with overlapping
   >
   > [`skills/skillify.md:23`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L23)
 
-  The source has no naming phase after the interview: naming and the overlap scan are hard rules that only have to happen before generation, and Phase 1 leads straight to Phase 2.
+  The source puts the slug statement and the overlap scan before generation but names no separate phase after the interview; the stage order here is the page's own arrangement of two Hard rules.
 
 <details>
-<summary>3 confirmed, with the supporting line</summary>
+<summary>4 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Four short rounds, one question at a time, each with a recommended answer.
   > \#\#\# Phase 1 — Structured Interview (4 rounds, one question at a time)
@@ -1445,19 +1448,17 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/skillify.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L53)
 
+- **Confirmed** (from the diagram): Agent recommends an answer each round
+  > Recommend an answer with each question so the user can confirm it:
+  >
+  > [`skills/skillify.md:46`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L46)
+
 </details>
 
 ### Name and dedupe: checks
 
-- **Partly**: name -&gt; generate: Slug confirmed, no overlap (payload: slug)
-  > writing the first file so the user can correct it. The slug is the directory
-  >
-  > [`skills/skillify.md:18`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L18)
-
-  The source only requires stating the slug so the user can correct it; it does not require a confirmation before files are written.
-
 <details>
-<summary>5 confirmed, with the supporting line</summary>
+<summary>6 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Pick one skill, give it a short name, and check it isn't a duplicate.
   > \- \*\*Stay MECE.\*\* Before generating, scan RESOLVER for a skill with overlapping
@@ -1475,12 +1476,17 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/skillify.md:17`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L17)
 
 - **Confirmed**: If RESOLVER already has a skill with overlapping purpose, extend that one with an argument instead of adding a near-duplicate.
-  > purpose. If one exists, extend it with a parameterized arg instead of adding a
+  >   purpose. If one exists, extend it with a parameterized arg instead of adding a
   >
   > [`skills/skillify.md:24`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L24)
 
+- **Confirmed**: name → generate: Slug stated, no overlap (slug)
+  >   writing the first file so the user can correct it. The slug is the directory
+  >
+  > [`skills/skillify.md:18`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L18)
+
 - **Confirmed**: Slug: The skill's short kebab-case name, used everywhere it is referenced.
-  > name AND the RESOLVER \`Skill\` cell AND the \`^\\/&lt;slug&gt;\` regex anchor.
+  >   name AND the RESOLVER \`Skill\` cell AND the \`^\\/&lt;slug&gt;\` regex anchor.
   >
   > [`skills/skillify.md:19`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L19)
 
@@ -1488,15 +1494,8 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Generate and register: checks
 
-- **Partly** (from the diagram): Legend: check-resolvable.ts — validator: every skill is registered and wrappers match
-  > // check-resolvable.ts — strict compliance linter for the skill engine.
-  >
-  > [`scripts/check-resolvable.ts:2`](https://github.com/victusfate/scaffold/blob/main/scripts/check-resolvable.ts#L2)
-
-  skillify.md only says the validator requires every form and rejects description drift; "every skill is registered" is not stated there and the script header describes it only as a compliance linter.
-
 <details>
-<summary>14 confirmed, with the supporting line</summary>
+<summary>15 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Write the skill body and its wrappers, register it, and validate.
   > Write five files per skill (the validator requires every form):
@@ -1519,14 +1518,19 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/skillify.md:111`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L111)
 
 - **Confirmed**: A RESOLVER row with a unique ^/slug anchor.
-  > \1. \*\*Register\*\* — In every client, add a row to \`.claude/skills/RESOLVER.md\`
+  >    (unique \`^\\/&lt;slug&gt;\` anchor, path pointing to \`skills/&lt;slug&gt;.md\`). Verify all
   >
-  > [`skills/skillify.md:116`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L116)
+  > [`skills/skillify.md:117`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L117)
 
 - **Confirmed**: New paths appended to .github/scaffold-files.txt so sync copies them.
-  > Append all new file paths to \`.github/scaffold-files.txt\`.
+  >    Append all new file paths to \`.github/scaffold-files.txt\`.
   >
   > [`skills/skillify.md:119`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L119)
+
+- **Confirmed**: (reason half of the above) so sync copies them
+  >       fail('Scaffold', \`'${r.name}' path ${r.path} not in scaffold manifest — won't sync downstream\`);
+  >
+  > [`scripts/resolver-phases.ts:206`](https://github.com/victusfate/scaffold/blob/main/scripts/resolver-phases.ts#L206)
 
 - **Confirmed**: A focused test for any script logic.
   > \2. \*\*Tests\*\* — add a focused test for any logic the skill ships in a script.
@@ -1534,46 +1538,46 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/skillify.md:120`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L120)
 
 - **Confirmed**: Register or it doesn't ship: client discovery alone does not make a skill available through scaffold sync.
-  > alone does not make it available through scaffold export or sync.
+  >   alone does not make it available through scaffold export or sync.
   >
   > [`skills/skillify.md:22`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L22)
 
-- **Confirmed**: node scripts/check-resolvable.ts must pass before the PR; it rejects wrapper descriptions that drift apart.
+- **Confirmed**: node scripts/check-resolvable.ts must pass before the PR
   > \- \*\*Validate before save is final.\*\* Run \`node scripts/check-resolvable.ts\` and
   >
   > [`skills/skillify.md:26`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L26)
 
-- **Confirmed**: generate -&gt; upstream: Validator passes (payload: five files + RESOLVER row)
+- **Confirmed**: it rejects wrapper descriptions that drift apart.
+  >         fail('Parity', \`'${r.name}' description drift in ${rel(f)} — sync it with the Claude form\`);
+  >
+  > [`scripts/resolver-phases.ts:197`](https://github.com/victusfate/scaffold/blob/main/scripts/resolver-phases.ts#L197)
+
+- **Confirmed**: generate → upstream: Validator passes (five files + RESOLVER row)
   > \3. \*\*Validate\*\* — the skill must pass \`node scripts/check-resolvable.ts\`. Fix every error.
   >
   > [`skills/skillify.md:121`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L121)
 
 - **Confirmed**: RESOLVER: The routing table that maps /slug to its skill file.
-  > (unique \`^\\/&lt;slug&gt;\` anchor, path pointing to \`skills/&lt;slug&gt;.md\`). Verify all
+  >    (unique \`^\\/&lt;slug&gt;\` anchor, path pointing to \`skills/&lt;slug&gt;.md\`). Verify all
   >
   > [`skills/skillify.md:117`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L117)
 
 - **Confirmed**: Wrapper: A thin per-tool file that points at the canonical skill body.
-  > single source of truth; harness wrappers reference it; Codex explicitly reads the linked file.
+  >    single source of truth; harness wrappers reference it; Codex explicitly reads the linked file.
   >
   > [`skills/skillify.md:60`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L60)
 
-- **Confirmed** (from the diagram): Legend: scaffold-files.txt — list of files sync copies into downstream repos
-  > \- all five paths added to \`.github/scaffold-files.txt\`, the sync manifest;
+- **Confirmed** (from the diagram): Legend: check-resolvable.ts — validator: every skill is registered and wrappers match
+  >       fail('Reachability', \`orphaned skill '${slug}' on disk but missing from RESOLVER.md\`);
   >
-  > [`skills/upstream.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/upstream.md#L57)
-
-- **Confirmed** (from the diagram): Stage order: 4 Generate five files, then 5 Register and validate (RESOLVER row -&gt; scaffold-files.txt -&gt; test -&gt; check-resolvable.ts)
-  > \#\#\# Phase 3 — Review, Save, and PR to scaffold
-  >
-  > [`skills/skillify.md:114`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L114)
+  > [`scripts/resolver-phases.ts:35`](https://github.com/victusfate/scaffold/blob/main/scripts/resolver-phases.ts#L35)
 
 </details>
 
 ### PR to scaffold: checks
 
 <details>
-<summary>4 confirmed, with the supporting line</summary>
+<summary>5 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Open a pull request against scaffold so every repo inherits the skill, then stop for review.
   > \4. \*\*PR to scaffold\*\* — new skills belong upstream so all repos inherit them:
@@ -1581,7 +1585,7 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/skillify.md:122`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L122)
 
 - **Confirmed**: Branch `skillify/<slug>` off `scaffold/main`, push, and open a PR titled `feat(skill): <slug>`.
-  > Then open a PR against \`victusfate/scaffold\` titled \`feat(skill): &lt;slug&gt;\`,
+  >    Then open a PR against \`victusfate/scaffold\` titled \`feat(skill): &lt;slug&gt;\`,
   >
   > [`skills/skillify.md:129`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L129)
 
@@ -1591,16 +1595,21 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/skillify.md:133`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L133)
 
 - **Confirmed** (from the diagram): Legend: scaffold/main — the upstream scaffold repo's main branch
-  > git checkout -b skillify/&lt;slug&gt; scaffold/main
+  >    git checkout -b skillify/&lt;slug&gt; scaffold/main
   >
   > [`skills/skillify.md:125`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L125)
+
+- **Confirmed** (from the diagram): Summarize: slug, files, validator result, PR link
+  > \5. \*\*Summarize\*\* — slug, what it does, files written, validator result, PR link.
+  >
+  > [`skills/skillify.md:133`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L133)
 
 </details>
 
 ## In the source, not shown in the flow
 
-- If the scaffold remote is not configured, the agent must run bin/sync-from-scaffold.sh once first to add it; neither the spec nor the diagram shows this precondition for the PR step.
-  > If the \`scaffold\` remote isn't configured, run \`bin/sync-from-scaffold.sh\`
+- If the scaffold remote is not configured, the agent must run bin/sync-from-scaffold.sh once before branching; neither the spec nor the diagram shows this precondition.
+  >    If the \`scaffold\` remote isn't configured, run \`bin/sync-from-scaffold.sh\`
   >
   > [`skills/skillify.md:131`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L131)
 
@@ -1609,12 +1618,12 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/skillify.md:110`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L110)
 
-- Registration includes verifying that every harness form from Phase 2 exists, including the shared Codex/pi/agy wrapper.
-  > harness forms from Phase 2 exist, including the shared Codex/pi/agy wrapper.
+- Registration includes verifying every harness form from Phase 2 exists, including the shared Codex/pi/agy wrapper.
+  >    harness forms from Phase 2 exist, including the shared Codex/pi/agy wrapper.
   >
   > [`skills/skillify.md:118`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L118)
 
-- Shared routines are to be factored into lib/ rather than repeated in the skill.
+- Shared routines are factored into lib/ instead of being repeated across skills.
   > rejects drift. Factor shared routines into \`lib/\` rather than repeating them.
   >
   > [`skills/skillify.md:112`](https://github.com/victusfate/scaffold/blob/main/skills/skillify.md#L112)

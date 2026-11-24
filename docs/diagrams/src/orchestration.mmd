@@ -44,7 +44,7 @@ flowchart TB
   subgraph LANE["4 · Subagent works in its lane"]
     direction TB
     S1["ff-only base check"]:::lane
-    S2["Build: direct chore or<br/>design → PRD → plan<br/>→ TDD → refine → QA"]:::lane
+    S2["Build: direct chore or<br/>design → PRD → plan<br/>→ TDD → refine<br/>(interactive chain: + QA)"]:::lane
     S3["Re-read task at every checkpoint<br/>and before long steps;<br/>follow newest ORCH UPDATE"]:::lane
     S4["Validate · commit locally<br/>record evidence · no push"]:::lane
     S1 --> S2 --> S3 --> S4

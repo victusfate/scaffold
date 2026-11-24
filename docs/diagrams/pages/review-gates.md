@@ -22,7 +22,7 @@ flowchart LR
 - [Gather the diff](#gather-the-diff): Collect the branch's diff and the full text of every changed file.
 - [Two reviewers](#two-reviewers): A correctness reviewer and a structure reviewer read the diff in parallel, without editing.
 - [Merge findings](#merge-findings): Combine both reports into one ordered work list, correctness first.
-- [One fixer](#one-fixer): A single agent applies the whole list, then re-runs the tests.
+- [One fixer](#one-fixer): A single agent applies the whole list, then re-runs the tests if a test runner is found.
 - [Re-verify](#re-verify): A fresh check confirms correctness is clear and every rubric score is 10/10.
 - [Receipt](#receipt): A verified run writes a receipt for the exact code, so the merge step can reuse it.
 
@@ -57,7 +57,7 @@ Combine both reports into one ordered work list, correctness first.
 
 ## One fixer
 
-A single agent applies the whole list, then re-runs the tests.
+A single agent applies the whole list, then re-runs the tests if a test runner is found.
 
 - Only one agent edits, so two agents never change the same files at once.
 
@@ -775,11 +775,11 @@ No code here: No script writes, reads or compares a receipt keyed to tree identi
 
 ## Checked against the source
 
-Stages 1-5 (gather, two reviewers, merge, single fixer, re-verify) match skills/code-refiner.md closely; the only wording gap is that the test re-run is conditional on a detectable runner. The whole sixth stage (receipt, fail closed, shared core, affected-delta) has no support in the listed source: that text is in AGENTS.md / docs/agents-detail.md, which the spec does not list as a source. The flow also omits auto-fix mode detection and the --comment and --effort arguments.
+Stages 1–5 match skills/code-refiner.md line for line, and the receipt and scope-by-risk facts match AGENTS.md and docs/agents-detail.md. The weakest point is the join between re-verify and the receipt: no source says the code-refiner re-verify is the run that writes the receipt. Two true claims (the /audit worst-first ranking and the diff-economy definition) rest on skills/audit.md and skills/simplify.md, which are not in the spec's sources.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 33 | 3 | 0 | 0 | 5 | 12 |
+| 36 | 3 | 0 | 0 | 6 | 12 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
@@ -803,7 +803,9 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/audit.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/audit.md#L3)
 
-- **Confirmed**: Diff collected — diff + changed files
+  skills/code-refiner.md only says to use /audit for a full-repo survey; the worst-first ranking is stated in skills/audit.md, which would need adding to sources.
+
+- **Confirmed**: gather → reviewers: Diff collected (payload: diff + changed files)
   > Pass each the diff (\`git diff main...HEAD\`) and the changed-file contents.
   >
   > [`skills/code-refiner.md:38`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L38)
@@ -812,37 +814,37 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Two reviewers: checks
 
-- **Partly**: Diff economy: Added lines must earn their place; deletions count as credit.
-  > \- \*\*Additions must earn their lines.\*\* Flag added ceremony, thin wrappers, or speculative abstraction — anything a reader would not miss.
+- **Partly** (from the diagram): Legend: isolated reviewer — fresh subagent with no session context, so it reviews objectively
+  > has isolated context (no session priors) and applies its source skill's criteria
   >
-  > [`skills/simplify.md:29`](https://github.com/victusfate/scaffold/blob/main/skills/simplify.md#L29)
+  > [`skills/code-refiner.md:27`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L27)
 
-  Source credits only deletions that remove complexity while behavior remains, and routes a deletion that dropped needed behavior to /validate; the glossary credits deletions without that condition.
+  The source states the isolated context but not that it makes the review objective; "so it reviews objectively" is the page's own rationale.
 
 <details>
-<summary>9 confirmed, with the supporting line</summary>
+<summary>10 confirmed, with the supporting line</summary>
 
 - **Confirmed**: A correctness reviewer and a structure reviewer read the diff in parallel, without editing.
-  > Start \*\*two reviewer subagents in the same message\*\* so they run concurrently. Each
+  > The two reviews are \*\*read-only\*\*, so they run concurrently with no write
   >
-  > [`skills/code-refiner.md:26`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L26)
+  > [`skills/code-refiner.md:20`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L20)
 
 - **Confirmed**: Correctness: /validate — Finds correctness bugs.
   > \1. \*\*Correctness reviewer\*\* — apply Phase 2 of \[\`skills/validate.md\`\](validate.md):
   >
   > [`skills/code-refiner.md:30`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L30)
 
-- **Confirmed**: A test weakened to pass counts as a defect.
-  > \- A test weakened to reach green is a defect, not a fix (per \`validate\`).
+- **Confirmed**: Correctness: /validate — A test weakened to pass counts as a defect.
+  > correctness bugs + the test-integrity check (a test weakened to pass is a
   >
-  > [`skills/code-refiner.md:95`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L95)
+  > [`skills/code-refiner.md:31`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L31)
 
 - **Confirmed**: Structure: /simplify — Scores the rubric and lists cleanups.
-  > \2. \*\*Structural reviewer\*\* — apply the rubric and cleanup dimensions of
+  > Return \`SCORES\_STRUCTURE\` (the Quality Scores table) + violations.
   >
-  > [`skills/code-refiner.md:33`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L33)
+  > [`skills/code-refiner.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L36)
 
-- **Confirmed**: Checks diff economy and repeated code across files.
+- **Confirmed**: Structure: /simplify — Checks diff economy and repeated code across files.
   > cleanup dimensions, the diff-economy lens, and the cross-file DRY check.
   >
   > [`skills/code-refiner.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L35)
@@ -852,20 +854,27 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/code-refiner.md:27`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L27)
 
-- **Confirmed**: Both reports in — findings + scores
-  > Return \`SCORES\_STRUCTURE\` (the Quality Scores table) + violations.
+- **Confirmed**: reviewers → merge: Both reports in (payload: findings + scores)
+  > Combine the two result sets into one ordered work list:
   >
-  > [`skills/code-refiner.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L36)
+  > [`skills/code-refiner.md:42`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L42)
 
 - **Confirmed**: Rubric: Four scores for code: Quality, Readability, Encapsulation, Clarity.
   > \| File \| Quality \| Readability \| Encapsulation \| Clarity \|
   >
   > [`skills/code-refiner.md:80`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L80)
 
-- **Confirmed** (from the diagram): isolated reviewer: fresh subagent with no session context, so it reviews objectively
-  > The agent invoking this skill has already internalized the session's work and cannot review it objectively. A fresh subagent has no such priors.
+- **Confirmed**: Diff economy: Added lines must earn their place; deletions that keep behavior count as credit.
+  > \- \*\*Credit deletions.\*\* A change that removes complexity while behavior remains is the target, not a red flag.
   >
-  > [`skills/simplify.md:10`](https://github.com/victusfate/scaffold/blob/main/skills/simplify.md#L10)
+  > [`skills/simplify.md:31`](https://github.com/victusfate/scaffold/blob/main/skills/simplify.md#L31)
+
+  The listed sources only name the diff-economy lens; its definition is in skills/simplify.md, which would need adding to sources.
+
+- **Confirmed** (from the diagram): Stage title: Two isolated reviewers in parallel
+  > \*\*Phase 1 — parallel review (two isolated reviewers, find-only):\*\*
+  >
+  > [`skills/code-refiner.md:24`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L24)
 
 </details>
 
@@ -880,9 +889,9 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/code-refiner.md:45`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L45)
 
 - **Confirmed**: Findings on the same lines become one item.
-  > same lines become one work item.
+  > \- \*\*Dedupe\*\* overlaps — a correctness finding and a structural violation on the
   >
-  > [`skills/code-refiner.md:44`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L44)
+  > [`skills/code-refiner.md:43`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L43)
 
 - **Confirmed**: If both reviews are clean, the fix step is skipped.
   > \- If both review sets are clean (no correctness findings, all dimensions 10/10),
@@ -890,33 +899,31 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/code-refiner.md:48`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L48)
 
 - **Confirmed**: Run standalone without --fix, it presents the list and waits for approval.
-  > merged findings + Quality Scores table; wait for approval before Phase 3.
+  > \- \*\*Review\*\* (standalone default, no \`--fix\`): run Phases 1–2 and present the
   >
-  > [`skills/code-refiner.md:66`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L66)
+  > [`skills/code-refiner.md:65`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L65)
 
-- **Confirmed**: Work list ordered — work list
-  > Combine the two result sets into one ordered work list:
+- **Confirmed**: merge → fixer: Work list ordered (payload: work list)
+  > A \*\*single\*\* agent applies the merged work list to the working tree in one
   >
-  > [`skills/code-refiner.md:42`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L42)
+  > [`skills/code-refiner.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L53)
 
 - **Confirmed** (from the diagram): Order: correctness first, then structure
-  > \- \*\*Order\*\* the work: correctness fixes first (keep behavior stable), then
+  > structural fixes. Note where a structural refactor would dissolve a correctness
   >
-  > [`skills/code-refiner.md:45`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L45)
+  > [`skills/code-refiner.md:46`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L46)
 
 </details>
 
 ### One fixer: checks
 
-- **Partly**: A single agent applies the whole list, then re-runs the tests.
+<details>
+<summary>5 confirmed, with the supporting line</summary>
+
+- **Confirmed**: A single agent applies the whole list, then re-runs the tests if a test runner is found.
   > \1. Re-run the test suite (if a runner is detectable). A test must not be weakened
   >
   > [`skills/code-refiner.md:55`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L55)
-
-  Single agent and the re-run are stated, but the source makes the test re-run conditional on a runner being detectable; spec and diagram box F2 state it unconditionally.
-
-<details>
-<summary>3 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Only one agent edits, so two agents never change the same files at once.
   > conflict. The fix is a \*\*single serial pass\*\*, so two agents never edit the same
@@ -928,21 +935,26 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/code-refiner.md:56`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L56)
 
-- **Confirmed**: Fixes applied, tests re-run — new diff
+- **Confirmed**: fixer → reverify: Fixes applied, tests re-run (payload: new diff)
   > \2. \*\*Re-verify\*\* — start a fresh correctness + structural check on the new diff to
   >
   > [`skills/code-refiner.md:57`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L57)
+
+- **Confirmed** (from the diagram): One serial fixer
+  > \- Phase 3 is single-agent and serial — never parallelize the fix.
+  >
+  > [`skills/code-refiner.md:93`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L93)
 
 </details>
 
 ### Re-verify: checks
 
-- **Partly**: Correctness clear, all 10/10 — verified run
-  > at 10/10, correctness clear. Loop Phase 3 once if the re-verify surfaces a
+- **Partly**: reverify → receipt: Correctness clear, all 10/10 (payload: verified run)
+  > \- \*\*Verify once per commit.\*\* The reviewer's verified run writes a receipt keyed to the exact tree identity:
   >
-  > [`skills/code-refiner.md:59`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L59)
+  > [`docs/agents-detail.md:219`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L219)
 
-  The gate is stated, but code-refiner.md ends at the re-verify report; it never hands a verified run to a receipt step.
+  The source says the reviewer's verified run writes the receipt but never says /code-refiner's re-verify gate is that run; skills/code-refiner.md does not mention a receipt, so the hand-off between these two stages is the page's own link.
 
 <details>
 <summary>2 confirmed, with the supporting line</summary>
@@ -961,100 +973,99 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Receipt: checks
 
-- **Confirmed** (outside tracked sources): A verified run writes a receipt for the exact code, so the merge step can reuse it.
-  > \*\*Verify once per commit:\*\* the verified run writes a receipt keyed to the exact
+- **Partly** (from the diagram): Legend: affected-delta — checks only for the parts the change touches
+  > inputs); otherwise the affected-delta checks plus the task's own gates.
   >
-  > [`AGENTS.md:128`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L128)
+  > [`AGENTS.md:131`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L131)
 
-  Stated in AGENTS.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
+  AGENTS.md and docs/agents-detail.md use the term "affected-delta checks" without defining it; the definition is the page's reading of the term (no definition found elsewhere in the repo by grep).
 
-- **Confirmed** (outside tracked sources): Fail closed: A missing, mismatched or corrupt receipt means the checks re-run in full.
+<details>
+<summary>9 confirmed, with the supporting line</summary>
+
+- **Confirmed**: A verified run writes a receipt for the exact code, so the merge step can reuse it.
+  > tree identity; the merge step reuses a matching receipt, and any mismatch or corrupt receipt fails closed.
+  >
+  > [`AGENTS.md:129`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L129)
+
+- **Confirmed**: Fail closed: A missing, mismatched or corrupt receipt means the checks re-run in full.
   > instead of re-running the same checks. Any mismatch, or a missing or corrupt receipt, fails closed: the
   >
   > [`docs/agents-detail.md:222`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L222)
 
-  Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Confirmed** (outside tracked sources): Full suites run only for shared core; other changes run the checks for the parts they touch, plus the task's own gates.
-  > \*\*Scope review by risk:\*\* full suites only for shared core (public API, save/codec, networking, workspace build
-  >
-  > [`AGENTS.md:130`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L130)
-
-  Stated in AGENTS.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Confirmed** (outside tracked sources): Shared core: Public API, save or codec formats, networking and workspace build inputs.
-  > \*\*Scope review by risk:\*\* full suites only for shared core (public API, save/codec, networking, workspace build
-  >
-  > [`AGENTS.md:130`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L130)
-
-  Stated in AGENTS.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Confirmed** (outside tracked sources): Fail closed: When in doubt, block and re-run instead of passing.
-  > instead of re-running the same checks. Any mismatch, or a missing or corrupt receipt, fails closed: the
-  >
-  > [`docs/agents-detail.md:222`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L222)
-
-  Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Confirmed** (outside tracked sources) (from the diagram): 6 · Verify once per commit: Receipt keyed to exact tree identity
-  > \*\*Verify once per commit:\*\* the verified run writes a receipt keyed to the exact
-  >
-  > [`AGENTS.md:128`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L128)
-
-  Stated in AGENTS.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Confirmed** (outside tracked sources) (from the diagram): tree identity: HEAD, tree, index, diffs, untracked inputs, base, plan, gate-script hashes, tool binaries
-  > \`HEAD\`, the tree, the index, staged and unstaged diffs, hashes of untracked inputs, the base, the plan,
-  >
-  > [`docs/agents-detail.md:220`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L220)
-
-  Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Confirmed** (outside tracked sources) (from the diagram): receipt: record of a verified run, valid only for that exact code
-  > \- \*\*Verify once per commit.\*\* The reviewer's verified run writes a receipt keyed to the exact tree identity:
-  >
-  > [`docs/agents-detail.md:219`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L219)
-
-  Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
-
-- **Confirmed** (outside tracked sources) (from the diagram): affected-delta: checks only for the parts the change touches
+- **Confirmed**: Full suites run only for shared core; other changes run the checks for the parts they touch, plus the task's own gates.
   > formats, networking, workspace build inputs. Any other change runs the affected-delta checks plus the
   >
   > [`docs/agents-detail.md:225`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L225)
 
-  Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.
+- **Confirmed**: What the receipt is keyed to: HEAD, tree, index and diffs; untracked inputs and the base; plan.
+  > \`HEAD\`, the tree, the index, staged and unstaged diffs, hashes of untracked inputs, the base, the plan,
+  >
+  > [`docs/agents-detail.md:220`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L220)
+
+- **Confirmed**: What the receipt is keyed to: gate-script hashes; tool binaries.
+  > hashes of the gate scripts, and the resolved tool binaries. The merge step reuses a matching receipt
+  >
+  > [`docs/agents-detail.md:221`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L221)
+
+- **Confirmed**: Shared core: Public API, save or codec formats, networking and workspace build inputs.
+  > \- \*\*Scope review by risk.\*\* Full suites are for changes that touch shared core: public API, save or codec
+  >
+  > [`docs/agents-detail.md:224`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L224)
+
+- **Confirmed**: Fail closed: When in doubt, block and re-run instead of passing.
+  > instead of re-running the same checks. Any mismatch, or a missing or corrupt receipt, fails closed: the
+  >
+  > [`docs/agents-detail.md:222`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L222)
+
+- **Confirmed** (from the diagram): Stage title: Verify once per commit; receipt keyed to exact tree identity
+  > (\`scripts/delivery-metrics.ts\`). \*\*Verify once per commit:\*\* the verified run writes a receipt keyed to the exact
+  >
+  > [`AGENTS.md:128`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L128)
+
+- **Confirmed** (from the diagram): Legend: receipt — record of a verified run, valid only for that exact code
+  > \- \*\*Verify once per commit.\*\* The reviewer's verified run writes a receipt keyed to the exact tree identity:
+  >
+  > [`docs/agents-detail.md:219`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L219)
+
+</details>
 
 ## In the source, not shown in the flow
 
-- Auto-fix mode is the default when triggered from feature-chain or tdd (Phases 1-3 with no approval wait); the flow shows only the standalone review-mode wait.
-  > \- \*\*Auto-fix\*\* (from the chain, or with \`--fix\`): run Phases 1–3, apply, re-verify, report.
+- Mode is detected from context: triggered by feature-chain or tdd (or with --fix) the refiner auto-fixes through all three phases; the flow shows only the standalone wait.
+  > Detect mode from context: triggered by feature-chain/tdd → auto-fix; invoked
   >
-  > [`skills/code-refiner.md:64`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L64)
+  > [`skills/code-refiner.md:68`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L68)
 
-- The --comment flag posts the merged findings as inline PR comments; neither spec nor diagram shows it.
+- Every PR body must carry a "## Critical changes" section of at most five path:line notes; this Review economics rule is not shown.
+  > Machines check what they can; agent review stays line by line. Every PR body carries \*\*\`\#\# Critical changes\`\*\*:
+  >
+  > [`AGENTS.md:126`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L126)
+
+- A local receipt may let hosted CI skip a check only where the local scope covers the hosted scope; otherwise hosted runs in full.
+  > \*\*A local receipt is a second fail-open trap.\*\* A receipt from a local verified run may let hosted CI skip a
+  >
+  > [`docs/agents-detail.md:639`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L639)
+
+- When a structural refactor would dissolve a correctness finding, the merge step plans that work once, not twice.
+  > finding — do that once, not twice.
+  >
+  > [`skills/code-refiner.md:47`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L47)
+
+- The --effort flag is passed through to the correctness review and --comment posts the merged findings as inline PR comments.
   > \- \`--comment\` — post the merged findings as inline PR comments
   >
   > [`skills/code-refiner.md:16`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L16)
 
-- The --effort level is passed through to the correctness review (default medium).
-  > \- \`--effort low\|medium\|high\|max\` — passed through to the correctness review (default: \`medium\`)
+- Machines check everything decidable (scanners, lint, types, tests) and a repeated review comment becomes a rule or check.
+  > \- \*\*Machines check everything decidable:\*\* scanners, lint, types, tests, \`/validate\`, \`/simplify\`.
   >
-  > [`skills/code-refiner.md:14`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L14)
-
-- During merge, where a structural refactor would dissolve a correctness finding the work is done once, not twice.
-  > structural fixes. Note where a structural refactor would dissolve a correctness
-  >
-  > [`skills/code-refiner.md:46`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L46)
-
-- code-refiner is a thin wrapper that must delegate review criteria to validate and simplify rather than restate them.
-  > \- Delegate criteria to \`validate\` and \`simplify\`; do not restate them here.
-  >
-  > [`skills/code-refiner.md:94`](https://github.com/victusfate/scaffold/blob/main/skills/code-refiner.md#L94)
+  > [`docs/agents-detail.md:203`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L203)
 
 ## Glossary
 
 - **Rubric**: Four scores for code: Quality, Readability, Encapsulation, Clarity.
-- **Diff economy**: Added lines must earn their place; deletions count as credit.
+- **Diff economy**: Added lines must earn their place; deletions that keep behavior count as credit.
 - **Shared core**: Public API, save or codec formats, networking and workspace build inputs.
 - **Fail closed**: When in doubt, block and re-run instead of passing.
 

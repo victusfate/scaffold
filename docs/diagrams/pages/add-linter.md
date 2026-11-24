@@ -897,11 +897,11 @@ No code here: The agent proposes tuning values from the repo's code, reports per
 
 ## Checked against the source
 
-The flow matches skills/add-linter.md well: all six stages, their order and the stop conditions are stated in the source. Three claims are loose: the sidecar glossary says the file is never overwritten although an approved merge does write over it, the merge-to-finish step names only merged configs although fresh adds are tuned too, and the legend says workflows run on each push or PR, which the doc does not state. The main omission is the TypeScript lint:fix type-check gate, along with the no-package.json, format-only-language and CLI-missing branches.
+The add-linter page matches skills/add-linter.md: all stages, states and steps are stated in the doc, with only two wording-level partials. The main gap is what the page omits: packages are not added for sidecar configs until the agent applies the merge, and the format-only-language and missing-CLI branches are not shown.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 28 | 3 | 0 | 0 | 8 | 13 |
+| 31 | 2 | 0 | 0 | 9 | 13 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
@@ -925,27 +925,27 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/add-linter.md:30`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L30)
 
-- **Confirmed**: Config states table: none = No config yet -&gt; Fresh add
+- **Confirmed**: Config states: none - No config yet - Fresh add
   > \- \`state: "none"\` → no linter config found; offer a \*\*fresh add\*\*
   >
   > [`skills/add-linter.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L25)
 
-- **Confirmed**: Config states table: foreign = A config without scaffold's marker -&gt; Merge
+- **Confirmed**: Config states: foreign - A config without scaffold's marker - Merge
   > \- \`state: "foreign"\` → config exists but lacks the scaffold marker; offer a \*\*merge\*\*
   >
   > [`skills/add-linter.md:26`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L26)
 
-- **Confirmed**: Config states table: stale = From an older scaffold template -&gt; Re-merge
+- **Confirmed**: Config states: stale - From an older scaffold template - Re-merge
   > \- \`state: "stale"\` → scaffold config whose template has since changed; offer a
   >
   > [`skills/add-linter.md:27`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L27)
 
-- **Confirmed**: Config states table: scaffold = Current -&gt; Skip
+- **Confirmed**: Config states: scaffold - Current - Skip
   > \- \`state: "scaffold"\` → current scaffold config; skip silently
   >
   > [`skills/add-linter.md:24`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L24)
 
-- **Confirmed**: detect -&gt; ask: Actionable languages found (payload: language states)
+- **Confirmed**: detect -&gt; ask: Actionable languages found (language states)
   > Ask about each language with state \`none\`, \`foreign\`, or \`stale\` exactly once, as
   >
   > [`skills/add-linter.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L37)
@@ -967,7 +967,7 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/add-linter.md:49`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L49)
 
-- **Confirmed**: ask -&gt; emit: Languages confirmed (payload: confirmed list)
+- **Confirmed**: ask -&gt; emit: Languages confirmed (confirmed list)
   > Pass the confirmed language list as JSON to the linter-setup CLI:
   >
   > [`skills/add-linter.md:53`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L53)
@@ -976,22 +976,15 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Emit: checks
 
-- **Partly**: Sidecar: A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten.
-  > existing \`.bak\`; if one exists, surface it and ask), write the merged config to
+- **Partly**: Sidecar: A .scaffold-new copy saved beside your file for you to review and merge; writing it leaves your file unchanged.
+  > \- \`foreign\`/\`stale\` → writes the template to \`\[configFile\].scaffold-new\` (sidecar);
   >
-  > [`skills/add-linter.md:100`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L100)
+  > [`skills/add-linter.md:61`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L61)
 
-  Only the CLI never overwrites the file; after the user approves the merge, the merged config is written over the original (which is backed up to .bak).
-
-- **Partly** (from the diagram): Legend L2 workflow: a GitHub Actions file that runs the linter on each push or PR
-  > Add linter configs and GitHub Actions workflows for languages detected in the
-  >
-  > [`skills/add-linter.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L3)
-
-  The skill doc says the workflows are GitHub Actions workflows but never states when they run; "on each push or PR" is not in skills/add-linter.md.
+  The sidecar is a copy of scaffold's template, not of the user's file; the wording 'copy saved beside your file' can be read either way, and the agent, not the user, performs the merge.
 
 <details>
-<summary>6 confirmed, with the supporting line</summary>
+<summary>8 confirmed, with the supporting line</summary>
 
 - **Confirmed**: A deterministic CLI writes new configs and workflows, and never edits an existing config.
   > The CLI never edits an existing config; you perform the merge. For each
@@ -1004,7 +997,7 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/add-linter.md:61`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L61)
 
 - **Confirmed**: For an existing config: The original is left untouched.
-  > the existing config is left untouched
+  >   the existing config is left untouched
   >
   > [`skills/add-linter.md:62`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L62)
 
@@ -1013,37 +1006,47 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/add-linter.md:65`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L65)
 
-- **Confirmed**: emit -&gt; merge: Sidecars written for existing configs (payload: .scaffold-new files)
-  > \1. Read the existing \`\[configFile\]\` and the \`\[configFile\].scaffold-new\` sidecar.
+- **Confirmed**: Sidecar: A .scaffold-new copy of scaffold's version saved beside your file for review; writing it leaves your file unchanged.
+  > \- \`foreign\`/\`stale\` → writes the template to \`\[configFile\].scaffold-new\` (sidecar);
   >
-  > [`skills/add-linter.md:86`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L86)
+  > [`skills/add-linter.md:61`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L61)
 
-- **Confirmed** (from the diagram): E2: none → config + workflow
+- **Confirmed** (from the diagram): E1: Pipe confirmed list to linter-setup/run
+  > echo '\["js","python"\]' \| node tools/linter-setup/run --into .
+  >
+  > [`skills/add-linter.md:56`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L56)
+
+- **Confirmed** (from the diagram): E2: none -&gt; config + workflow
   > \- \`none\` → writes the config (marker hash-stamped) + workflow
   >
   > [`skills/add-linter.md:60`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L60)
+
+- **Confirmed** (from the diagram): Legend: workflow - a GitHub Actions file that runs the linter
+  > Add linter configs and GitHub Actions workflows for languages detected in the
+  >
+  > [`skills/add-linter.md:3`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L3)
 
 </details>
 
 ### Merge: checks
 
-- **Partly**: merge -&gt; finish: Merges approved or declined (payload: merged configs)
-  > For each language whose config was written (fresh add) or merged, offer an optional
+- **Partly**: On a conflict your value is kept and the conflict is listed, so you see what scaffold would have changed.
+  >      scaffold-enforced) \*\*keep the user's value\*\* and record the conflict.
   >
-  > [`skills/add-linter.md:106`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L106)
+  > [`skills/add-linter.md:91`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L91)
 
-  Tuning takes freshly written configs as well as merged ones, and a declined merge is neither merged nor tuned; the payload names only merged configs.
+  Keeping the user's value and listing the conflict is stated; 'so you see what scaffold would have changed' is the page's own rationale (the source only shows a conflict list with both values).
 
 <details>
-<summary>5 confirmed, with the supporting line</summary>
+<summary>6 confirmed, with the supporting line</summary>
 
 - **Confirmed**: The agent merges the sidecar into your config, keeping your rules, and writes only on approval.
-  > \- \*\*Merge and tune are agent-driven, not tool features.\*\* The
+  > The CLI never edits an existing config; you perform the merge. For each
   >
-  > [`skills/add-linter.md:160`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L160)
+  > [`skills/add-linter.md:83`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L83)
 
 - **Confirmed**: Missing scaffold thresholds are added and the marker line is carried over.
-  > \- carry the scaffold marker line from the sidecar (it holds the \`sha256:\` stamp)
+  >    \- carry the scaffold marker line from the sidecar (it holds the \`sha256:\` stamp)
   >
   > [`skills/add-linter.md:92`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L92)
 
@@ -1052,15 +1055,20 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/add-linter.md:99`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L99)
 
-- **Confirmed**: On a conflict your value is kept and the conflict is listed, so you see what scaffold would have changed.
-  > scaffold-enforced) \*\*keep the user's value\*\* and record the conflict.
+- **Confirmed**: merge -&gt; finish: Merges approved or declined (written or merged configs)
+  > \5. If the user declines: leave the sidecar and original in place; nothing is marked.
   >
-  > [`skills/add-linter.md:91`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L91)
+  > [`skills/add-linter.md:102`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L102)
 
 - **Confirmed**: Marker: A hash-stamped line that tags a config as scaffold's.
-  > \- carry the scaffold marker line from the sidecar (it holds the \`sha256:\` stamp)
+  > \- \`none\` → writes the config (marker hash-stamped) + workflow
   >
-  > [`skills/add-linter.md:92`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L92)
+  > [`skills/add-linter.md:60`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L60)
+
+- **Confirmed** (from the diagram): Legend: .bak - a backup of your original config
+  > \| \`merged\` \| "✓ \[lang\]: merged into \[file\] (original kept as \[file\].bak)" \|
+  >
+  > [`skills/add-linter.md:135`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L135)
 
 </details>
 
@@ -1084,17 +1092,17 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/add-linter.md:165`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L165)
 
-- **Confirmed** (from the diagram): T3: Show diff, write on approval
+- **Confirmed** (from the diagram): T3: Show diff, write on approval (tuning edits)
   > \3. Apply confirmed edits to \`\[configFile\]\`, show the diff, write on approval.
   >
   > [`skills/add-linter.md:114`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L114)
 
 - **Confirmed** (from the diagram): F1: Per language: written, deps, scripts, merged, tuned, skipped, declined
-  > \| \`skipped\` \| "— \[lang\]: already current (skipped)" \|
+  > \| \`declined\` \| "— \[lang\]: left unchanged" \|
   >
-  > [`skills/add-linter.md:137`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L137)
+  > [`skills/add-linter.md:138`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L138)
 
-- **Confirmed** (from the diagram): F2 --&gt;|yes| F3: git commit: feat: add scaffold linter config
+- **Confirmed** (from the diagram): F3: git commit: feat: add scaffold linter config
   > git commit -m "feat: add scaffold linter config for \[languages\]"
   >
   > [`skills/add-linter.md:147`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L147)
@@ -1103,49 +1111,54 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ## In the source, not shown in the flow
 
-- The TypeScript lint:fix script is gated by the type-checker (`eslint . --fix && tsc --noEmit`); a bare `eslint . --fix` must never be run on a type-aware config.
+- A sidecar does not add npm packages, so the agent adds them when it applies the merge; the flow shows deps only for adopted configs.
+  > adopted the config yet (add them when you apply the merge in Step 4). With no
+  >
+  > [`skills/add-linter.md:70`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L70)
+
+- If a .bak already exists the agent surfaces it and asks, rather than silently skipping the backup.
+  >    existing \`.bak\`; if one exists, surface it and ask), write the merged config to
+  >
+  > [`skills/add-linter.md:100`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L100)
+
+- When the user declines a merge, the sidecar and the original both stay in place and nothing is marked.
+  > \5. If the user declines: leave the sidecar and original in place; nothing is marked.
+  >
+  > [`skills/add-linter.md:102`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L102)
+
+- The TypeScript lint:fix script runs the type-checker after the autofix, and a bare eslint --fix must never be run on a type-aware config.
   > fix is only trusted once the type-checker still passes. Never run a bare
   >
   > [`skills/add-linter.md:78`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L78)
 
-- With no package.json the CLI does not create one; it reports the `npm i -D` one-liner, and the user is reminded to run `npm install` after deps are added.
-  > one. Remind the user to run \`npm install\` after deps are added.
+- Tuning never changes the marker stamp, so a tuned config is not reported as stale.
+  > \4. Declining keeps scaffold's defaults. Tuning never changes the marker stamp
   >
-  > [`skills/add-linter.md:72`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L72)
+  > [`skills/add-linter.md:115`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L115)
 
 - Format-only languages (zig, mojo) get a workflow only and skip the merge and tune steps.
   > \- \*\*Format-only languages\*\* (zig, mojo): no config file, workflow only, so
   >
   > [`skills/add-linter.md:154`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L154)
 
-- If the linter-setup CLI is not available, the skill falls back to copying the language templates from lib/linters/&lt;lang&gt;/ by hand.
+- With no package.json the CLI reports an npm install one-liner instead of creating one, and the user is reminded to run npm install after deps are added.
+  > \`package.json\`, the CLI reports the \`npm i -D …\` one-liner instead of creating
+  >
+  > [`skills/add-linter.md:71`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L71)
+
+- If tools/linter-setup/run is not available, the skill falls back to copying templates from lib/linters/&lt;lang&gt;/ by hand.
   > \- If \`tools/linter-setup/run\` is not available (consumer repo without scaffold
   >
   > [`skills/add-linter.md:168`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L168)
 
-- Tuning never changes the marker stamp, because staleness tracks the template and not the tuned values.
-  > \4. Declining keeps scaffold's defaults. Tuning never changes the marker stamp
-  >
-  > [`skills/add-linter.md:115`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L115)
-
-- When a .bak already exists the agent must surface it and ask, not just avoid overwriting it.
-  > existing \`.bak\`; if one exists, surface it and ask), write the merged config to
-  >
-  > [`skills/add-linter.md:100`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L100)
-
-- If the user declines the commit, the written files are listed so they can stage and commit them manually.
+- If the user declines the commit, the written files are listed so they can commit by hand.
   > If no, list the written files so the user can stage and commit them manually.
   >
   > [`skills/add-linter.md:150`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L150)
 
-- The tune step also covers fixture paths (ESLint ignores plus a root .quality-ignore) and offers an opt-in npm-workspaces TypeScript template.
-  > \6. \*\*Multi-package TypeScript.\*\* For an npm-workspaces repo, offer the opt-in
-  >
-  > [`skills/add-linter.md:122`](https://github.com/victusfate/scaffold/blob/main/skills/add-linter.md#L122)
-
 ## Glossary
 
-- **Sidecar**: A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten.
+- **Sidecar**: A .scaffold-new copy of scaffold's version saved beside your file for review; writing it leaves your file unchanged.
 - **Marker**: A hash-stamped line that tags a config as scaffold's.
 - **Threshold**: A rule limit, such as max line length.
 

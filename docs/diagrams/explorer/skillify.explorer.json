@@ -3,7 +3,7 @@
   "lede": "How finished work becomes a reusable skill that every agent and every downstream repo can invoke.",
   "detail": "../generated/skillify.svg",
   "sources": ["docs/diagrams/src/skillify.mmd", "skills/skillify.md", "scripts/resolver-phases.ts"],
-  "reviewed": "f381c15f2741",
+  "reviewed": "dfb7d9b183da",
   "lanes": [
     { "id": "capture", "name": "Capture" },
     { "id": "build", "name": "Build" },

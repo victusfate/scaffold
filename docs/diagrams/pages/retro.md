@@ -50,7 +50,7 @@ Sort findings into categories and rank them by impact and cost.
 
 - Prefers repairing an existing mechanism over adding a new one.
 - Keeps a remedy only if it would hold on a different task in the same repo; one remedy per finding.
-- A missing hook or CI check counts only when an error escaped or went undetected in this session, and a proposed check must be able to fire in the agent's normal workflow.
+- A missing hook or CI check counts only when an error escaped or went undetected in this session, and a proposed check must be installed in the agent's environment and able to fire in its normal workflow.
 - Ranks by impact and recurrence risk, weighed against cost and the upkeep of a new rule or check.
 
 **Categories**
@@ -85,7 +85,7 @@ Details: [Skillify](skillify.md)
 
 - Where work goes
   - skillify for a reusable procedure, add-linter for linter setup, feature-chain for a substantial change.
-  - upstream when the fix belongs in scaffold; improve, code-refiner or prune for code quality.
+  - upstream when a generic remedy belongs in scaffold; improve for a codebase survey; code-refiner or prune for code quality.
 
 ## Detailed flow
 
@@ -133,18 +133,18 @@ No code here: After the user picks remedies the agent hands each to the named sk
 
 ## Checked against the source
 
-The retro flow matches skills/retro.md well: every stage, category signal, report column and routing target is in the source, with one inaccuracy (improve is for a codebase survey, not code quality). The larger gap is omission: the source's guardrail rules (inspect and cite what the hook or CI actually runs, confirm the tool is installed, known-failure lists, mechanical versus judgement) and the per-category remedies are not shown.
+Every stage, bullet and routing target in the retro flow is backed by a line in skills/retro.md; the only softening is that 'can fire' drops the tool-installed condition. The main gap is on the other side: the guardrail paragraph (inspect and cite hook/CI wiring, known-failure lists, mechanical vs judgement) and the per-category proposed remedies are not shown anywhere.
 
 | Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
 |---:|---:|---:|---:|---:|---:|
-| 35 | 1 | 0 | 0 | 9 | 1 |
+| 44 | 1 | 0 | 0 | 9 | 1 |
 
 An agent judged each claim against the source; each quote is found in its file when this page is built.
 
 ### Reconstruct the session: checks
 
 <details>
-<summary>7 confirmed, with the supporting line</summary>
+<summary>8 confirmed, with the supporting line</summary>
 
 - **Confirmed**: On request, rebuild what happened from the conversation or a session log.
   > \1. Reconstruct the session from the conversation or the specified primary logs.
@@ -157,17 +157,22 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/retro.md:5`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L5)
 
 - **Confirmed**: Cites concrete turns, commands, failures, corrections and repeated searches.
-  > Cite concrete turns, commands, failures, corrections, or repeated searches.
+  >    Cite concrete turns, commands, failures, corrections, or repeated searches.
   >
   > [`skills/retro.md:11`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L11)
 
-- **Confirmed**: If the record is unavailable, the retro reports the missing evidence and stops; it never infers struggles from the code alone.
-  > If the requested record is unavailable, report the missing evidence and stop.
+- **Confirmed**: If the record is unavailable, the retro reports the missing evidence and stops
+  >    If the requested record is unavailable, report the missing evidence and stop.
   >
   > [`skills/retro.md:12`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L12)
 
-- **Confirmed**: reconstruct -&gt; trace: Evidence cited (payload: turns, commands, failures)
-  > Cite concrete turns, commands, failures, corrections, or repeated searches.
+- **Confirmed**: it never infers struggles from the code alone.
+  >    Mark gaps in a partial record; infer no struggles from the code alone.
+  >
+  > [`skills/retro.md:13`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L13)
+
+- **Confirmed**: reconstruct → trace: Evidence cited (turns, commands, failures)
+  >    Cite concrete turns, commands, failures, corrections, or repeated searches.
   >
   > [`skills/retro.md:11`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L11)
 
@@ -189,7 +194,7 @@ An agent judged each claim against the source; each quote is found in its file w
 <summary>4 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Trace each struggle to a cause in the agent's environment.
-  > hooks, and CI wiring. Trace each observed struggle to its environmental cause.
+  >    hooks, and CI wiring. Trace each observed struggle to its environmental cause.
   >
   > [`skills/retro.md:15`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L15)
 
@@ -199,11 +204,11 @@ An agent judged each claim against the source; each quote is found in its file w
   > [`skills/retro.md:14`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L14)
 
 - **Confirmed**: Asks whether a remedy already exists but was undiscovered, unwired or broken.
-  > Check whether the remedy already exists but was undiscovered, unwired, or broken.
+  >    Check whether the remedy already exists but was undiscovered, unwired, or broken.
   >
   > [`skills/retro.md:16`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L16)
 
-- **Confirmed**: trace -&gt; classify: Causes found (payload: candidate findings)
+- **Confirmed**: trace → classify: Causes found (candidate findings)
   > \3. Classify supported candidates using the table below. Prefer repairing an
   >
   > [`skills/retro.md:17`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L17)
@@ -212,8 +217,15 @@ An agent judged each claim against the source; each quote is found in its file w
 
 ### Classify and rank: checks
 
+- **Partly** (from the diagram): Legend: tool economy — getting answers with fewer, smaller tool calls
+  > \| Tool economy \| A call returned excessive output or required repeated work \| Narrow the query, batch independent reads, or improve the existing tool \|
+  >
+  > [`skills/retro.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L35)
+
+  The source gives the signal and remedy for this category but never defines the term; the definition is the page's own gloss.
+
 <details>
-<summary>15 confirmed, with the supporting line</summary>
+<summary>16 confirmed, with the supporting line</summary>
 
 - **Confirmed**: Sort findings into categories and rank them by impact and cost.
   > \4. Rank candidates by impact and recurrence risk, accounting for implementation
@@ -225,68 +237,73 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/retro.md:17`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L17)
 
-- **Confirmed**: Keeps a remedy only if it would hold on a different task in the same repo; one remedy per finding.
-  > hold on a different task in the same repository: record durable facts such as
+- **Confirmed**: Keeps a remedy only if it would hold on a different task in the same repo
+  >    hold on a different task in the same repository: record durable facts such as
   >
   > [`skills/retro.md:20`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L20)
 
-- **Confirmed**: A missing hook or CI check counts only when an error escaped or went undetected in this session, and a proposed check must be able to fire in the agent's normal workflow.
+- **Confirmed**: one remedy per finding.
+  >    candidate one remedy; attach no unrelated instruction to it.
+  >
+  > [`skills/retro.md:22`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L22)
+
+- **Confirmed**: A missing hook or CI check counts only when an error escaped or went undetected in this session
+  > Treat a missing guardrail as a candidate only when a mechanical error escaped or
+  >
+  > [`skills/retro.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L39)
+
+- **Confirmed**: A missing hook or CI check counts only when an error escaped or went undetected in this session, and a proposed check must be installed in the agent's environment and able to fire in its normal workflow.
   > Treat a missing guardrail as a candidate only when a mechanical error escaped or
   >
   > [`skills/retro.md:39`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L39)
 
 - **Confirmed**: Ranks by impact and recurrence risk, weighed against cost and the upkeep of a new rule or check.
-  > cost and the ongoing burden of a new rule or check. Present the report below.
+  >    cost and the ongoing burden of a new rule or check. Present the report below.
   >
   > [`skills/retro.md:24`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L24)
 
-- **Confirmed**: Categories table — Navigation: Repeated searches or a hidden dependency delayed progress.
-  > \| Navigation \| Repeated searches or a hidden dependency delayed progress \|
+- **Confirmed**: Navigation: Repeated searches or a hidden dependency delayed progress.
+  > \| Navigation \| Repeated searches or a hidden dependency delayed progress \| A pointer from an entry point the agent already reads \|
   >
   > [`skills/retro.md:31`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L31)
 
-- **Confirmed**: Categories table — Automated checks: A mechanical error escaped, or a failure went undetected.
-  > \| Automated checks \| A mechanical error escaped, or a failure went undetected \|
+- **Confirmed**: Automated checks: A mechanical error escaped, or a failure went undetected.
+  > \| Automated checks \| A mechanical error escaped, or a failure went undetected \| Wire or repair the repo's lint, type, test, hook, or CI check; propose a new check only for a real gap \|
   >
   > [`skills/retro.md:32`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L32)
 
-- **Confirmed**: Categories table — Review standards: Review missed a judgement call.
-  > \| Review standards \| Review missed a judgement call \|
+- **Confirmed**: Review standards: Review missed a judgement call.
+  > \| Review standards \| Review missed a judgement call \| Clarify the existing reviewer reference, or propose \`CODING\_STANDARDS.md\` and its review entry point \|
   >
   > [`skills/retro.md:33`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L33)
 
-- **Confirmed**: Categories table — Steering size: Relevant guidance was buried in instructions.
-  > \| Steering size \| Relevant guidance was buried in repo or global instructions \|
+- **Confirmed**: Steering size: Relevant guidance was buried in instructions.
+  > \| Steering size \| Relevant guidance was buried in repo or global instructions \| Move mechanical rules into checks and judgement rules into review references \|
   >
   > [`skills/retro.md:34`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L34)
 
-- **Confirmed**: Categories table — Tool economy: A call returned too much output or required repeated work.
-  > \| Tool economy \| A call returned excessive output or required repeated work \|
+- **Confirmed**: Tool economy: A call returned too much output or required repeated work.
+  > \| Tool economy \| A call returned excessive output or required repeated work \| Narrow the query, batch independent reads, or improve the existing tool \|
   >
   > [`skills/retro.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L35)
 
-- **Confirmed**: Categories table — No-ops: Repetitive or ineffective steering used up context.
-  > \| No-ops \| Repetitive or ineffective steering consumed context \|
+- **Confirmed**: No-ops: Repetitive or ineffective steering used up context.
+  > \| No-ops \| Repetitive or ineffective steering consumed context \| Remove or replace the instruction, preserving its useful constraint \|
   >
   > [`skills/retro.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L36)
 
-- **Confirmed**: Categories table — Information access: Missing logs, docs or read access blocked progress.
-  > \| Information access \| Missing logs, documentation, or read access blocked progress \|
+- **Confirmed**: Information access: Missing logs, docs or read access blocked progress.
+  > \| Information access \| Missing logs, documentation, or read access blocked progress \| Propose the smallest access or observability improvement \|
   >
   > [`skills/retro.md:37`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L37)
 
-- **Confirmed**: classify -&gt; report: Ranked (payload: R-01 rows)
-  > cost and the ongoing burden of a new rule or check. Present the report below.
+- **Confirmed**: classify → report: Ranked (R-01 rows)
+  >    cost and the ongoing burden of a new rule or check. Present the report below.
   >
   > [`skills/retro.md:24`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L24)
 
-- **Confirmed** (from the diagram): Legend: tool economy — getting answers with fewer, smaller tool calls
-  > Narrow the query, batch independent reads, or improve the existing tool \|
-  >
-  > [`skills/retro.md:35`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L35)
-
 - **Confirmed** (from the diagram): Legend: no-op — an instruction that uses context but changes nothing
-  > \| No-ops \| Repetitive or ineffective steering consumed context \|
+  > \| No-ops \| Repetitive or ineffective steering consumed context \| Remove or replace the instruction, preserving its useful constraint \|
   >
   > [`skills/retro.md:36`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L36)
 
@@ -295,10 +312,10 @@ An agent judged each claim against the source; each quote is found in its file w
 ### Report: checks
 
 <details>
-<summary>6 confirmed, with the supporting line</summary>
+<summary>8 confirmed, with the supporting line</summary>
 
 - **Confirmed**: A read-only table of findings with evidence and a recommended selection.
-  > Finish with a recommended selection; wait for the user's choice before edits.
+  >    Finish with a recommended selection; wait for the user's choice before edits.
   >
   > [`skills/retro.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L25)
 
@@ -312,8 +329,13 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/retro.md:54`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L54)
 
+- **Confirmed**: (same bullet) how to verify it, and when to remove it
+  > How to prove it prevents the recurrence, and when to remove it \|
+  >
+  > [`skills/retro.md:56`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L56)
+
 - **Confirmed**: An empty result is valid after a smooth run.
-  > an empty result is valid after a smooth run. Keep a remedy only if it would
+  >    an empty result is valid after a smooth run. Keep a remedy only if it would
   >
   > [`skills/retro.md:19`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L19)
 
@@ -322,85 +344,108 @@ An agent judged each claim against the source; each quote is found in its file w
   >
   > [`skills/retro.md:60`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L60)
 
-- **Confirmed**: report -&gt; route: User selects remedies (payload: chosen rows)
-  > Finish with a recommended selection; wait for the user's choice before edits.
+- **Confirmed**: report → route: User selects remedies (chosen rows)
+  > the evidence supports none. Keep the retrospective read-only: selecting a remedy
   >
-  > [`skills/retro.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L25)
+  > [`skills/retro.md:59`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L59)
+
+- **Confirmed** (from the diagram): Rows R-01…: severity, evidence, cause, change, cost, verification
+  > \| R-01 \| high/medium/low \| Turn, command, or log location \| Observed environmental gap \| Existing mechanism to repair or smallest addition \| Effort and maintenance burden \|
+  >
+  > [`skills/retro.md:56`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L56)
 
 </details>
 
 ### Route selected work: checks
 
-- **Partly**: upstream when the fix belongs in scaffold; improve, code-refiner or prune for code quality.
-  > \- Use \[\`improve\`\](../.claude/skills/improve/SKILL.md) for a codebase survey,
-  >
-  > [`skills/retro.md:67`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L67)
-
-  The source sends code-quality work to code-refiner or prune only; improve is for a codebase survey, and upstream is for a generic remedy.
-
 <details>
-<summary>3 confirmed, with the supporting line</summary>
+<summary>8 confirmed, with the supporting line</summary>
 
 - **Confirmed**: The user picks remedies, and each goes to the skill that carries it out.
   > that selection. Route selected work through the existing workflow:
   >
   > [`skills/retro.md:61`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L61)
 
-- **Confirmed**: skillify for a reusable procedure, add-linter for linter setup, feature-chain for a substantial change.
+- **Confirmed**: skillify for a reusable procedure
+  > \- Use \[\`skillify\`\](skillify.md) to capture a reusable procedure.
+  >
+  > [`skills/retro.md:63`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L63)
+
+- **Confirmed**: add-linter for linter setup
+  > \- Use \[\`add-linter\`\](add-linter.md) for language linter setup.
+  >
+  > [`skills/retro.md:64`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L64)
+
+- **Confirmed**: feature-chain for a substantial change.
   > \- Use \[\`feature-chain\`\](feature-chain.md) for a substantial implementation.
   >
   > [`skills/retro.md:65`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L65)
 
-- **Confirmed** (from the diagram): Legend: improve / code-refiner / prune — skills for codebase surveys and code-quality cleanup
-  > or \[\`code-refiner\`\](code-refiner.md) / \[\`prune\`\](prune.md) for code-quality work.
+- **Confirmed**: upstream when a generic remedy belongs in scaffold
+  > \- Use \[\`upstream\`\](upstream.md) when a generic remedy belongs in scaffold.
+  >
+  > [`skills/retro.md:66`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L66)
+
+- **Confirmed**: improve for a codebase survey
+  > \- Use \[\`improve\`\](../.claude/skills/improve/SKILL.md) for a codebase survey,
+  >
+  > [`skills/retro.md:67`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L67)
+
+- **Confirmed**: code-refiner or prune for code quality.
+  >   or \[\`code-refiner\`\](code-refiner.md) / \[\`prune\`\](prune.md) for code-quality work.
   >
   > [`skills/retro.md:68`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L68)
+
+- **Confirmed** (from the diagram): User picks remedies? yes → route
+  >    Finish with a recommended selection; wait for the user's choice before edits.
+  >
+  > [`skills/retro.md:25`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L25)
 
 </details>
 
 ## In the source, not shown in the flow
 
-- Before proposing a guardrail, the agent must inspect whether a pre-commit hook or CI actually runs the relevant lint, type and test commands and cite that inspection next to the session evidence.
+- A partial record is still reviewed with its gaps marked; the flow only shows the 'record missing, stop' case.
+  >    Mark gaps in a partial record; infer no struggles from the code alone.
+  >
+  > [`skills/retro.md:13`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L13)
+
+- Before proposing a guardrail the agent must inspect whether a pre-commit hook or CI actually runs the lint, type and test commands, and cite that inspection with the session evidence.
   > actually runs the relevant lint, type, and test commands, and cite that
   >
   > [`skills/retro.md:42`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L42)
 
-- A check may be proposed only after confirming its tool is installed in the agent's environment, not only that its trigger occurs in the normal workflow.
+- A check may be proposed only after confirming its tool is installed in the agent's environment (the flow mentions only the trigger condition).
   > it can fire: its tool is installed in the agent's environment and its trigger
   >
   > [`skills/retro.md:44`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L44)
 
-- A list of known failures must say it is incomplete and must not blame unlisted failures on the agent's edits.
+- A list of known failures must say it is incomplete and must not attribute unlisted failures to the agent's edits.
   > it is incomplete and must not attribute unlisted failures to the agent's edits.
   >
   > [`skills/retro.md:46`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L46)
 
 - Mechanical rules (fixed syntax, banned APIs, import shapes, file placement) get an executable check; reviewer prose is reserved for contextual judgement.
-  > use an executable check for them. Reserve reviewer prose for contextual judgement.
+  > Classify fixed syntax, banned APIs, import shapes, and file placement as mechanical;
   >
-  > [`skills/retro.md:48`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L48)
+  > [`skills/retro.md:47`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L47)
 
-- Each category has a prescribed remedy (third column of the source table); the spec table and the diagram show only the category and its session signal.
+- The categories table has a 'Proposed remedy' column per category that the flow omits entirely.
   > \| Category \| Session signal \| Proposed remedy \|
   >
   > [`skills/retro.md:29`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L29)
 
-- With a partial record the retro continues but must mark the gaps, and the report states the session reviewed, the evidence available and any gaps.
-  > Mark gaps in a partial record; infer no struggles from the code alone.
-  >
-  > [`skills/retro.md:13`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L13)
-
-- A remedy must record durable facts, not a snapshot of this session's failures, and carry no unrelated instruction.
-  > the test command, not a snapshot of this session's failures. Give each
-  >
-  > [`skills/retro.md:21`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L21)
-
-- The report must briefly explain the highest-value candidate.
+- The report opens by stating the session reviewed, the evidence available and any gaps, and briefly explains the highest-value candidate.
   > Explain the highest-value candidate briefly. Report no actionable findings when
   >
   > [`skills/retro.md:58`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L58)
 
-- Rules for implementing a selected documentation remedy: short imperative steps, one home per rule, explicit completion criteria, conditional pointers to detail, small always-loaded guidance.
+- Only findings tied to the session are kept, and remedies record durable facts, not a snapshot of this session's failures.
+  >    the test command, not a snapshot of this session's failures. Give each
+  >
+  > [`skills/retro.md:21`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L21)
+
+- A selected documentation remedy must be written as short imperative steps with one home per rule, explicit completion criteria and conditional pointers.
   > one home per rule, explicit completion criteria, and conditional pointers to detail.
   >
   > [`skills/retro.md:71`](https://github.com/victusfate/scaffold/blob/main/skills/retro.md#L71)
