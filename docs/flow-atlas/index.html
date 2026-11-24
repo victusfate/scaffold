@@ -278,7 +278,7 @@ function renderSide(){
       $('option',{value:'overview'},'Overview'), A.groups.map(g => $('optgroup',{label:g.name}, g.flows.map(sl => $('option',{value:sl},FLOWS[sl].title)))));
       s.value = state.slug || 'overview'; return s; })()),
     $('div',{class:'navgroup'}, $('button',{class:'navitem','aria-current':state.slug?false:'page',onclick:()=>go('overview')},'Overview')),
-    A.groups.map(g => $('div',{class:'navgroup'}, $('div',{class:'eyebrow'},g.name),
+    ...A.groups.map(g => $('div',{class:'navgroup'}, $('div',{class:'eyebrow'},g.name),
       g.flows.map(sl => $('button',{class:'navitem','aria-current':state.slug===sl?'page':false,onclick:()=>go(sl)}, $('span',{},FLOWS[sl].title), dots(FLOWS[sl].counts))))));
 }
 
