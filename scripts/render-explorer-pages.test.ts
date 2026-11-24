@@ -88,3 +88,71 @@ void test('a listed source that does not exist is a problem', () => {
     lanes: [{ id: 'l', name: 'L' }], nodes: { a: { lane: 'l', name: 'A', role: 'r' } } }));
   assert.ok(buildPages(root, { check: false, repoRoot: root }).includes('g: source gone.md does not exist'));
 });
+
+// A site whose page x carries an atlas citing code and a doc in a small repo beside it.
+function atlasSite(): { root: string; repoRoot: string } {
+  const root = site('x.md'), repoRoot = mkdtempSync(join(tmpdir(), 'explorer-repo-'));
+  writeFileSync(join(repoRoot, 'tool.ts'), 'export function go(): number {\n  return 1;\n}\n');
+  writeFileSync(join(repoRoot, 'doc.md'), 'Always go first.\n');
+  writeFileSync(join(root, 'explorer', 'x.atlas.json'), JSON.stringify({
+    checks: [{ node: 'a', origin: 'spec', kind: 'role', claim: 'Goes first.', verdict: 'confirmed', file: 'doc.md', quote: 'Always go first.' }],
+    code: { refs: [{ node: 'a', file: 'tool.ts', anchor: 'return 1;', before: 1, count: 3, hash: '', title: 'go', explain: 'Returns one.', kind: 'implements' }] } }));
+  return { root, repoRoot };
+}
+
+void test('a page with an atlas gains its code and its checks, and tolerates the tags they use', () => {
+  const { root, repoRoot } = atlasSite();
+  ackAtlasOnly(root, repoRoot);
+  assert.deepEqual(buildPages(root, { check: false, repoRoot }), []);
+  const page = readFileSync(join(root, 'pages', 'x.md'), 'utf8');
+  assert.ok(page.includes('## Code walkthrough') && page.includes('export function go(): number {') && page.includes('<details>'), page);
+  assert.ok(page.indexOf('## Detailed flow') < page.indexOf('## Code walkthrough') && page.indexOf('## Checked against the source') < page.indexOf('## Ask your LLM'));
+});
+
+void test('the map page lists every page that has an atlas, with its counts', () => {
+  const { root, repoRoot } = atlasSite();
+  writeFileSync(join(root, 'explorer', 'system-map.explorer.json'), readFileSync(join(root, 'explorer', 'map.explorer.json'), 'utf8'));
+  ackAtlasOnly(root, repoRoot);
+  buildPages(root, { check: false, repoRoot });
+  const page = readFileSync(join(root, 'pages', 'system-map.md'), 'utf8');
+  assert.ok(page.includes('## Scaffold Flow Atlas\n\n1 diagram, checked against their source docs.'), page);
+  assert.ok(page.includes('| [X](x.md) | 1 | 0 | 0 | 0 | 0 | 1 |\n| **All flows** | **1** | **0** | **0** | **0** | **0** | **1** |'), page);
+});
+
+void test('acknowledging writes nothing when an excerpt cannot be placed', () => {
+  const { root, repoRoot } = atlasSite();
+  ackAtlasOnly(root, repoRoot);
+  const before = readFileSync(join(root, 'explorer', 'x.explorer.json'), 'utf8');
+  writeFileSync(join(repoRoot, 'tool.ts'), 'export const gone = 0;\n');
+  writeFileSync(join(repoRoot, 'doc.md'), 'Always go first. Edited.\n');
+  assert.throws(() => ackPages(root, ['x'], repoRoot), /x: the anchor finds no block/);
+  assert.equal(readFileSync(join(root, 'explorer', 'x.explorer.json'), 'utf8'), before);
+});
+
+void test('cited code that changes fails the check until it is acknowledged', () => {
+  const { root, repoRoot } = atlasSite();
+  ackAtlasOnly(root, repoRoot);
+  buildPages(root, { check: false, repoRoot });
+  writeFileSync(join(repoRoot, 'tool.ts'), 'export function go(): number { // counts from one\n  return 1;\n}\n');
+  const problems = buildPages(root, { check: true, repoRoot });
+  assert.ok(problems.some(p => p.startsWith('x: the code cited from tool.ts ("go") changed')), problems.join('\n'));
+  ackPages(root, ['x'], repoRoot);
+  assert.deepEqual(buildPages(root, { check: false, repoRoot }), []);
+  assert.deepEqual(buildPages(root, { check: true, repoRoot }), []);
+});
+
+void test('code that only moves leaves the page stale, never in need of review', () => {
+  const { root, repoRoot } = atlasSite();
+  ackAtlasOnly(root, repoRoot);
+  buildPages(root, { check: false, repoRoot });
+  writeFileSync(join(repoRoot, 'tool.ts'), '// moved down a line\nexport function go(): number {\n  return 1;\n}\n');
+  assert.deepEqual(buildPages(root, { check: true, repoRoot }), ['pages/x.md is stale: run npm run diagrams']);
+});
+
+// The fixture's excerpt starts unhashed; record its hash the way --ack does.
+function ackAtlasOnly(root: string, repoRoot: string): void {
+  const path = join(root, 'explorer', 'x.explorer.json');
+  const spec = JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
+  writeFileSync(path, JSON.stringify({ ...spec, sources: ['doc.md'], reviewed: '' }, null, 2));
+  ackPages(root, ['x'], repoRoot);
+}

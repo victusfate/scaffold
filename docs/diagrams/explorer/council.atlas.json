@@ -1,0 +1,511 @@
+{
+  "summary": "The council flow matches skills/council.md almost claim for claim: the triggers, the brief, the five lenses, the anonymized review, the chairman rules and the output sections are all in the source. One risk bullet states a consequence the source does not give. The main gap is the optional Jev-accelerated mode for phases 3 and 4, plus the batching rule for clients with fewer than five slots.",
+  "checks": [
+    {
+      "node": "ask",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The owner brings a high-stakes decision with real tradeoffs.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "**Use it for** decisions with genuine uncertainty and real tradeoffs: a pivot,"
+    },
+    {
+      "node": "ask",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Triggers include \"council this\", \"pressure-test this\" or a real \"should I X or Y\" with stakes.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "this\", \"pressure-test this\", \"stress-test this\", \"debate this\", or a real"
+    },
+    {
+      "node": "ask",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Factual lookups, yes/no questions, summaries and low-stakes advice skip the council.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "**Do NOT use it for** factual lookups, simple yes/no questions, creative"
+    },
+    {
+      "node": "ask",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "If the question has a correct answer, the agent just answers it.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "there. If the question has a correct answer, answer it."
+    },
+    {
+      "node": "brief",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The main agent writes a neutral, self-contained brief grounded in the repo.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "Turn the user's question into a neutral, self-contained brief. Scan the workspace"
+    },
+    {
+      "node": "brief",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "States the decision, the options, the constraints and what success means.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "the options on the table, the constraints, and what \"success\" means. Keep it"
+    },
+    {
+      "node": "brief",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Maps the trade space",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "**Map the shape of the trade space.** Before the advisors weigh in, name the"
+    },
+    {
+      "node": "brief",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Names the axes the decision balances, such as cost, speed, risk and reversibility.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "dimensions the decision balances (cost vs speed vs risk vs reversibility vs"
+    },
+    {
+      "node": "brief",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Marks which options are beaten on every axis and which are genuine tradeoffs.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "are Pareto-dominated and which are genuine tradeoffs. Include this in the brief so"
+    },
+    {
+      "node": "brief",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "A brief that tips toward one answer makes every advisor argue from the same slant.",
+      "verdict": "partial",
+      "file": "skills/council.md",
+      "quote": "even-handed; do not tip the advisors toward an answer.",
+      "note": "The source gives the rule (keep the brief even-handed) but does not state the consequence the spec asserts."
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Five isolated subagents each argue from one fixed lens, all at once.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "**Phase 2 — Advisors (5 isolated subagents, parallel).**"
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "150 to 300 words each, no hedging, and no advisor sees another's answer.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "each.** No advisor sees another's response in this phase."
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "They inherit the session's model; diversity comes from the persona, not the vendor.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "clearly labeled single-agent analysis. Advisors inherit the session's model;"
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "If isolated subagents are unavailable, the agent must say so and give a clearly labeled single-agent analysis instead.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "unavailable, disclose that the council cannot run independently and provide a"
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Lens table — Contrarian: Assumes the plan breaks, and asks where and why.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "| **The Contrarian** | Hunts for what's wrong, missing, or will fail. Assumes the plan breaks — where and why? |"
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Lens table — First-Principles: Strips assumptions and asks whether this is even the right question.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "Strips assumptions and rebuilds from the ground up. Challenges whether this is even the right question. |"
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Lens table — Expansionist: Hunts hidden upside: what if this works better than expected?",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "| **The Expansionist** | Hunts hidden upside and adjacent opportunity. \"What if this works better than expected?\" |"
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Lens table — Outsider: Brings zero domain context and names what is confusing.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "| **The Outsider** | Brings zero domain context. Catches what experts have stopped seeing; names what's confusing. |"
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Lens table — Executor: Cares only about implementation: what do you do Monday morning?",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "| **The Executor** | Cares only about implementation. \"What do you actually do Monday morning?\" |"
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Each advisor reviews all five answers with the authors hidden.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "review judges the argument, not the persona). Give every advisor all five and ask:"
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Answers are relabeled A to E in random order so reviewers judge the argument, not the persona.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "Collect the five responses and **anonymize them A–E in randomized order** (so"
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Three questions, about 200 words each",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "**~200 words each.** Run concurrently."
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Which response is strongest, and why?",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "- Which response is strongest, and why?"
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Which has the biggest blind spot?",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "- Which has the biggest blind spot?"
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "What did all five miss?",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "- What did all five collectively miss?"
+    },
+    {
+      "node": "chair",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The main agent weighs the advisors and commits to one recommendation and a first step.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "**Phase 4 — Chairman synthesis (main agent).**"
+    },
+    {
+      "node": "chair",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Weighs the advisors and never averages them.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "Consolidate everything into a verdict in the exact structure below. Weigh the"
+    },
+    {
+      "node": "chair",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Names real disagreement instead of papering it into false consensus.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "advisors; do not average them. Name real disagreement rather than papering it into"
+    },
+    {
+      "node": "chair",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Shown in chat as markdown",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "Render the chairman synthesis as scannable markdown inline. No HTML files, no artifacts."
+    },
+    {
+      "node": "chair",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Sections: where the council agrees, where it clashes, blind spots caught, the recommendation, the one thing to do first.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "### Blind spots the council caught"
+    },
+    {
+      "node": "chair",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "No files and no artifacts; the council edits nothing.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "- Phases 2 and 3 are read-only analysis; the council never modifies files."
+    },
+    {
+      "node": "chair",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "\"It depends\" is not a verdict; the chairman has to commit.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "- The chairman commits to a recommendation; \"it depends\" is not a verdict."
+    },
+    {
+      "node": "ask",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "ask -> brief: Decision is worth a council (payload: the question)",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "- If the question is factual or low-stakes, skip the council and answer."
+    },
+    {
+      "node": "brief",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "brief -> advisors: Brief sent to all five (payload: brief + trade space)",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "Spawn all five **in a single message** so they run concurrently. Each receives"
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "advisors -> review: Five answers collected (payload: anonymized A to E)",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "Collect the five responses and **anonymize them A–E in randomized order** (so"
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "review -> chair: Reviews collected (payload: peer reviews)",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "- <insights surfaced in the peer-review round>"
+    },
+    {
+      "node": "advisors",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Subagent: A separate agent run that cannot see the others.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "The advisors are **isolated subagents** run in parallel, so each leans fully into"
+    },
+    {
+      "node": "brief",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Trade space: The axes a decision balances, such as cost, speed and risk.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "dimensions the decision balances (cost vs speed vs risk vs reversibility vs"
+    },
+    {
+      "node": "chair",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Chairman: The main agent, who writes the final verdict.",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "**Phase 4 — Chairman synthesis (main agent).**"
+    },
+    {
+      "node": "brief",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Map the trade space: axes, tension, frontier",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "where the real tension lives, and roughly where the frontier sits: which options"
+    },
+    {
+      "node": "brief",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: frontier — options not beaten on every axis by another",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "are Pareto-dominated and which are genuine tradeoffs. Include this in the brief so"
+    },
+    {
+      "node": "advisors",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Isolated subagents: one message, run together",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "Spawn all five **in a single message** so they run concurrently. Each receives"
+    },
+    {
+      "node": "review",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Each advisor reviews all five, ~200 words, in parallel",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "**Phase 3 — Peer review (5 isolated subagents, parallel).**"
+    },
+    {
+      "node": "chair",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Stage 6 Present in chat: Council verdict as inline markdown",
+      "verdict": "confirmed",
+      "file": "skills/council.md",
+      "quote": "**Phase 5 — Present in chat.**"
+    }
+  ],
+  "missing": [
+    {
+      "what": "The optional Jev-accelerated mode: when a judgment endpoint is reachable, the peer review and the pre-presentation stress test of the synthesis run as batched judgment calls, with a fallback to the generative rounds; neither the spec nor the diagram mentions it.",
+      "file": "skills/council.md",
+      "quote": "skill), Phases 3 and 4 get faster *and* better calibrated. The rule: **Jev"
+    },
+    {
+      "what": "Advisors are batched when the client has fewer than five concurrent slots; the flow says only \"all at once\" / \"one message, run together\".",
+      "file": "skills/council.md",
+      "quote": "- Run advisors concurrently within the client's available slots; batch when fewer than five slots are available. Keep every advisor isolated."
+    },
+    {
+      "what": "The lenses are deliberately paired to collide (Contrarian vs Expansionist, First-Principles vs Executor) and that tension must not be softened.",
+      "file": "skills/council.md",
+      "quote": "upside), First-Principles vs Executor (rethink vs ship). Do not sand that tension down."
+    },
+    {
+      "what": "Each advisor is given its own lens definition together with the framed brief and is told to respond independently and lean fully into its perspective.",
+      "file": "skills/council.md",
+      "quote": "its lens definition (below) + the framed brief, and is told: respond"
+    }
+  ],
+  "code": {
+    "overview": "The council runs entirely as agent-followed prose: framing the brief, spawning the five advisors, anonymizing for peer review and writing the verdict have no code behind them, and the optional Jev mode has no script in this repo either. The only council-specific code is scripts/test-council-skill.sh, which greps skills/council.md so the key instructions cannot be deleted unnoticed, plus the thin wrapper that carries the trigger description. That test runs through npm test (test:shell) in CI; it checks the wording of the skill, not how a council actually behaves.",
+    "refs": [
+      {
+        "node": "ask",
+        "file": ".claude/skills/council/SKILL.md",
+        "anchor": "description: Run a high-stakes decision through a council of five persona-diverse advisors (Contrarian, First-Principles, Expansionist, Outsider, Executor) in parallel, then anonymized peer review, then a chairman synthesis of where they agree, clash, and what to do. Use for real tradeoffs (\"council this\", \"pressure-test this\", \"should I X or Y\"), not factual or low-stakes questions.",
+        "before": 1,
+        "count": 5,
+        "hash": "f99262c9eee9",
+        "title": "Claude wrapper: the trigger description",
+        "explain": "The frontmatter holds one description line that names the five advisors, the three rounds, and the trigger phrases 'council this', 'pressure-test this' and 'should I X or Y'. It also says not to use it for factual or low-stakes questions. The last line includes the canonical body skills/council.md.",
+        "why": "This description is what the harness reads to decide whether an owner's question should start a council. The decision itself is the model's judgement; there is no code that classifies the question.",
+        "kind": "implements"
+      },
+      {
+        "node": "ask",
+        "file": "scripts/test-council-skill.sh",
+        "anchor": "&& ok \"when-not-to-use guard present\" || fail \"when-not-to-use guard missing\"",
+        "before": 3,
+        "count": 4,
+        "hash": "fa6f3a4761ed",
+        "title": "test: the when-not-to-use guard stays in the skill",
+        "explain": "It greps skills/council.md, ignoring case, for 'not use', 'do not use', 'factual' or 'low-stakes'. A match counts as a pass and no match counts as a failure.",
+        "why": "The first stage says factual and low-stakes questions skip the council. This test only pins that the skill still says so; it would pass if any one of those words remained.",
+        "kind": "tests"
+      },
+      {
+        "node": "ask",
+        "file": "scripts/test-council-skill.sh",
+        "anchor": "for path in 'skills/council.md' '.claude/skills/council/SKILL.md' '.cursor/rules/council.mdc' '.agents/skills/council/SKILL.md' '.agent/workflows/council.md'; do",
+        "before": 4,
+        "count": 11,
+        "hash": "f3523ab910de",
+        "title": "test: council is wired into wrapper, manifest and RESOLVER",
+        "explain": "It checks that the Claude wrapper includes skills/council.md. It checks that each of the five council files is listed in .github/scaffold-files.txt. It checks that RESOLVER.md has a row for council.",
+        "why": "An owner can only reach the council if the skill is routed and shipped. Without the RESOLVER row or manifest entries the trigger phrases would lead nowhere in a consumer repo.",
+        "kind": "tests"
+      },
+      {
+        "node": "advisors",
+        "file": "scripts/test-council-skill.sh",
+        "anchor": "&& ok \"advisor persona present: $persona\" || fail \"advisor persona missing: $persona\"",
+        "before": 3,
+        "count": 5,
+        "hash": "a14b85b58a6f",
+        "title": "test: all five advisor lenses are named",
+        "explain": "It loops over the five persona names and greps skills/council.md for each one. Each name found is a pass; a missing name is a failure.",
+        "why": "The Five advisors stage depends on five fixed lenses that are built to disagree. This stops an edit from dropping one of them from the skill text.",
+        "kind": "tests"
+      },
+      {
+        "node": "advisors",
+        "file": "scripts/test-council-skill.sh",
+        "anchor": "&& ok \"isolated-subagent execution described\" || fail \"isolated-subagent model not described\"",
+        "before": 11,
+        "count": 12,
+        "hash": "e2fc373cf5c3",
+        "title": "test: parallel, isolated, peer-reviewed, chaired",
+        "explain": "Four greps over skills/council.md, in order: 'parallel' or 'concurrent'; 'peer review' or 'anonymize'; 'chairman'; and 'isolated subagent' or 'isolated context'. Each is counted as a pass or a failure.",
+        "why": "These are the mechanics of the advisors, peer review and chairman stages. The test proves the instructions exist in the skill; it cannot check that a real run spawned isolated subagents or shuffled the labels.",
+        "kind": "tests"
+      },
+      {
+        "node": "chair",
+        "file": "scripts/test-council-skill.sh",
+        "anchor": "&& ok \"output: agreements section\" || fail \"output missing agreements section\"",
+        "before": 2,
+        "count": 7,
+        "hash": "d1674fb6a79f",
+        "title": "test: the verdict keeps its required sections",
+        "explain": "It greps skills/council.md for 'Where the council agrees', then 'Where the council clashes', then 'one thing to do first' or 'do first'. Each is a pass or a failure.",
+        "why": "The chairman must show agreement, real disagreement and a single first step. This pins those headings in the output template so the verdict format is not thinned out by an edit.",
+        "kind": "tests"
+      }
+    ],
+    "promptOnly": [
+      {
+        "node": "brief",
+        "what": "The main agent scans the repo for context and writes a neutral brief with the decision, options, constraints, success criteria and the trade space; nothing checks the brief."
+      },
+      {
+        "node": "review",
+        "what": "The agent relabels the five answers A to E in random order and gives them to five reviewers with three questions; no code does the shuffle or the dispatch, and the test only checks that the skill text mentions peer review."
+      }
+    ]
+  }
+}

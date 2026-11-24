@@ -1,0 +1,552 @@
+{
+  "summary": "The bootstrap, upstream, scaffold PR, sync-back and hoist stages match their skill docs. The sync-down mechanics (3-way merge from the last synced commit, the no-base sidecar condition, .scaffold-keep skipping) are not described in skills/sync-scaffold.md; they live in bin/sync-from-scaffold.sh, so those claims have no support in the listed sources. The flow also omits that invoking /upstream is itself the merge authorization and when it stops at a ready PR.",
+  "checks": [
+    {
+      "node": "bootstrap",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The first time, install the sync script, then run it once the user confirms.",
+      "verdict": "confirmed",
+      "file": "skills/sync-scaffold.md",
+      "quote": "Or offer to run it now. Do not run it without confirmation."
+    },
+    {
+      "node": "bootstrap",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "If bin/sync-from-scaffold.sh is missing, a curl of bootstrap.sh installs the script only.",
+      "verdict": "confirmed",
+      "file": "skills/sync-scaffold.md",
+      "quote": "This installs `bin/sync-from-scaffold.sh` but does **not** run the sync automatically."
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "/sync-scaffold merges scaffold's files into the project on the current branch.",
+      "verdict": "confirmed",
+      "file": "skills/sync-scaffold.md",
+      "quote": "**Always run on the current working branch.** Do not switch to main or any other branch before or after syncing."
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The manifest, scaffold-files.txt, lists the files scaffold ships.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "  - all five paths added to `.github/scaffold-files.txt`, the sync manifest;"
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Each file gets a 3-way merge from the last synced commit.",
+      "verdict": "partial",
+      "file": "bin/sync-from-scaffold.sh",
+      "quote": "if git merge-file -p \"$ours\" \"$base\" \"$theirs\" > \"$merged\" 2>/dev/null; then",
+      "note": "The sync script does run a three-way merge, but it is not stated in sync-scaffold.md, upstream.md or hoist-skill.md, nor in any skills/, scripts/ or docs/ file they point to; the three-way merge appears only in bin/sync-from-scaffold.sh and README.md, and there it applies only to files that differ and have a base at the last synced SHA.",
+      "elsewhere": true
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "No base and the file differs: the incoming copy is saved as a .scaffold-new sidecar to review.",
+      "verdict": "partial",
+      "file": "skills/sync-scaffold.md",
+      "quote": "the original was not changed; a `.scaffold-new` sidecar holds the incoming version.",
+      "note": "The sidecar and its review are confirmed; the trigger condition (no base and the file differs) is not in the skill docs, only in bin/sync-from-scaffold.sh."
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Paths in .scaffold-keep are skipped.",
+      "verdict": "partial",
+      "file": "skills/hoist-skill.md",
+      "quote": "- **Kept** — files protected by `.scaffold-keep` (skipped as intended).",
+      "note": "Said for the hoist tool; sync-scaffold.md never mentions .scaffold-keep (it only lists \"kept\" among report categories), and upstream.md tells the agent to keep those paths when resolving conflicts."
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Conflict markers: resolve, commit, re-run.",
+      "verdict": "confirmed",
+      "file": "skills/sync-scaffold.md",
+      "quote": "tell the user to resolve the markers, commit, then re-run."
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "A sidecar is not applied: the original file is unchanged until someone diffs and merges it.",
+      "verdict": "confirmed",
+      "file": "skills/sync-scaffold.md",
+      "quote": "The user should diff and merge deliberately, then re-run the sync."
+    },
+    {
+      "node": "upstream",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "/upstream splits a project change into its universal half and moves that half into scaffold.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "Decide what is universal and what belongs only to this project."
+    },
+    {
+      "node": "upstream",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Work in a scaffold worktree off origin/main, never its main checkout.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "**Do not switch branches or edit files in its main checkout.** Another session may"
+    },
+    {
+      "node": "upstream",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Make the change the scaffold way: skill, wrappers, RESOLVER, manifest, test.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "  - all five paths added to `.github/scaffold-files.txt`, the sync manifest;"
+    },
+    {
+      "node": "upstream",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "npm test, eslint and typecheck must pass.",
+      "verdict": "partial",
+      "file": "skills/upstream.md",
+      "quote": "npm run typecheck   # when TypeScript changed",
+      "note": "Typecheck is required only when TypeScript changed, and eslint must show 0 errors while existing warnings are tolerated."
+    },
+    {
+      "node": "pr",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Open a scaffold PR that says why the change is universal, and merge it only if authorized.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "3. Merge when every required check passed and the merge is authorized (see"
+    },
+    {
+      "node": "pr",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The PR names the consumer that needed it.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "universal and which consumer it came from."
+    },
+    {
+      "node": "pr",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Read the real check conclusions; a skipped check is not a pass.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "- Never merge on skipped, failing or unread checks."
+    },
+    {
+      "node": "pr",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Remove the worktree after the merge.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "Purpose). Delete the branch and remove the scaffold worktree."
+    },
+    {
+      "node": "back",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Run /sync-scaffold again on a project branch to pull the merged change back in.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "2. Run `/sync-scaffold` (`bash bin/sync-from-scaffold.sh`)."
+    },
+    {
+      "node": "back",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Keep .scaffold-keep paths and merge diverged files.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "   - Keep the consumer's local content in `.scaffold-keep` paths."
+    },
+    {
+      "node": "back",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Put the project-specific half in the project's own policy file.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "4. Add the project-specific half from Step 1 to the consumer's policy file."
+    },
+    {
+      "node": "back",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Then the project's own gates, PR and authorized merge.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "5. Run the consumer's gates, open its PR, verify real checks, then merge (same"
+    },
+    {
+      "node": "back",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "/hoist-skill: Exports chosen skills into another repo in a target harness's format.",
+      "verdict": "confirmed",
+      "file": "skills/hoist-skill.md",
+      "quote": "Export one or more scaffold skills into a target repo in the requested harness format."
+    },
+    {
+      "node": "back",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": ".sync/hoisted records the name, harness and pinned ref; --from-manifest replays it.",
+      "verdict": "confirmed",
+      "file": "skills/hoist-skill.md",
+      "quote": "a tab-separated manifest recording each `(name, harness, ref)` triple"
+    },
+    {
+      "node": "back",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Pick skills, harness, --into target repo",
+      "verdict": "confirmed",
+      "file": "skills/hoist-skill.md",
+      "quote": "- **Destination** — the `--into` path (the target repo root). Must be provided; do not guess."
+    },
+    {
+      "node": "back",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "tools/hoist-skill/run emits harness wrappers",
+      "verdict": "confirmed",
+      "file": "skills/hoist-skill.md",
+      "quote": "Wraps `tools/hoist-skill/run` — do not reimplement its logic here."
+    },
+    {
+      "node": "back",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Differs → sidecar; --from-manifest replays",
+      "verdict": "confirmed",
+      "file": "skills/hoist-skill.md",
+      "quote": "Clobber-safe: unchanged files are skipped, locally edited files become sidecars, `.scaffold-keep` paths are honored."
+    },
+    {
+      "node": "back",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "ref: scaffold tag or commit a hoist is pinned to",
+      "verdict": "confirmed",
+      "file": "skills/hoist-skill.md",
+      "quote": "- **Ref** — optional scaffold ref to stamp in the manifest (`--ref <tag|commit>`, default `main`). Use when the consumer pins to a specific release."
+    },
+    {
+      "node": "upstream",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "RESOLVER: table mapping triggers to skills",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "  - a row in `.claude/skills/RESOLVER.md` with the trigger regex, path and"
+    },
+    {
+      "node": "upstream",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "harness: agent tool: Claude Code, Codex, Cursor, agy, pi",
+      "verdict": "confirmed",
+      "file": "skills/hoist-skill.md",
+      "quote": "- **Harness** — `claude` (default), `cursor`, `antigravity`, `codex`, `pi`, or `all`."
+    },
+    {
+      "node": "bootstrap",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Sync script installed (bin/sync-from-scaffold.sh): bootstrap → down",
+      "verdict": "confirmed",
+      "file": "skills/sync-scaffold.md",
+      "quote": "This installs `bin/sync-from-scaffold.sh` but does **not** run the sync automatically."
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Project finds a generic fix (project change): down → upstream",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "Move a change that belongs to every scaffold consumer (a rule, skill, script or tool)"
+    },
+    {
+      "node": "upstream",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Gates pass (scaffold branch): upstream → pr",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "Fix every failure before pushing. Hosted CI confirms; it isn't the place to find failures."
+    },
+    {
+      "node": "pr",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Scaffold PR merged (scaffold main): pr → back",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "3. Sync scaffold back into this consumer."
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Manifest: The list of files scaffold ships to consumers.",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "- **Script or tool:** add it with a test, and add it to the manifest if consumers"
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Sidecar: A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten.",
+      "verdict": "partial",
+      "file": "skills/hoist-skill.md",
+      "quote": "- **Force** — whether to overwrite differing files. Default: no (sidecars are written instead). Only set `--force` if the user explicitly asks.",
+      "note": "The sidecar definition is confirmed, but \"never overwritten\" is too strong: hoist-skill --force overwrites differing files."
+    },
+    {
+      "node": "down",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": ".scaffold-keep: The consumer's list of paths the sync never touches.",
+      "verdict": "partial",
+      "file": "skills/hoist-skill.md",
+      "quote": "- **Kept** — files protected by `.scaffold-keep` (skipped as intended).",
+      "note": "Stated for the hoist tool; for /sync-scaffold itself the skill docs only tell the agent to keep those paths during conflict resolution (the script behaviour lives in bin/sync-from-scaffold.sh)."
+    }
+  ],
+  "missing": [
+    {
+      "what": "Invoking /upstream itself authorizes merging both the scaffold PR and the consumer sync PR once checks really pass; the flow shows authorization only as an unexplained precondition.",
+      "file": "skills/upstream.md",
+      "quote": "The user invoking `/upstream` authorizes merging the scaffold PR and the consumer sync"
+    },
+    {
+      "what": "/upstream stops at a ready PR when either repo's policy needs separate merge approval or the user says \"PR only\".",
+      "file": "skills/upstream.md",
+      "quote": "PR, once each one's checks pass for real. Stop at a ready PR instead when either"
+    },
+    {
+      "what": "Never put a person's email, credentials or project names into scaffold; universal text is written harness-neutrally.",
+      "file": "skills/upstream.md",
+      "quote": "- Never put a person's email address, credentials or project names into scaffold."
+    },
+    {
+      "what": "/hoist-skill overwrites differing files only with --force, set only when the user explicitly asks.",
+      "file": "skills/hoist-skill.md",
+      "quote": "- **Force** — whether to overwrite differing files. Default: no (sidecars are written instead). Only set `--force` if the user explicitly asks."
+    },
+    {
+      "what": "After a hoist the user is reminded to commit .sync/hoisted so the registration survives.",
+      "file": "skills/hoist-skill.md",
+      "quote": "Remind the user to commit `<destination>/.sync/hoisted` so the registration survives across sessions and devices."
+    },
+    {
+      "what": "/sync-scaffold ends with a report: which path ran, files updated, kept, skipped, reviewed or conflicted, and the next step.",
+      "file": "skills/sync-scaffold.md",
+      "quote": "- Files updated, kept, skipped, reviewed (sidecar), or conflicted"
+    },
+    {
+      "what": "/upstream ends with a linked report of both PRs, the synced scaffold SHA, conflicts and anything left unmerged.",
+      "file": "skills/upstream.md",
+      "quote": "- the consumer sync PR, and the scaffold SHA it synced to;"
+    },
+    {
+      "what": "Bootstrap can also install the GitHub Actions sync workflow with --with-workflow.",
+      "file": "skills/sync-scaffold.md",
+      "quote": "curl -fsSL https://raw.githubusercontent.com/victusfate/scaffold/main/bin/bootstrap.sh | bash -s -- --with-workflow"
+    }
+  ],
+  "code": {
+    "overview": "The downward half is real code: bin/bootstrap.sh installs the sync script and bin/sync-from-scaffold.sh does the manifest read, 3-way merge, sidecars, keep list and SHA bookkeeping, with an optional workflow that runs it and opens a PR. The upward half (/upstream) is agent-followed prose; code only enforces its edges, through the manifest checks in scripts/resolver-phases.ts and the CI jobs. /hoist-skill is implemented in tools/hoist-skill/.",
+    "refs": [
+      {
+        "node": "bootstrap",
+        "file": "bin/bootstrap.sh",
+        "anchor": "git show scaffold/main:bin/sync-from-scaffold.sh > bin/sync-from-scaffold.sh",
+        "before": 9,
+        "count": 12,
+        "hash": "e3086878fd58",
+        "title": "bootstrap: add the remote and install the sync script",
+        "explain": "It adds a git remote named scaffold if there is none and fetches its main branch. It creates bin/ and writes the sync script from scaffold/main using `git show`. It marks the script executable.",
+        "why": "This is all the first-time curl does to the repo: one new script, no tracked file changed. Later syncs need only git.",
+        "kind": "implements"
+      },
+      {
+        "node": "bootstrap",
+        "file": "bin/bootstrap.sh",
+        "anchor": "echo \"Or re-run bootstrap with --run to sync immediately:\"",
+        "before": 9,
+        "count": 17,
+        "hash": "ee8b0f4c391c",
+        "title": "bootstrap: run the sync only when asked",
+        "explain": "If --run was passed it runs the sync script at once. Otherwise it prints that setup is complete and shows the command for the first sync. It also mentions the optional workflow install.",
+        "why": "The first sync waits for the user to confirm. By default the script stops after installing, so nothing is merged into the project unasked.",
+        "kind": "enforces"
+      },
+      {
+        "node": "down",
+        "file": "bin/sync-from-scaffold.sh",
+        "anchor": "echo \"error: could not read manifest .github/scaffold-files.txt from scaffold/main\" >&2",
+        "before": 4,
+        "count": 11,
+        "hash": "b4639da3863b",
+        "title": "Read the manifest from scaffold/main",
+        "explain": "It reads .github/scaffold-files.txt from the fetched scaffold/main. If that read fails it prints an error and exits before any write. It then loads each non-empty line into the list of files to sync.",
+        "why": "The manifest decides which files scaffold ships. Aborting on a failed read stops an empty list from being recorded as a successful sync.",
+        "kind": "implements"
+      },
+      {
+        "node": "down",
+        "file": "bin/sync-from-scaffold.sh",
+        "anchor": "# Returns 0 if $1 matches any pattern in .scaffold-keep, 1 otherwise.",
+        "before": 0,
+        "count": 11,
+        "hash": "032d721db1a6",
+        "title": "in_keep_list: match a path against .scaffold-keep",
+        "explain": "It returns 'no match' when the repo has no .scaffold-keep file. Otherwise it reads the file line by line, skipping blank lines and comments. It returns a match as soon as the path fits one pattern as a shell glob.",
+        "why": "Paths the project owns are skipped on every sync, even new ones. Without this a sync would overwrite files the project chose to keep.",
+        "kind": "enforces"
+      },
+      {
+        "node": "down",
+        "file": "bin/sync-from-scaffold.sh",
+        "anchor": "if [ -n \"$last_sha\" ] && git cat-file -e \"${last_sha}:${file}\" 2>/dev/null; then",
+        "before": 1,
+        "count": 23,
+        "hash": "953b37e4139a",
+        "title": "sync_file: 3-way merge, or a sidecar when there is no base",
+        "explain": "When a last synced SHA exists and had this file, it writes three temp copies: the local file, the file at the last SHA, and the file on scaffold/main. `git merge-file` merges them; a clean result replaces the file, a conflict writes the marked-up result and records the file as a conflict. With no base, the incoming copy is written to <file>.scaffold-new and the original is left alone.",
+        "why": "This is the core of sync down. The base makes local edits survive a merge; the sidecar avoids a silent first-sync overwrite.",
+        "kind": "implements"
+      },
+      {
+        "node": "down",
+        "file": "bin/sync-from-scaffold.sh",
+        "anchor": "if [ \"$DRY_RUN\" != 1 ] && [ ${#conflicts[@]} -eq 0 ] && [ ${#review[@]} -eq 0 ]; then",
+        "before": 2,
+        "count": 6,
+        "hash": "bbd84773f8d0",
+        "title": "Save the synced SHA only on a clean sync",
+        "explain": "After all files are processed it checks three things: this is not a dry run, there are no conflicts, and there are no sidecars pending review. Only then does it write scaffold's commit SHA to .github/scaffold-sync-sha.",
+        "why": "The saved SHA is the merge base for the next sync. Holding it back while conflicts or sidecars remain means a re-run still sees the unfinished files.",
+        "kind": "enforces"
+      },
+      {
+        "node": "down",
+        "file": ".github/workflows/sync-scaffold.yml",
+        "anchor": "--body \"Automated sync from [victusfate/scaffold](https://github.com/victusfate/scaffold). Review the diff before merging — any conflicts have markers and need manual resolution.\" \\",
+        "before": 28,
+        "count": 31,
+        "hash": "6239af48d131",
+        "title": "Workflow: run the sync and open a PR",
+        "explain": "On manual dispatch the job runs the sync script and records whether the tree changed. If it did, it commits everything on a branch named chore/sync-scaffold-guidance and pushes it. It opens a PR unless one for that branch is already open.",
+        "why": "This is the optional hands-off form of sync down, installed by bootstrap --with-workflow. It still lands through a PR, so a person reviews the diff.",
+        "kind": "implements"
+      },
+      {
+        "node": "upstream",
+        "file": "scripts/resolver-phases.ts",
+        "anchor": "export function phaseScaffold(rows: ResolverRow[], { fail, warn, MANIFEST, listedInManifest, rel }: PhaseCtx): void {",
+        "before": 0,
+        "count": 10,
+        "hash": "54d397f2ebe5",
+        "title": "phaseScaffold: every skill path must be in the manifest",
+        "explain": "It fails if the manifest file is missing. For each row in the skill resolver table it fails when the skill's path is not listed in the manifest. It warns if the resolver table or the check script itself is not listed.",
+        "why": "The 'scaffold way' includes adding new files to the manifest. Without this check a new skill could merge into scaffold and never reach a consumer.",
+        "kind": "enforces"
+      },
+      {
+        "node": "upstream",
+        "file": "scripts/resolver-phases.ts",
+        "anchor": "fail('Manifest', `${files.length} tracked files under ${top} are neither shipped nor held back — add \\`${top}\\` to ${rel(INTERNAL)} to hold back the directory, or list each file in ${rel(MANIFEST)}`);",
+        "before": 11,
+        "count": 22,
+        "hash": "73d10f4b2bdc",
+        "title": "phaseManifestCompleteness: every tracked file is shipped or held back",
+        "explain": "It runs only in scaffold, where the internal list exists. Every tracked file that is in neither the manifest nor the internal list is an error. Every manifest entry that is not tracked, or is also internal, is an error.",
+        "why": "A script or tool added upstream must be classified before the gates pass. This closes the 'added a file but forgot the manifest' gap.",
+        "kind": "enforces"
+      },
+      {
+        "node": "upstream",
+        "file": "package.json",
+        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check\",",
+        "before": 5,
+        "count": 10,
+        "hash": "b3525b4ad386",
+        "title": "The gates /upstream runs locally",
+        "explain": "`test` chains the node tests, tool tests, shell tests and the check scripts. `test:checks` starts with `check-resolvable.ts --strict` and the skills-doc freshness check. `lint` is eslint with zero warnings allowed and `typecheck` is `tsc --noEmit`.",
+        "why": "These are the three commands the upstream step requires before pushing. The resolver and manifest checks above run inside `npm test`.",
+        "kind": "implements"
+      },
+      {
+        "node": "pr",
+        "file": ".github/workflows/ci.yml",
+        "anchor": "- uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5",
+        "before": 6,
+        "count": 14,
+        "hash": "c6450d32c09f",
+        "title": "CI lint job on the scaffold PR",
+        "explain": "On a pull request to main the job installs dependencies, then runs lint, typecheck and the import-boundary check. The verify job in the same file runs `npm test`.",
+        "why": "These are the real checks whose conclusions must be read before merging the scaffold PR. Writing the PR body and deciding whether the merge is authorized are left to the agent.",
+        "kind": "enforces"
+      },
+      {
+        "node": "back",
+        "file": "bin/sync-from-scaffold.sh",
+        "anchor": "echo \"error: --mark-resolved needs a committed, marker-free managed file: $file\" >&2",
+        "before": 11,
+        "count": 15,
+        "hash": "592d815e1707",
+        "title": "--mark-resolved: accept a committed conflict resolution",
+        "explain": "For each file passed with --mark-resolved it checks that the file is in the manifest, exists, is tracked, has no unstaged or staged changes, and contains no conflict markers. Any failure prints an error and exits before the sync writes anything.",
+        "why": "After resolving a diverged file the re-run must accept the project's version instead of merging again. The checks stop a file being marked resolved while markers or uncommitted edits remain.",
+        "kind": "enforces"
+      },
+      {
+        "node": "back",
+        "file": "bin/sync-from-scaffold.sh",
+        "anchor": "elif [ -f AGENTS.md ] && { ! git diff --quiet -- AGENTS.md || ! git diff --cached --quiet -- AGENTS.md; }; then",
+        "before": 4,
+        "count": 17,
+        "hash": "2309095b3097",
+        "title": "Compose AGENTS.md from scaffold's copy plus AGENTS.local.md",
+        "explain": "When AGENTS.local.md exists, AGENTS.md is skipped if it is on the keep list or has uncommitted edits. Otherwise the script takes scaffold's AGENTS.md and appends a marked block holding AGENTS.local.md. It writes the result only if it differs.",
+        "why": "This is one coded place for the project-specific half of a rule: it lives in AGENTS.local.md and is re-attached on every sync. The upstream text stays identical to scaffold's.",
+        "kind": "implements"
+      },
+      {
+        "node": "back",
+        "file": "tools/hoist-skill/manifest.ts",
+        "anchor": "let header = '# .sync/hoisted — skills hoisted from scaffold; replayed by /pull-scaffold.\\n# <name>\\t<harness>\\t<ref>\\n';",
+        "before": 3,
+        "count": 18,
+        "hash": "eb1bada6a5fe",
+        "title": "upsertManifest: record hoisted skills in .sync/hoisted",
+        "explain": "It reads the existing entries and keeps the file's comment header. For each new entry it replaces the one with the same name and harness, or appends it. It writes one tab-separated line per entry: name, harness, ref.",
+        "why": "This is the /hoist-skill record of what was exported and at which pinned ref. Without it a later replay would not know which skills to re-emit.",
+        "kind": "implements"
+      }
+    ],
+    "promptOnly": []
+  }
+}

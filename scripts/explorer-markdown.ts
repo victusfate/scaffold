@@ -25,7 +25,7 @@ function diagramIds(spec: ExplorerSpec): Map<string, string> {
 }
 
 // A fence or code-span delimiter longer than any backtick run in the text, so the text is shown as is.
-const longerThanBackticks = (text: string, min: number): string =>
+export const longerThanBackticks = (text: string, min: number): string =>
   '`'.repeat(Math.max(min, ...[...text.matchAll(/`+/g)].map(m => m[0].length + 1)));
 export function codeSpan(text: string): string {
   const tick = longerThanBackticks(text, 1);
@@ -35,7 +35,7 @@ export function codeSpan(text: string): string {
 // Lanes get their own prefix so a lane and a node may share an id.
 const laneId = (id: string): string => `l_${id.replace(/[^A-Za-z0-9_]/g, '_')}`;
 // A markdown table cell: `|` would end the cell.
-const cell = (text: string): string => text.replace(/\|/g, '\\|');
+export const cell = (text: string): string => text.replace(/\|/g, '\\|');
 
 // Every flow's hops, once each, in the order they first appear. No flows, no arrows: an arrow is a claim.
 function overviewEdges(spec: ExplorerSpec): [string, string][] {
@@ -103,6 +103,8 @@ export interface PageContext {
   up?: { title: string; link: string };
   titles?: Record<string, string>;
   source?: { name: string; repo: string; page: string };
+  // Ready-made sections placed after the detailed diagram (render-explorer-pages: the page's atlas).
+  sections?: string[];
 }
 
 const SKILL_FILE = /(?:^|\/)skills\/([^/]+)\.md$/;
@@ -171,6 +173,7 @@ export function renderMarkdown(spec: ExplorerSpec, context: PageContext = {}): s
     ...nodes.map(n => `- [${n.name}](${hasSection(n) ? `#${anchor(n.name)}` : n.link}): ${n.role}`), '',
     ...nodes.filter(hasSection).flatMap(node => nodeSection(node, context.titles ?? {})),
     ...(spec.detail ? ['## Detailed flow', '', `![${spec.title}, detailed](${spec.detail})`, ''] : []),
+    ...(context.sections ?? []),
     ...(glossary.length ? ['## Glossary', '', ...glossary.map(g => `- **${g.t}**: ${g.d}`), ''] : []),
     ...askBlock(spec, context.source),
   ].join('\n') + '\n';

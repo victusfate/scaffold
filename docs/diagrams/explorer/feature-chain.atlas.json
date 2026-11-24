@@ -1,0 +1,532 @@
+{
+  "summary": "The feature-chain flow follows skills/feature-chain.md and the skills it delegates to: all six stages, their order and their outputs are in the source. The weakest claim is the owner-review stage, which merges two cases the source keeps apart (a queued task always gets a PR; an interactive feature without merge authority stops first). The flow also leaves out the rule that the chain does not pause between phases, the handling of a supplied document beyond placing it, and that /qa fixes what it finds.",
+  "checks": [
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Agree on what to build and why, one question at a time.",
+      "verdict": "confirmed",
+      "file": "skills/co-plan.md",
+      "quote": "**Ask one question at a time.** Wait for feedback before continuing. Provide your recommended answer with each question."
+    },
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The agent explores the code first and only asks what the code can't answer, each time with a recommended answer.",
+      "verdict": "confirmed",
+      "file": "skills/co-plan.md",
+      "quote": "If a question can be answered by exploring the codebase, explore it instead of asking."
+    },
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Resumes at the first missing artifact in `docs/<slug>/`; a supplied document is placed as design.md.",
+      "verdict": "partial",
+      "file": "skills/feature-chain.md",
+      "quote": "| `plan.md` exists | Resume Phase 3 at first incomplete slice |",
+      "note": "The table matches for design.md and prd.md and for a supplied document, but when plan.md exists the chain resumes at the first incomplete slice, which is not a missing artifact."
+    },
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Output: design.md",
+      "verdict": "confirmed",
+      "file": "skills/co-plan.md",
+      "quote": "When a term or decision is resolved, write it to `./docs/<feature-slug>/design.md` immediately — don't batch."
+    },
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Decisions with rationale, canonical vocabulary, edge cases.",
+      "verdict": "confirmed",
+      "file": "skills/co-plan.md",
+      "quote": "`design.md` is a glossary and decision record — not a spec or implementation plan."
+    },
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Then /design-review patches structural gaps.",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "**When `design.md` is committed:** run `/design-review` in auto-fix mode (it"
+    },
+    {
+      "node": "prd",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Turn the design into user stories and testing decisions, without re-interviewing.",
+      "verdict": "confirmed",
+      "file": "skills/to-prd.md",
+      "quote": "Synthesize the current context and codebase into a PRD. **Do not interview the user**"
+    },
+    {
+      "node": "prd",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Cross-checks the design against the codebase and confirms with the owner which modules need tests.",
+      "verdict": "confirmed",
+      "file": "skills/to-prd.md",
+      "quote": "- Confirm with the user which modules need tests."
+    },
+    {
+      "node": "tdd",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Build in thin vertical slices: failing test, minimal code, refactor, commit.",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "one-time granularity confirmation), the RED → GREEN → REFACTOR loop, per-slice"
+    },
+    {
+      "node": "tdd",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Granularity is confirmed once with the owner; after that, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from `plan.md`.",
+      "note": "tdd.md states the two surfacing conditions but never says slices otherwise run without pausing, and it also stops the loop for /investigate on an unexpected failure."
+    },
+    {
+      "node": "tdd",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "Writing all tests first verifies imagined behavior; one test at a time keeps them honest.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Tests written in bulk verify imagined behavior and become insensitive to real changes."
+    },
+    {
+      "node": "refine",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Two independent reviewers (correctness, structure) report; one pass applies every fix.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "**Phase 1 — parallel review (two isolated reviewers, find-only):**"
+    },
+    {
+      "node": "refine",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A test weakened to pass counts as a defect, not a fix.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "- A test weakened to reach green is a defect, not a fix (per `validate`)."
+    },
+    {
+      "node": "qa",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Run the real app and drive the changed entry points the way a user would.",
+      "verdict": "partial",
+      "file": "skills/qa.md",
+      "quote": "Run the real app, drive the changed entry points the way a user would, then fix",
+      "note": "The source's QA also fixes what breaks, each fix with a regression test; the role describes only driving the app."
+    },
+    {
+      "node": "qa",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Skipped, with the reason recorded, when the change has no runtime entry point.",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "when the change has no runtime entry point, and record the reason for Phase 4."
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "A summary for the owner. Without merge authority the agent stops for review; with it, the agent opens the PR, validates and merges.",
+      "verdict": "partial",
+      "file": "skills/feature-chain.md",
+      "quote": "- Queued task: return to the queue delivery cycle. Create/update its PR, validate locally and on the host, and merge only when explicit session or standing project authorization exists.",
+      "note": "The PR/validate/merge path is written for a queued task, and a queued task without merge authority still gets its PR, which is preserved while the next task is gated; only an interactive feature without authority stops before a PR."
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Merging needs explicit owner authorization; a PR is not approval.",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "Never infer merge authority from permission to create a PR."
+    },
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Design agreed (payload: design.md)",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "patches `design.md` and resolves any blockers), then proceed immediately to"
+    },
+    {
+      "node": "prd",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Stories and tests named (payload: prd.md)",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "**When `prd.md` is committed:** proceed immediately to Phase 3."
+    },
+    {
+      "node": "tdd",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "All slices green (payload: commits)",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "**When all slices are complete and the full test suite passes:** run"
+    },
+    {
+      "node": "refine",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Fixes applied, re-verified (payload: commits)",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "**Commit the refiner's fixes** (`refactor(<feature-slug>): code-refiner fixes`,"
+    },
+    {
+      "node": "qa",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Entry points work (payload: qa-report.md)",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "each, and writes `docs/<feature-slug>/qa-report.md`. This is the reachability check from AGENTS.md"
+    },
+    {
+      "node": "prd",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "PRD: Product requirements document: the problem, the solution and the user stories.",
+      "verdict": "confirmed",
+      "file": "skills/to-prd.md",
+      "quote": "The problem from the user's perspective."
+    },
+    {
+      "node": "tdd",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Vertical slice: A thin piece of a feature that cuts through every layer and works on its own.",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "(each cuts through all layers: data → logic → UI → tests)",
+      "note": "The source says a slice cuts through all layers; it does not say a slice is thin or that it works on its own."
+    },
+    {
+      "node": "design",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Check docs/slug/ for existing artifacts",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "Check `./docs/<feature-slug>/` for existing artifacts and detect whether a document was supplied externally"
+    },
+    {
+      "node": "design",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Stop anytime: stop · pause · just answer",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "If the user says \"stop\", \"pause\", or \"just answer\", stop the chain immediately."
+    },
+    {
+      "node": "design",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Commit design.md, then /design-review auto-fix mode",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "**When `design.md` is committed:** run `/design-review` in auto-fix mode (it"
+    },
+    {
+      "node": "prd",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Write prd.md, commit docs PRD",
+      "verdict": "confirmed",
+      "file": "skills/to-prd.md",
+      "quote": "Commit `prd.md` with message `docs(<slug>): PRD`."
+    },
+    {
+      "node": "tdd",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Commits + tdd-log.md",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "commits, and `tdd-log.md`."
+    },
+    {
+      "node": "tdd",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Premise fails? revise design / PRD, then resume",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "Design Validity criteria as evidence arrives; revise the originating design/PRD"
+    },
+    {
+      "node": "review",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Summary: built, tests, QA, deviations",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "### Decisions that deviated from the plan"
+    },
+    {
+      "node": "review",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "No → stop: please review before merging",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "When merge authority is absent, prompt: **\"All tests pass. Please review the generated source before merging.\"**"
+    },
+    {
+      "node": "refine",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend, auto-fix mode: the review applies its own fixes instead of asking first",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "- **Auto-fix** (from the chain, or with `--fix`): run Phases 1–3, apply, re-verify, report."
+    },
+    {
+      "node": "qa",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend, entry point: where a user reaches it: page, API endpoint, CLI command, job",
+      "verdict": "confirmed",
+      "file": "skills/feature-chain.md",
+      "quote": "user-facing entry point (UI route, API endpoint, CLI command, job). It starts the"
+    },
+    {
+      "node": "tdd",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend, REFACTOR: tidy without changing behavior",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "REFACTOR is a confirmation pass, not a correction pass.",
+      "note": "The source defines REFACTOR as confirming quality scores, a confirmation pass rather than a tidy-up; 'without changing behavior' is not stated."
+    },
+    {
+      "node": "design",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend, slug: short kebab-case name of the feature's docs folder",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "Feature-slug rule: kebab-case, drop articles, keep it under ~30 chars."
+    }
+  ],
+  "missing": [
+    {
+      "what": "The chain must not pause for permission between phases; the only pauses are the ones owned by each phase's skill. The flow never states this.",
+      "file": "skills/feature-chain.md",
+      "quote": "Run the full feature chain end-to-end. **Do not pause for permission between phases.**"
+    },
+    {
+      "what": "Entry-point detection first honors the task's architectural contribution mode (defaulting to collaborative); no stage shows it.",
+      "file": "skills/feature-chain.md",
+      "quote": "Honor the task's architectural contribution mode from the queue, or the builder's"
+    },
+    {
+      "what": "The slug is stated before the first file is written so the user can correct it.",
+      "file": "skills/feature-chain.md",
+      "quote": "State the slug before writing the first file so the user can correct it."
+    },
+    {
+      "what": "A supplied document is not only placed as design.md: it goes through /design-review, a commit, and a grill limited to its open questions before the PRD.",
+      "file": "skills/feature-chain.md",
+      "quote": "4. **Grill on ambiguity.** Read `design.md` for unresolved decisions, fuzzy vocabulary, or missing edge cases."
+    },
+    {
+      "what": "If the feature adds a tool, script, skill or bin command, the design Q&A must settle its home and descriptor contract.",
+      "file": "skills/feature-chain.md",
+      "quote": "- **Callable units — decide at design time.** If the feature adds a tool,"
+    },
+    {
+      "what": "/qa fixes in-tier issues, each with a regression test, rather than only driving the entry points.",
+      "file": "skills/feature-chain.md",
+      "quote": "app, drives the changed entry points, fixes in-tier issues with a regression test"
+    },
+    {
+      "what": "For a queued task without merge authority, the ready PR is preserved and the next independent task is gated; the flow shows only stop or merge.",
+      "file": "skills/feature-chain.md",
+      "quote": "Without merge authority, preserve the ready PR and gate the next independent task."
+    },
+    {
+      "what": "The agent returns to the owner for unresolved intent or material tradeoffs found mid-chain instead of converting them into a ticket.",
+      "file": "skills/feature-chain.md",
+      "quote": "Continue within authorized scope; return to the owner for unresolved intent or"
+    }
+  ],
+  "code": {
+    "overview": "The chain itself is prose: skills/feature-chain.md tells the agent which skill to run next, and no script detects the entry point, writes design.md, prd.md or plan.md, or moves between phases. Code appears in three places: scripts/queue-model.ts carries a queued task's \"chain\" mode and architecture mode into the worker prompt, the commit hook and scripts/check-quality-mechanical.sh gate the commits and the refine step, and the queue delivery code plus CI and scripts/check-handoff.ts guard the final review and merge.",
+    "refs": [
+      {
+        "node": "design",
+        "file": "scripts/queue-model.ts",
+        "anchor": "'model-led': 'Own architectural investigation, decisions and checks; the builder focuses on UX and product intent. Resolve technical design without requiring the builder to act as architect.',",
+        "before": 15,
+        "count": 22,
+        "hash": "7d7eeeb9cd0d",
+        "title": "Architecture modes and the guidance text for each",
+        "explain": "Defines the three modes: builder-led, collaborative and model-led, with collaborative as the default. parseArchitecture throws on any other value. architectureGuidance returns the sentence for the mode and appends that validation, security and compatibility checks stay mandatory and release authority is unchanged.",
+        "why": "skills/feature-chain.md names this file as the source for how much of the technical design the agent owns versus asks the builder. It keeps the mode from being read as permission to skip checks or to merge.",
+        "kind": "implements"
+      },
+      {
+        "node": "design",
+        "file": "scripts/queue-model.ts",
+        "anchor": "t.mode === 'chain' ? 'mode: chain (design→prd→plan→tdd→refine, autonomous, no questions)' : 'mode: direct',",
+        "before": 3,
+        "count": 14,
+        "hash": "8e5f2ffd2113",
+        "title": "taskBlock: the prompt block a queue worker receives",
+        "explain": "Builds the text a worker gets for one task. The first line says \"mode: chain\" with the phase order, or \"mode: direct\". It then adds the architecture mode and its guidance, the docs/<slug>/ folder, the acceptance text, files, contracts and validate command when set, and wraps it all in a queue_task tag.",
+        "why": "This is how a queued task starts the chain and tells the worker which docs/<slug>/ folder to look in for existing artifacts. The worker still has to follow the skill text; this code only delivers the instruction.",
+        "kind": "implements"
+      },
+      {
+        "node": "tdd",
+        "file": ".githooks/pre-commit",
+        "anchor": "echo \"pre-commit: tsconfig.json present but tsc not installed — skipping (install deps, e.g. npm ci)\" >&2",
+        "before": 8,
+        "count": 14,
+        "hash": "193d16398a98",
+        "title": "pre-commit hook: mechanical check, typecheck, skill routing gate",
+        "explain": "Runs on every git commit once core.hooksPath points at .githooks. It runs the mechanical quality check on the staged files, then tsc --noEmit if a tsconfig.json exists, then check-resolvable.ts and the skills-doc freshness check. The script runs under set -eu, so the first failing step aborts the commit.",
+        "why": "The TDD phase commits per slice, and the refiner fixes are committed after it. With the hook enabled each of those commits must pass the mechanical check and the typecheck; nothing checks the red/green order or tdd-log.md.",
+        "kind": "enforces"
+      },
+      {
+        "node": "refine",
+        "file": "package.json",
+        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check\",",
+        "before": 4,
+        "count": 6,
+        "hash": "225da6d9f285",
+        "title": "package.json: what \"the full suite\" runs",
+        "explain": "npm test chains four scripts. test:node runs every *.test.ts under scripts/, tools/ and lib/ with node --test. test:tools runs each tool's own test file, test:shell runs every scripts/test-*.sh, and test:checks runs the repo checks. test:integration is separate and is not part of npm test.",
+        "why": "Refine starts only \"when the full test suite passes\". These scripts define that suite for this repo.",
+        "kind": "implements"
+      },
+      {
+        "node": "refine",
+        "file": "scripts/check-quality-mechanical.sh",
+        "anchor": "emit \"${file}:${MAX_LINES} [Readability/major] file is ${count} lines — exceeds ${MAX_LINES}-line limit; split into cohesive modules (or add a 'quality-ok: file-length — <reason>' pragma if it is one cohesive unit)\"",
+        "before": 9,
+        "count": 11,
+        "hash": "c4c70bc12ed5",
+        "title": "check_file: the 500-line file length check",
+        "explain": "Counts the lines in the file with wc -l. If the count is over MAX_LINES (500) and the file has no \"quality-ok: file-length\" pragma, it emits a Readability/major violation with the file name. Each emit adds one to VIOLATIONS, which makes the script exit non-zero at the end.",
+        "why": "/code-refiner must end with every rubric score at 10/10, and mechanical violations cannot be overridden. This is one of the three rubric rules a script decides rather than the reviewer agents.",
+        "kind": "enforces"
+      },
+      {
+        "node": "refine",
+        "file": ".github/workflows/quality.yml",
+        "anchor": "mapfile -t FILES < <(git ls-files | grep -E '\\.(js|mjs|ts|tsx|sh|py|rb|go)$' || true)",
+        "before": 9,
+        "count": 11,
+        "hash": "a95e89e71852",
+        "title": "Quality Gate workflow: mechanical checks on all tracked source",
+        "explain": "On every pull request the job lists all tracked js, mjs, ts, tsx, sh, py, rb and go files with git ls-files. It passes the whole list to check-quality-mechanical.sh. Any violation makes the script exit 1, which fails the job.",
+        "why": "Re-runs the mechanical rubric rules on the PR. If the refiner pass left a mechanical violation, this job fails even though the agents reported 10/10.",
+        "kind": "enforces"
+      },
+      {
+        "node": "qa",
+        "file": "scripts/test-qa-skill.sh",
+        "anchor": "has skills/feature-chain.md 'QA'                \"feature-chain Phase 4 summary reports QA\"",
+        "before": 2,
+        "count": 5,
+        "hash": "56d8d6e761b1",
+        "title": "test-qa-skill.sh: feature-chain must run /qa and report it",
+        "explain": "Greps skills/qa.md for the \"QA found\" summary line. Then it greps skills/feature-chain.md for \"/qa\" and for \"QA\". finish prints the totals and returns non-zero if any assertion failed.",
+        "why": "The QA phase is done by the agent driving the real app. This test only keeps the chain wired to /qa and the QA line in the final summary; without it an edit could drop the step unnoticed.",
+        "kind": "tests"
+      },
+      {
+        "node": "review",
+        "file": ".github/workflows/ci.yml",
+        "anchor": "- uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5",
+        "before": 8,
+        "count": 13,
+        "hash": "b9ec56eefa76",
+        "title": "CI job \"verify\": npm test on every PR to main",
+        "explain": "On a pull request to main the job checks out the code, installs the Node version named in .node-version, runs npm ci, and then runs npm test. A failing test fails the job.",
+        "why": "When the agent has merge authority it must validate the PR first. This job is the hosted run of the full suite on that PR.",
+        "kind": "enforces"
+      },
+      {
+        "node": "review",
+        "file": "scripts/queue-model.ts",
+        "anchor": "const selected = q.config.deliveryTask || q.tasks.find(t => t.status === 'active')?.id;",
+        "before": 9,
+        "count": 12,
+        "hash": "c599f974cc28",
+        "title": "selectDelivery and deliveryAllows: one task per delivery cycle",
+        "explain": "selectDelivery records a task id as the current delivery task, unless the queue is in batch mode or one is already recorded. deliveryAllows then answers whether a task may be claimed: always in batch mode, otherwise only when no task is selected or the task is the selected one.",
+        "why": "For a queued chain task the review phase \"gates the next independent task\" until its PR cycle ends. This is that gate: other tasks are not eligible while one delivery is open.",
+        "kind": "enforces"
+      },
+      {
+        "node": "review",
+        "file": "scripts/queue.ts",
+        "anchor": "console.log(`queue: DELIVERY PENDING — ${q.config.deliveryTask}; finish its PR/merge cycle and fresh branch, then advance`);",
+        "before": 1,
+        "count": 6,
+        "hash": "8afc29e10bac",
+        "title": "Dispatch guard: DELIVERY PENDING",
+        "explain": "Before dispatching, if the queue is not in batch mode, a delivery task is recorded and nothing else is actionable, it prints DELIVERY PENDING with the task id and returns the DELIVERY exit code. Otherwise it returns with no block.",
+        "why": "A finished chain task without merge authority leaves its PR waiting for the owner. This message is what a drain loop sees instead of the next task.",
+        "kind": "enforces"
+      },
+      {
+        "node": "review",
+        "file": "scripts/queue-delivery.ts",
+        "anchor": "console.error('advance: requires selected completed task, no active claims, --pr <merged-pr-url> and --branch <fresh-working-branch>');",
+        "before": 10,
+        "count": 19,
+        "hash": "73626ab8befe",
+        "title": "queue advance: close the delivery cycle after the merge",
+        "explain": "cmdAdvance refuses unless the id is the selected delivery task, that task is done and accepted, no task is active, --pr looks like a pull request URL and --branch is not empty. On success it clears deliveryTask and deliveryAccepted, saves the queue and logs the PR and the fresh branch. Its own comment says it records what the root vouches for and does not check the remote.",
+        "why": "The chain ends with \"confirm the merge and cut a fresh branch before the next task\". This command is the only way to reopen dispatch, and it makes the orchestrator name the merged PR and the new branch.",
+        "kind": "enforces"
+      },
+      {
+        "node": "review",
+        "file": "scripts/check-handoff.ts",
+        "anchor": "return existsSync(path) ? [`handoffs live only on branches; clear it before merging to main: git rm ${path} && git commit -m \"chore: clear handoff before merge\"`] : [];",
+        "before": 2,
+        "count": 14,
+        "hash": "ec5a53d66468",
+        "title": "check-handoff.ts --pre-merge: no handoff file on the head to merge",
+        "explain": "preMerge returns an error when .pause/handoff.md still exists, with the git rm command that clears it. The CLI block below it picks preMerge when --pre-merge is passed, prints each error, and exits 1 if there is one.",
+        "why": "A merge to main must not carry a session handoff file. The orchestrator runs this on the head it merges; without it a later /resume on main could act on a stale handoff.",
+        "kind": "enforces"
+      }
+    ],
+    "promptOnly": [
+      {
+        "node": "prd",
+        "what": "The agent runs /to-prd: it reads design.md and the codebase, confirms with the owner which modules need tests, writes prd.md and commits it, with no script involved."
+      }
+    ]
+  }
+}

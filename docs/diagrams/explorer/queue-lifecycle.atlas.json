@@ -1,0 +1,556 @@
+{
+  "summary": "The queue lifecycle flow follows skills/queue.md well: 29 of 35 claims are stated and none is contradicted. The weakest point is the park path: `park --resume` and the `[~]` marker appear in the flow but not in skills/queue.md (only in skills/loop.md and the model script), so the skill doc and the flow disagree on the set of commands and markers. The flow also leaves out the needs-spec failure, the two task modes and the fact that advance verifies nothing itself.",
+  "checks": [
+    {
+      "node": "add",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The owner asks for work and the agent records it with the owner's words.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "human-owned: an agent adds one only when the owner asked for it, quoting their words with"
+    },
+    {
+      "node": "add",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "queue add --requested stores the owner's words with a title, an accept note and a validate command.",
+      "verdict": "partial",
+      "file": "skills/queue.md",
+      "quote": "agents: add --requested \"<human words>\" (tasks are human-owned; --parent adds lineage only)",
+      "note": "The flag and the title/accept/validate fields are documented, but skills/queue.md does not say the words are stored (docs/agents-detail.md says the CLI records a `requested-by:human` tag), and validate is an optional flag."
+    },
+    {
+      "node": "add",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "queue.db is the store; queue.md is its committed, readable view, re-rendered on each change.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "**`queue.md` is the view**, re-rendered after every mutation and committed so the"
+    },
+    {
+      "node": "pending",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The task waits its turn; the top eligible line runs first.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "A resumed `active` task is preferred next wake; otherwise the topmost **eligible**",
+      "note": "A resumed active task is taken before the top eligible pending one."
+    },
+    {
+      "node": "pending",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Eligible: its deps are done and it is not held.",
+      "verdict": "confirmed",
+      "file": "scripts/queue-model.ts",
+      "quote": "/** A pending task is eligible only when it isn't held and every dependency is done. */",
+      "note": "skills/queue.md itself only says \"all `deps` done\"; the held condition is settled in the model file it points to, which also applies the per-task delivery gate."
+    },
+    {
+      "node": "pending",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Waiting: a dep or gate is unfinished.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "A **gate** is a task that everything else depends on: while it's unfinished,"
+    },
+    {
+      "node": "pending",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Held: set aside; the drain skips it until unheld.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "Blocked parks the card (`held` — the drain skips it until dragged out, no"
+    },
+    {
+      "node": "active",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "A worker or slot claims the task and a lease clock starts.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "for cleanup. `owner` is a queue label and `startedAt` is a lease clock; neither is a"
+    },
+    {
+      "node": "active",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A tick or claim --worker sets the task's owner to the worker or slot.",
+      "verdict": "partial",
+      "file": "skills/queue.md",
+      "quote": "claim <id> [--worker w]                # atomic claim for a parallel worker",
+      "note": "claim --worker is stated; for tick the source only says it marks the task active, not that it sets an owner; slot ids as owners come from skills/loop.md."
+    },
+    {
+      "node": "active",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "release, or park --resume, returns it to pending.",
+      "verdict": "partial",
+      "file": "skills/queue.md",
+      "quote": "release <id> --worker w                # return a confirmed-ended owned claim to pending",
+      "note": "release is stated; park is absent from skills/queue.md (command surface and text) and is documented only in skills/loop.md and scripts/queue-model.ts."
+    },
+    {
+      "node": "active",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "The lease is the age of the claim, not a process id; tick never reclaims an expired lease, it stops and reports.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "`tick` and `ready` never reclaim an expired lease: they exit 6 and leave the task active."
+    },
+    {
+      "node": "outcome",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Running validate on done, or an explicit fail, decides done, retry or failed.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "3. **Complete:** `queue done <id>` (runs `validate`; refuses → counts as a failure)"
+    },
+    {
+      "node": "outcome",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A failure below maxFailures goes back to pending for a retry.",
+      "verdict": "partial",
+      "file": "skills/queue.md",
+      "quote": "current delivery task: retries stay selected; terminal failure blocks advancement",
+      "note": "Retries before a terminal failure are stated, but not that the task returns to pending; in the default per-task mode the retry stays the selected delivery task, and only batch mode sends it to the back."
+    },
+    {
+      "node": "outcome",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "At maxFailures it is marked failed and stays visible; requeue revives it.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "requeue <id>                           # revive a failed task (pending again, failures cleared)"
+    },
+    {
+      "node": "outcome",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A done task auto-archives to archive.md, but stays while unfinished work depends on it.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "**Completed tasks auto-archive**: `done` moves a task straight into `archive.md` and"
+    },
+    {
+      "node": "outcome",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Task markers in queue.md: [ ] pending, [>] active (claimed), [~] parked with a resume note, [x] done, [!] failed",
+      "verdict": "partial",
+      "file": "skills/queue.md",
+      "quote": "- `[ ]` pending · `[>]` active · `[x]` done · `[!]` failed",
+      "note": "skills/queue.md lists four markers; `[~]` parked is missing there and appears only in scripts/queue-model.ts."
+    },
+    {
+      "node": "deliver",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "In per-task mode, the task's PR must merge before the queue moves on.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "5. Confirm the PR actually merged, update the target base (normally main), and"
+    },
+    {
+      "node": "deliver",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "PR, real checks, and the owner approves the merge.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "4. Merge only with explicit session authorization or standing project policy.",
+      "note": "Approval can be standing project policy, not only a per-merge owner approval."
+    },
+    {
+      "node": "deliver",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Then a fresh branch and queue advance --pr --branch.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "`queue advance <id> --pr <merged-pr-url> --branch <fresh-working-branch>`."
+    },
+    {
+      "node": "deliver",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "tick exits 7 until the task is advanced; that means delivery is pending, not that the queue drained.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "stop/start, and process restart do not release it. Exit **7** means delivery is"
+    },
+    {
+      "node": "add",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Task recorded (payload: queue.db row)",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "**The store is the source of truth.** `queue.db` holds every task and the config"
+    },
+    {
+      "node": "pending",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Claimed by a worker (payload: owner + lease)",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "- otherwise it marks the current task `active` and prints a `<queue_task>`"
+    },
+    {
+      "node": "active",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Work finished (payload: validate result)",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "6. run `validate`, then `done`."
+    },
+    {
+      "node": "outcome",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Done and archived (payload: PR)",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "4. **Deliver** through the PR/merge/fresh-branch cycle above, then `advance`."
+    },
+    {
+      "node": "active",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Lease: How long a claim has been held; not a process id.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "for cleanup. `owner` is a queue label and `startedAt` is a lease clock; neither is a"
+    },
+    {
+      "node": "pending",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Gate: A task every other task depends on, used to block work temporarily.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "is the mechanical form of a **temporary priority block** — e.g. the 2026"
+    },
+    {
+      "node": "outcome",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "maxFailures: The retry cap before a task fails for good.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "- **config:** `status` run/pause · `interval` wake cadence · `maxFailures` retry cap",
+      "note": "\"For good\" is softened by `requeue`, which revives a failed task."
+    },
+    {
+      "node": "deliver",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "advance: Records the merged PR and the fresh branch so the queue moves on.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "advance <id> --pr <url> --branch <name> # root attests merged PR and fresh branch"
+    },
+    {
+      "node": "pending",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "waiting: a dep or gate is unfinished (gate / ungate)",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "Apply and lift blocks only with `gate` / `ungate`; **never hand-edit `queue.md`"
+    },
+    {
+      "node": "active",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "release --worker, or park --branch --resume [~] -> back to pending",
+      "verdict": "partial",
+      "file": "skills/loop.md",
+      "quote": "`node scripts/queue.ts park <id> --branch <b> --resume \"<next step>\"` to preserve work and release ownership.",
+      "note": "The park command and its flags are in skills/loop.md, not in skills/queue.md; the `[~]` marker is only in scripts/queue-model.ts."
+    },
+    {
+      "node": "outcome",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "done [x] auto-archives to archive.md, before delivery",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "integrated branch. `done` records implementation acceptance, **not a merge**."
+    },
+    {
+      "node": "outcome",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "failed tasks leave via archive sweep",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "DAG never breaks). Terminal `failed` tasks stay visible; sweep them with `archive`."
+    },
+    {
+      "node": "add",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend queue.db: the store (source of truth, git-ignored)",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "lane hands out ids from the same counter. The store is git-ignored: two committed"
+    },
+    {
+      "node": "active",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend slot: a worker seat declared in topology.json",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "names the orchestrator, the tick cadence and the subagent **slots**, with no routing: the orchestrator judges which"
+    },
+    {
+      "node": "outcome",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend validate: the task's own check command",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "`--validate \"<cmd>\"` · `--accept \"<criteria>\"` · `--top`. Override the view with"
+    }
+  ],
+  "missing": [
+    {
+      "what": "A task has one of two modes, direct or chain; a chain task runs the whole feature-chain with no user input before done.",
+      "file": "skills/queue.md",
+      "quote": "- **`direct`** (default) — small, self-contained work (bug fixes, chores, config)."
+    },
+    {
+      "what": "A task the executing agent cannot resolve is failed with a needs-spec note; the agent never asks the user during a drain.",
+      "file": "skills/queue.md",
+      "quote": "**fails the task with a `needs-spec: <what's missing>` note** (`queue fail <id>"
+    },
+    {
+      "what": "A stopped queue does nothing: tick is a no-op until queue start.",
+      "file": "skills/queue.md",
+      "quote": "6. **Stopped means stopped** — a `tick` does nothing until `queue start`."
+    },
+    {
+      "what": "In per-task mode a terminal failure blocks the queue until the task is repaired or requeued, or the owner changes the delivery plan.",
+      "file": "skills/queue.md",
+      "quote": "until repaired/requeued or the owner explicitly changes the delivery plan. In"
+    },
+    {
+      "what": "advance does not check GitHub, the branch or CI; the orchestrator must verify those facts before calling it.",
+      "file": "skills/queue.md",
+      "quote": "requires evidence references, but **does not query GitHub, verify the branch,"
+    },
+    {
+      "what": "Without merge authority the ready PR is kept, the missing authorization is reported and the next task stays gated.",
+      "file": "skills/queue.md",
+      "quote": "authority, keep the ready PR, report the missing authorization, and gate the"
+    },
+    {
+      "what": "When queue.md was hand-edited, every mutating command refuses until the edits are imported or the view is re-rendered.",
+      "file": "skills/queue.md",
+      "quote": "refuses with a message and saves nothing until you `import` the edits or"
+    },
+    {
+      "what": "An expired lease is released only by the orchestrator, after confirming the owned subagent ended, with the exact stored owner.",
+      "file": "skills/queue.md",
+      "quote": "<id> --worker <exact-owner>` to return unfinished work to pending"
+    },
+    {
+      "what": "Batch delivery mode is an explicit opt-in alternative to per-task mode, with the old done/failure progression.",
+      "file": "skills/queue.md",
+      "quote": "`deliveryMode` defaults to `per-task`; `batch` explicitly opts into legacy fan-out."
+    },
+    {
+      "what": "done can be forced without validation (done --skip-validate, or operator-done from the console), which the outcome stage does not show.",
+      "file": "skills/queue.md",
+      "quote": "done <id> [--skip-validate]            # implementation accepted; delivery gate remains"
+    }
+  ],
+  "code": {
+    "overview": "This flow is almost entirely code. scripts/queue.ts is the CLI, scripts/queue-model.ts holds the state changes as pure functions, scripts/queue-io.ts stores them in queue.db and re-renders queue.md, and queue-task-origin.ts, queue-claim.ts and queue-delivery.ts carry the add, claim and advance commands. The only part left to the agent is the delivery itself: opening the PR, reading checks and merging, which `queue advance` records but does not verify.",
+    "refs": [
+      {
+        "node": "add",
+        "file": "scripts/queue.ts",
+        "anchor": "if (!title) { console.error('usage: queue add \"<title>\" [--parent <id> | --requested \"<human words>\"] [flags]'); return 1; }",
+        "before": 2,
+        "count": 10,
+        "hash": "522bf6076551",
+        "title": "queue add: record one task",
+        "explain": "The title is the joined positional words; an empty title prints usage and exits 1. taskOrigin decides whether the add is allowed, and a refusal exits 2. addTask appends the task (or puts it first with --top) with the flags and origin tags merged in. save writes the store, the log gets an 'add' line, and the new id is printed with a drain hint.",
+        "why": "This is the entry point of the flow: the owner's request becomes a typed task with an id. Skipping it leaves the request only in chat, where no later step can find it.",
+        "kind": "implements"
+      },
+      {
+        "node": "add",
+        "file": "scripts/queue-task-origin.ts",
+        "anchor": "if (parent && !q.tasks.some(t => t.id === parent)) return { ok: false, error: `queue add: --parent ${parent} is not a task in this queue` };",
+        "before": 8,
+        "count": 16,
+        "hash": "67759c0c307d",
+        "title": "taskOrigin: refuse an agent's add without the owner's words",
+        "explain": "It reads the --parent and --requested flags. An unknown parent id is an error. With neither flag, it checks the environment for agent markers such as CLAUDECODE or CODEX_THREAD_ID: an agent session is refused with the AGENT_ADD_REFUSAL message, a human passes. Otherwise it returns tags and a note that record the parent or the quoted request on the task.",
+        "why": "This is the check behind 'only the owner creates tasks'. Without it an agent could grow the backlog with its own ideas. The comment at the top of the file notes the quote is not authenticated, so this is a guardrail, not proof.",
+        "kind": "enforces"
+      },
+      {
+        "node": "add",
+        "file": "scripts/queue-io.ts",
+        "anchor": "function renderView(db: DatabaseSync, defer: Defer, q: Queue, { discardEdits = false } = {}): void {",
+        "before": 4,
+        "count": 16,
+        "hash": "ec819ee25eac",
+        "title": "renderView: rewrite queue.md from the store on every save",
+        "explain": "Unless told to discard edits, it first checks that queue.md was not hand-edited since the last render. It serializes the queue to Markdown and records the text's sha256 in the store. After the transaction commits it writes a temp file and renames it over queue.md.",
+        "why": "queue.db is the store and queue.md is its readable view; this keeps the two in step on each change. The rename means a reader never sees half a file, and the hash check stops a save from silently overwriting hand edits.",
+        "kind": "implements"
+      },
+      {
+        "node": "pending",
+        "file": "scripts/queue-model.ts",
+        "anchor": "/** A pending task is eligible only when it isn't held and every dependency is done. */",
+        "before": 0,
+        "count": 11,
+        "hash": "fa115827150e",
+        "title": "isEligible and deadlocked: the kinds of waiting",
+        "explain": "isEligible is true for a pending task that is not held, is allowed by the delivery gate, and whose every dependency is done. deadlocked lists pending tasks with a dependency that failed, which can never become eligible on their own.",
+        "why": "These two predicates are the eligible, waiting and held states of a pending task. tick uses deadlocked to say why an idle queue is stuck.",
+        "kind": "implements"
+      },
+      {
+        "node": "pending",
+        "file": "scripts/queue-model.ts",
+        "anchor": "* The single task a serial worker should act on now: resume an active task if one",
+        "before": 1,
+        "count": 10,
+        "hash": "0b5f279ea047",
+        "title": "nextActionable: resume the active task, else the top eligible one",
+        "explain": "A stopped queue returns null. Otherwise it returns the first active task the delivery gate allows; if there is none, the first eligible task in list order; else null.",
+        "why": "Line order in the queue is the priority, and this is where that order is applied. An already active task is always resumed before anything new starts.",
+        "kind": "implements"
+      },
+      {
+        "node": "active",
+        "file": "scripts/queue.ts",
+        "anchor": "? `queue: IDLE — ${stuck.length} task(s) blocked by a failed dependency: ${stuck.map(x => x.id).join(', ')}`",
+        "before": 8,
+        "count": 23,
+        "hash": "be4af3717560",
+        "title": "queue tick: start the next task and print it",
+        "explain": "It runs dispatchGate and returns its exit code if blocked. It asks nextActionable for a task; with none it prints IDLE (naming tasks stuck behind a failed dependency) and exits 3. A pending task is begun, the delivery task is latched, the queue is saved, and the task block is printed with the done/fail commands. Exit 0.",
+        "why": "This is the serial loop's entry: one call moves the top task from pending to active. The exit codes let a driver tell 'work started' from idle, paused, stopped, conflict and delivery pending without parsing text.",
+        "kind": "implements"
+      },
+      {
+        "node": "active",
+        "file": "scripts/queue-claim.ts",
+        "anchor": "export function cmdClaim(q: Queue, id: string, flags: Map<string, string>, taskBlock: (t: Task) => string): number {",
+        "before": 4,
+        "count": 17,
+        "hash": "d2b5acc16bae",
+        "title": "queue claim: give a pending task to a worker or slot",
+        "explain": "refusal rejects a task that is not pending, is held, or is blocked by an unfinished delivery cycle. branchFlag rejects a --branch value that is not one name. The worker name comes from --worker, else a name built from the process id. One save marks the task active with that owner and, when given, links the branch in the same write.",
+        "why": "This is how a slot takes a task: the task's owner becomes the slot id. Linking the branch in the same write means a task is never active with an unlinked branch.",
+        "kind": "implements"
+      },
+      {
+        "node": "active",
+        "file": "scripts/queue.ts",
+        "anchor": "console.log(`queue: DELIVERY PENDING — ${q.config.deliveryTask}; finish its PR/merge cycle and fresh branch, then advance`);",
+        "before": 22,
+        "count": 27,
+        "hash": "4fd641e3964d",
+        "title": "dispatchGate: stop on a pause, an expired lease or a pending delivery",
+        "explain": "It auto-resumes a usage pause whose time has come. A stopped queue returns exit 4 (paused until a time) or 5 (stopped). Any active task older than leaseMinutes prints OWNERSHIP CONFLICT and returns 6 without touching the claim. In per-task mode, a latched delivery task with nothing actionable returns 7.",
+        "why": "tick and ready call this first. An expired lease stops dispatch and is reported; it is never reclaimed, because the queue cannot know whether the worker is still running.",
+        "kind": "enforces"
+      },
+      {
+        "node": "outcome",
+        "file": "scripts/queue.ts",
+        "anchor": "console.log(`✗ validation failed for ${id} → ${res.terminal ? 'failed' : 'retry'} (${r.tail})`);",
+        "before": 15,
+        "count": 34,
+        "hash": "6817f3e0579f",
+        "title": "queue done: validate, complete, archive",
+        "explain": "If the task has a validate command and --skip-validate is absent, it runs it with the queue lock released, reloads the queue, and aborts if the task changed meanwhile. A failed validation records a failure and exits 1. Otherwise it marks the task done, removes every done task no unfinished task depends on, appends those to archive.md, and logs it.",
+        "why": "Done is decided by the validate command, not by the worker's say-so. The reload check stops a long validation from overwriting a change another process made.",
+        "kind": "implements"
+      },
+      {
+        "node": "outcome",
+        "file": "scripts/queue-model.ts",
+        "anchor": "const tasks = terminal ? q.tasks.map(t => (t.id === id ? updated : t)) : [...rest, updated];",
+        "before": 22,
+        "count": 25,
+        "hash": "14f5ebe1833c",
+        "title": "recordFailure: retry until maxFailures, then failed",
+        "explain": "It adds one to the task's failure count and stores the reason as the note. Below maxFailures the task goes back to pending and moves to the end of the list; at maxFailures it becomes failed and keeps its place. Owner, worktree and lease are cleared and elapsed time is banked either way.",
+        "why": "This is the retry-or-failed branch of the outcome. Moving a retry to the back lets other work run first; a failed task stays visible until requeue or archive.",
+        "kind": "implements"
+      },
+      {
+        "node": "outcome",
+        "file": "scripts/queue-model.ts",
+        "anchor": "* `isEligible` resolves a task's `deps` against the *live* queue, so a done task is",
+        "before": 2,
+        "count": 19,
+        "hash": "2e0e67b6900d",
+        "title": "archivableDone: which done tasks may leave the queue",
+        "explain": "It collects the ids that any pending or active task lists as a dependency. It returns the done tasks not in that set. Failed tasks are never returned.",
+        "why": "Dependencies are resolved against the live queue, so archiving a done task that pending work depends on would block that work forever. That is why a done task sometimes stays.",
+        "kind": "implements"
+      },
+      {
+        "node": "deliver",
+        "file": "scripts/queue-model.ts",
+        "anchor": "const selected = q.config.deliveryTask || q.tasks.find(t => t.status === 'active')?.id;",
+        "before": 9,
+        "count": 12,
+        "hash": "c599f974cc28",
+        "title": "selectDelivery and deliveryAllows: one task per delivery cycle",
+        "explain": "selectDelivery stores the task id in config.deliveryTask unless the mode is batch or a task is already selected. deliveryAllows answers whether a given task may start: always in batch mode; otherwise only when nothing is selected or it is the selected task.",
+        "why": "The selection lives in config, so it survives the task being marked done and archived. That is what holds the queue until the PR cycle is acknowledged.",
+        "kind": "enforces"
+      },
+      {
+        "node": "deliver",
+        "file": "scripts/queue-delivery.ts",
+        "anchor": "console.error('advance: requires selected completed task, no active claims, --pr <merged-pr-url> and --branch <fresh-working-branch>');",
+        "before": 10,
+        "count": 19,
+        "hash": "73626ab8befe",
+        "title": "queue advance: record the merged PR and the fresh branch",
+        "explain": "It refuses unless the id is the selected delivery task, that task was accepted as done, no task is active, --pr looks like a pull request URL and --branch is not empty. On success it clears deliveryTask and deliveryAccepted, saves, and writes the PR and branch to the log.",
+        "why": "This closes the delivery cycle so the queue will hand out the next task. The code checks only the queue's own state and the URL's shape; it does not ask GitHub whether the PR merged, so the orchestrator vouches for that.",
+        "kind": "implements"
+      },
+      {
+        "node": "deliver",
+        "file": "scripts/queue-delivery.test.ts",
+        "anchor": "assert.notEqual(run('advance', 'task-002', '--pr', 'https://github.com/a/b/pull/1', '--branch', 'feat/next').status, 0);",
+        "before": 10,
+        "count": 19,
+        "hash": "8bfc7635155f",
+        "title": "Test: tick exits 7 until advance is given a PR and a branch",
+        "explain": "With two tasks, tick starts the first and claim or begin on the second is refused. After done, tick and ready exit 7 and signal exits 3. advance fails for the wrong task and without --pr/--branch, then succeeds, and the next tick starts the second task.",
+        "why": "It pins the rule that a done task still holds the queue and that exit 7 means delivery pending, not drained.",
+        "kind": "tests"
+      }
+    ],
+    "promptOnly": []
+  }
+}

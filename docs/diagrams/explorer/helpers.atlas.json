@@ -1,0 +1,914 @@
+{
+  ".githooks/pre-commit#staged": {
+    "explain": "Prints the NUL-separated paths of files staged in the git index as added, copied, modified or renamed, limited to the pathspecs passed as arguments. It changes nothing; the output is meant to be piped to xargs -0.",
+    "hash": "861370882bf5"
+  },
+  "bin/sync-from-scaffold.sh#in_keep_list": {
+    "explain": "Takes a file path and returns 0 if it matches any glob pattern listed in .scaffold-keep in the current directory, skipping blank lines and lines starting with #. Returns 1 when nothing matches or when .scaffold-keep does not exist.",
+    "hash": "15b4bbcbd2ff"
+  },
+  "bin/sync-from-scaffold.sh#local_block": {
+    "explain": "Prints to stdout the block that is appended to AGENTS.md: a blank line, the BEGIN marker line, the contents of AGENTS.local.md (with a newline added if the file does not end in one), then the END marker line. It takes no arguments and writes no files; it fails if AGENTS.local.md cannot be read.",
+    "hash": "bcca2387a0ae"
+  },
+  "scripts/agent-loop-process.ts#execute": {
+    "explain": "Runs one loop iteration: it deletes run-result.json in the state directory, renames any existing output.log to previous.log, and spawns the configured command without a shell (the warm argv on runs after the first when one is set, with {{SESSION}} replaced by the session id) in config.cwd, with stdout and stderr written to output.log and SCAFFOLD_AGENT and SCAFFOLD_AGENT_LOOP_RESULT set in its environment. It polls about every 100 ms and, if a cancelling stop request for this generation appears or config.timeout elapses, kills the child's process tree and resolves with outcome 'cancelled' or 'timeout'. Otherwise it resolves with the outcome 'exit N', 'signal X' or 'spawn error: ...'; when the exit is 0 and config.requireResult is set it also returns the directive read from run-result.json, or the outcome 'missing or invalid required result' if that file is absent or malformed.",
+    "hash": "f8ffcd8b4527"
+  },
+  "scripts/agent-loop-process.ts#isDirectiveStatus": {
+    "explain": "Type guard that returns true only when the value is exactly the string 'continue', 'complete' or 'blocked'. It has no side effects.",
+    "hash": "224939e0102d"
+  },
+  "scripts/agent-loop-process.ts#isRecord": {
+    "explain": "Type guard that returns true when the value is a non-null object that is not an array. It has no side effects.",
+    "hash": "ebf101aa93b0"
+  },
+  "scripts/agent-loop-runner.ts#HEARTBEAT_MS": {
+    "explain": "The number 250, in milliseconds. The supervisor uses it as the interval at which it rewrites progress.json with a fresh heartbeat timestamp, and as the longest single sleep while waiting for the next run.",
+    "hash": "3003b1dbc679"
+  },
+  "scripts/agent-loop-state.ts#AgentDirective": {
+    "explain": "The shape of the result a loop run reports back: a status of 'continue', 'complete' or 'blocked', a summary string, and an optional resume string. When resume is present the driver substitutes it for {{SESSION}} on the next run in place of the minted session id.",
+    "hash": "6c9dbb1d90bc"
+  },
+  "scripts/agent-loop-state.ts#save": {
+    "explain": "Writes the value as pretty-printed JSON to the file `name` inside `dir` by first writing a uniquely named temp file with mode 0600 and then renaming it over the target, so readers never see a partial file. A rename that fails with EPERM, EBUSY or EACCES is retried up to 40 times with a short blocking sleep between attempts; any other error, or the last failed attempt, is thrown. The temp file is always removed.",
+    "hash": "1d675cde44cc"
+  },
+  "scripts/agent-loop-state.ts#status": {
+    "explain": "Takes a loop state directory and returns one object that merges config.json and progress.json with derived fields: driver 'node', armed, supervisor ('active', 'stopped' or 'stale'), running, interrupted, stopRequested, the count of unacknowledged steering messages, and the path to output.log. It only reads files and probes the supervisor PID with signal 0; it throws if config.json is missing or unparseable.",
+    "hash": "509af706e128"
+  },
+  "scripts/agent-loop-state.ts#stopRequest": {
+    "explain": "Reads stopped.json in the state directory and returns its { generation, cancel } contents when its generation equals the one passed in. Returns undefined when the file does not exist or names a different generation, and throws if the file is not valid JSON.",
+    "hash": "b958393a789f"
+  },
+  "scripts/check-handoff.test.ts#good": {
+    "explain": "A string holding a small valid handoff document: a title, a branch line, a '## State' section with one [verified: ...] bullet and one [unverified] bullet, and a '## Next steps' section. The tests assert that check() returns no errors for it and derive each failing case by editing it.",
+    "hash": "8fbda45a3112"
+  },
+  "scripts/check-handoff.ts#CLASH": {
+    "explain": "A case-insensitive regular expression that matches 'correction:', 'update:' or 'edit:' (with optional space before the colon), the word 'superseded', or '~~' strikethrough. check() reports any handoff line it matches as a correction left beside the fact it corrects.",
+    "hash": "388002d0ec9d"
+  },
+  "scripts/check-handoff.ts#MAX_LINES": {
+    "explain": "The number 80. It is the default maximum number of lines check() allows in a handoff before reporting it as too long.",
+    "hash": "353dd910a694"
+  },
+  "scripts/check-handoff.ts#TAG": {
+    "explain": "A regular expression that matches '[unverified]' or '[verified: <non-empty text>]'. check() uses it to decide whether a bullet under '## State' carries a verification tag.",
+    "hash": "edafe8d62bf1"
+  },
+  "scripts/check-handoff.ts#UNSAFE_TAG": {
+    "explain": "A regular expression that matches a '[verified: ...' tag whose text contains a shell metacharacter (| ; & < >), '$(', or one of the words curl, wget, rm, sh, bash, eval or sudo. check() reports any line it matches as a tag that holds a command rather than evidence.",
+    "hash": "9f6f494f4892"
+  },
+  "scripts/check-handoff.ts#check": {
+    "explain": "Takes the text of a handoff and an optional line limit (default 80) and returns a list of error strings, empty when the handoff passes. It reports a missing '## State' heading, any bullet under that heading with no [verified: ...] or [unverified] tag, any line whose verified tag contains shell syntax or a fetch command, any line with a correction marker, and a line count over the limit. It reads nothing but its argument and has no side effects.",
+    "hash": "99f518f6dc89"
+  },
+  "scripts/check-handoff.ts#preMerge": {
+    "explain": "Takes a path and returns a one-element list with an error message telling the caller to git rm the handoff when a file exists at that path, or an empty list when it does not. It only checks for existence.",
+    "hash": "6a2e917f4f75"
+  },
+  "scripts/check-quality-mechanical.sh#check_file": {
+    "explain": "Takes one file path and scans it, calling emit for each violation: more than 500 lines without a 'quality-ok: file-length' pragma, a bare integer of two or more digits outside a named constant, string literal, return/exit statement or pragma-covered line (this check is skipped for files whose name contains test or spec), and two or more consecutive comment lines that look like code. It returns 0 without checking anything when the path is not a regular file, is matched by .quality-ignore, or has '@generated' in its first five lines.",
+    "hash": "c7ad56670ddd"
+  },
+  "scripts/check-quality-mechanical.sh#emit": {
+    "explain": "Prints its first argument, a violation message, to stdout and adds one to the global VIOLATIONS counter. The script exits 1 at the end when that counter is above zero.",
+    "hash": "f9cce7695540"
+  },
+  "scripts/check-resolvable.ts#QUIET": {
+    "explain": "A boolean that is true when the script was run with --quiet. When true, the collected warnings are not printed; errors still are.",
+    "hash": "0e484eeed319"
+  },
+  "scripts/check-resolvable.ts#RESOLVER": {
+    "explain": "The absolute path of .claude/skills/RESOLVER.md under the repo root. The script parses the skill rows and the bundled-skill list from this file and reports a Parse error if it does not exist.",
+    "hash": "0336f8ff8a03"
+  },
+  "scripts/check-resolvable.ts#ctx": {
+    "explain": "The context object passed to every check phase. It holds the fail and warn collectors, the repo root and the paths of the skills, manifest, internal list, Cursor rules and Antigravity directories, the STRICT flag, the skill directories found on disk, the set of bundled skills from RESOLVER.md, the git-tracked file list, and the manifest set with its lookup and relative-path helpers.",
+    "hash": "c69d2337f960"
+  },
+  "scripts/check-resolvable.ts#errors": {
+    "explain": "A module-level array of error message strings that the fail collector appends to during the check phases. If it is non-empty at the end, the script prints every entry to stderr and exits 1.",
+    "hash": "d6e83942fa6d"
+  },
+  "scripts/check-resolvable.ts#rows": {
+    "explain": "The skill rows parsed from the RESOLVER.md table when the script loads. The RESOLVER-dependent phases run only when it is non-empty, an empty or missing table is recorded as a Parse error, and its length is printed as the skill count on success.",
+    "hash": "a4e5db9241b7"
+  },
+  "scripts/check-resolvable.ts#warn": {
+    "explain": "Takes a phase name and a message, appends '[phase] message' to the module-level warnings array and returns the array's new length. Warnings are printed at the end unless --quiet is set and do not change the exit code.",
+    "hash": "3e2864eb211a"
+  },
+  "scripts/compute-bump.ts#BumpKind": {
+    "explain": "A string union of 'major', 'minor', 'patch' and 'none'. It names the size of the version bump computeBump derived from the commit messages.",
+    "hash": "7aff1deba026"
+  },
+  "scripts/compute-bump.ts#BumpResult": {
+    "explain": "The return shape of computeBump: bump is the BumpKind chosen, and next is the resulting version string, or null when bump is 'none'.",
+    "hash": "50172d584063"
+  },
+  "scripts/explorer-spec.ts#ExplorerSpec": {
+    "explain": "The type of the JSON that describes one explorer page. It requires a title, a list of lanes and a map of nodes, and optionally carries an eyebrow, lede, flows, glossary, timeline, topics, Q&A framing, a start node or flow, a detail image path, and the source files the page summarizes with the hash recorded at last review.",
+    "hash": "37a95a8717c7"
+  },
+  "scripts/explorer-spec.ts#validateSpec": {
+    "explain": "Takes an ExplorerSpec and returns a list of problem strings, empty when the spec is valid. If the title, lanes, nodes or (with sources) the reviewed hash are missing it returns only those errors; otherwise it reports nodes without a name, role or known lane, lanes with no nodes, duplicate or empty flows and malformed steps, incomplete glossary terms and aliases claimed twice, out-of-range timeline tracks, and any reference to an unknown node, topic or flow. It does not throw for these problems and has no side effects.",
+    "hash": "2a7c4fc497bd"
+  },
+  "scripts/json-script.ts#jsonForScript": {
+    "explain": "Takes any JSON-serializable value and returns its JSON.stringify text with every '<' and the U+2028 and U+2029 characters replaced by their \\u escapes, so the text can be placed inside an HTML script element without ending or breaking it. Parsing the result gives back the same value.",
+    "hash": "91fb61a13725"
+  },
+  "scripts/lib/skill-test.sh#finish": {
+    "explain": "Prints a blank line and then the '<PASS> passed, <FAIL> failed.' totals from the global counters. Its exit status is 0 when FAIL is zero and non-zero otherwise, so a test script ending with it fails if any assertion failed.",
+    "hash": "543d7c647341"
+  },
+  "scripts/lib/skill-test.sh#has": {
+    "explain": "Takes a file, an extended regular expression and a label, and greps the file case-insensitively for the pattern. It prints the label with a check mark and increments PASS on a match, or prints it with a cross and increments FAIL otherwise, including when the file cannot be read.",
+    "hash": "7bb2f8365ee9"
+  },
+  "scripts/lib/skill-test.sh#has_cs": {
+    "explain": "Takes a file, an extended regular expression and a label, and greps the file case-sensitively for the pattern. It prints the label with a check mark and increments PASS on a match, or prints it with a cross and increments FAIL otherwise.",
+    "hash": "fa1771ee3343"
+  },
+  "scripts/mind-meld-example.ts#Event": {
+    "explain": "The shape of one recorded call in the example program: an id, the node (function) name, the parent event id or null, the duration in milliseconds, the input and output as strings, and a list of state changes each with a key, before and after value.",
+    "hash": "2ff222db7d66"
+  },
+  "scripts/mind-meld-example.ts#events": {
+    "explain": "A module-level array that collects one Event per traced call, in call order, as span() runs. The whole array is printed in the JSON the script writes to stdout at the end.",
+    "hash": "b0136a1744c1"
+  },
+  "scripts/mind-meld-example.ts#output": {
+    "explain": "The string result of the example run chosen by the first command-line argument: combat(hp, damage) when the mode is 'flow', otherwise damage(hp, damage, null), with hp and damage taken from the JSON in the second argument. It is printed to stdout together with the recorded events.",
+    "hash": "151b9129aa9a"
+  },
+  "scripts/mind-meld-langs.ts#BUILT_IN": {
+    "explain": "The list of language adapters that ship with scaffold: TypeScript (.ts, .tsx, .mts), Python (.py), Rust (.rs) and Ruby (.rb), each pairing its file extensions with the function that extracts definitions and imports. loadAdapters appends it after any adapters the repo defines, so a repo adapter for the same extension is found first.",
+    "hash": "8a2e7f10ed49"
+  },
+  "scripts/mind-meld-langs.ts#LanguageAdapter": {
+    "explain": "The interface a language adapter implements: a display name, the list of file extensions it handles, and a facts function that takes repo-relative file paths and an AdapterContext and returns, directly or as a promise, the FileFacts (definitions and imports) for those files.",
+    "hash": "1dda3e11a209"
+  },
+  "scripts/mind-meld-langs.ts#REPO_ADAPTERS": {
+    "explain": "The string '.mind-meld/languages', the repo-relative directory from which loadAdapters imports a repository's own language adapter modules. It also appears in the error thrown when a module there has no valid default export.",
+    "hash": "be8515b8703e"
+  },
+  "scripts/mind-meld-pages.ts#PageOptions": {
+    "explain": "The options for rendering a mind-meld bundle as a markdown page: sourcePrefix is the required path prefix put in front of source file links (for example '../'), title optionally overrides the generated page title, and context is an optional PageContext passed through to the markdown renderer.",
+    "hash": "488da473fde7"
+  },
+  "scripts/mind-meld-pages.ts#flowOf": {
+    "explain": "Takes one recorded run and returns either a one-element list holding a Flow or an empty list. The flow has a step for every event whose parent event was recorded in the same run, going from the parent's node to the event's node and labelled with the recorded input and output; a run with no such events yields an empty list.",
+    "hash": "06876d81ec29"
+  },
+  "scripts/mind-meld-pages.ts#laneOrder": {
+    "explain": "Takes a bundle and returns the distinct layer names in display order: first the layers of the nodes hit by recorded events, in the order the events occurred, then any remaining layers in node order. A node with an empty layer is listed as '(no layer)'.",
+    "hash": "f9e6c997958d"
+  },
+  "scripts/mind-meld-pages.ts#layerOf": {
+    "explain": "Takes a bundle node and returns its layer string, or the placeholder '(no layer)' when the layer is empty.",
+    "hash": "afba5649cc7d"
+  },
+  "scripts/mind-meld-pages.ts#lede": {
+    "explain": "Takes a bundle and returns the page's opening sentence. It says the page was recorded from real runs at the bundle's snapshot hash when runs exist, or indexed statically with no runs recorded otherwise, and always adds that agreement with the current checkout is unknown until 'mind-meld.ts verify' passes.",
+    "hash": "ef33fd2c9299"
+  },
+  "scripts/mind-meld-pages.ts#nodeOf": {
+    "explain": "Takes a bundle, one of its nodes and a source link prefix, and returns the ExplorerNode for that function. The result uses the node's layer as its lane and its id as its name, and its details hold a link to the file and line span, the sorted list of functions it statically calls (if any), one bullet per recorded call with input, output and state changes, and the source excerpt for its lines.",
+    "hash": "8dc21daa0ebf"
+  },
+  "scripts/mind-meld-pages.ts#staticFlow": {
+    "explain": "Takes a bundle and returns either an empty list, when it has no edges, or a one-element list with a flow whose id is 'static'. That flow has one step per indexed call edge, labelled as a call that may happen at the edge's file and line and marked 'not observed'.",
+    "hash": "ff668101b865"
+  },
+  "scripts/mind-meld-pages.ts#value": {
+    "explain": "Takes a recorded string and returns it wrapped as a markdown code span, with line breaks replaced by the two characters \\n and tabs by \\t so the span stays on one line.",
+    "hash": "8c57db5b52d1"
+  },
+  "scripts/mind-meld-sandbox.ts#MELD_IMAGE": {
+    "explain": "The Docker image reference, node:26-alpine pinned by sha256 digest, that sandboxed runs execute in. It is also included in the hash that keys a recorded run, so a different image produces a different key.",
+    "hash": "fc4e39d26805"
+  },
+  "scripts/mind-meld-sandbox.ts#MELD_LIMIT_MS": {
+    "explain": "The number 10000, in milliseconds. It is the default and the maximum timeout runSandbox accepts for a sandboxed run, and the timeout for the docker rm cleanup call.",
+    "hash": "9e9d36200ae0"
+  },
+  "scripts/mind-meld-sandbox.ts#MILLISECONDS_PER_SECOND": {
+    "explain": "The number 1000. sandboxArgs divides the timeout by it and rounds up to get the whole seconds passed to the timeout command inside the container.",
+    "hash": "de6124735cae"
+  },
+  "scripts/mind-meld-sandbox.ts#cleanupChild": {
+    "explain": "Takes a container name and an environment and runs 'docker rm --force' on that container against the local Docker socket. It returns null on success or when Docker reports no such container, and returns (does not throw) an Error when the command could not run or failed for another reason.",
+    "hash": "91361e87bf98"
+  },
+  "scripts/mind-meld-sandbox.ts#dockerArgs": {
+    "explain": "Returns the single-element list ['--host=unix:///var/run/docker.sock'], the leading docker arguments that force every call to the local daemon's socket.",
+    "hash": "22d92b0f262e"
+  },
+  "scripts/mind-meld-sandbox.ts#dockerEnvironment": {
+    "explain": "Returns a copy of the current process environment with DOCKER_HOST, DOCKER_CONTEXT, DOCKER_TLS, DOCKER_TLS_VERIFY and DOCKER_CERT_PATH removed. It does not modify process.env.",
+    "hash": "bace683fd489"
+  },
+  "scripts/mind-meld-sandbox.ts#executeChild": {
+    "explain": "Runs docker synchronously with the given arguments, environment and timeout, killing it with SIGKILL at the timeout and capping output at 1,000,000 bytes, and returns its stdout. It throws an Error when docker cannot be run, times out, or exits non-zero.",
+    "hash": "afee412a662a"
+  },
+  "scripts/mind-meld-sandbox.ts#runSandbox": {
+    "explain": "Copies the source file into a new temp directory as a read-only example.ts, runs it with the given arguments in a randomly named Docker container (no network, read-only filesystem, no image pull, limited memory, CPU and processes) and returns the container's stdout. It then force-removes that container and deletes the temp directory whether or not the run succeeded. It throws when the timeout is not an integer between 1 and 10000 ms, when expectedHash is given and the source no longer matches it, when the run fails or times out, or when the container cleanup fails.",
+    "hash": "e2cbbe3be750"
+  },
+  "scripts/mind-meld-sandbox.ts#sandboxArgs": {
+    "explain": "Takes a source file path, a container name, the program arguments and a timeout, and returns the full docker argument list for a locked-down 'docker run' that mounts the resolved file read-only at /app/example.ts and runs it with node under a kill timeout of the rounded-up seconds. It starts nothing itself; it throws if the file does not exist or its real path contains a comma.",
+    "hash": "058a3e04ffe2"
+  },
+  "scripts/mind-meld-sandbox.ts#snapshotSource": {
+    "explain": "Reads the source file and writes its bytes to the target path with read-only (0444) permissions. If an expected hash is given and the SHA-256 of the bytes differs from it, it throws 'source changed before execution' before writing anything.",
+    "hash": "e7d59b2e4025"
+  },
+  "scripts/mind-meld-schema.ts#MeldBundle": {
+    "explain": "The shape of a mind-meld exchange file, version 1: the indexed nodes (functions with file, line span and layer), the full text of each source file keyed by path, a hash per source file, one snapshot hash over those hashes, the static call edges, and the recorded runs with their events.",
+    "hash": "dd9fa9ac62f0"
+  },
+  "scripts/mind-meld-schema.ts#MeldEdge": {
+    "explain": "One static call edge in a Mind Meld bundle: the calling node id (from), the called node id (to), the file and line of the call expression, and kind fixed to 'call'.",
+    "hash": "7d4744cc2722"
+  },
+  "scripts/mind-meld-schema.ts#MeldNode": {
+    "explain": "One indexed declaration in a Mind Meld bundle: its id, the source file it lives in, its first and last line, and a layer name used to group it in views.",
+    "hash": "91bbe8536e02"
+  },
+  "scripts/mind-meld-schema.ts#MeldRun": {
+    "explain": "One recorded execution in a Mind Meld bundle: its cache key, the snapshot hash of the sources it ran against, the mode ('flow' or 'piece'), the entry node id, the output text and the ordered list of recorded events.",
+    "hash": "a519193cf8c8"
+  },
+  "scripts/mind-meld-schema.ts#array": {
+    "explain": "Returns the value as an array when it is an array of at most 10,000 items. Throws 'expected bounded array' otherwise.",
+    "hash": "bcda7022b528"
+  },
+  "scripts/mind-meld-schema.ts#record": {
+    "explain": "Returns the value typed as a string-keyed object when it is a non-null, non-array object. Throws 'expected object' otherwise.",
+    "hash": "bd81d685bdfa"
+  },
+  "scripts/mind-meld-schema.ts#sourceHash": {
+    "explain": "Takes a string or Buffer and returns its SHA-256 digest as a hex string.",
+    "hash": "465195feac32"
+  },
+  "scripts/mind-meld-schema.ts#sourceManifest": {
+    "explain": "Takes a map of file path to source text and returns sourceHashes (each file's SHA-256, with files in sorted order) and snapshotHash (the SHA-256 of that hash map's JSON).",
+    "hash": "7a8431cff64a"
+  },
+  "scripts/mind-meld-schema.ts#text": {
+    "explain": "Type assertion that the value is a string of at most 1,000,000 characters. Throws 'expected bounded string' otherwise and returns nothing.",
+    "hash": "0e946133bb04"
+  },
+  "scripts/mind-meld-schema.ts#validateBundle": {
+    "explain": "Type assertion that a value is a well-formed version 1 Mind Meld bundle: it checks source limits, source and snapshot hashes, nodes, edges, and every run (unique key, matching snapshot hash, known entry node, mode 'flow' or 'piece', valid events). Throws an Error naming the first problem found and returns nothing.",
+    "hash": "dee2e0816b1a"
+  },
+  "scripts/mind-meld-schema.ts#validateEdges": {
+    "explain": "Checks every edge in a list: string from, to and file, a positive integer line, both endpoints in the given node id set, kind 'call', and a line no greater than the line count of the edge's source file. Throws on the first failure and returns nothing.",
+    "hash": "0ff8d35b12e6"
+  },
+  "scripts/mind-meld-schema.ts#validateEvents": {
+    "explain": "Checks a run's event list against the set of node ids: each event needs a unique string id, a known node, string input and output, a parent that is null or the id of an earlier event, a finite non-negative durationMs, and changes with string key, before and after. Throws on the first failure and returns nothing.",
+    "hash": "84a2c2ccbaf7"
+  },
+  "scripts/mind-meld-schema.ts#validateManifest": {
+    "explain": "Checks that every source path is a relative, forward-slash path with no empty, '.' or '..' segments, that the bundle's sourceHashes holds exactly one matching SHA-256 per source, and that snapshotHash equals the hash of those hashes. Throws 'invalid source path', 'source hash mismatch' or 'snapshot hash mismatch' otherwise.",
+    "hash": "e5476aef1857"
+  },
+  "scripts/mind-meld-schema.ts#validateNodes": {
+    "explain": "Checks every node in a list (string id, file and layer, positive integer line and endLine, unique id, file present in sources, span inside that file's line count) and returns the set of node ids. Throws on the first failure.",
+    "hash": "c506fd235fa7"
+  },
+  "scripts/mind-meld-schema.ts#validateSources": {
+    "explain": "Throws if the sources map has more than 1,000 entries, any value is not a bounded string, or the values total more than 10,000,000 bytes. Returns nothing.",
+    "hash": "f08560e0fb72"
+  },
+  "scripts/mind-meld-viewer.ts#STYLE": {
+    "explain": "The CSS text for the offline viewer page. It is inlined into the page's style element and hashed for the style-src entry of the page's Content-Security-Policy.",
+    "hash": "905302d5c26c"
+  },
+  "scripts/mind-meld-viewer.ts#hash": {
+    "explain": "Takes a string and returns its SHA-256 digest in base64, the form used for the script and style hashes in the viewer page's Content-Security-Policy.",
+    "hash": "323f6dfa8ad4"
+  },
+  "scripts/mind-meld-viewer.ts#viewer": {
+    "explain": "The browser-side program of the viewer page; renderViewer embeds its source text in the HTML and calls it with the bundle. It takes a bundle, draws the SVG call graph, fills the node lists, static edge list and run selector, and wires the click, change and input handlers that show source, events and state changes. It only touches the DOM and expects the page's fixed element ids to exist.",
+    "hash": "a23edef80d7e"
+  },
+  "scripts/mind-meld.test.ts#live": {
+    "explain": "Test options object whose skip field is set unless the environment variable RUN_MIND_MELD_SANDBOX is '1' and the typescript package loads. It is passed to the tests that run the real sandbox container.",
+    "hash": "aba9cca77cef"
+  },
+  "scripts/mind-meld.test.ts#temp": {
+    "explain": "Creates a new 'meld-test-' directory under the system temp directory, calls the given function with its path, and returns that function's result. The directory is removed recursively afterwards, including when the function throws.",
+    "hash": "a6fcf5277c10"
+  },
+  "scripts/mind-meld.ts#EXAMPLE": {
+    "explain": "The repo-relative path 'scripts/mind-meld-example.ts', the example program that index() parses for nodes and edges and that runs execute in the sandbox.",
+    "hash": "45a95163280e"
+  },
+  "scripts/mind-meld.ts#IMPLEMENTATION": {
+    "explain": "The five mind-meld file names under scripts/ whose contents index() reads into the bundle's sources, so they all feed the snapshot hash.",
+    "hash": "f2e8b67608d1"
+  },
+  "scripts/mind-meld.ts#ROOT": {
+    "explain": "The absolute path of the repository root, computed as the parent of the directory containing this script. Source files are read and snapshots verified relative to it.",
+    "hash": "f4867aae89e8"
+  },
+  "scripts/mind-meld.ts#cache": {
+    "explain": "An in-process Map from run cache key to recorded MeldRun. run() returns a clone from it on a key match and stores a clone after each new sandbox run; it is not saved between processes.",
+    "hash": "c4eb612aa852"
+  },
+  "scripts/mind-meld.ts#compiler": {
+    "explain": "The TypeScript compiler module returned by loadTypeScript() at module load, or a falsy value when the package is not available. index() parses source with it and cacheKey() includes its version.",
+    "hash": "c7c0ffd5f4f0"
+  },
+  "scripts/mind-meld.ts#index": {
+    "explain": "Reads the five mind-meld source files from scripts/, parses the example file with the TypeScript compiler, and returns a bundle holding one node per exported function, one edge per direct call between those functions, the sources with their hashes, and no runs. Throws if the typescript package is not available.",
+    "hash": "d0cdb3a176a5"
+  },
+  "scripts/mind-meld.ts#inputs": {
+    "explain": "Takes an unknown value and returns { hp, damage } when it is an object with exactly those two keys, both finite non-negative numbers. Throws an Error describing the problem otherwise.",
+    "hash": "efc2c9c2f380"
+  },
+  "scripts/mind-meld.ts#missingTypeScript": {
+    "explain": "Always throws an Error saying that mind meld index needs the typescript package and how to provide it. It never returns.",
+    "hash": "dd96d73d495c"
+  },
+  "scripts/mind-meld.ts#run": {
+    "explain": "Takes a mode ('flow' or 'piece') and an inputs value, and returns the recorded MeldRun, from the in-process cache when the key matches. Otherwise it re-indexes the sources, executes the example file in the sandbox, validates the result and caches it. Throws on invalid inputs, on a sandbox or validation failure, or if the sources changed during execution.",
+    "hash": "a93c18dbf20c"
+  },
+  "scripts/queue-claim.ts#branchFlag": {
+    "explain": "Reads the --branch flag from the parsed flags: returns '' when the flag is absent, the trimmed name when it is a non-empty value without whitespace, and null when it was given but is empty or contains whitespace.",
+    "hash": "eb072619a9cb"
+  },
+  "scripts/queue-claim.ts#refusal": {
+    "explain": "Takes the queue and a task and returns null when the task can be claimed. Otherwise it returns a message and whether to print it to stderr: the task is not pending, the current delivery cycle has not finished, or the task is held.",
+    "hash": "3c7bc56d60fe"
+  },
+  "scripts/queue-cli-args.ts#Parsed": {
+    "explain": "The result of parsing queue CLI arguments: positionals in order, a map of value flags to their values, and the set of flags given without a value.",
+    "hash": "f41f828007ad"
+  },
+  "scripts/queue-cli-args.ts#taskOverrides": {
+    "explain": "Takes parsed CLI arguments and returns a partial Task built from every editable task field that was given as a flag, each value coerced by fieldPatch. Fields not given are left out.",
+    "hash": "2c8c7d5eba61"
+  },
+  "scripts/queue-console-slots.ts#ConsoleOrphan": {
+    "explain": "An active task whose owner is not a declared topology slot, as shown by the queue console: the task id, title and owner (or null).",
+    "hash": "66b8525283c0"
+  },
+  "scripts/queue-console-slots.ts#SlotView": {
+    "explain": "One topology slot as the queue console shows it: the slot's own fields plus busy (it owns at least one active task), overbooked (it owns more than one), the active tasks it owns, and the matching lane record or null.",
+    "hash": "c17e116fbd7c"
+  },
+  "scripts/queue-console.ts#LaneView": {
+    "explain": "A lane's heartbeat record (LaneState) plus two derived flags: stale, whether the heartbeat is older than the queue's lease allows, and stop, whether a stop has been requested for that lane.",
+    "hash": "3b3e3ce30d56"
+  },
+  "scripts/queue-db.ts#ARCHITECTURE_COLUMN": {
+    "explain": "The SQL column definition for the tasks.architecture column: text, not null, defaulting to the default architecture mode, with a CHECK limiting it to the known modes. It is used in the CREATE TABLE schema and in the ALTER TABLE that adds the column to older stores.",
+    "hash": "c64262fa0aba"
+  },
+  "scripts/queue-db.ts#Defer": {
+    "explain": "The type of the function withStore passes to its callback for queuing a side effect. Queued effects run in order only after the transaction commits, and are dropped if it rolls back.",
+    "hash": "e818b7f8d0be"
+  },
+  "scripts/queue-db.ts#recordRender": {
+    "explain": "Takes an open database, a view path and a SHA-256 string, and inserts or updates the views table row for that path with that hash. It runs inside the caller's transaction and returns nothing.",
+    "hash": "9eb042188b2a"
+  },
+  "scripts/queue-delivery.test.ts#dir": {
+    "explain": "A temporary directory created with the prefix 'queue-delivery-' when the test file loads. It holds the isolated queue.md the CLI subprocesses use and is removed at the end of the test.",
+    "hash": "232707dae782"
+  },
+  "scripts/queue-delivery.test.ts#done": {
+    "explain": "A queue value in which task-001 was begun, marked done and then removed, leaving task-002 pending. The test asserts that nothing is ready or actionable in it.",
+    "hash": "6986181e4caf"
+  },
+  "scripts/queue-delivery.test.ts#run": {
+    "explain": "Runs the queue CLI (scripts/queue.ts) with the given arguments as a synchronous child process, with QUEUE_FILE pointed at the test's temporary directory and a 10 second timeout. Returns the spawnSync result with string stdout and stderr, and does not throw on a non-zero exit.",
+    "hash": "e9e1f764a149"
+  },
+  "scripts/queue-delivery.ts#MERGED_PR_URL": {
+    "explain": "A regular expression matching an https URL with no whitespace that ends in /pull/<number>. cmdAdvance rejects a --pr value that does not match it; it checks only the shape, not that the PR is merged.",
+    "hash": "0d9529bc1c59"
+  },
+  "scripts/queue-gates.ts#drainKick": {
+    "explain": "Takes a queue and returns a string to append to command output: a newline, the DRAIN-WANTED marker with the count of eligible tasks, and a hint to run tick, when the queue is running, has no active task and has at least one eligible task. Returns an empty string otherwise.",
+    "hash": "c541716b185e"
+  },
+  "scripts/queue-io.ts#LOCK_POLL_MS": {
+    "explain": "The 20 milliseconds a process sleeps between attempts to take the queue lock while another process holds it.",
+    "hash": "ed31944b0100"
+  },
+  "scripts/queue-io.ts#LOCK_WAIT_MS": {
+    "explain": "The 60,000 milliseconds a process keeps retrying for the queue lock before throwing an error that the lock remained held.",
+    "hash": "92345e074f8f"
+  },
+  "scripts/queue-io.ts#ROOT": {
+    "explain": "The absolute path of the checkout root, computed as the parent of the directory containing this script. The default queue directory and git lookups are resolved from it.",
+    "hash": "94dbe3bfea92"
+  },
+  "scripts/queue-io.ts#appendArchive": {
+    "explain": "Takes a list of tasks and appends a dated '## Archived' section to archive.md beside the queue file, one line per task with a done or failed marker, id, title and elapsed time when it is set. Returns nothing.",
+    "hash": "c4acbd6c1a64"
+  },
+  "scripts/queue-io.ts#assertViewUnedited": {
+    "explain": "Throws a QueueIntegrityError when the view file at the given path exists and its SHA-256 differs from the hash the store last recorded for it. Does nothing when the store never rendered that path, the file is missing, or the hashes match.",
+    "hash": "294eb00e0093"
+  },
+  "scripts/queue-io.ts#held": {
+    "explain": "Module state holding the file descriptor and path of the queue lock this process currently holds, or null when it holds none. withLock and unlocked read it to decide whether to acquire or release.",
+    "hash": "49b8ec3d61dd"
+  },
+  "scripts/queue-io.ts#load": {
+    "explain": "Opens the SQLite store in one transaction and returns the queue read from it. The first open of a new store also imports an existing queue.md into it, rewrites that file, and may add the store to .gitignore.",
+    "hash": "c13b04fa0a2e"
+  },
+  "scripts/queue-io.ts#lockPath": {
+    "explain": "Returns the path of the queue lock file: the store path from dbFile() with '.lock' appended.",
+    "hash": "96a2da91c957"
+  },
+  "scripts/queue-io.ts#log": {
+    "explain": "Appends one line, '- <ISO timestamp> <message>', to log.md beside the queue file. Returns nothing.",
+    "hash": "05795786f2ac"
+  },
+  "scripts/queue-io.ts#napSync": {
+    "explain": "Blocks the current thread for the given number of milliseconds and returns nothing.",
+    "hash": "39f0c38e7228"
+  },
+  "scripts/queue-io.ts#now": {
+    "explain": "Returns the current time as an ISO 8601 string.",
+    "hash": "bd077719f745"
+  },
+  "scripts/queue-io.ts#queueFile": {
+    "explain": "Returns the path of the rendered queue.md view: the QUEUE_FILE environment variable when set, otherwise queue.md in the main checkout's .agent/queue directory, which is shared by all linked worktrees.",
+    "hash": "90d58e96df22"
+  },
+  "scripts/queue-io.ts#reclaimDeadHolder": {
+    "explain": "Takes the lock file path and returns true when the caller should retry taking the lock immediately: the lock vanished, another contender moved it, or its recorded holder was confirmed dead and the file was removed (with a notice on stderr). Returns false when the record is unreadable, names this process, names a holder that may be alive, or the file changed during the attempt.",
+    "hash": "4939b023c1e6"
+  },
+  "scripts/queue-io.ts#save": {
+    "explain": "Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.",
+    "hash": "3d9bb1bdbe32"
+  },
+  "scripts/queue-io.ts#sha256": {
+    "explain": "Takes a string and returns its SHA-256 digest as a hex string.",
+    "hash": "63ad0a85bc2c"
+  },
+  "scripts/queue-io.ts#sidecar": {
+    "explain": "Takes a file name and returns its path in the same directory as the queue file, where log.md, archive.md and the lane files are kept.",
+    "hash": "730c24e4e6e3"
+  },
+  "scripts/queue-io.ts#unlocked": {
+    "explain": "Takes a function and returns its result; if this process holds the queue lock, it releases the lock (closing and deleting the lock file) before running the function and re-acquires it afterwards, even if the function throws. If no lock is held it just runs the function. Re-acquiring can throw if another process keeps the lock for 60 seconds, and the caller has to reload the queue afterwards because other processes may have changed it.",
+    "hash": "312575de6d4e"
+  },
+  "scripts/queue-lanes.ts#LanePatch": {
+    "explain": "The optional fields a heartbeat may set on a lane record: worker, model, step, state and tail, all strings. It is the argument beatLane merges over the existing lane file; fields left out keep their previous value.",
+    "hash": "bb61c38c9164"
+  },
+  "scripts/queue-lanes.ts#LaneState": {
+    "explain": "The contents of one lane heartbeat file (.agent/queue/lanes/<task-id>.json): the task id, the worker, model and step (each may be null), a state string, the startedAt and updatedAt ISO times, and a tail string or null. It is what beatLane writes and readLanes returns for the live board.",
+    "hash": "8dbb8c125995"
+  },
+  "scripts/queue-lanes.ts#beatLane": {
+    "explain": "Takes a task id and an optional patch of worker, model, step, state and tail, and writes the lane's JSON file with those fields merged over the existing record and updatedAt set to the current time, creating the lanes directory if needed. When there is no readable existing record it starts from a blank one with startedAt set to now. Returns the record it wrote.",
+    "hash": "b27a5521fd43"
+  },
+  "scripts/queue-lanes.ts#blank": {
+    "explain": "Takes a task id and returns a new lane record for it with state 'running', updatedAt set to the current time, and worker, model, step, startedAt and tail all null. It writes nothing.",
+    "hash": "64ea390d466c"
+  },
+  "scripts/queue-lanes.ts#laneDir": {
+    "explain": "Returns the path of the 'lanes' directory that sits next to the queue file (whose location comes from QUEUE_FILE or the shared queue directory). It does not create the directory.",
+    "hash": "56067d663709"
+  },
+  "scripts/queue-lanes.ts#lanePath": {
+    "explain": "Takes a task id and returns the path of its lane heartbeat file, <lanes directory>/<id>.json. It does not check that the file exists.",
+    "hash": "bd8208efb54a"
+  },
+  "scripts/queue-lanes.ts#laneStale": {
+    "explain": "Takes a lane record, a current time as an ISO string and a lease length in minutes, and returns true when the lane's updatedAt is at least that many minutes before the given time. It changes nothing.",
+    "hash": "24cb331433cb"
+  },
+  "scripts/queue-lanes.ts#readLanes": {
+    "explain": "Reads every .json file in the lanes directory and returns the lane records sorted by task id. Files that cannot be parsed or have no string id are skipped, and a missing lanes directory gives an empty list.",
+    "hash": "50aee4079798"
+  },
+  "scripts/queue-lanes.ts#readOne": {
+    "explain": "Takes the path of a lane JSON file and returns its lane record, with missing fields filled from a blank record and updatedAt defaulting to the current time. Returns null when the file cannot be read or parsed, or has no string id.",
+    "hash": "316118482161"
+  },
+  "scripts/queue-lanes.ts#stopRequested": {
+    "explain": "Takes a task id and returns true when its stop flag file (<lanes directory>/<id>.stop) exists. It changes nothing.",
+    "hash": "74b795a63cac"
+  },
+  "scripts/queue-links.ts#danglingLinks": {
+    "explain": "Takes a queue and the set of branch names that exist, and returns an { id, branch } pair for every task that is not done and whose branch field names a branch outside that set. Tasks with an empty branch are not reported; nothing is changed.",
+    "hash": "d74f49cd1f52"
+  },
+  "scripts/queue-links.ts#localBranches": {
+    "explain": "Runs `git for-each-ref` on refs/heads in the repo root and returns the set of local branch names. It throws if the git command fails.",
+    "hash": "82b236cf11ad"
+  },
+  "scripts/queue-model.ts#ISO_DATE_LEN": {
+    "explain": "The number 10, the length of a 'YYYY-MM-DD' date. parkTask uses it to cut the date part off an ISO timestamp for the 'parked <date>' line it adds to a task's note.",
+    "hash": "fe34736fc14b"
+  },
+  "scripts/queue-model.ts#Queue": {
+    "explain": "The whole work queue in memory: a config object (run status, intervals, failure and lease limits, parallelism, delivery state, the next id counter) plus the ordered list of tasks, where list order is priority. It is what load returns, what save persists, and what every queue operation takes and returns.",
+    "hash": "ee8e197ec93a"
+  },
+  "scripts/queue-model.ts#Task": {
+    "explain": "One queue task: its id, title, status (pending, active, done or failed), mode, architecture setting, held flag, banked elapsed seconds, slug, dependency ids, files, contracts, tags, validate command, acceptance text, note, failure count, and the claim fields owner, branch, worktree and startedAt. It is the record stored in the queue and passed to every task operation.",
+    "hash": "7852d9cb7b8f"
+  },
+  "scripts/queue-model.ts#addTask": {
+    "explain": "Takes a queue, a title and optional field overrides plus a `top` flag, and returns a new queue with one new pending task added at the end, or at the front when `top` is set. The task gets the next task-NNN id, the title is trimmed, and the config's nextId counter is advanced. The input queue is not modified and nothing is saved.",
+    "hash": "0abe3ed19a71"
+  },
+  "scripts/queue-model.ts#architectureGuidance": {
+    "explain": "Takes an architecture mode (builder-led, collaborative or model-led) and returns the instruction text for that mode followed by a sentence saying validation, security and compatibility checks stay mandatory. It throws an Error if the value is not one of the three modes.",
+    "hash": "0b41232e1cb8"
+  },
+  "scripts/queue-model.ts#bankSession": {
+    "explain": "Takes a task and a current time as an ISO string and returns the task's elapsed seconds plus the whole seconds since its startedAt. If the task has no startedAt, or the difference is negative, it returns the existing elapsed total unchanged. It does not modify the task.",
+    "hash": "2610ad507ea1"
+  },
+  "scripts/queue-model.ts#beginTask": {
+    "explain": "Takes a queue, a task id, a current ISO time and an optional owner, and returns a new queue in which that task is active with that owner and startedAt set to the given time. In per-task delivery mode it also records the task as the current delivery task if none is recorded, and clears the delivery-accepted flag when this task is the delivery task. Nothing is saved, and an unknown id leaves the task list unchanged.",
+    "hash": "3fbe13d75b00"
+  },
+  "scripts/queue-model.ts#deadlocked": {
+    "explain": "Takes a queue and returns the pending tasks that depend on at least one task whose status is failed. Nothing is changed.",
+    "hash": "f0717585aa8a"
+  },
+  "scripts/queue-model.ts#deliveryAllows": {
+    "explain": "Takes a queue and a task id and returns whether that task may be worked on now. It is always true in batch delivery mode; otherwise it is true only when there is no recorded delivery task and no active task, or when the recorded delivery task (or, failing that, the first active task) is this id.",
+    "hash": "2ed532f29b12"
+  },
+  "scripts/queue-model.ts#isEligible": {
+    "explain": "Takes a task and its queue and returns true when the task is pending, not held, permitted by the current delivery cycle, and every dependency id resolves to a task in the queue whose status is done. A dependency that is missing from the queue makes it false.",
+    "hash": "627750d8902e"
+  },
+  "scripts/queue-model.ts#mapTask": {
+    "explain": "Takes a queue, a task id and a function, and returns a new queue in which the task with that id is replaced by the function's result; all other tasks and the config are kept. If no task has that id the returned queue has the same tasks.",
+    "hash": "dda6eb3e706e"
+  },
+  "scripts/queue-model.ts#markDone": {
+    "explain": "Takes a queue, a task id and a current ISO time, and returns a new queue in which that task is done, with owner, worktree and startedAt cleared and the session time since startedAt added to its elapsed seconds. If the task was active and no delivery task is recorded (per-task mode) it becomes the delivery task, and if it is the delivery task the delivery-accepted flag is set to true. Nothing is saved.",
+    "hash": "f48934dff8b5"
+  },
+  "scripts/queue-model.ts#nextActionable": {
+    "explain": "Takes a queue and returns the one task to work on now: the first active task the delivery cycle permits, otherwise the first eligible pending task in list order. Returns null when the queue is stopped or no such task exists.",
+    "hash": "fa186bd65b6d"
+  },
+  "scripts/queue-model.ts#recordFailure": {
+    "explain": "Takes a queue, a task id, an optional reason, a failure limit and a current ISO time, and returns the new queue together with the task's new failure count and whether it reached the limit. The task's count goes up by one, its owner, worktree and startedAt are cleared, its session time is banked and the reason replaces its note; below the limit it becomes pending and moves to the end of the list, at the limit it becomes failed and keeps its position. It also updates the delivery task and clears the delivery-accepted flag as beginTask does, and an unknown id returns the queue unchanged with a count of 0.",
+    "hash": "5449a7842e37"
+  },
+  "scripts/queue-model.ts#removeTask": {
+    "explain": "Takes a queue and a task id and returns a new queue without that task. If the task was active and no delivery task is recorded (per-task mode), its id is first recorded as the current delivery task. Nothing is saved.",
+    "hash": "9d76733418f8"
+  },
+  "scripts/queue-model.ts#resumeIfDue": {
+    "explain": "Takes a queue and a current ISO time and returns { queue, resumed }. If the queue is stopped with a resumeAt time that has been reached, the returned queue is set to running with resumeAt cleared and resumed is true; otherwise the queue is returned unchanged with resumed false, including for a stop that has no resumeAt.",
+    "hash": "60dc56cb0b98"
+  },
+  "scripts/queue-model.ts#selectDelivery": {
+    "explain": "Takes a queue and a task id and returns a queue whose config records that id as the current delivery task, with the delivery-accepted flag set to false. It returns the queue unchanged in batch delivery mode or when a delivery task is already recorded.",
+    "hash": "84b71ba6220f"
+  },
+  "scripts/queue-model.ts#serializeQueue": {
+    "explain": "Takes a queue and returns the Markdown text of the queue file: the title, the config comment block, the header lines, then one checkbox line per task followed by its non-empty fields. Tasks without an id are given new task-NNN ids in the output, and the nextId written covers them. It writes no file and does not modify the queue.",
+    "hash": "af255b64e9fe"
+  },
+  "scripts/queue-model.ts#setConfig": {
+    "explain": "Takes a queue and a partial config and returns a new queue with those config values overriding the existing ones and the same tasks. Nothing is validated or saved.",
+    "hash": "6c9c4ad7c0e1"
+  },
+  "scripts/queue-model.ts#setField": {
+    "explain": "Takes a queue, a task id and a partial task, and returns a new queue in which that task has the given fields overwritten. An unknown id leaves the tasks unchanged, and nothing is saved.",
+    "hash": "15291ad01356"
+  },
+  "scripts/queue-model.ts#staleLeases": {
+    "explain": "Takes a queue, a current ISO time and a lease length in minutes, and returns the active tasks whose startedAt is at least that many minutes old. An active task with no startedAt counts as age zero. Nothing is changed or released.",
+    "hash": "53940ee8bb7f"
+  },
+  "scripts/queue-model.ts#taskBlock": {
+    "explain": "Takes a task and returns the text block handed to a worker: a <queue_task id=\"...\"> element containing the title, the mode, the architecture setting with its guidance text, and the slug, accept, files, contracts and validate lines for whichever of those the task has.",
+    "hash": "d2bf5386bc19"
+  },
+  "scripts/queue-model.ts#withTasks": {
+    "explain": "Takes a queue and a task list and returns a new queue with the same config object and that task list.",
+    "hash": "5ea4a9a685b8"
+  },
+  "scripts/queue-task-origin.ts#AGENT_ADD_REFUSAL": {
+    "explain": "The error message returned when an agent session tries to add a task without --parent or --requested. It says tasks are human-owned and tells the agent to pass --requested with the human's own words, or to record findings on an existing task instead.",
+    "hash": "8f2d98f5081e"
+  },
+  "scripts/queue-task-origin.ts#Origin": {
+    "explain": "The result of checking where a new task comes from: either { ok: true, patch } with the tags and note to put on the task, or { ok: false, error } with the message to print. taskOrigin returns it and the add commands branch on `ok`.",
+    "hash": "000d4b160791"
+  },
+  "scripts/queue-task-origin.ts#flagValue": {
+    "explain": "Takes parsed command-line arguments and a flag name and returns that flag's value with surrounding whitespace removed, or an empty string when the flag was not given.",
+    "hash": "fd11a2c022bf"
+  },
+  "scripts/queue-task-origin.ts#isAgentSession": {
+    "explain": "Takes an environment (default process.env) and returns true when any agent marker variable is set to a non-empty value: CLAUDECODE, CODEX_THREAD_ID, CODEX_SANDBOX, CODEX_CI, GEMINI_CLI, AI_AGENT, LANE_RUN_ID or SCAFFOLD_AGENT.",
+    "hash": "aaedcc86f7c1"
+  },
+  "scripts/queue-task-origin.ts#originPatch": {
+    "explain": "Takes a parent task id and a requested quote (either may be empty) and returns the tags and note that record them on a new task: a `parent:<id>` tag and 'Child of <id>.' for a parent, a `requested-by:human` tag and the quoted request for a quote. With both empty it returns an empty tag list and an empty note.",
+    "hash": "42b7bcdb36d2"
+  },
+  "scripts/queue-task-origin.ts#taskOrigin": {
+    "explain": "Takes the queue, the parsed add arguments and an environment, and decides whether the add is allowed. It returns an error result when --parent names a task not in the queue, or when neither --parent nor --requested is given and the environment marks an agent session. Otherwise it returns ok with the tags and note for the given parent and request, or an empty patch for a human with no flags.",
+    "hash": "05594a3e711b"
+  },
+  "scripts/queue-task-origin.ts#withOrigin": {
+    "explain": "Takes the task fields built from the command's own flags and an origin patch, and returns the fields with the origin tags placed first (duplicates removed) and the origin note placed before any --note text. If the origin patch has no tags, the fields are returned unchanged.",
+    "hash": "afcf19c5a676"
+  },
+  "scripts/queue-worktrees.ts#currentBranch": {
+    "explain": "Returns the name of the branch checked out in the repo root, from `git rev-parse --abbrev-ref HEAD`. If that git command fails it returns 'main'.",
+    "hash": "12d62ea46016"
+  },
+  "scripts/queue-worktrees.ts#git": {
+    "explain": "Takes a git argument string and an optional working directory (default the repo root), runs `git <args>` through the shell and returns its trimmed standard output. It throws if the command exits non-zero.",
+    "hash": "3046f21bc98d"
+  },
+  "scripts/queue-worktrees.ts#wtRel": {
+    "explain": "Takes a task id and returns the repo-relative path of that task's worktree, .agent/queue/wt/<id>. It does not create or check anything.",
+    "hash": "1928f8f8d370"
+  },
+  "scripts/queue.ts#EXIT": {
+    "explain": "The exit codes the queue's loop commands return so a driver can decide what to do next: DISPATCHED 0, IDLE 3, PAUSED 4 (usage window), STOPPED 5, CONFLICT 6 (expired lease still active) and DELIVERY 7 (a delivery cycle is pending).",
+    "hash": "1886bfeb299d"
+  },
+  "scripts/queue.ts#dispatch": {
+    "explain": "Takes the CLI arguments (and, for add-many, lines read from stdin), loads the queue, and runs the one subcommand named by the first argument, defaulting to `list`. Depending on the subcommand it saves the queue, appends to the queue log, writes lane or archive files, or runs git, and it prints the result to the console. It returns the process exit code: 0 on success, 1 or 2 for usage and input errors or an unknown command, and the EXIT codes for tick, ready and signal.",
+    "hash": "7e1d8694c773"
+  },
+  "scripts/queue.ts#dispatchGate": {
+    "explain": "Takes a queue and returns { queue, blocked }, where blocked is null when work may be dispatched or an exit code when it may not. It first resumes a usage pause whose time has passed, saving the queue and writing a log line. It then prints a message and blocks with PAUSED or STOPPED if the queue is stopped, CONFLICT if any active task's lease has expired, or DELIVERY if a per-task delivery is recorded and no task is actionable.",
+    "hash": "6eed14ffcd5b"
+  },
+  "scripts/queue.ts#runValidate": {
+    "explain": "Takes a task and runs its validate command in a shell, in the task's worktree if it has one and otherwise in the current directory. It returns { ok: true, tail: '' } when there is no command or the command exits 0, and { ok: false, tail } with the last three lines of the command's error output joined by ' | ' when it fails. It does not throw.",
+    "hash": "3ec6d1ede2d9"
+  },
+  "scripts/resolver-phases.ts#PhaseCtx": {
+    "explain": "The shared context handed to every resolver check phase: the fail and warn reporter functions, a function that makes a path repo-relative, the repo root and the skill, Cursor, Antigravity, manifest and internal-list paths, the STRICT flag, the skill directories on disk, the set of bundled skills, the tracked files, the manifest entries, and a function that tests whether a path is listed in the manifest.",
+    "hash": "823c793fb18d"
+  },
+  "scripts/resolver-phases.ts#compileIgnore": {
+    "explain": "Takes a list of path patterns and returns a function that tests whether a repo-relative path matches any of them. A pattern containing `*` is matched as a whole-path glob; any other pattern matches that exact path or anything under it as a directory. It is the same function as compileKeepMatcher from tools/lib/safe-write.ts.",
+    "hash": "24fa6632c0ab"
+  },
+  "scripts/resolver-phases.ts#groupByTopDir": {
+    "explain": "Takes a list of repo-relative file paths and returns a Map that groups them by their first directory segment with a trailing slash (for example `packages/`). A file at the repo root is keyed by its own name.",
+    "hash": "9fc9facc3e66"
+  },
+  "scripts/resolver-phases.ts#phaseAmbiguity": {
+    "explain": "Takes the resolver rows and the phase context and compiles each row's regex, skipping rows whose regex fails to compile. It calls fail('Ambiguity', ...) when two rows share the same anchor slug, when a row's regex does not match its own `/<name>` invocation, or when one skill's invocation also matches another row's regex. It returns nothing.",
+    "hash": "0c53fc3f7ed7"
+  },
+  "scripts/resolver-phases.ts#phaseBundled": {
+    "explain": "Ignores the rows and checks every bundled skill in the phase context. It calls fail('Bundled', ...) when the skill has no directory on disk, when its SKILL.md frontmatter has no `name`, when that name differs from the directory name, or when the frontmatter has no description. It returns nothing.",
+    "hash": "e83ff595e436"
+  },
+  "scripts/resolver-phases.ts#phaseDry": {
+    "explain": "Takes the resolver rows and the phase context, reads each row's skill file that exists, and looks for runs of three consecutive trimmed lines, each at least 20 characters and not a heading or empty bullet, that appear in two or more skills. Each such block is reported under 'DRY' through fail when STRICT is set and through warn otherwise. It returns nothing.",
+    "hash": "86ee25889194"
+  },
+  "scripts/resolver-phases.ts#phaseMece": {
+    "explain": "Takes the resolver rows and the phase context, tokenizes each row's purpose text, and computes the Jaccard similarity of every pair of rows. It calls ctx.fail with category 'MECE' for each pair scoring 0.7 or higher and returns nothing.",
+    "hash": "4962c89c65e2"
+  },
+  "scripts/resolver-phases.ts#phaseReachability": {
+    "explain": "Takes the resolver rows and the phase context and calls ctx.fail for each skill directory on disk that is neither a registered row nor a bundled skill. For each row it also fails when the row's path does not exist under ROOT, when the slug anchored in its regex cell differs from the row name, or when SKILLS_DIR/<name>/SKILL.md is missing; it returns nothing.",
+    "hash": "eec0998720e0"
+  },
+  "scripts/resolver-phases.ts#phaseWrapperIntegrity": {
+    "explain": "Takes the resolver rows and the phase context and, for each row, reads the Claude wrapper, Cursor rule, Antigravity skill and Antigravity workflow files that exist. It calls ctx.fail for any of them whose text does not contain the expected relative include path to skills/<name>.md; missing files are skipped and nothing is returned.",
+    "hash": "4a181f110ec3"
+  },
+  "scripts/resolver-utils.ts#anchorSlug": {
+    "explain": "Takes a regex table cell, strips backticks, and returns the lowercase slug that follows the first '^/' (or '^\\/') in it. Returns null when the cell has no such anchor.",
+    "hash": "ad7da02d3cfe"
+  },
+  "scripts/resolver-utils.ts#compileCell": {
+    "explain": "Takes a backtick-wrapped /pattern/flags table cell, the skill name and a fail reporter, and returns the compiled RegExp with any '\\|' in the pattern turned into '|'. If the cell is not in /pattern/flags form or the pattern does not compile, it calls fail with category 'Parse' and returns null.",
+    "hash": "6a7484e2a198"
+  },
+  "scripts/resolver-utils.ts#frontmatterColonInPlainScalar": {
+    "explain": "Takes a file path, reads the file's leading --- frontmatter block, and returns the key of the first 'key: value' line whose value does not start with a quote, '|' or '>' and contains \": \". Returns null when no line matches or the file has no frontmatter; throws if the file cannot be read.",
+    "hash": "57e71911464b"
+  },
+  "scripts/resolver-utils.ts#frontmatterDescription": {
+    "explain": "Takes a file path, reads the file's leading --- frontmatter block, and returns the value of its 'description:' line; when that value is empty, '|' or '>', it returns the following indented lines trimmed and joined with spaces. Returns null when there is no frontmatter or no description line; throws if the file cannot be read.",
+    "hash": "70a35d616b42"
+  },
+  "scripts/resolver-utils.ts#jaccard": {
+    "explain": "Takes two sets of strings and returns the size of their intersection divided by the size of their union, a number from 0 to 1. Returns 0 when both sets are empty.",
+    "hash": "a4ae5990d279"
+  },
+  "scripts/resolver-utils.ts#normalizeWhitespace": {
+    "explain": "Takes a string, null or undefined and returns the string with every run of whitespace collapsed to one space and the ends trimmed. Null and undefined give an empty string.",
+    "hash": "e52c4e44855b"
+  },
+  "scripts/resolver-utils.ts#tokens": {
+    "explain": "Takes a text string and returns the set of its lowercase alphanumeric words, split on any other character. Words of one character and a fixed list of stopwords (a, the, to, of, and, md, etc.) are left out.",
+    "hash": "b2842eac0a6b"
+  },
+  "scripts/test-council-skill.sh#fail": {
+    "explain": "Takes a description, prints it to stdout prefixed with a cross mark, and increments the script's global FAIL counter. It does not exit the script.",
+    "hash": "beebc7278e16"
+  },
+  "scripts/test-create-pr-gate.sh#fail": {
+    "explain": "Takes a description, prints it to stdout prefixed with a cross mark, and increments the script's global FAIL counter. It does not exit the script.",
+    "hash": "beebc7278e16"
+  },
+  "scripts/test-rubric-format.sh#check": {
+    "explain": "Takes a description and an extended-regex pattern and greps the file named by RUBRIC (lib/code-quality-rubric.md) for the pattern, with grep errors suppressed. On a match it prints the description with a check mark and increments the global PASS counter; otherwise it prints it with a cross mark and increments FAIL.",
+    "hash": "3b69aa3a4aeb"
+  },
+  "scripts/test-simplify.sh#fail": {
+    "explain": "Takes a description, prints it to stdout prefixed with a cross mark, and increments the script's global FAIL counter. It does not exit the script.",
+    "hash": "beebc7278e16"
+  },
+  "scripts/test-tdd-rubric.sh#check": {
+    "explain": "Takes a description and an extended-regex pattern and greps the file named by TDD (skills/tdd.md) for the pattern, with grep errors suppressed. On a match it prints the description with a check mark and increments the global PASS counter; otherwise it prints it with a cross mark and increments FAIL.",
+    "hash": "2c648d9576a5"
+  },
+  "scripts/topology.ts#DEFAULT_TICK_MINUTES": {
+    "explain": "The number 10, the tick interval in minutes used when a topology file is absent or does not set tick_minutes.",
+    "hash": "ca5dc0de1e6a"
+  },
+  "scripts/topology.ts#TOPOLOGY_PATH": {
+    "explain": "The absolute path of .agent/topology.json in the repo that contains this script, computed from the script's own location. loadTopology reads this path when neither an argument nor the TOPOLOGY_FILE environment variable is given.",
+    "hash": "31d27674f728"
+  },
+  "scripts/topology.ts#TOP_KEYS": {
+    "explain": "The list of key names allowed at the top level of a topology JSON object: orchestrator, tick_minutes and slots. parseTopology passes it to rejectUnknown so any other top-level key is an error.",
+    "hash": "d86b6ee5b016"
+  },
+  "scripts/topology.ts#Topology": {
+    "explain": "The validated topology shape: an orchestrator object with a model string, tickMinutes as a number, and an array of slots (each with id, harness, model and optional effort). It is what parseTopology, loadTopology and defaultTopology return.",
+    "hash": "a7eecb2c1e83"
+  },
+  "scripts/topology.ts#TopologyError": {
+    "explain": "An Error subclass with no added fields, thrown by the topology parsing and loading functions for any invalid topology file. The script's main catches this class to print the message and exit 1, and rethrows any other error.",
+    "hash": "78c7fa7ba117"
+  },
+  "scripts/topology.ts#defaultTopology": {
+    "explain": "Takes nothing and returns a new Topology with orchestrator model 'default', tickMinutes set to DEFAULT_TICK_MINUTES (10) and an empty slots array. loadTopology returns it when the topology file does not exist.",
+    "hash": "77b034f19c91"
+  },
+  "scripts/topology.ts#isObject": {
+    "explain": "Takes any value and returns true only when it is a non-null object that is not an array, narrowing its type to a string-keyed record.",
+    "hash": "dc954d786e19"
+  },
+  "scripts/topology.ts#parseOrchestrator": {
+    "explain": "Takes the raw orchestrator value from the topology JSON and returns { model } with the model string. Throws TopologyError if the value is not an object, has any key other than model, or model is not a non-empty string.",
+    "hash": "9cccff11bc80"
+  },
+  "scripts/topology.ts#parseSlots": {
+    "explain": "Takes the raw slots value from the topology JSON, validates each element as a slot, and returns the resulting Slot array. Throws TopologyError if the value is not an array, any slot is invalid, or two slots share the same id.",
+    "hash": "89d9f4e28e8c"
+  },
+  "scripts/topology.ts#parseTopology": {
+    "explain": "Takes an already-parsed JSON value and returns a validated Topology, using DEFAULT_TICK_MINUTES when tick_minutes is absent and an empty list when slots is absent. Throws TopologyError naming the first problem: not an object, an unknown key, an invalid orchestrator or slot, or a tick_minutes that is not a positive finite number.",
+    "hash": "6e0ebcfcd350"
+  },
+  "scripts/topology.ts#rejectUnknown": {
+    "explain": "Takes an object, a list of allowed key names and a location label, and throws TopologyError naming the first key of the object that is not in the list, prefixed with the label. Returns nothing when every key is allowed.",
+    "hash": "1525f0c2b431"
+  },
+  "tools/hoist-skill/manifest.ts#CURRENT_PLAN": {
+    "explain": "The string 'co-plan', the current name of the skill formerly called 'grill-with-docs'. The manifest functions use it to rename or drop legacy entries recorded under the old name.",
+    "hash": "651e3855ce98"
+  },
+  "tools/hoist-skill/manifest.ts#ManifestEntry": {
+    "explain": "One line of the .sync/hoisted manifest: the skill name, the harness it was hoisted for, and the scaffold git ref it is pinned to. readManifest returns these and upsertManifest writes them.",
+    "hash": "723b32d3bcbb"
+  },
+  "tools/hoist-skill/manifest.ts#PREVIOUS_PLAN": {
+    "explain": "The string 'grill-with-docs', the former name of the skill now called 'co-plan'. The manifest functions use it to find legacy entries to rename or drop.",
+    "hash": "be31be7f8c7e"
+  },
+  "tools/hoist-skill/manifest.ts#readManifest": {
+    "explain": "Takes a manifest file path and returns its entries as { name, harness, ref }, reading one tab-separated entry per line, skipping blank lines, lines starting with '#', and lines missing a name or harness; ref defaults to 'main'. Returns an empty array when the file does not exist.",
+    "hash": "503ae06a76bf"
+  },
+  "tools/lib/resolver-parse.ts#ResolverRow": {
+    "explain": "One parsed row of the RESOLVER.md skills table: the skill name, the raw regex cell (backticks kept), the path to the skill's canonical file, and the purpose text. parseResolverRows returns these.",
+    "hash": "70143ad21a12"
+  },
+  "tools/lib/resolver-parse.ts#splitRow": {
+    "explain": "Takes one markdown table row and returns its cells as trimmed strings, splitting on '|' except where the pipe is inside a backtick span. An empty first or last cell is dropped, so the row's leading and trailing pipes produce no cells.",
+    "hash": "2d2dac62326a"
+  },
+  "tools/linter-setup/deps.ts#MergeResult": {
+    "explain": "The result of a package.json merge: added lists the names that were newly inserted, and status is one of 'none', 'no-package-json', 'unparsable', 'satisfied', 'written' or 'sidecar'. mergeDevDependencies and mergeScripts return it.",
+    "hash": "4a6951d57a30"
+  },
+  "tools/linter-setup/deps.ts#PackageJson": {
+    "explain": "The part of a package.json this module reads and writes: optional dependencies, devDependencies and scripts maps of string to string.",
+    "hash": "1fefd67bd2fb"
+  },
+  "tools/linter-setup/deps.ts#Section": {
+    "explain": "The union 'devDependencies' | 'scripts', naming which package.json section a merge writes to.",
+    "hash": "401b5d533df9"
+  },
+  "tools/linter-setup/deps.ts#detectIndent": {
+    "explain": "Takes the text of a JSON file and returns the whitespace that precedes the first quoted key on its own line. Returns the number 2 when no such indented line is found; the value is passed to JSON.stringify as the indent.",
+    "hash": "96725dd1b4f8"
+  },
+  "tools/linter-setup/deps.ts#mergeDevDependencies": {
+    "explain": "Takes a target repo path and a language and adds that language's registry devDependencies to the repo's package.json, skipping any name already in dependencies or devDependencies; the file is rewritten with its existing indentation only if something was added. Returns { added, status }, with status 'none', 'no-package-json', 'unparsable' or 'satisfied' when nothing was written and 'written' otherwise.",
+    "hash": "8db8502d7072"
+  },
+  "tools/linter-setup/deps.ts#mergeScripts": {
+    "explain": "Takes a target repo path and a language and adds that language's registry scripts to the repo's package.json scripts, skipping any script name already defined; the file is rewritten with its existing indentation only if something was added. Returns { added, status }, with status 'none', 'no-package-json', 'unparsable' or 'satisfied' when nothing was written and 'written' otherwise.",
+    "hash": "90d3e04ba89d"
+  },
+  "tools/linter-setup/detect.ts#DEFAULT_SRC_ROOT": {
+    "explain": "The absolute path two directories above the detect.ts file, which is the scaffold repo root. detect uses it as the default place to find linter templates when no srcRoot is passed.",
+    "hash": "df85082e38fd"
+  },
+  "tools/linter-setup/detect.ts#DetectResult": {
+    "explain": "One detected language paired with the state of its linter config in the repo. detect returns an array of these.",
+    "hash": "ef933d138893"
+  },
+  "tools/linter-setup/detect.ts#DetectState": {
+    "explain": "The union 'none' | 'foreign' | 'scaffold' | 'stale' describing a language's linter config: no config file, a config without the scaffold marker, a config with the marker that is current or unstamped, or a config whose stamped hash differs from the current template.",
+    "hash": "fca766113b33"
+  },
+  "tools/linter-setup/detect.ts#detect": {
+    "explain": "Takes a repo path and an optional scaffold root, runs git ls-files in the repo, and returns one { language, state } per language found by file extension, ignoring files under lib/linters and tools/linter-setup; a tsconfig.json adds ts, and ts removes js. State comes from reading the language's config file and comparing its stamped hash with the current template hash. It throws if the git command fails and writes nothing.",
+    "hash": "6406b7746fe9"
+  },
+  "tools/linter-setup/detect.ts#extMap": {
+    "explain": "A Map from file extension (such as '.py' or '.ts') to the Language that owns it, built at module load from every registry entry's extensions. detect uses it to map tracked files to languages.",
+    "hash": "6b226ca194db"
+  },
+  "tools/linter-setup/detect.ts#stampedHash": {
+    "explain": "Takes a config file's text and a marker string and returns the hex digits after 'sha256:' on the line where the marker first appears. Returns null when the marker is present but that line has no hash, and undefined when the marker is absent.",
+    "hash": "6d9b2fb2b807"
+  },
+  "tools/linter-setup/emit.ts#alternateFormatter": {
+    "explain": "Takes a target repo path and returns true if the repo has any Prettier config file other than .prettierrc.json (such as .prettierrc, .prettierrc.yml or prettier.config.js) or a 'prettier' key in package.json. It also returns true when package.json exists but cannot be parsed, and false when none of these is found.",
+    "hash": "7f28eba20f9f"
+  },
+  "tools/linter-setup/emit.ts#stampMarker": {
+    "explain": "Takes a config file's text, a marker string and a hash, and returns the text with ' sha256:<hash>' appended after the first occurrence of the marker. The text is returned unchanged if the marker does not appear.",
+    "hash": "4661c2959721"
+  },
+  "tools/linter-setup/hash.ts#templateHash": {
+    "explain": "Takes the scaffold root and a language and returns the first 12 hex characters of the sha256 of that language's config template at lib/linters/<lang>/<configFile>. Returns null when the language has no config file or the template file does not exist.",
+    "hash": "169a41f4344f"
+  },
+  "tools/linter-setup/registry.ts#Language": {
+    "explain": "The union of supported language ids: js, ts, python, go, rust, ruby, shell, elixir, zig and mojo. It is the key type of the linter registry.",
+    "hash": "508eb24a56d8"
+  },
+  "tools/linter-setup/registry.ts#registry": {
+    "explain": "A table keyed by language id that holds each language's file extensions, linter name, optional config file name, workflow file name, marker comment, metricsOnly flag, and optionally extra files to ship plus devDependencies and scripts to add to package.json. Detection, emission, hashing and package.json merging all read from it.",
+    "hash": "0ce130d8fbc9"
+  },
+  "tools/linter-setup/run#main": {
+    "explain": "With --detect-only it runs detection on the --into directory and prints the results as JSON to stdout. Otherwise it reads a JSON array of languages from stdin, calls emit for each to write linter configs and workflows into that directory (and update its package.json), and prints one line per file written, sidecar-written or skipped plus a dependency note. It prints an error and exits 1 when stdin is empty, is not a JSON array, or an emit call throws.",
+    "hash": "a1c29b759bf9"
+  },
+  "tools/linter-setup/test#makeTmp": {
+    "explain": "Takes nothing, creates a new temporary directory named linter-setup-test-* under the system temp dir, runs git init in it, sets local git config (no commit signing, a test user name and email), and makes one empty commit. Returns the directory path; it throws if any git command fails.",
+    "hash": "5961c3a5f7ce"
+  },
+  "tools/sync/run.ts#INTO": {
+    "explain": "The absolute path of the directory being synced into, resolved from the --into command-line argument, or the current directory when the flag is absent.",
+    "hash": "a939f40596bf"
+  },
+  "tools/sync/run.ts#check": {
+    "explain": "A boolean that is true when --check was passed on the command line. The sync script reads it to report what would change without writing files or the ledger.",
+    "hash": "d0de71ccf082"
+  },
+  "tools/sync/run.ts#srcRoot": {
+    "explain": "The absolute path of the scaffold source tree to sync from: the --scaffold-root=<path> argument when given, otherwise the SYNC_SCAFFOLD_ROOT environment variable, otherwise the directory two levels above the script.",
+    "hash": "5649cf6d9d81"
+  }
+}

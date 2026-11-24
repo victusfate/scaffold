@@ -1,0 +1,408 @@
+{
+  "summary": "The prune flow matches skills/prune.md on every claim checked: the five phases, their order, the tags, the slug rule and the single pause all have matching text. Nothing is contradicted or unsupported. What it leaves out is small: the slug is announced first, design.md has scope and edge-case sections, the PRD maps finding IDs to changes, and each phase can be resumed on its own.",
+  "checks": [
+    {
+      "node": "audit",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Run the correctness and structure reviews, read-only, and collect one findings table.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Collect findings only — nothing is fixed until the chain's TDD phase."
+    },
+    {
+      "node": "audit",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Correctness: /validate --effort max.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "1. **`/validate --effort max`** (no `--fix` flag — its default prints"
+    },
+    {
+      "node": "audit",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Structure: the /simplify checklist, applied without auto-fix.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "diff-economy lens) as a read-only audit. Do not invoke the skill itself:"
+    },
+    {
+      "node": "audit",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Each finding is tagged [validate] or [quality].",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Produce a consolidated findings table with source tags: `[validate]`, `[quality]`."
+    },
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Write the findings and how each kind will be fixed into design.md.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "(how each finding class will be addressed — group related findings, not one-by-one)"
+    },
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Findings get IDs (F-01 and on) and are grouped by class, not handled one by one.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "| F-01 | [validate] | … | … | high |"
+    },
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Written to `docs/quality-<branch-short>/design.md` (the last segment of the branch name), committed, then /design-review auto-fixes it.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Default: `quality-<branch-short>` where `<branch-short>` is the last path segment of the current branch name."
+    },
+    {
+      "node": "prd",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Turn the findings into user stories without re-interviewing.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Run `/to-prd`. Do not re-interview — synthesize from the design and findings."
+    },
+    {
+      "node": "prd",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Stories cite finding IDs.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "- User Stories: each class of fix as a story, referencing finding IDs."
+    },
+    {
+      "node": "prd",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "It names which fixes are risky enough to need tests.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "- Testing Decisions: identify which fixes are risky enough to require tests."
+    },
+    {
+      "node": "tdd",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Build the fixes in slices, one group of fixes per slice, then refine.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Each vertical slice should correspond to one cohesive group of fixes"
+    },
+    {
+      "node": "tdd",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "/tdd runs /code-refiner when all slices pass.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "`/tdd` runs `/code-refiner` (validate + simplify) when all slices pass. Then proceed to Phase 5."
+    },
+    {
+      "node": "tdd",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The review at the end of this step is the only pause.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Do not pause between phases. The only pause is at the end of Phase 4 (feature-chain review step)."
+    },
+    {
+      "node": "pr",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Open a PR whose body lists the findings and which IDs were addressed.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "The PR body includes the findings summary and lists which finding IDs were addressed."
+    },
+    {
+      "node": "pr",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "At any step, stop, pause or just answer from the owner halts the run at once.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "If the user says \"stop\", \"pause\", or \"just answer\" — stop immediately."
+    },
+    {
+      "node": "audit",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Findings collected (payload: findings table)",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Produce a consolidated findings table with source tags: `[validate]`, `[quality]`."
+    },
+    {
+      "node": "design",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Decisions written (payload: design.md)",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Run `/design-review` in auto-fix mode. Then proceed immediately to Phase 3."
+    },
+    {
+      "node": "prd",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Stories cite findings (payload: prd.md)",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Run `/tdd` from `prd.md`."
+    },
+    {
+      "node": "tdd",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "All slices green, refined (payload: commits)",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "`/tdd` runs `/code-refiner` (validate + simplify) when all slices pass. Then proceed to Phase 5."
+    },
+    {
+      "node": "audit",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Lens: One review angle: correctness or structure.",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Run every quality lens on the current branch — correctness validation and structural quality"
+    },
+    {
+      "node": "prd",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "PRD: Product requirements document: the problem, the solution and the user stories.",
+      "verdict": "confirmed",
+      "file": "skills/to-prd.md",
+      "quote": "The solution from the user's perspective."
+    },
+    {
+      "node": "prd",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Commit prd.md",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Commit: `docs(<slug>): PRD`"
+    },
+    {
+      "node": "pr",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "/create-pr",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "Run `/create-pr`. The PR body includes the findings summary"
+    },
+    {
+      "node": "audit",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend, validate: review for correctness bugs and weakened tests",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "correctness bugs + the test-integrity check (a test weakened to pass is a"
+    },
+    {
+      "node": "audit",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend, simplify: review for structure: reuse, clarity, altitude",
+      "verdict": "confirmed",
+      "file": "skills/prune.md",
+      "quote": "dimensions plus reuse, simplification, efficiency, altitude, and the"
+    },
+    {
+      "node": "tdd",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend, code-refiner: validate + simplify review, then one fix pass",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "**in parallel**, merge their findings, then apply every fix in a **single serial"
+    }
+  ],
+  "missing": [
+    {
+      "what": "The slug is stated before design.md is written, and quality-<branch-short> is only the default.",
+      "file": "skills/prune.md",
+      "quote": "State the slug before writing. Default: `quality-<branch-short>` where `<branch-short>` is the last path segment of the current branch name."
+    },
+    {
+      "what": "design.md also carries a Scope (in/out) section and Edge Cases the fixes must not break; the flow mentions only findings and decisions.",
+      "file": "skills/prune.md",
+      "quote": "(anything fragile the fixes must not break)"
+    },
+    {
+      "what": "The PRD's Implementation Decisions map each finding ID to a concrete change.",
+      "file": "skills/prune.md",
+      "quote": "- Implementation Decisions: map finding IDs to concrete changes."
+    },
+    {
+      "what": "Each phase can be resumed on its own (re-run the audit, edit design.md then /design-review, /to-prd, /tdd, /create-pr); the flow shows stopping but not resuming.",
+      "file": "skills/prune.md",
+      "quote": "- Design: edit `design.md` directly, then re-run `/design-review`"
+    }
+  ],
+  "code": {
+    "overview": "/prune is a prose pipeline: skills/prune.md tells the agent to run the two reviews, write design.md and prd.md, then run /tdd and /create-pr. No script collects the findings table, assigns F-01 style IDs or checks that the PR body lists them. The code that exists is shared with other flows: scripts/check-quality-mechanical.sh covers the mechanical part of the structure review, the commit hook and package.json back the TDD phase, and scripts/compute-bump.ts, scripts/check-handoff.ts and the three PR workflows back the pull request.",
+    "refs": [
+      {
+        "node": "audit",
+        "file": "scripts/check-quality-mechanical.sh",
+        "anchor": "collect() { while IFS= read -r f; do FILES+=(\"$f\"); done < <(grep -E \"$SOURCE_RE\" || true); }",
+        "before": 5,
+        "count": 25,
+        "hash": "5e163bd0d82c",
+        "title": "check-quality-mechanical.sh: pick the files, run the checks, exit",
+        "explain": "Chooses which files to check: the staged files with --staged, the paths given as arguments, or by default the source files that differ from main (git diff main...HEAD). It runs check_file on each. If any violation was counted it prints the total and exits 1.",
+        "why": "The audit looks at the current branch. With no arguments this script checks exactly the source files the branch changed against main. skills/prune.md does not call the script by name; it is the scripted form of the mechanical rules in the /simplify checklist, and the rest of that review is done by the agent.",
+        "kind": "enforces"
+      },
+      {
+        "node": "audit",
+        "file": "scripts/check-quality-mechanical.sh",
+        "anchor": "emit \"${file}:${MAX_LINES} [Readability/major] file is ${count} lines — exceeds ${MAX_LINES}-line limit; split into cohesive modules (or add a 'quality-ok: file-length — <reason>' pragma if it is one cohesive unit)\"",
+        "before": 9,
+        "count": 11,
+        "hash": "c4c70bc12ed5",
+        "title": "check_file: the 500-line file length check",
+        "explain": "Counts the lines in the file with wc -l. If the count is over MAX_LINES (500) and the file has no \"quality-ok: file-length\" pragma, it emits a Readability/major violation with the file name. Each emit adds one to VIOLATIONS, which makes the script exit non-zero at the end.",
+        "why": "File length is one of the rubric rules the structure review applies. This check gives the same answer every time, so a finding of this kind does not depend on the reviewer.",
+        "kind": "enforces"
+      },
+      {
+        "node": "tdd",
+        "file": "scripts/test-tdd-rubric.sh",
+        "anchor": "check \"per-slice score display\"               \"score.*slice|slice.*score|dimension.*score|Quality Scores\"",
+        "before": 4,
+        "count": 8,
+        "hash": "86d24d4cbbaf",
+        "title": "test-tdd-rubric.sh: skills/tdd.md must keep its rubric steps",
+        "explain": "Greps skills/tdd.md for six patterns: the @-include of lib/code-quality-rubric.md, the rubric being loaded before GREEN, REFACTOR as a confirmation pass, the per-slice score table, the 30-line fix threshold, and the surface-to-user rule. It counts passes and failures and exits non-zero if any pattern is missing. npm test runs it through test:shell.",
+        "why": "Phase 4 hands the fixes to /tdd. This test keeps the rubric scoring and the 30-line fix rule in the skill text the agent follows there.",
+        "kind": "tests"
+      },
+      {
+        "node": "tdd",
+        "file": ".githooks/pre-commit",
+        "anchor": "echo \"pre-commit: tsconfig.json present but tsc not installed — skipping (install deps, e.g. npm ci)\" >&2",
+        "before": 8,
+        "count": 14,
+        "hash": "193d16398a98",
+        "title": "pre-commit hook: mechanical check, typecheck, skill routing gate",
+        "explain": "Runs on every git commit once core.hooksPath points at .githooks. It runs the mechanical quality check on the staged files, then tsc --noEmit if a tsconfig.json exists, then check-resolvable.ts and the skills-doc freshness check. The script runs under set -eu, so the first failing step aborts the commit.",
+        "why": "Each fix group is a slice with its own commits. With the hook enabled every commit must pass the mechanical check and the typecheck, so a fix cannot add a new mechanical violation.",
+        "kind": "enforces"
+      },
+      {
+        "node": "tdd",
+        "file": "package.json",
+        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check\",",
+        "before": 4,
+        "count": 6,
+        "hash": "225da6d9f285",
+        "title": "package.json: what \"the full suite\" runs",
+        "explain": "npm test chains four scripts. test:node runs every *.test.ts under scripts/, tools/ and lib/ with node --test. test:tools runs each tool's own test file, test:shell runs every scripts/test-*.sh, and test:checks runs the repo checks. test:integration is separate and is not part of npm test.",
+        "why": "/tdd runs /code-refiner only when the full suite is green. These scripts define that suite.",
+        "kind": "implements"
+      },
+      {
+        "node": "pr",
+        "file": "scripts/compute-bump.ts",
+        "anchor": "if (/(BREAKING CHANGE|^feat(\\(.*\\))?!:|^fix(\\(.*\\))?!:)/.test(line)) { bump = 'major'; break; }",
+        "before": 3,
+        "count": 16,
+        "hash": "8e5be6413ff2",
+        "title": "computeBump: next version from the branch commit messages",
+        "explain": "Walks the commit lines. BREAKING CHANGE or a feat!/fix! prefix sets a major bump and stops. A feat: line sets minor, and a fix: line sets patch if nothing higher was seen. With no such line it returns \"none\"; otherwise it splits the current version and returns the next one.",
+        "why": "/create-pr Step 3 pipes the branch commits into this script to bump package.json before opening the PR. A prune branch with only refactor, test and docs commits gets \"none\" and no bump.",
+        "kind": "implements"
+      },
+      {
+        "node": "pr",
+        "file": "scripts/test-create-pr-gate.sh",
+        "anchor": "if [ -n \"$gate_line\" ] && [ -n \"$step6_line\" ] && [ \"$gate_line\" -lt \"$step6_line\" ]; then",
+        "before": 5,
+        "count": 10,
+        "hash": "8ec014bd8a5d",
+        "title": "test-create-pr-gate.sh: quality gate comes before the PR body",
+        "explain": "Finds the line number of the \"Step 5\" heading and of the \"Step 6\" heading in skills/create-pr.md. It passes only if both exist and Step 5 comes first. Earlier lines in the same file assert that the skill mentions the score table, the 10/10 threshold and the override syntax.",
+        "why": "The PR step relies on /create-pr scoring every file 10/10 before it drafts the body. That gate is run by the agent; this test only keeps it in the skill and in the right order.",
+        "kind": "tests"
+      },
+      {
+        "node": "pr",
+        "file": ".github/workflows/ci.yml",
+        "anchor": "- uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5",
+        "before": 8,
+        "count": 13,
+        "hash": "b9ec56eefa76",
+        "title": "CI job \"verify\": npm test on every PR to main",
+        "explain": "On a pull request to main the job checks out the code, installs the Node version named in .node-version, runs npm ci, and then runs npm test. A failing test fails the job.",
+        "why": "Runs the full suite on the prune PR. The fixes are refactors, so this is the hosted check that behavior did not change.",
+        "kind": "enforces"
+      },
+      {
+        "node": "pr",
+        "file": ".github/workflows/quality.yml",
+        "anchor": "mapfile -t FILES < <(git ls-files | grep -E '\\.(js|mjs|ts|tsx|sh|py|rb|go)$' || true)",
+        "before": 9,
+        "count": 11,
+        "hash": "a95e89e71852",
+        "title": "Quality Gate workflow: mechanical checks on all tracked source",
+        "explain": "On every pull request the job lists all tracked js, mjs, ts, tsx, sh, py, rb and go files with git ls-files. It passes the whole list to check-quality-mechanical.sh. Any violation makes the script exit 1, which fails the job.",
+        "why": "Re-checks the mechanical rules over every tracked source file on the PR. A prune run that left a 500-line file or commented-out code fails here.",
+        "kind": "enforces"
+      },
+      {
+        "node": "pr",
+        "file": ".github/workflows/security.yml",
+        "anchor": "fetch gitleaks/gitleaks \"v$GITLEAKS_VERSION\" \"gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz\" \"$GITLEAKS_SHA256\"",
+        "before": 5,
+        "count": 14,
+        "hash": "8c13a3fcbe2d",
+        "title": "Security scan: list changed files and run gitleaks on them",
+        "explain": "Lists the files the PR adds or changes by diffing the merge commit against its first parent. If there are any, it downloads the pinned gitleaks release, copies the changed files into a temp folder and scans that folder for secrets. A finding adds gitleaks to the failed list, and a later step exits 1 when that list is not empty.",
+        "why": "/create-pr Step 2c runs nothing locally and relies on this check. It must pass before the PR can merge.",
+        "kind": "enforces"
+      },
+      {
+        "node": "pr",
+        "file": "scripts/check-handoff.ts",
+        "anchor": "return existsSync(path) ? [`handoffs live only on branches; clear it before merging to main: git rm ${path} && git commit -m \"chore: clear handoff before merge\"`] : [];",
+        "before": 2,
+        "count": 14,
+        "hash": "ec5a53d66468",
+        "title": "check-handoff.ts --pre-merge: no handoff file on the head to merge",
+        "explain": "preMerge returns an error when .pause/handoff.md still exists, with the git rm command that clears it. The CLI block below it picks preMerge when --pre-merge is passed, prints each error, and exits 1 if there is one.",
+        "why": "/create-pr tells the orchestrator to remove .pause/handoff.md and run this before merging. It stops a handoff file from reaching main with the prune PR.",
+        "kind": "enforces"
+      }
+    ],
+    "promptOnly": [
+      {
+        "node": "design",
+        "what": "The agent writes docs/quality-<branch-short>/design.md with the findings table and grouped decisions, commits it and runs /design-review, all by hand from the template in the skill."
+      },
+      {
+        "node": "prd",
+        "what": "The agent runs /to-prd to turn the finding classes into user stories that cite finding IDs and to name which fixes need tests; nothing checks the IDs."
+      }
+    ]
+  }
+}

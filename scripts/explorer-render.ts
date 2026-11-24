@@ -26,7 +26,7 @@ import { jsonForScript } from './json-script.ts';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TEMPLATE = join(HERE, 'explorer.template.html');
 
-const escHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+export const escHtml = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 export function renderHtml(spec: ExplorerSpec, template = readFileSync(TEMPLATE, 'utf8')): string {
   return template.replace('__TITLE__', () => escHtml(spec.title)).replace('__SPEC__', () => jsonForScript(spec));

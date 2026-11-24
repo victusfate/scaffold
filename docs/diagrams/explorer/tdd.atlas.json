@@ -1,0 +1,567 @@
+{
+  "summary": "The TDD flow matches skills/tdd.md closely: every stage, gate and commit rule is in the source. The differences are overstatements (\"every score must be 10/10\" although surfaced violations may be committed, a caller-side test presented as required, slices said to run \"without pausing\") and the diagram calling REFACTOR a tidy-up when the source calls it a confirmation pass. The main thing not shown is that the rubric is loaded before GREEN code is written, plus the optional integration-test step.",
+  "checks": [
+    {
+      "node": "slices",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Split the PRD into vertical slices and confirm their size once with the user.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Confirm granularity once with the user before coding."
+    },
+    {
+      "node": "slices",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "If plan.md is missing, the agent writes it from prd.md first.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "If `plan.md` doesn't exist yet, create it first: break `prd.md` into vertical slices"
+    },
+    {
+      "node": "slices",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Each slice cuts through every layer",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "(each cuts through all layers: data → logic → UI → tests)"
+    },
+    {
+      "node": "slices",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Data, logic, UI and tests together.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "(each cuts through all layers: data → logic → UI → tests)"
+    },
+    {
+      "node": "slices",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "After the size is confirmed, slices run without pausing unless an interface change departs from plan.md or a large fix must be surfaced.",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "Granularity was confirmed once at plan time; surface an interface change to the user only if it departs from `plan.md`.",
+      "note": "tdd.md states the two surfacing conditions but never says slices otherwise run without pausing, and it also stops the loop for /investigate on an unexpected failure."
+    },
+    {
+      "node": "prep",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "For each slice, decide the interface and list the behaviors to test.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "- Decide the interface changes and which behaviors to test (prioritize critical paths)."
+    },
+    {
+      "node": "prep",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "List behaviors, not implementation steps.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "- List behaviors to test, not implementation steps."
+    },
+    {
+      "node": "prep",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Name the assumption the slice tests",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "- Name the assumption and intended outcome this slice tests; use the design's"
+    },
+    {
+      "node": "prep",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Use the design's evidence, or mark it unknown.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "evidence, or mark it unknown."
+    },
+    {
+      "node": "prep",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "If a probe contradicts the intent, revise the design, PRD and unfinished slices first.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "If a probe contradicts intent, revise design/PRD"
+    },
+    {
+      "node": "loop",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Write one failing test, then the least code that makes it pass, and repeat.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Rules: one test at a time, only enough code to pass, don't anticipate future tests."
+    },
+    {
+      "node": "loop",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The first test is a tracer bullet: one behavior, proving the path works end to end.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "**Tracer bullet:** write ONE test for ONE behavior → RED → minimal code → GREEN. This proves the path works end-to-end."
+    },
+    {
+      "node": "loop",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Tests use the public interface only, so they survive an internal refactor.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "A good test reads like a specification and survives internal refactors"
+    },
+    {
+      "node": "loop",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "Writing all tests first verifies imagined behavior; one test at a time keeps them honest.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Tests written in bulk verify imagined behavior and become insensitive to real changes."
+    },
+    {
+      "node": "loop",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "A test that fails for a different reason, or an old test that breaks, stops the loop for /investigate.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "or a previously green test breaks, stop the loop and run `/investigate` to find the root cause before writing more code."
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Score each touched file on the four-part rubric and audit the tests before committing.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Score every file touched in this slice against the four rubric dimensions. Emit the score table:"
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Every score must be 10/10",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "- Do not commit until all scores are 10/10 or violations are explicitly surfaced.",
+      "note": "The source allows a commit below 10/10 when the violation is explicitly surfaced to the user, so \"must\" overstates it."
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A fix under 30 lines is applied in place, then re-tested and re-scored.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "- Fix <30 lines: apply in place, re-run tests, re-score."
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A bigger fix is surfaced to the user, never silently patched.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "- Fix >30 lines or requires architectural rethinking: surface to the user with the citation; do not silently patch."
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Test self-audit",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "**Test-quality self-audit (run at REFACTOR, before committing):**"
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Assertions use sentinel values, not defaults.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Replace it with a sentinel (non-default) value"
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Every form of a new flag is covered.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "- For every new flag or optional argument: is each form covered?"
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "At least one test is written from the caller's side.",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "If not, flag it for the integration test suite.",
+      "note": "The source asks whether such a test exists and, if not, has it flagged for the integration test suite; it is not a hard requirement of the slice."
+    },
+    {
+      "node": "commit",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Commit the red, green and refactor steps, log the slice, then start the next one.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Append to `./docs/<feature-slug>/tdd-log.md`:"
+    },
+    {
+      "node": "commit",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Commits: test (red), feat (green), and refactor only if something was refactored.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "refactor(<slug>): slice N — <what changed>   # only if refactor happened"
+    },
+    {
+      "node": "commit",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Each slice's status is appended to tdd-log.md.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Append to `./docs/<feature-slug>/tdd-log.md`:"
+    },
+    {
+      "node": "done",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Run the full suite, then /code-refiner, then stop for the user's review.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "When the full test suite is green, run `/code-refiner` in auto-fix mode."
+    },
+    {
+      "node": "done",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "/code-refiner runs in auto-fix mode: correctness and structure reviews, then one fix pass.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "merges the findings, applies them in one coherent pass, and re-verifies (correctness clear, all rubric dimensions 10/10)"
+    },
+    {
+      "node": "done",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A summary lists what was built, the tests and any deviation from the plan.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Then present a summary and stop for review:"
+    },
+    {
+      "node": "slices",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Slice size confirmed (payload: plan.md)",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Granularity was confirmed once at plan time"
+    },
+    {
+      "node": "prep",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Behaviors listed (payload: test list)",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "- List behaviors to test, not implementation steps."
+    },
+    {
+      "node": "loop",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Tests green (payload: code + tests)",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Confirm quality scores — only after GREEN, never while RED"
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "All 10/10 or surfaced (payload: score table)",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "- Do not commit until all scores are 10/10 or violations are explicitly surfaced."
+    },
+    {
+      "node": "commit",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "No slices left (payload: tdd-log.md)",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "When the full test suite is green, run `/code-refiner` in auto-fix mode.",
+      "note": "The final stage is gated on all slices passing and the full suite being green; the source does not say tdd-log.md is what is handed to it."
+    },
+    {
+      "node": "slices",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Vertical slice: A thin piece of a feature that cuts through every layer and works on its own.",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "(each cuts through all layers: data → logic → UI → tests)",
+      "note": "The source says a slice cuts through all layers; it does not say a slice is thin or that it works on its own."
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Rubric: Four scores for code: Quality, Readability, Encapsulation, Clarity.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "| File | Quality | Readability | Encapsulation | Clarity |"
+    },
+    {
+      "node": "refactor",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Sentinel value: A non-default test value, so a bug that silently resets a field can't hide.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "a bug that silently resets to the default hides behind matching data."
+    },
+    {
+      "node": "loop",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Tracer bullet: The first test, which proves the path works end to end.",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "This proves the path works end-to-end."
+    },
+    {
+      "node": "loop",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "RED: next test, confirm it fails",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Write next test → confirm it fails"
+    },
+    {
+      "node": "loop",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "GREEN: minimal code, confirm it passes",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Write minimal code to pass → confirm it passes"
+    },
+    {
+      "node": "commit",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "More slices? yes → back to stage 2",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Execute `./docs/<feature-slug>/plan.md` using TDD, one vertical slice at a time."
+    },
+    {
+      "node": "done",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Summary, then wait for user review",
+      "verdict": "confirmed",
+      "file": "skills/tdd.md",
+      "quote": "Wait for the user to confirm or request changes."
+    },
+    {
+      "node": "refactor",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Stage title and legend: REFACTOR confirms quality / check and tidy the code without changing behavior",
+      "verdict": "partial",
+      "file": "skills/tdd.md",
+      "quote": "REFACTOR is a confirmation pass, not a correction pass.",
+      "note": "The source defines REFACTOR as confirming quality scores, a confirmation pass rather than a tidy-up; 'without changing behavior' is not stated."
+    }
+  ],
+  "missing": [
+    {
+      "what": "Before writing GREEN code the agent loads the quality rubric and writes to it from the start; neither the spec nor the diagram shows the rubric being applied before REFACTOR.",
+      "file": "skills/tdd.md",
+      "quote": "**The rubric is the generative voice, not a post-hoc judge.** Before writing GREEN code, load the quality rubric:"
+    },
+    {
+      "what": "The source has an optional integration-test step with its own rules (when to write one, env-var gate, real empty temp directory) that the flow does not show.",
+      "file": "skills/tdd.md",
+      "quote": "### Integration tests (optional, not always run)"
+    },
+    {
+      "what": "The per-cycle checklist forbids speculative features and anticipating future tests; the flow shows only 'minimal code'.",
+      "file": "skills/tdd.md",
+      "quote": "- No speculative features added"
+    },
+    {
+      "what": "A green test of the wrong acceptance criterion does not close the gap; the flow shows the revise step but not this rule.",
+      "file": "skills/tdd.md",
+      "quote": "the wrong acceptance criterion does not close the gap."
+    }
+  ],
+  "code": {
+    "overview": "Almost all of /tdd is prose the agent follows from skills/tdd.md: planning slices, writing the failing test, the minimal code and the rubric scoring are not coded anywhere. Code only backs the edges: scripts/check-quality-mechanical.sh checks three of the rubric rules, .githooks/pre-commit runs it on each commit, package.json and .github/workflows/ci.yml define and run the full suite, and two shell tests pin that skills/tdd.md keeps its rubric and /investigate wording. Nothing in the repo checks that a test failed before it passed, that commits follow the red/green naming, or that tdd-log.md was written.",
+    "refs": [
+      {
+        "node": "loop",
+        "file": "scripts/test-investigate-skill.sh",
+        "anchor": "has skills/tdd.md '/investigate'                 \"tdd routes unexpected failures to /investigate\"",
+        "before": 1,
+        "count": 4,
+        "hash": "3b5b3e1cdc19",
+        "title": "test-investigate-skill.sh: tdd must point at /investigate",
+        "explain": "The has helper greps a file for a pattern and records a pass or a fail. These lines assert that skills/create-pr.md and skills/tdd.md both mention /investigate. finish prints the totals and returns non-zero if any assertion failed.",
+        "why": "The loop says to stop and run /investigate when a test fails for an unexpected reason. This test only keeps that sentence in the skill text; it does not make the agent stop.",
+        "kind": "tests"
+      },
+      {
+        "node": "refactor",
+        "file": "scripts/test-tdd-rubric.sh",
+        "anchor": "check \"per-slice score display\"               \"score.*slice|slice.*score|dimension.*score|Quality Scores\"",
+        "before": 4,
+        "count": 8,
+        "hash": "86d24d4cbbaf",
+        "title": "test-tdd-rubric.sh: skills/tdd.md must keep its rubric steps",
+        "explain": "Greps skills/tdd.md for six patterns: the @-include of lib/code-quality-rubric.md, the rubric being loaded before GREEN, REFACTOR as a confirmation pass, the per-slice score table, the 30-line fix threshold, and the surface-to-user rule. It counts passes and failures and exits non-zero if any pattern is missing. npm test runs it through test:shell.",
+        "why": "The refactor check is carried out by the agent from this text. If an edit dropped the rubric include or the 10/10 scoring from the skill, the agent would stop doing the check and nothing else would notice.",
+        "kind": "tests"
+      },
+      {
+        "node": "refactor",
+        "file": "scripts/check-quality-mechanical.sh",
+        "anchor": "emit \"${file}:${MAX_LINES} [Readability/major] file is ${count} lines — exceeds ${MAX_LINES}-line limit; split into cohesive modules (or add a 'quality-ok: file-length — <reason>' pragma if it is one cohesive unit)\"",
+        "before": 9,
+        "count": 11,
+        "hash": "c4c70bc12ed5",
+        "title": "check_file: the 500-line file length check",
+        "explain": "Counts the lines in the file with wc -l. If the count is over MAX_LINES (500) and the file has no \"quality-ok: file-length\" pragma, it emits a Readability/major violation with the file name. Each emit adds one to VIOLATIONS, which makes the script exit non-zero at the end.",
+        "why": "The rubric scores Readability down for a file over 500 lines. This is the one part of that score a script decides, so the agent cannot score a too-long file 10/10 and have it pass the commit hook or CI.",
+        "kind": "enforces"
+      },
+      {
+        "node": "refactor",
+        "file": "scripts/check-quality-mechanical.sh",
+        "anchor": "emit \"${file}:${lineno} [Readability/minor] magic number — extract to a named constant (or use quality-ok: magic-number pragma if the value is self-documenting)\"",
+        "before": 5,
+        "count": 7,
+        "hash": "1899103e1449",
+        "title": "check_file: the magic number check",
+        "explain": "Runs after the earlier skips (test files, pragma lines, return/exit lines, named constants, numbers inside strings). It matches the remaining text against a pattern for a bare integer of two or more digits. A match emits a Readability/minor violation with file:line telling the author to extract a named constant.",
+        "why": "\"No magic numbers\" is a mechanical rubric rule. Without this check it would rest on the agent noticing bare literals while scoring its own code.",
+        "kind": "enforces"
+      },
+      {
+        "node": "refactor",
+        "file": "scripts/check-quality-mechanical.sh",
+        "anchor": "if [[ \"$line\" =~ ^[[:space:]]*(//|#)[[:space:]]*(function|const|let|var|return|if|for|while|class|import|export|}) ]]; then",
+        "before": 6,
+        "count": 15,
+        "hash": "73cc7b759bd5",
+        "title": "check_file: the commented-out code check",
+        "explain": "Reads the file line by line. A line counts as commented-out code when it starts with // or # followed by a code word such as function, const, return or import. When two such lines come in a row it emits a Clarity/minor violation with file:line. There is no pragma that turns this check off.",
+        "why": "\"No commented-out code\" is a mechanical rubric rule under Clarity. The script catches it even if the agent's own score table says 10.",
+        "kind": "enforces"
+      },
+      {
+        "node": "refactor",
+        "file": "tools/hoist-skill/test-integration",
+        "anchor": "// End-to-end integration test for hoist-skill — simulates a real consumer workflow.",
+        "before": 1,
+        "count": 9,
+        "hash": "fe328287dd2f",
+        "title": "Integration test header: skip unless RUN_INTEGRATION is set",
+        "explain": "The file is a Node script. Before importing anything it checks process.env.RUN_INTEGRATION. If the variable is not set it prints a skip line and exits 0, so the test counts as passed without running.",
+        "why": "The test self-audit asks for a caller-side test and says to put it in the integration suite when it does not fit the acceptance tests. This is the gate convention skills/tdd.md prescribes for those files, shown in a real one.",
+        "kind": "implements"
+      },
+      {
+        "node": "commit",
+        "file": ".githooks/pre-commit",
+        "anchor": "echo \"pre-commit: tsconfig.json present but tsc not installed — skipping (install deps, e.g. npm ci)\" >&2",
+        "before": 8,
+        "count": 14,
+        "hash": "193d16398a98",
+        "title": "pre-commit hook: mechanical check, typecheck, skill routing gate",
+        "explain": "Runs on every git commit once core.hooksPath points at .githooks. It runs the mechanical quality check on the staged files, then tsc --noEmit if a tsconfig.json exists, then check-resolvable.ts and the skills-doc freshness check. The script runs under set -eu, so the first failing step aborts the commit.",
+        "why": "Each slice is committed as red, green and optional refactor commits. With the hook enabled, every one of those commits must pass the mechanical check and the typecheck. The hook does not check the commit message format or tdd-log.md.",
+        "kind": "enforces"
+      },
+      {
+        "node": "commit",
+        "file": ".claude/session-start/hook.sh",
+        "anchor": "# Locally, enabling hooks stays your choice: git config core.hooksPath .githooks",
+        "before": 1,
+        "count": 6,
+        "hash": "2e0eccc6e6f8",
+        "title": "SessionStart hook: turn on the pre-commit gate in cloud sessions",
+        "explain": "When CLAUDE_CODE_REMOTE is \"true\", .githooks/pre-commit exists and core.hooksPath is not set, it sets core.hooksPath to .githooks. In a local session it changes nothing.",
+        "why": "The per-slice commits are only gated if the hook is enabled. This turns it on for cloud sessions; locally it stays the user's choice, so the gate may not run there.",
+        "kind": "implements"
+      },
+      {
+        "node": "done",
+        "file": "package.json",
+        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check\",",
+        "before": 4,
+        "count": 6,
+        "hash": "225da6d9f285",
+        "title": "package.json: what \"the full suite\" runs",
+        "explain": "npm test chains four scripts. test:node runs every *.test.ts under scripts/, tools/ and lib/ with node --test. test:tools runs each tool's own test file, test:shell runs every scripts/test-*.sh, and test:checks runs the repo checks. test:integration is separate and is not part of npm test.",
+        "why": "The last stage starts when \"the full test suite is green\". These scripts are what that suite is in this repo.",
+        "kind": "implements"
+      },
+      {
+        "node": "done",
+        "file": ".github/workflows/ci.yml",
+        "anchor": "- uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5",
+        "before": 8,
+        "count": 13,
+        "hash": "b9ec56eefa76",
+        "title": "CI job \"verify\": npm test on every PR to main",
+        "explain": "On a pull request to main the job checks out the code, installs the Node version named in .node-version, runs npm ci, and then runs npm test. A failing test fails the job.",
+        "why": "After the agent stops for review, this job re-runs the full suite on the PR. A suite that was not really green locally is caught here.",
+        "kind": "enforces"
+      },
+      {
+        "node": "done",
+        "file": ".github/workflows/quality.yml",
+        "anchor": "mapfile -t FILES < <(git ls-files | grep -E '\\.(js|mjs|ts|tsx|sh|py|rb|go)$' || true)",
+        "before": 9,
+        "count": 11,
+        "hash": "a95e89e71852",
+        "title": "Quality Gate workflow: mechanical checks on all tracked source",
+        "explain": "On every pull request the job lists all tracked js, mjs, ts, tsx, sh, py, rb and go files with git ls-files. It passes the whole list to check-quality-mechanical.sh. Any violation makes the script exit 1, which fails the job.",
+        "why": "/code-refiner must leave every rubric score at 10/10. This job re-checks the three mechanical rules on the PR, for every source file and not only the ones the slice touched.",
+        "kind": "enforces"
+      }
+    ],
+    "promptOnly": [
+      {
+        "node": "slices",
+        "what": "The agent reads prd.md, writes plan.md as vertical slices, and asks the user once whether the slice size is right; no script creates or checks plan.md."
+      },
+      {
+        "node": "prep",
+        "what": "For each slice the agent decides the interface changes, lists the behaviors to test and names the assumption the slice tests, all from the skill text."
+      }
+    ]
+  }
+}

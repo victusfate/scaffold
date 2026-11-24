@@ -1,0 +1,541 @@
+{
+  "summary": "Stages 2 to 5 (topology, finished slots, free slots, reconcile) match skills/loop.md closely. The supervise stage and the three timer cases are not in skills/loop.md at all; they come from docs/agents-detail.md (Continuous execution), so the spec's sources list is incomplete. The flow also shows reconcile only after dispatch while the source section is titled 'Reconcile lanes before dispatch', and it omits the 'running subagent without an active task' case and the highest-priority rule.",
+  "checks": [
+    {
+      "node": "wake",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "A native /loop or an external driver fires the tick.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "When native recurrence suffices, apply the shared rules below without loading the external-driver reference."
+    },
+    {
+      "node": "wake",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Timers are only for external gating, a usage-limit window or a crash re-arm.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "which has nothing to wait for. A timer IS correct in three cases:",
+      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "wake",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "A timer is never used to pace the agent's own work; that work runs continuously.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "Continue useful authorized work during each run; an interval restarts ended work rather than pacing live work."
+    },
+    {
+      "node": "topology",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The orchestrator reads which worker slots exist from topology.json.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "names the orchestrator, the tick cadence and the subagent **slots**, with no routing: the orchestrator judges which"
+    },
+    {
+      "node": "topology",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "node scripts/topology.ts validates the file.",
+      "verdict": "confirmed",
+      "file": "scripts/topology.ts",
+      "quote": "//   node scripts/topology.ts [path]    # validate and print the topology as JSON (exit 1 on error)"
+    },
+    {
+      "node": "topology",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "An invalid file is a blocker to report. No file means the orchestrator works alone.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "1. Read and validate the topology; an invalid file is a blocker to report. No file: orchestrator only."
+    },
+    {
+      "node": "topology",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "topology.json: orchestrator, tick, slots; no routing",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "names the orchestrator, the tick cadence and the subagent **slots**, with no routing: the orchestrator judges which"
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Review each finished slot's work, integrate or ship it, and set the task status.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "2. For each slot whose task finished, review it, integrate or ship it within existing authorization, and set the"
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Integration and shipping stay within existing authorization.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "2. For each slot whose task finished, review it, integrate or ship it within existing authorization, and set the"
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Status becomes done, fail, or park --resume.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "task status (`done`, `fail`, or `park --resume \"<next step>\"`)."
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Give each free slot a suited task in a new worktree.",
+      "verdict": "partial",
+      "file": "skills/loop.md",
+      "quote": "3. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with",
+      "note": "The source says the highest-priority suited task; the spec and diagram drop the priority rule."
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A slot is free when no active task is owned by its id.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "3. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Order: create the worktree, claim the task for the slot, then start the slot's harness and model there.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "that branch's worktree. Create the worktree first so the claim links its branch in the same write; when the"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "No suited task? Leave the slot free.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "rather than send it a task it should not take."
+    },
+    {
+      "node": "dispatch",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "claim id --worker slot --branch b",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "`node scripts/queue.ts claim <id> --worker <slot-id> --branch <branch>` and start that slot's harness/model in"
+    },
+    {
+      "node": "reconcile",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Make active tasks match live subagents, then clean up leftovers.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "- End each run with the active-task count matching the live subagent count."
+    },
+    {
+      "node": "reconcile",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Compare live handles, active tasks and the git worktree list",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "Compare current-session live subagent handles, queue `[>]` tasks, and `git worktree list` every run."
+    },
+    {
+      "node": "reconcile",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Task with no subagent: resume or park.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "- Active task without a running subagent: resume it, or park it with"
+    },
+    {
+      "node": "reconcile",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Zombie worktree: integrate, park or clean.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "- Worktree without a task or subagent: integrate, park, or clean it under the repository's branch rules."
+    },
+    {
+      "node": "reconcile",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Orphan owner: adopt into a slot or park.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "4. Reconcile (below). An active task whose owner is not a slot id is orphaned: adopt it into a free slot or park it."
+    },
+    {
+      "node": "reconcile",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "orphan owner: active task owned by a name that is no slot",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "4. Reconcile (below). An active task whose owner is not a slot id is orphaned: adopt it into a free slot or park it."
+    },
+    {
+      "node": "supervise",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Check that each job advanced since the last tick, not just that it is running.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "- **Supervise background work by progress, not liveness.** When a tick checks on running jobs, \"the",
+      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "supervise",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Check the leaf step, orphans, and who holds a shared budget.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "  - **What is each job doing right now?** Look at the leaf process or current step. A `sleep` inside a",
+      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "supervise",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A probe exits non-zero on an anomaly, which starts an investigation.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "  Encode these as a small probe script run every tick that exits non-zero on anomalies, and",
+      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "supervise",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "A running process is not proof that work is moving.",
+      "verdict": "partial",
+      "file": "skills/loop.md",
+      "quote": "Inspect productive progress as well as scheduler status; changing configuration requires stop, wait/cancel, then restart.",
+      "note": "loop.md says to inspect progress as well as scheduler status but never states that a live process is not health; that wording is in docs/agents-detail.md."
+    },
+    {
+      "node": "wake",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Tick fires (trigger): wake → topology",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "1. Read and validate the topology; an invalid file is a blocker to report. No file: orchestrator only."
+    },
+    {
+      "node": "topology",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Slots known (topology.json): topology → review",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "2. For each slot whose task finished, review it, integrate or ship it within existing authorization, and set the"
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Finished work handled (task statuses): review → dispatch",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "3. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Free slots filled (claims + worktrees): dispatch → reconcile",
+      "verdict": "partial",
+      "file": "skills/loop.md",
+      "quote": "A subagent that replied and went idle is not a running lane; resolve each mismatch before spawning more work:",
+      "note": "The numbered tick list puts Reconcile fourth, after dispatch, but the section is titled \"Reconcile lanes before dispatch\" and requires mismatches resolved before spawning more work; the flow shows only the after-dispatch order."
+    },
+    {
+      "node": "reconcile",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Tasks match subagents (live handles): reconcile → supervise",
+      "verdict": "partial",
+      "file": "skills/loop.md",
+      "quote": "- End each run with the active-task count matching the live subagent count.",
+      "note": "The matching count is confirmed, but loop.md has no supervise stage after reconcile; its tick list ends at step 4 (Reconcile)."
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Slot: A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "`node scripts/queue.ts claim <id> --worker <slot-id> --branch <branch>` and start that slot's harness/model in"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Harness: The agent tool a slot runs: claude, codex, agy or pi.",
+      "verdict": "partial",
+      "file": "docs/agents-detail.md",
+      "quote": "is `claude`, `codex`, `agy`, `pi` or another name the repo's dispatcher understands.",
+      "note": "loop.md does not list harness names; docs/agents-detail.md (not a listed source) lists these four plus any other name the dispatcher understands, so the list is not closed."
+    },
+    {
+      "node": "reconcile",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Zombie worktree: A checkout with no task and no running subagent.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "- Worktree without a task or subagent: integrate, park, or clean it under the repository's branch rules."
+    },
+    {
+      "node": "review",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Park: Return a task to pending, keeping its branch and a resume note.",
+      "verdict": "confirmed",
+      "file": "scripts/queue-model.ts",
+      "quote": " * Park a task whose lane stopped with work in hand: it returns to pending (owner and lease cleared,"
+    },
+    {
+      "node": "wake",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "usage window: rolling usage limit; wake after it resets",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "  - **Usage-limit windows:** when closing in on 100% of the rolling 5-hour usage limit, schedule a",
+      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    }
+  ],
+  "missing": [
+    {
+      "what": "Reconcile has a fourth mismatch case the flow omits: a running subagent with no active task must be claimed or stopped.",
+      "file": "skills/loop.md",
+      "quote": "- Running subagent without an active task: claim its task or stop that owned assignment."
+    },
+    {
+      "what": "When the harness names its own worktree branch, the orchestrator must link it with `queue set` in the same step, or the Slots panel and branch accounting break.",
+      "file": "skills/loop.md",
+      "quote": "harness names its own worktree branch, link it with `queue set <id> branch <b>` right after dispatch, in"
+    },
+    {
+      "what": "The topology's slot list is the ceiling on concurrent subagents, alongside client slots, host limits and the memory guard.",
+      "file": "skills/loop.md",
+      "quote": "Treat the topology's slot list as the ceiling on concurrent subagents; respect client slots, host limits, and the repo's memory guard."
+    },
+    {
+      "what": "Changing models or the slot mix edits the topology file, never the scheduled prompt.",
+      "file": "skills/loop.md",
+      "quote": "task suits which slot. Swapping resources edits that file, never the scheduled prompt. Each tick:"
+    },
+    {
+      "what": "A subagent that replied and went idle does not count as a running lane when reconciling.",
+      "file": "skills/loop.md",
+      "quote": "A subagent that replied and went idle is not a running lane; resolve each mismatch before spawning more work:"
+    },
+    {
+      "what": "At completion or a blocker needing user direction, the loop checkpoints and ends recurrence.",
+      "file": "skills/loop.md",
+      "quote": "At completion or a blocker needing user direction, checkpoint and end recurrence with that outcome."
+    }
+  ],
+  "code": {
+    "overview": "The tick itself is a list of steps the orchestrator follows from skills/loop.md; no script runs the six stages in order. Code supplies the pieces each step calls: scripts/agent-loop-*.ts is the external driver that fires runs, scripts/topology.ts validates the slot file, and the queue CLI (scripts/queue.ts, queue-claim.ts, queue-worktrees.ts, queue-model.ts, queue-links.ts, queue-lanes.ts) records claims, results, parks and heartbeats. Choosing a task for a slot, reviewing work, comparing live subagents with tasks and the per-tick probe are agent judgment; the repo ships no probe script.",
+    "refs": [
+      {
+        "node": "wake",
+        "file": "scripts/agent-loop-runner.ts",
+        "anchor": "while (!stopRequest(dir, generation) && Date.now() < config.expiresAt && progress.failures < config.maxFailures) {",
+        "before": 0,
+        "count": 27,
+        "hash": "4f1219c56394",
+        "title": "supervise: the external driver's run loop",
+        "explain": "The detached supervisor loops while no stop was requested, the lifetime has not expired and failures are under the limit. Each pass it marks a run as started, calls execute to run the configured command, then records the outcome and resets or raises the failure count. A result of complete or blocked ends the loop; otherwise the next run is set one interval after this run finished.",
+        "why": "This is the external driver that fires a tick when no native /loop is available. The interval is counted from the end of a run, so it restarts ended work and never overlaps or paces a run that is still going.",
+        "kind": "implements"
+      },
+      {
+        "node": "topology",
+        "file": "scripts/topology.ts",
+        "anchor": "/** Validate a parsed JSON value. Throws TopologyError naming the first problem. */",
+        "before": 0,
+        "count": 11,
+        "hash": "3d5da243432f",
+        "title": "parseTopology: validate the topology object",
+        "explain": "It rejects anything that is not a JSON object and any key outside orchestrator, tick_minutes and slots. It parses the orchestrator, defaults the tick to 10 minutes and requires a positive number. It then parses the slot list, which defaults to empty.",
+        "why": "Step 1 of the tick: an invalid topology must be reported as a blocker. Without this a typo in the file would silently change which slots exist.",
+        "kind": "enforces"
+      },
+      {
+        "node": "topology",
+        "file": "scripts/topology.ts",
+        "anchor": "export function loadTopology(path: string = process.env.TOPOLOGY_FILE ?? TOPOLOGY_PATH): Topology {",
+        "before": 1,
+        "count": 17,
+        "hash": "d8c34804d3be",
+        "title": "loadTopology and CLI: read the file, exit 1 on error",
+        "explain": "loadTopology returns the default (an orchestrator and no slots) when the file is missing. Otherwise it parses the JSON and validates it, turning a parse failure into a TopologyError. The CLI entry prints the topology as JSON, or prints the error and exits 1.",
+        "why": "This is the `node scripts/topology.ts` command the tick runs. It carries both branches of the stage: no file means the orchestrator works alone, a bad file stops with a named error.",
+        "kind": "implements"
+      },
+      {
+        "node": "review",
+        "file": "scripts/queue-lanes.ts",
+        "anchor": "beatLane(id, { worker, state: 'awaiting-review', step: 'worker finished', tail: f.flags.get('tail') });",
+        "before": 7,
+        "count": 12,
+        "hash": "efeb2600177b",
+        "title": "lane finish: worker reports done, claim stays",
+        "explain": "It requires the task to be active and owned by the worker named in --worker. It then writes the lane sidecar with state awaiting-review and logs that root review is required. The task status and owner are not changed.",
+        "why": "A finished slot does not close its own task; the orchestrator reviews it first. Without this a worker could mark its own work done and skip review.",
+        "kind": "enforces"
+      },
+      {
+        "node": "review",
+        "file": "scripts/queue.ts",
+        "anchor": "console.log(`✗ validation failed for ${id} → ${res.terminal ? 'failed' : 'retry'} (${r.tail})`);",
+        "before": 15,
+        "count": 34,
+        "hash": "6817f3e0579f",
+        "title": "done: validate, mark done, archive",
+        "explain": "If the task has a validate command it runs it outside the queue lock, reloads the queue and refuses if the task changed meanwhile. A failed validation is recorded as a failure and the command exits 1. Otherwise the task is marked done, and it and any done task it just freed are moved to the archive.",
+        "why": "This sets the `done` status after review. The validate run means a task cannot be closed while its own check fails.",
+        "kind": "implements"
+      },
+      {
+        "node": "review",
+        "file": "scripts/queue-model.ts",
+        "anchor": "export function parkTask(q: Queue, id: string, branch: string, resume: string, nowIso: string): Queue {",
+        "before": 5,
+        "count": 17,
+        "hash": "d57e4f14f9ca",
+        "title": "parkTask: back to pending, branch and resume note kept",
+        "explain": "It does nothing without a branch. For the task it banks the elapsed time if it was active, builds a dated `parked` line from the resume text, and returns the task as pending with owner and start time cleared. The branch is kept and the line is appended to the note.",
+        "why": "This is `park --resume`: the slot is released but the work and the next step survive. Without it a stopped lane would either stay falsely active or lose its branch.",
+        "kind": "implements"
+      },
+      {
+        "node": "dispatch",
+        "file": "scripts/queue-console-slots.ts",
+        "anchor": "export function slotViews(q: Queue, topology: Topology, lanes: LaneView[] = []): { slots: SlotView[]; orphans: ConsoleOrphan[] } {",
+        "before": 0,
+        "count": 10,
+        "hash": "eadf1f28875c",
+        "title": "slotViews: a slot is busy when an active task is owned by its id",
+        "explain": "It takes the active tasks and, for each topology slot, picks those whose owner equals the slot id. The slot is busy if there is at least one and overbooked if there is more than one. The matching lane heartbeat, if any, is attached as detail.",
+        "why": "This is the rule 'free = no active task owned by its id', as the console's Slots panel computes it. The agent applies the same rule by reading the queue; the panel is only as true as the claims.",
+        "kind": "implements"
+      },
+      {
+        "node": "dispatch",
+        "file": "scripts/queue-worktrees.ts",
+        "anchor": "+ `First step in the lane: \\`git merge --ff-only ${base}\\` (a reused branch may be stale); stop if it cannot fast-forward. `",
+        "before": 16,
+        "count": 21,
+        "hash": "16b0efe7baba",
+        "title": "worktree add: isolated checkout on queue/<id>",
+        "explain": "It finds the task, picks the base branch from config or the current branch, and runs `git worktree add` on a new branch queue/<id>, reusing the branch if it exists. It records the branch and worktree path on the task. It prints the first steps for the lane, including a fast-forward-only merge of the base.",
+        "why": "The worktree is created before the claim so the slot has an isolated checkout and a branch to link. The CLI never merges back; the orchestrator integrates.",
+        "kind": "implements"
+      },
+      {
+        "node": "dispatch",
+        "file": "scripts/queue-claim.ts",
+        "anchor": "export function cmdClaim(q: Queue, id: string, flags: Map<string, string>, taskBlock: (t: Task) => string): number {",
+        "before": 0,
+        "count": 13,
+        "hash": "22f4eafa6b8d",
+        "title": "claim: give a pending task to a slot and link its branch",
+        "explain": "It refuses unless the task is pending, not held, and allowed by the current delivery cycle. It checks that --branch is a single name. It then saves one write that marks the task active, sets the owner to the --worker value and stores the branch.",
+        "why": "This is `claim <id> --worker <slot> --branch <b>`. Owner and branch land in the same write, so a slot's task is never active with an unlinked branch.",
+        "kind": "implements"
+      },
+      {
+        "node": "reconcile",
+        "file": "scripts/queue-console-slots.ts",
+        "anchor": "const orphans = topology.slots.length === 0 ? [] : active.filter(t => !t.owner || !ids.has(t.owner))",
+        "before": 1,
+        "count": 5,
+        "hash": "7d4e406f5039",
+        "title": "slotViews: find orphan owners",
+        "explain": "It builds the set of slot ids. When the topology has slots, every active task with no owner, or an owner that is not a slot id, is listed as an orphan. The slots and orphans are returned together.",
+        "why": "Reconcile says an active task whose owner is not a slot must be adopted or parked. This surfaces those tasks; the agent still does the adopting or parking.",
+        "kind": "implements"
+      },
+      {
+        "node": "reconcile",
+        "file": "scripts/queue.ts",
+        "anchor": "console.log(`queue: DELIVERY PENDING — ${q.config.deliveryTask}; finish its PR/merge cycle and fresh branch, then advance`);",
+        "before": 18,
+        "count": 23,
+        "hash": "6eed14ffcd5b",
+        "title": "dispatchGate: stop dispatch on pause or expired lease",
+        "explain": "It first resumes a usage pause whose time has passed. If the queue is stopped or paused it returns a blocking exit code. If any active task has been held longer than the lease it prints OWNERSHIP CONFLICT and blocks. It also blocks while a delivery cycle is unfinished.",
+        "why": "An active task with no live owner is a mismatch the tick must resolve before starting more work. The gate blocks `tick` and `ready` instead of reclaiming the task, so ambiguous ownership is never taken over by code.",
+        "kind": "enforces"
+      },
+      {
+        "node": "reconcile",
+        "file": "scripts/queue-links.ts",
+        "anchor": "if (!fix) { console.log('queue links: run `queue links --fix` to clear them (tasks keep their status)'); return 1; }",
+        "before": 4,
+        "count": 10,
+        "hash": "972f147a2e08",
+        "title": "queue links: report or clear links to deleted branches",
+        "explain": "It lists unfinished tasks whose linked branch is not a local branch. With none it prints OK and exits 0. Otherwise it prints each dangling link and exits 1, or with --fix clears the branch field and saves.",
+        "why": "Housekeeping after reconcile: a task must link only a live branch. A stale link would mislead the next dispatch and the branch count.",
+        "kind": "enforces"
+      },
+      {
+        "node": "supervise",
+        "file": "scripts/queue-lanes.ts",
+        "anchor": "* Record a heartbeat for a lane: merge the patch over the existing sidecar",
+        "before": 1,
+        "count": 20,
+        "hash": "f59728fd0996",
+        "title": "beatLane: heartbeat with the current step",
+        "explain": "It reads the lane's sidecar file or starts a blank one stamped with a start time. It merges in the worker, model, step, state and output tail it was given. It stamps updatedAt and writes the file.",
+        "why": "The heartbeat carries the step and a tail of output, not just a timestamp. That is what lets the orchestrator ask whether a job advanced since the last tick; the comparison itself is done by the agent.",
+        "kind": "implements"
+      },
+      {
+        "node": "supervise",
+        "file": "scripts/agent-loop-process.ts",
+        "anchor": "if (typeof resume === 'string' && resume.trim()) directive.resume = resume.trim();",
+        "before": 9,
+        "count": 13,
+        "hash": "560bb624667f",
+        "title": "readDirective: a run must report continue, complete or blocked",
+        "explain": "It reads the result file the run was told to write. It returns nothing unless the file is a JSON object whose status is continue, complete or blocked and whose summary is a non-empty string. An optional resume id is kept.",
+        "why": "With --require-result the driver treats a missing or malformed result as a failure, so exit code 0 alone is not counted as progress. This is the one place code checks progress instead of liveness.",
+        "kind": "enforces"
+      }
+    ],
+    "promptOnly": []
+  }
+}
