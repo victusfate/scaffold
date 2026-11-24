@@ -158,3 +158,72 @@ test('renderC4Markdown is a page: the picture per view, the workspace link, nati
   assert.match(page, /<details>\n<summary>Mermaid's native C4 syntax<\/summary>/);
   assert.equal(page.match(/```mermaid/g)?.length, 4);
 });
+
+// ── From an explorer spec (c4-from-explorer.ts) ─────────────────────────────────────────────────────
+const { explorerToC4 } = await import('./c4-from-explorer.ts');
+const { validateSpec } = await import('./explorer-spec.ts');
+type Spec = Parameters<typeof validateSpec>[0];
+
+const shopSpec = (): Spec => ({
+  title: 'Shop', lede: 'How an order is taken.',
+  c4: { system: 'Shop system', description: 'Sells things' },
+  lanes: [{ id: 'out', name: 'Outside' }, { id: 'front', name: 'Front' }, { id: 'back', name: 'Back end' }],
+  nodes: {
+    buyer: { lane: 'out', name: 'Buyer', role: 'Buys things.', c4: { as: 'person' } },
+    bank: { lane: 'out', name: 'Bank', role: 'Takes payment.', c4: { as: 'external' } },
+    web: { lane: 'front', name: 'Web app', role: 'Shows the catalogue.', c4: { technology: 'TypeScript' } },
+    api: { lane: 'back', name: 'API', role: 'Takes orders.' },
+    'order-db': { lane: 'back', name: 'Orders', role: 'Stores orders.', c4: { as: 'database', technology: 'SQLite' } },
+    jobs: { lane: 'back', name: 'Jobs', role: 'Carries work to do later.', c4: { as: 'queue' } },
+  },
+  flows: [
+    { id: 'checkout', name: 'Checkout', steps: [['buyer', 'web', 'Clicks pay', 'cart'], ['web', 'api', 'Posts the order', 'order'],
+      ['api', 'api', 'Checks stock', 'order'], ['api', 'order-db', 'Writes the order', 'row'], ['api', 'bank', 'Charges', 'amount']] },
+    { id: 'refund-flow', name: 'Refund', steps: [['web', 'api', 'Asks for a refund', 'order id'], ['api', 'jobs', 'Queues the refund', 'job']] },
+  ],
+});
+
+test('explorerToC4 turns nodes into elements by their c4.as, and lanes into groups of containers', () => {
+  const { model, problems } = explorerToC4(shopSpec());
+  assert.deepEqual(problems, []);
+  assert.deepEqual(model!.system, { name: 'Shop system', description: 'Sells things' });
+  assert.deepEqual(model!.elements, [
+    { id: 'p_buyer', kind: 'person', name: 'Buyer', description: 'Buys things.' },
+    { id: 's_bank', kind: 'system', name: 'Bank', description: 'Takes payment.' },
+    { id: 'c_web', kind: 'container', name: 'Web app', description: 'Shows the catalogue.', technology: 'TypeScript', group: 'Front' },
+    { id: 'c_api', kind: 'container', name: 'API', description: 'Takes orders.', group: 'Back end' },
+    { id: 'c_order_db', kind: 'container', name: 'Orders', description: 'Stores orders.', technology: 'SQLite', shape: 'database', group: 'Back end' },
+    { id: 'c_jobs', kind: 'container', name: 'Jobs', description: 'Carries work to do later.', shape: 'queue', group: 'Back end' },
+  ]);
+});
+
+test('explorerToC4 makes one relationship per pair (first wording), drops a step to itself, and keeps each flow as a dynamic view', () => {
+  const { model } = explorerToC4(shopSpec());
+  assert.deepEqual(model!.relationships.map(r => `${r.from} -> ${r.to}: ${r.description}`), [
+    'p_buyer -> c_web: Clicks pay', 'c_web -> c_api: Posts the order', 'c_api -> c_order_db: Writes the order',
+    'c_api -> s_bank: Charges', 'c_api -> c_jobs: Queues the refund']);
+  assert.deepEqual(model!.dynamics.map(view => [view.key, view.title, view.steps.length]), [['checkout', 'Checkout', 4], ['refund_flow', 'Refund', 2]]);
+  assert.equal(model!.dynamics[1].steps[0].description, 'Asks for a refund');
+});
+
+test('explorerToC4 reports a spec that has not opted in, or has no container', () => {
+  const plainSpec = shopSpec(); delete plainSpec.c4;
+  assert.deepEqual(explorerToC4(plainSpec), { problems: ['the spec has no c4 field'] });
+  const people = shopSpec();
+  for (const node of Object.values(people.nodes)) node.c4 = { as: 'person' };
+  assert.deepEqual(explorerToC4(people).problems, ['the described system has no container']);
+});
+
+test('validateSpec checks the c4 fields and leaves a spec without them alone', () => {
+  assert.deepEqual(validateSpec(shopSpec()), []);
+  const bad = shopSpec();
+  bad.c4 = { system: '' };
+  (bad.nodes.web.c4 as { as: string }).as = 'service';
+  assert.deepEqual(validateSpec(bad), ['c4.system is required', 'nodes.web: unknown c4.as "service" (person, external, database, queue)']);
+});
+
+test('a spec converts to a workspace Structurizr can scope: every dynamic step has its relationship', () => {
+  const { model } = explorerToC4(shopSpec());
+  assert.deepEqual(validateC4(model!), []);
+  assert.match(renderStructurizr(model!), /dynamic sys "refund_flow" "Refund" \{\n {12}c_web -> c_api "Asks for a refund"/);
+});
