@@ -7,7 +7,8 @@
 // Deterministic: the same spec renders the same page.
 
 import { anchor } from './check-agents-detail.ts';
-import { mermaidId, mermaidText, uniqueId } from './explorer-render.ts';
+import { mermaidId, mermaidText } from './explorer-render.ts';
+import { uniqueId } from './identifier.ts';
 import type { Bullet, DeepSection, ExplorerNode, ExplorerSpec } from './explorer-spec.ts';
 
 // Quoted mermaid labels: `#quot;` is mermaid's entity for a double quote inside one.

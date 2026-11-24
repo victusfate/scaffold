@@ -17,6 +17,7 @@
 //     --check    validate only; exit 1 with the problems listed
 // Idempotent: the same spec reproduces the same HTML and .mmd files.
 
+import { identifier } from './identifier.ts';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -35,16 +36,7 @@ export function renderHtml(spec: ExplorerSpec, template = readFileSync(TEMPLATE,
 // Mermaid participant ids must be plain identifiers; message text must not
 // carry `;` or `#` (statement separator / entity prefix).
 // The `n_` prefix also keeps ids clear of mermaid keywords such as `end`.
-export const identifier = (text: string): string => text.replace(/[^A-Za-z0-9_]/g, '_');
 export const mermaidId = (id: string): string => 'n_' + identifier(id);
-// `base`, or `base_2`, `base_3`, ... when taken, so ids that sanitize alike (`a.b`, `a_b`) stay distinct.
-// Case is ignored, because Structurizr reads `c_a` and `C_A` as one identifier. `used` is updated.
-export function uniqueId(base: string, used: Set<string>): string {
-  let id = base;
-  for (let n = 2; used.has(id.toLowerCase()); n++) id = `${base}_${n}`;
-  used.add(id.toLowerCase());
-  return id;
-}
 export const mermaidText = (s: string): string => s.replace(/[#;]/g, c => (c === '#' ? '#35;' : '#59;')).replace(/\s+/g, ' ').trim();
 
 export function flowToMermaid(spec: ExplorerSpec, flow: Flow): string {

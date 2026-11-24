@@ -379,6 +379,7 @@ scripts/mind-meld-map.test.ts
 scripts/mind-meld-c4.ts
 scripts/mind-meld-c4.test.ts
 scripts/c4-model.ts
+scripts/identifier.ts
 scripts/c4-structurizr.ts
 scripts/c4-mermaid.ts
 scripts/c4-from-explorer.ts

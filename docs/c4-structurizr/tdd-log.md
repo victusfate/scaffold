@@ -23,3 +23,7 @@
 ## Slice 6 — docs
 - Status: done
 - Notes: skills/diagram.md, skills/mind-meld.md, docs/diagrams/README.md.
+
+## Code refiner
+- Status: done
+- Notes: two independent reviews, then a re-check of the fixes. Fixed: dynamic view keys are generated (`v_<flow>`), so one can never match a view the workspace writes itself; each step is drawn once; files left by a spec that stopped opting in are removed, recognized only by the signature on their first line; backslashes and `${...}` are made safe in workspace strings; the validator rejects what Structurizr would. The re-check caught that the first version of the clean-up could delete a hand-written file that quoted a generated page; it now matches the first line only.

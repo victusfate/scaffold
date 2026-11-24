@@ -6,7 +6,7 @@
 // container); a component is a part inside one container; a `system` element here is always a system
 // outside the one described.
 
-import { identifier, uniqueId } from './explorer-render.ts';
+import { identifier, uniqueId } from './identifier.ts';
 
 export type C4Kind = 'person' | 'system' | 'container' | 'component';
 export type C4Shape = 'database' | 'queue';
@@ -68,7 +68,7 @@ export const componentsOf = (model: C4Model, container: string): C4Element[] =>
   model.elements.filter(element => element.kind === 'component' && element.parent === container);
 
 // Siblings split for drawing: the ungrouped ones, then each group in the order it first appears.
-export function byGroup(elements: C4Element[]): { loose: C4Element[]; groups: [string, C4Element[]][] } {
+export function byGroup<T extends C4Element>(elements: T[]): { loose: T[]; groups: [string, T[]][] } {
   const names = [...new Set(elements.flatMap(element => element.group ?? []))];
   return { loose: elements.filter(element => !element.group), groups: names.map(name => [name, elements.filter(element => element.group === name)]) };
 }
@@ -76,8 +76,9 @@ export function byGroup(elements: C4Element[]): { loose: C4Element[]; groups: [s
 const pairKey = ({ from, to }: C4Relationship): string => `${from} -> ${to}`;
 // One relationship per ordered pair: the first one given.
 export function firstPerPair(relationships: C4Relationship[]): C4Relationship[] {
-  const seen = new Set<string>();
-  return relationships.filter(relationship => !seen.has(pairKey(relationship)) && Boolean(seen.add(pairKey(relationship))));
+  const first = new Map<string, C4Relationship>();
+  for (const relationship of relationships) if (!first.has(pairKey(relationship))) first.set(pairKey(relationship), relationship);
+  return [...first.values()];
 }
 
 function idProblems(model: C4Model): string[] {
@@ -85,7 +86,11 @@ function idProblems(model: C4Model): string[] {
   return model.elements.flatMap(({ id, name }) => {
     const repeated = seen.has(id.toLowerCase());
     seen.add(id.toLowerCase());
-    return [...(IDENTIFIER.test(id) ? [] : [`invalid id "${id}"`]), ...(repeated ? [`duplicate id "${id}"`] : []), ...(plain(name) ? [] : [`"${id}" has no name`])];
+    return [
+      ...(IDENTIFIER.test(id) ? [] : [`invalid id "${id}"`]),
+      ...(repeated ? [`duplicate id "${id}"`] : []),
+      ...(plain(name) ? [] : [`"${id}" has no name`]),
+    ];
   });
 }
 
@@ -103,7 +108,8 @@ function nameProblems(model: C4Model): string[] {
 
 function placeProblems(model: C4Model): string[] {
   const containers = new Set(containersOf(model).map(element => element.id));
-  return [...(containers.size ? [] : ['the described system has no container']), ...model.elements.flatMap(element => {
+  const system = [...(plain(model.system.name) ? [] : ['the described system has no name']), ...(containers.size ? [] : ['the described system has no container'])];
+  return [...system, ...model.elements.flatMap(element => {
     const placed = element.kind === 'component' ? containers.has(element.parent ?? '') : element.parent === undefined;
     if (placed) return [];
     return [element.kind === 'component' ? `"${element.id}" must sit in a container` : `"${element.id}" cannot have a parent`];
@@ -131,8 +137,8 @@ function relationshipProblems(model: C4Model, known: Map<string, C4Element>): st
 function dynamicProblems(model: C4Model, known: Map<string, C4Element>): string[] {
   const keys = new Set<string>(), related = new Set(model.relationships.map(pairKey));
   return model.dynamics.flatMap(({ key, steps }) => {
-    const where = `dynamic view "${key}"`, repeated = keys.has(key);
-    keys.add(key);
+    const where = `dynamic view "${key}"`, repeated = keys.has(key.toLowerCase());
+    keys.add(key.toLowerCase());
     const components = [...new Set(steps.flatMap(({ from, to }) => [from, to]))].filter(id => known.get(id)?.kind === 'component');
     return [
       ...(IDENTIFIER.test(key) && !RESERVED_VIEW.test(key) ? [] : [`invalid dynamic view key "${key}"`]),

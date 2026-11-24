@@ -16,12 +16,12 @@ import { adapterFor, languageFacts, loadAdapters, type ModuleFacts } from './min
 const MAP_TITLE = 'Repo map';
 const MAP_FILE = 'index.md';
 const IMPORTS = 'Imports (declared in source, not observed calls)';
-export const ROOT_AREA = '(root)';
+const ROOT_AREA = '(root)';
 // Tests, specs, fixtures, type declarations and vendored or built trees are not what the repo ships. Not
 // shared with lib/dependency-watch's list: that copy ships into other repos on its own and imports nothing.
 const NOT_SHIPPED = /\.d\.ts$|(^|\/)\.mind-meld\/|(^|\/)(tests?|spec|specs|fixtures|testdata|vendor|node_modules|target|dist|build)\/|\.(test|spec)\.(ts|tsx|mts)$|(^|\/)test_[^/]*\.py$|_test\.py$|_(spec|test)\.rb$/;
 
-export const areaOf = (file: string): string => file.includes('/') ? file.split('/')[0] : ROOT_AREA;
+const areaOf = (file: string): string => file.includes('/') ? file.split('/')[0] : ROOT_AREA;
 // An area's name where a word is needed (a page name, an identifier).
 export const areaBase = (area: string): string => area === ROOT_AREA ? 'root' : area;
 export const NO_SOURCE = 'no source files in a supported language (add an adapter in .mind-meld/languages)';

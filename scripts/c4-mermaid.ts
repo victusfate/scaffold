@@ -41,8 +41,9 @@ const NATIVE_CONTAINER: Record<C4Shape, string> = { database: 'ContainerDb', que
 
 // Text inside a quoted flowchart label. GitHub draws labels as HTML and would swallow `<slug>` as a tag,
 // and mermaid reads `#name;` as an entity; its entity codes are no way out, because its SVG labels print
-// them as typed. So angle brackets become ‹ ›, and a `#` that would start an entity is set apart.
-const labelText = (text: string): string => plain(text).replace(/</g, '‹').replace(/>/g, '›').replace(/#(?=\w+;)/g, '# ');
+// them as typed. So angle brackets become ‹ ›, a `#` that would start an entity is set apart, and a
+// backtick, which opens a markdown label, becomes a single quote.
+const labelText = (text: string): string => plain(text).replace(/</g, '‹').replace(/>/g, '›').replace(/#(?=\w+;)/g, '# ').replace(/`/g, "'");
 
 function wrap(text: string): string[] {
   const lines: string[] = [];
@@ -96,8 +97,8 @@ function boundary(model: C4Model, containers: Drawn[], withGroups: boolean): str
   if (!containers.length) return [];
   const { loose, groups } = withGroups ? byGroup(containers) : { loose: containers, groups: [] };
   return [`subgraph ${SYSTEM_ID}["${labelText(model.system.name)} [Software system]"]`,
-    ...nest([...(loose as Drawn[]).map(box), ...groups.flatMap(([name, members], i) =>
-      [`subgraph g_${i + 1}["${labelText(name)}"]`, ...nest((members as Drawn[]).map(box)), 'end'])]),
+    ...nest([...loose.map(box), ...groups.flatMap(([name, members], i) =>
+      [`subgraph g_${i + 1}["${labelText(name)}"]`, ...nest(members.map(box)), 'end'])]),
     'end', `style ${SYSTEM_ID} ${BOUNDARY}`, ...groups.map((_, i) => `style g_${i + 1} ${GROUP}`)];
 }
 
