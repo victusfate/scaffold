@@ -61,7 +61,7 @@ flowchart TB
     direction TB
     M1["git rm .pause/handoff.md<br/>in the branch's last commit"]:::git
     M2{"check-handoff --pre-merge<br/>fails while file exists"}:::gate
-    M3["main · squash merge<br/>never carries a handoff"]:::git
+    M3["main never carries a handoff<br/>(scaffold squash merges)"]:::git
     M1 --> M2 --> M3
   end
 
@@ -80,7 +80,7 @@ flowchart TB
     L7["usage limit<br/>rolling usage<br/>window"]:::git
     L8["PR<br/>pull request: a proposed<br/>change, reviewed and<br/>checked before merge"]:::git
     L9["pre-merge<br/>check run just before<br/>a branch lands on main"]:::git
-    L10["squash merge<br/>one PR lands as<br/>one commit on main"]:::git
+    L10["squash merge<br/>scaffold's own method: one PR<br/>lands as one commit on main"]:::git
     L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
   end
 

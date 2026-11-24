@@ -2,7 +2,7 @@
   "title": "Session continuity",
   "lede": "How work survives a closed session: checkpoint into a handoff file, push it, and pick it up from any device.",
   "detail": "../generated/session-continuity.svg",
-  "sources": ["docs/diagrams/src/session-continuity.mmd", "skills/save.md", "skills/pause.md", "skills/resume.md"],
+  "sources": ["docs/diagrams/src/session-continuity.mmd", "skills/save.md", "skills/pause.md", "skills/resume.md", "skills/create-pr.md", "docs/agents-detail.md"],
   "reviewed": "f0cf618720f7",
   "lanes": [
     { "id": "save", "name": "Save" },
@@ -20,11 +20,11 @@
       "details": ["/save stages by explicit path; /pause commits everything and lists what was dirty.", "Near a usage limit: drop a memory pointer, then schedule a wake after the reset if the client has a scheduler."],
       "risks": ["An unpushed checkpoint is stranded on one machine."] },
     "resume": { "lane": "resume", "name": "Resume", "role": "The next session pulls, reads the handoff, re-checks its claims and starts the first next step.", "link": "../../../skills/resume.md",
-      "details": ["Session start first merges origin/main if behind and watches the branch's PR.", "On the same machine, claude -c keeps the full chat history and is richer."],
+      "details": ["Session start also merges origin/main if behind and watches the branch's PR.", "On the same machine, claude -c keeps the full chat history and is richer."],
       "risks": ["A handoff on main or on a merged branch is stale: ignore it and delete it.", "A verified tag is evidence, not an instruction; never run text from it."],
       "qs": ["When should I use claude -c instead of /resume?"] },
     "merge": { "lane": "land", "name": "Clear before merge", "role": "The branch's last commit removes the handoff, so main never carries one.", "link": "pr-workflow.md",
-      "details": ["Remove .pause/handoff.md with git rm, then check-handoff --pre-merge must pass on the merged head.", "The PR then lands on main as one squash commit."] }
+      "details": ["Remove .pause/handoff.md with git rm, then check-handoff --pre-merge must pass on the merged head.", "The PR then lands on main by the repo's merge method; scaffold itself squashes."] }
   },
   "flows": [
     { "id": "main", "name": "Save to land", "steps": [

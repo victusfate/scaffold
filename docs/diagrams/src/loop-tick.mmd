@@ -39,18 +39,7 @@ flowchart TB
     R1 --> R2 --> R3
   end
 
-  subgraph DISPATCH["4 · Free slots"]
-    direction TB
-    D1["Free = no active task<br/>owned by its id"]:::orch
-    D2["Create worktree first"]:::git
-    D3["claim id --worker slot<br/>--branch b"]:::state
-    D4["Start slot's harness<br/>and model there"]:::lane
-    D5{"Unsuited task?<br/>leave the slot free"}:::gate
-    D1 --> D2 --> D3 --> D4
-    D1 -.-> D5
-  end
-
-  subgraph RECON["5 · Reconcile, housekeeping"]
+  subgraph RECON["4 · Reconcile, housekeeping"]
     direction TB
     H1["Compare live handles,<br/>active tasks, git worktree list"]:::orch
     H2["Task, no subagent →<br/>resume or park"]:::orch
@@ -58,6 +47,17 @@ flowchart TB
     H4["Orphan owner →<br/>adopt into slot or park"]:::state
     H5{"Active tasks =<br/>live subagents?"}:::gate
     H1 --> H2 --> H3 --> H4 --> H5
+  end
+
+  subgraph DISPATCH["5 · Free slots"]
+    direction TB
+    D1["Free = no active task<br/>owned by its id"]:::orch
+    D2["Create worktree first"]:::git
+    D3["Highest-priority suited task:<br/>claim id --worker slot<br/>--branch b"]:::state
+    D4["Start slot's harness<br/>and model there"]:::lane
+    D5{"Unsuited task?<br/>leave the slot free"}:::gate
+    D1 --> D2 --> D3 --> D4
+    D1 -.-> D5
   end
 
   subgraph SUPER["6 · Supervise by progress"]
@@ -68,7 +68,7 @@ flowchart TB
     P1 --> P2 --> P3
   end
 
-  WAKE ==> TOPO ==> REVIEW ==> DISPATCH ==> RECON ==> SUPER
+  WAKE ==> TOPO ==> REVIEW ==> RECON ==> DISPATCH ==> SUPER
   end
   style FLOW fill:none,stroke:none
 
@@ -76,7 +76,7 @@ flowchart TB
     direction LR
     L1["topology.json<br/>repo file naming the<br/>orchestrator and its<br/>worker slots"]:::git
     L2["slot<br/>a worker seat (model +<br/>tool); its id is the<br/>task owner"]:::git
-    L3["harness<br/>the agent tool a slot<br/>runs: claude, codex,<br/>agy, pi"]:::git
+    L3["harness<br/>the agent tool a slot<br/>runs, e.g. claude, codex,<br/>agy, pi"]:::git
     L5["worktree<br/>isolated git checkout<br/>per worker"]:::git
     L6["park<br/>return a task to pending,<br/>keeping its branch and<br/>a resume note"]:::git
     L7["zombie worktree<br/>checkout with no task<br/>and no running subagent"]:::git
