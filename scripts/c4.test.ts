@@ -91,3 +91,70 @@ test('renderStructurizr balances its braces and is stable', () => {
   assert.equal(dsl.split('{').length, dsl.split('}').length);
   assert.equal(dsl, renderStructurizr(shop()));
 });
+
+// ── The C4 picture and native C4 (c4-mermaid.ts) ────────────────────────────────────────────────────
+const { c4Views, renderC4Markdown } = await import('./c4-mermaid.ts');
+
+test('c4Views gives a container view, then one view per dynamic view', () => {
+  assert.deepEqual(c4Views(shop()).map(view => view.title), ['Containers', 'Checkout']);
+});
+
+test('the C4 picture is a flowchart in C4 notation: typed labels, a system boundary, groups and shapes', () => {
+  const [{ picture }] = c4Views(shop());
+  assert.match(picture, /^flowchart LR$/m);
+  assert.match(picture, /^ {4}p_buyer\(\["Buyer<br\/>\[Person\]<br\/>Buys things"\]\)$/m);
+  assert.match(picture, /^ {4}s_bank\["Bank<br\/>\[Software system\]<br\/>Takes payment"\]$/m);
+  assert.match(picture, /^ {4}subgraph sys\["Shop system \[Software system\]"\]$/m);
+  assert.match(picture, /^ {8}subgraph g_1\["Front"\]\n {12}c_web\["Web app<br\/>\[Container: TypeScript\]<br\/>Shows the catalogue"\]\n {8}end$/m);
+  assert.match(picture, /^ {8}c_db\[\("Orders<br\/>\[Container\]"\)\]$/m);
+  assert.match(picture, /^ {4}c_api -->\|"Charges"\| s_bank$/m);
+  assert.match(picture, /^ {4}class p_buyer person;$/m);
+  assert.doesNotMatch(picture, /m_cart/);
+});
+
+test('a relationship between components shows between their containers, once, and never inside one', () => {
+  const model = shop();
+  model.elements.push({ id: 'm_page', kind: 'component', parent: 'c_web', name: 'page.ts' }, { id: 'm_pay', kind: 'component', parent: 'c_api', name: 'pay.ts' });
+  model.relationships = [{ from: 'm_page', to: 'm_cart', description: 'imports' }, { from: 'm_page', to: 'm_pay', description: 'imports' },
+    { from: 'm_cart', to: 'm_pay', description: 'imports' }];
+  model.dynamics = [];
+  const [{ picture }] = c4Views(model);
+  assert.equal(picture.match(/-->/g)?.length, 1);
+  assert.match(picture, /c_web -->\|"imports"\| c_api/);
+});
+
+test('a dynamic view numbers its steps and shows only the elements that take part', () => {
+  const { picture, native } = c4Views(shop())[1];
+  assert.match(picture, /p_buyer -->\|"1\. Clicks pay"\| c_web/);
+  assert.match(picture, /c_web -->\|"2\. Posts the order"\| c_api/);
+  assert.doesNotMatch(picture, /c_db|s_bank/);
+  assert.match(native, /^C4Dynamic$/m);
+  assert.match(native, /^ {4}Rel\(c_web, c_api, "Posts the order"\)$/m);
+});
+
+test('native C4 uses the element function for each kind and shape', () => {
+  const [{ native }] = c4Views(shop());
+  assert.match(native, /^C4Container$/m);
+  assert.match(native, /^ {4}Person\(p_buyer, "Buyer", "Buys things"\)$/m);
+  assert.match(native, /^ {4}System_Ext\(s_bank, "Bank", "Takes payment"\)$/m);
+  assert.match(native, /^ {4}System_Boundary\(sys, "Shop system"\) \{$/m);
+  assert.match(native, /^ {8}ContainerDb\(c_db, "Orders", "", ""\)$/m);
+  assert.match(native, /^ {8}Container\(c_web, "Web app", "TypeScript", "Shows the catalogue"\)$/m);
+});
+
+test('long descriptions wrap in the picture so boxes stay narrow', () => {
+  const model = shop();
+  model.elements[0].description = 'Buys things from the catalogue and pays for them by card at the end';
+  const [{ picture }] = c4Views(model);
+  assert.match(picture, /Buys things from the catalogue<br\/>and pays for them by card at<br\/>the end/);
+});
+
+test('renderC4Markdown is a page: the picture per view, the workspace link, native C4 folded away', () => {
+  const page = renderC4Markdown(shop(), { workspace: 'shop.dsl', from: 'shop.explorer.json' });
+  assert.match(page, /^# Shop: C4$/m);
+  assert.match(page, /\[`shop\.dsl`\]\(shop\.dsl\)/);
+  assert.match(page, /^## Containers\n\n```mermaid\n/m);
+  assert.match(page, /^## Checkout\n\n```mermaid\n/m);
+  assert.match(page, /<details>\n<summary>Mermaid's native C4 syntax<\/summary>/);
+  assert.equal(page.match(/```mermaid/g)?.length, 4);
+});
