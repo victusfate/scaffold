@@ -34,10 +34,10 @@
       ["detect", "ask", "Actionable languages found", "language states"],
       ["ask", "emit", "Languages confirmed", "confirmed list"],
       ["emit", "merge", "Sidecars written for existing configs", ".scaffold-new files"],
-      ["merge", "finish", "Merges approved or declined", "merged configs"]] }
+      ["merge", "finish", "Merges approved or declined", "written or merged configs"]] }
   ],
   "glossary": {
-    "sidecar": { "t": "Sidecar", "a": ["sidecar"], "d": "A .scaffold-new copy saved beside your file for you to review and merge; your file is never overwritten." },
+    "sidecar": { "t": "Sidecar", "a": ["sidecar"], "d": "A .scaffold-new copy saved beside your file for you to review and merge; writing it leaves your file unchanged." },
     "marker": { "t": "Marker", "a": ["marker"], "d": "A hash-stamped line that tags a config as scaffold's." },
     "threshold": { "t": "Threshold", "a": ["thresholds"], "d": "A rule limit, such as max line length." }
   },
