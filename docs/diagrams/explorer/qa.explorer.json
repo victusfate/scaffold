@@ -36,7 +36,7 @@
       ["probe", "triage", "Issues logged", "QA-NNN list"],
       ["triage", "fixloop", "In-tier issues chosen", "fix list"],
       ["fixloop", "final", "Fixes committed", "fix(qa) commits"],
-      ["final", "report", "Regressions checked", "evidence"]] }
+      ["final", "report", "Regressions checked", "regressions, if any"]] }
   ],
   "glossary": {
     "surface": { "t": "Surface", "a": ["surface", "surfaces"], "d": "A way users reach the app: page, API, command or job." },

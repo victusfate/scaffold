@@ -46,7 +46,7 @@ flowchart TB
     F1["/investigate: root cause<br/>failing regression test first"]:::lane
     F2["Re-run the probe<br/>+ adjacent happy path"]:::lane
     F3["Commit fix(qa): QA-NNN<br/>with its test"]:::git
-    F4{"2 reverts, off-issue edit,<br/>or 30 fixes? stop and report"}:::gate
+    F4{"2 reverts, off-issue edit,<br/>spreading fixes, or 30 fixes?<br/>stop and report"}:::gate
     F1 --> F2 --> F3 --> F4
   end
 
@@ -74,7 +74,7 @@ flowchart TB
     direction LR
     L1["QA<br/>quality assurance: checking<br/>the app works for a user"]:::git
     L2["surface<br/>a way users reach the app:<br/>page, API, command, job"]:::git
-    L3["API<br/>application programming<br/>interface: HTTP endpoints"]:::git
+    L3["API<br/>application programming<br/>interface: HTTP endpoints,<br/>webhooks"]:::git
     L4["CLI<br/>command-line interface:<br/>commands, flags, exit codes"]:::git
     L5["job<br/>background work: workers,<br/>queues, scheduled tasks"]:::git
     L6["fix tier<br/>quick = critical + high,<br/>standard adds medium,<br/>exhaustive adds low + cosmetic"]:::git
