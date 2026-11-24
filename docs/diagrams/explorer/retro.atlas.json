@@ -1,0 +1,412 @@
+{
+  "summary": "The retro flow matches skills/retro.md well: every stage, category signal, report column and routing target is in the source, with one inaccuracy (improve is for a codebase survey, not code quality). The larger gap is omission: the source's guardrail rules (inspect and cite what the hook or CI actually runs, confirm the tool is installed, known-failure lists, mechanical versus judgement) and the per-category remedies are not shown.",
+  "checks": [
+    {
+      "node": "reconstruct",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "On request, rebuild what happened from the conversation or a session log.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "1. Reconstruct the session from the conversation or the specified primary logs."
+    },
+    {
+      "node": "reconstruct",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Runs only when the user asks for /retro; the current session is the default.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "Run only when the user requests `/retro` (Codex: `$retro`) or a session retrospective."
+    },
+    {
+      "node": "reconstruct",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Cites concrete turns, commands, failures, corrections and repeated searches.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "Cite concrete turns, commands, failures, corrections, or repeated searches."
+    },
+    {
+      "node": "reconstruct",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "If the record is unavailable, the retro reports the missing evidence and stops; it never infers struggles from the code alone.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "If the requested record is unavailable, report the missing evidence and stop."
+    },
+    {
+      "node": "trace",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Trace each struggle to a cause in the agent's environment.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "hooks, and CI wiring. Trace each observed struggle to its environmental cause."
+    },
+    {
+      "node": "trace",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Reads repo instructions, existing skills, check commands, hooks and CI wiring.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "2. Read the relevant repository instructions, existing skills, check commands,"
+    },
+    {
+      "node": "trace",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Asks whether a remedy already exists but was undiscovered, unwired or broken.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "Check whether the remedy already exists but was undiscovered, unwired, or broken."
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Sort findings into categories and rank them by impact and cost.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "4. Rank candidates by impact and recurrence risk, accounting for implementation"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Prefers repairing an existing mechanism over adding a new one.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "3. Classify supported candidates using the table below. Prefer repairing an"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Keeps a remedy only if it would hold on a different task in the same repo; one remedy per finding.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "hold on a different task in the same repository: record durable facts such as"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A missing hook or CI check counts only when an error escaped or went undetected in this session, and a proposed check must be able to fire in the agent's normal workflow.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "Treat a missing guardrail as a candidate only when a mechanical error escaped or"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Ranks by impact and recurrence risk, weighed against cost and the upkeep of a new rule or check.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "cost and the ongoing burden of a new rule or check. Present the report below."
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Categories table — Navigation: Repeated searches or a hidden dependency delayed progress.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "| Navigation | Repeated searches or a hidden dependency delayed progress |"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Categories table — Automated checks: A mechanical error escaped, or a failure went undetected.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "| Automated checks | A mechanical error escaped, or a failure went undetected |"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Categories table — Review standards: Review missed a judgement call.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "| Review standards | Review missed a judgement call |"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Categories table — Steering size: Relevant guidance was buried in instructions.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "| Steering size | Relevant guidance was buried in repo or global instructions |"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Categories table — Tool economy: A call returned too much output or required repeated work.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "| Tool economy | A call returned excessive output or required repeated work |"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Categories table — No-ops: Repetitive or ineffective steering used up context.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "| No-ops | Repetitive or ineffective steering consumed context |"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Categories table — Information access: Missing logs, docs or read access blocked progress.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "| Information access | Missing logs, documentation, or read access blocked progress |"
+    },
+    {
+      "node": "report",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "A read-only table of findings with evidence and a recommended selection.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "Finish with a recommended selection; wait for the user's choice before edits."
+    },
+    {
+      "node": "report",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "One row per finding (R-01, R-02 and so on)",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "State the session reviewed, the evidence available, and any gaps. For each candidate:"
+    },
+    {
+      "node": "report",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Severity, session evidence, cause, proposed change and where it goes, cost, how to verify it, and when to remove it.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "| ID | Severity | Session evidence | Cause/category | Proposed change and destination | Cost/tradeoff | Verification |"
+    },
+    {
+      "node": "report",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "An empty result is valid after a smooth run.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "an empty result is valid after a smooth run. Keep a remedy only if it would"
+    },
+    {
+      "node": "report",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "The retro edits nothing; installs, hooks, access changes and tasks wait for the user's choice.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "is a separate implementation step; installs, hooks, access changes, and tasks need"
+    },
+    {
+      "node": "route",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The user picks remedies, and each goes to the skill that carries it out.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "that selection. Route selected work through the existing workflow:"
+    },
+    {
+      "node": "route",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "skillify for a reusable procedure, add-linter for linter setup, feature-chain for a substantial change.",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "- Use [`feature-chain`](feature-chain.md) for a substantial implementation."
+    },
+    {
+      "node": "route",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "upstream when the fix belongs in scaffold; improve, code-refiner or prune for code quality.",
+      "verdict": "partial",
+      "file": "skills/retro.md",
+      "quote": "- Use [`improve`](../.claude/skills/improve/SKILL.md) for a codebase survey,",
+      "note": "The source sends code-quality work to code-refiner or prune only; improve is for a codebase survey, and upstream is for a generic remedy."
+    },
+    {
+      "node": "reconstruct",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "reconstruct -> trace: Evidence cited (payload: turns, commands, failures)",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "Cite concrete turns, commands, failures, corrections, or repeated searches."
+    },
+    {
+      "node": "trace",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "trace -> classify: Causes found (payload: candidate findings)",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "3. Classify supported candidates using the table below. Prefer repairing an"
+    },
+    {
+      "node": "classify",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "classify -> report: Ranked (payload: R-01 rows)",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "cost and the ongoing burden of a new rule or check. Present the report below."
+    },
+    {
+      "node": "report",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "report -> route: User selects remedies (payload: chosen rows)",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "Finish with a recommended selection; wait for the user's choice before edits."
+    },
+    {
+      "node": "reconstruct",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Current session by default or a log path / session id",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "Default to the current session; accept a session log path or session identifier."
+    },
+    {
+      "node": "reconstruct",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: retro — retrospective: look back at a session to find what slowed it down",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "Review a coding session for friction and propose improvements to the agent's"
+    },
+    {
+      "node": "classify",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: tool economy — getting answers with fewer, smaller tool calls",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "Narrow the query, batch independent reads, or improve the existing tool |"
+    },
+    {
+      "node": "classify",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: no-op — an instruction that uses context but changes nothing",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "| No-ops | Repetitive or ineffective steering consumed context |"
+    },
+    {
+      "node": "route",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: improve / code-refiner / prune — skills for codebase surveys and code-quality cleanup",
+      "verdict": "confirmed",
+      "file": "skills/retro.md",
+      "quote": "or [`code-refiner`](code-refiner.md) / [`prune`](prune.md) for code-quality work."
+    }
+  ],
+  "missing": [
+    {
+      "what": "Before proposing a guardrail, the agent must inspect whether a pre-commit hook or CI actually runs the relevant lint, type and test commands and cite that inspection next to the session evidence.",
+      "file": "skills/retro.md",
+      "quote": "actually runs the relevant lint, type, and test commands, and cite that"
+    },
+    {
+      "what": "A check may be proposed only after confirming its tool is installed in the agent's environment, not only that its trigger occurs in the normal workflow.",
+      "file": "skills/retro.md",
+      "quote": "it can fire: its tool is installed in the agent's environment and its trigger"
+    },
+    {
+      "what": "A list of known failures must say it is incomplete and must not blame unlisted failures on the agent's edits.",
+      "file": "skills/retro.md",
+      "quote": "it is incomplete and must not attribute unlisted failures to the agent's edits."
+    },
+    {
+      "what": "Mechanical rules (fixed syntax, banned APIs, import shapes, file placement) get an executable check; reviewer prose is reserved for contextual judgement.",
+      "file": "skills/retro.md",
+      "quote": "use an executable check for them. Reserve reviewer prose for contextual judgement."
+    },
+    {
+      "what": "Each category has a prescribed remedy (third column of the source table); the spec table and the diagram show only the category and its session signal.",
+      "file": "skills/retro.md",
+      "quote": "| Category | Session signal | Proposed remedy |"
+    },
+    {
+      "what": "With a partial record the retro continues but must mark the gaps, and the report states the session reviewed, the evidence available and any gaps.",
+      "file": "skills/retro.md",
+      "quote": "Mark gaps in a partial record; infer no struggles from the code alone."
+    },
+    {
+      "what": "A remedy must record durable facts, not a snapshot of this session's failures, and carry no unrelated instruction.",
+      "file": "skills/retro.md",
+      "quote": "the test command, not a snapshot of this session's failures. Give each"
+    },
+    {
+      "what": "The report must briefly explain the highest-value candidate.",
+      "file": "skills/retro.md",
+      "quote": "Explain the highest-value candidate briefly. Report no actionable findings when"
+    },
+    {
+      "what": "Rules for implementing a selected documentation remedy: short imperative steps, one home per rule, explicit completion criteria, conditional pointers to detail, small always-loaded guidance.",
+      "file": "skills/retro.md",
+      "quote": "one home per rule, explicit completion criteria, and conditional pointers to detail."
+    }
+  ],
+  "code": {
+    "overview": "Retro is almost entirely agent-followed prose: skills/retro.md is the whole procedure and no script reconstructs a session, traces causes, ranks findings, builds the report or routes the chosen work. The only retro-specific files with any effect are the thin wrappers and the RESOLVER row that make /retro reachable and carry its 'only when the user requests' description. There is no retro test script; the generic skill validator (scripts/check-resolvable.ts) covers its registration like any other skill.",
+    "refs": [
+      {
+        "node": "reconstruct",
+        "file": ".claude/skills/retro/SKILL.md",
+        "anchor": "description: Use only when the user requests a session retrospective to identify evidence-backed improvements to agent tooling, checks, navigation, and steering; present proposals before changes",
+        "before": 1,
+        "count": 5,
+        "hash": "a2e6144caa94",
+        "title": "Claude wrapper: retro runs only on request",
+        "explain": "The frontmatter description begins 'Use only when the user requests a session retrospective' and ends 'present proposals before changes'. The last line includes the canonical body skills/retro.md.",
+        "why": "The first stage says retro runs only when the user asks for it. This description is the text a harness reads when deciding whether to activate the skill, and the RESOLVER row for retro matches only the literal /retro command. Nothing in code blocks an unrequested run; it rests on this wording. Rebuilding the session from the conversation or a log is done by the agent; no script reads session logs.",
+        "kind": "implements"
+      }
+    ],
+    "promptOnly": [
+      {
+        "node": "trace",
+        "what": "The agent reads repo instructions, skills, check commands, hooks and CI wiring itself and ties each struggle to an environmental cause."
+      },
+      {
+        "node": "classify",
+        "what": "The agent sorts findings into the category table in the skill, keeps one durable remedy per finding, and ranks by impact, recurrence and cost."
+      },
+      {
+        "node": "report",
+        "what": "The agent writes the R-01 style table with evidence, cause, proposed change, cost and verification, and makes no edits; the read-only rule is not enforced by code."
+      },
+      {
+        "node": "route",
+        "what": "After the user picks remedies the agent hands each to the named skill (skillify, add-linter, feature-chain, upstream, improve, code-refiner or prune); there is no dispatcher."
+      }
+    ]
+  }
+}

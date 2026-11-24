@@ -1,0 +1,520 @@
+{
+  "summary": "The skillify flow matches skills/skillify.md closely: every stage, file, gate and PR detail is in the source. The differences are in framing: the spec presents \"Name and dedupe\" as a stage with a slug confirmation, where the source has hard rules that only require stating the slug before the first file, and the recap is confirmed by the agent in one line rather than explicitly by the user. The main omission is the fallback for a missing scaffold remote.",
+  "checks": [
+    {
+      "node": "context",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Rebuild what the session did without asking the user to re-explain.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "Rebuild what happened without asking the user to re-explain:"
+    },
+    {
+      "node": "context",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Reads the conversation, project manifests, git diff --stat and git log.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "- `git diff --stat` (and `git log --oneline -20`) for which files changed and the"
+    },
+    {
+      "node": "context",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Writes a one-paragraph recap that the user confirms in one line.",
+      "verdict": "partial",
+      "file": "skills/skillify.md",
+      "quote": "Produce a one-paragraph reconstruction and confirm it in a single line before",
+      "note": "The source tells the agent to confirm the recap in a single line; it does not say the user is the one who replies in one line."
+    },
+    {
+      "node": "interview",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Four short rounds, one question at a time, each with a recommended answer.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "### Phase 1 — Structured Interview (4 rounds, one question at a time)"
+    },
+    {
+      "node": "interview",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Intent, then inputs, then steps, then edge cases.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "4. **Edge cases** — what must it refuse, guard, or handle specially?"
+    },
+    {
+      "node": "interview",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Stops early if all four are already clear from context.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "Stop early if all four are already unambiguous from Phase 0."
+    },
+    {
+      "node": "name",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Pick one skill, give it a short name, and check it isn't a duplicate.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "- **Stay MECE.** Before generating, scan RESOLVER for a skill with overlapping"
+    },
+    {
+      "node": "name",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "One skill per run: if the session had several, pick the most valuable and say so.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "- **One skill per run.** If the session covered several reusable workflows, pick"
+    },
+    {
+      "node": "name",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The slug is kebab-case, at most 30 characters, and stated before any file is written.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "- **Slug is canonical.** kebab-case, drop articles, ≤30 chars. State it before"
+    },
+    {
+      "node": "name",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "If RESOLVER already has a skill with overlapping purpose, extend that one with an argument instead of adding a near-duplicate.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "purpose. If one exists, extend it with a parameterized arg instead of adding a"
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Write the skill body and its wrappers, register it, and validate.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "Write five files per skill (the validator requires every form):"
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Five files",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "Write five files per skill (the validator requires every form):"
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "`skills/<slug>.md` is the canonical body.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "1. **`skills/<slug>.md`** — canonical instructions, no frontmatter. This is the"
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Thin wrappers for Claude, Cursor, .agents and .agent/workflows point at it, all with the same description.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "and **identical across all four wrapper forms**; the validator's parity phase"
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A RESOLVER row with a unique ^/slug anchor.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "1. **Register** — In every client, add a row to `.claude/skills/RESOLVER.md`"
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "New paths appended to .github/scaffold-files.txt so sync copies them.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "Append all new file paths to `.github/scaffold-files.txt`."
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A focused test for any script logic.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "2. **Tests** — add a focused test for any logic the skill ships in a script."
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "Register or it doesn't ship: client discovery alone does not make a skill available through scaffold sync.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "alone does not make it available through scaffold export or sync."
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "node scripts/check-resolvable.ts must pass before the PR; it rejects wrapper descriptions that drift apart.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "- **Validate before save is final.** Run `node scripts/check-resolvable.ts` and"
+    },
+    {
+      "node": "upstream",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Open a pull request against scaffold so every repo inherits the skill, then stop for review.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "4. **PR to scaffold** — new skills belong upstream so all repos inherit them:"
+    },
+    {
+      "node": "upstream",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Branch `skillify/<slug>` off `scaffold/main`, push, and open a PR titled `feat(skill): <slug>`.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "Then open a PR against `victusfate/scaffold` titled `feat(skill): <slug>`,"
+    },
+    {
+      "node": "upstream",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Do not merge; the summary lists slug, files, validator result and PR link.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "5. **Summarize** — slug, what it does, files written, validator result, PR link."
+    },
+    {
+      "node": "context",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "context -> interview: Recap confirmed (payload: one-paragraph recap)",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "Produce a one-paragraph reconstruction and confirm it in a single line before"
+    },
+    {
+      "node": "interview",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "interview -> name: Intent, inputs, steps, edge cases (payload: answers)",
+      "verdict": "partial",
+      "file": "skills/skillify.md",
+      "quote": "- **Stay MECE.** Before generating, scan RESOLVER for a skill with overlapping",
+      "note": "The source has no naming phase after the interview: naming and the overlap scan are hard rules that only have to happen before generation, and Phase 1 leads straight to Phase 2."
+    },
+    {
+      "node": "name",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "name -> generate: Slug confirmed, no overlap (payload: slug)",
+      "verdict": "partial",
+      "file": "skills/skillify.md",
+      "quote": "writing the first file so the user can correct it. The slug is the directory",
+      "note": "The source only requires stating the slug so the user can correct it; it does not require a confirmation before files are written."
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "generate -> upstream: Validator passes (payload: five files + RESOLVER row)",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "3. **Validate** — the skill must pass `node scripts/check-resolvable.ts`. Fix every error."
+    },
+    {
+      "node": "name",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Slug: The skill's short kebab-case name, used everywhere it is referenced.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "name AND the RESOLVER `Skill` cell AND the `^\\/<slug>` regex anchor."
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "RESOLVER: The routing table that maps /slug to its skill file.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "(unique `^\\/<slug>` anchor, path pointing to `skills/<slug>.md`). Verify all"
+    },
+    {
+      "node": "generate",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Wrapper: A thin per-tool file that points at the canonical skill body.",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "single source of truth; harness wrappers reference it; Codex explicitly reads the linked file."
+    },
+    {
+      "node": "context",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: skill — a reusable instruction file an agent can invoke",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "Turn a completed piece of work into a durable skill: a file other agents"
+    },
+    {
+      "node": "generate",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: scaffold-files.txt — list of files sync copies into downstream repos",
+      "verdict": "confirmed",
+      "file": "skills/upstream.md",
+      "quote": "- all five paths added to `.github/scaffold-files.txt`, the sync manifest;"
+    },
+    {
+      "node": "generate",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: check-resolvable.ts — validator: every skill is registered and wrappers match",
+      "verdict": "partial",
+      "file": "scripts/check-resolvable.ts",
+      "quote": "// check-resolvable.ts — strict compliance linter for the skill engine.",
+      "note": "skillify.md only says the validator requires every form and rejects description drift; \"every skill is registered\" is not stated there and the script header describes it only as a compliance linter."
+    },
+    {
+      "node": "upstream",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend: scaffold/main — the upstream scaffold repo's main branch",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "git checkout -b skillify/<slug> scaffold/main"
+    },
+    {
+      "node": "generate",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Stage order: 4 Generate five files, then 5 Register and validate (RESOLVER row -> scaffold-files.txt -> test -> check-resolvable.ts)",
+      "verdict": "confirmed",
+      "file": "skills/skillify.md",
+      "quote": "### Phase 3 — Review, Save, and PR to scaffold"
+    }
+  ],
+  "missing": [
+    {
+      "what": "If the scaffold remote is not configured, the agent must run bin/sync-from-scaffold.sh once first to add it; neither the spec nor the diagram shows this precondition for the PR step.",
+      "file": "skills/skillify.md",
+      "quote": "If the `scaffold` remote isn't configured, run `bin/sync-from-scaffold.sh`"
+    },
+    {
+      "what": "The wrapper description must be trigger-rich because non-Claude harnesses use it to decide activation; the flow only says the descriptions must match.",
+      "file": "skills/skillify.md",
+      "quote": "Keep `description:` trigger-rich (non-Claude harnesses use it to decide activation)"
+    },
+    {
+      "what": "Registration includes verifying that every harness form from Phase 2 exists, including the shared Codex/pi/agy wrapper.",
+      "file": "skills/skillify.md",
+      "quote": "harness forms from Phase 2 exist, including the shared Codex/pi/agy wrapper."
+    },
+    {
+      "what": "Shared routines are to be factored into lib/ rather than repeated in the skill.",
+      "file": "skills/skillify.md",
+      "quote": "rejects drift. Factor shared routines into `lib/` rather than repeating them."
+    }
+  ],
+  "code": {
+    "overview": "The capture half of this flow (reconstructing the session, the interview, choosing the slug, writing the files, opening the PR) is done by the agent from skills/skillify.md; no script generates a skill or opens the PR. What code does is check the result: scripts/check-resolvable.ts runs the phases in scripts/resolver-phases.ts (helpers in scripts/resolver-utils.ts, table parsing in tools/lib/resolver-parse.ts) over RESOLVER.md, the wrappers and .github/scaffold-files.txt. That validator runs from .githooks/pre-commit and, with --strict, from npm test in the CI verify job; bin/sync-from-scaffold.sh adds the scaffold remote the PR step needs.",
+    "refs": [
+      {
+        "node": "name",
+        "file": "scripts/resolver-phases.ts",
+        "anchor": "fail('MECE', `'${sig[i].name}' and '${sig[j].name}' are not mutually exclusive (purpose similarity ${score.toFixed(2)}) — combine via parameterized args`);",
+        "before": 11,
+        "count": 14,
+        "hash": "4962c89c65e2",
+        "title": "phaseMece: reject a near-duplicate skill",
+        "explain": "For every RESOLVER row it turns the Purpose cell into a set of words. It compares each pair of skills with a Jaccard score. A score of 0.7 or more records a MECE error naming both skills and telling the author to combine them with an argument.",
+        "why": "This is the machine form of the 'Stay MECE' rule in the Name and dedupe stage. Without it a new skill whose purpose repeats an existing one could be registered.",
+        "kind": "enforces"
+      },
+      {
+        "node": "name",
+        "file": "scripts/resolver-utils.ts",
+        "anchor": "text.toLowerCase().split(/[^a-z0-9]+/).filter(t => t.length > 1 && !STOPWORDS.has(t))",
+        "before": 6,
+        "count": 15,
+        "hash": "31adf44958ca",
+        "title": "tokens and jaccard: how purpose overlap is measured",
+        "explain": "tokens lowercases the text, splits on anything that is not a letter or digit, and drops one-letter words and a short stopword list. jaccard counts the words two sets share and divides by the size of their union, returning 0 for two empty sets.",
+        "why": "phaseMece relies on these two helpers for the duplicate check. They define what 'overlapping purpose' means when the validator runs.",
+        "kind": "implements"
+      },
+      {
+        "node": "generate",
+        "file": "tools/lib/resolver-parse.ts",
+        "anchor": "export function parseResolverRows(resolverPath: string): ResolverRow[] {",
+        "before": 0,
+        "count": 20,
+        "hash": "bef5cb9134d7",
+        "title": "parseResolverRows: read the registry table",
+        "explain": "It reads RESOLVER.md line by line and keeps only table rows. The header row starting with 'Skill' switches the table on, separator rows are skipped, and rows with fewer than four cells are ignored. Each remaining row becomes name, regexCell, path and purpose.",
+        "why": "The RESOLVER row the agent adds in the Register step only counts if this parser can read it. A row with a missing cell is silently skipped, and the skill then shows up as an orphan in the reachability phase.",
+        "kind": "implements"
+      },
+      {
+        "node": "generate",
+        "file": "scripts/resolver-phases.ts",
+        "anchor": "export function phaseReachability(rows: ResolverRow[], { fail, ROOT, SKILLS_DIR, skillDirs, bundledSkills, rel }: PhaseCtx): void {",
+        "before": 0,
+        "count": 16,
+        "hash": "eec0998720e0",
+        "title": "phaseReachability: registered, present, anchored",
+        "explain": "First it fails any skill directory under .claude/skills that has no RESOLVER row and is not a bundled skill. Then for each row it checks that the canonical path exists, that the regex anchor equals the slug, and that the Claude wrapper file exists.",
+        "why": "This enforces 'Register or it doesn't ship' and 'Slug is canonical'. Without it a skill could exist on disk with no route, or a row could point at a file that is not there.",
+        "kind": "enforces"
+      },
+      {
+        "node": "generate",
+        "file": "scripts/resolver-phases.ts",
+        "anchor": "if (other.re.test(invocation)) fail('Ambiguity', `routing collision: '${invocation}' also matches '${other.name}' regex`);",
+        "before": 16,
+        "count": 21,
+        "hash": "0c53fc3f7ed7",
+        "title": "phaseAmbiguity: one unique /slug route per skill",
+        "explain": "It compiles each row's regex, dropping rows that do not compile. It fails if two rows share the same ^/slug anchor. Then it tests each skill's own '/slug' invocation: the skill's regex must match it, and no other skill's regex may match it.",
+        "why": "The Register step requires a unique ^/slug anchor. Without this check a new skill's regex could capture another skill's slash command, or fail to match its own.",
+        "kind": "enforces"
+      },
+      {
+        "node": "generate",
+        "file": "scripts/resolver-phases.ts",
+        "anchor": "export function phaseWrapperIntegrity(rows: ResolverRow[], { fail, SKILLS_DIR, CURSOR_RULES, ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS, rel }: PhaseCtx): void {",
+        "before": 0,
+        "count": 14,
+        "hash": "4a181f110ec3",
+        "title": "phaseWrapperIntegrity: wrappers point at the canonical body",
+        "explain": "For each registered skill it builds the expected body path skills/<slug>.md. For each of the four wrapper files that exists, it reads the file and fails if the relative reference to that body is missing.",
+        "why": "The Generate stage writes one canonical body and four thin wrappers. This check stops a wrapper from carrying its own copy of the instructions or pointing at the wrong file.",
+        "kind": "enforces"
+      },
+      {
+        "node": "generate",
+        "file": "scripts/resolver-phases.ts",
+        "anchor": "export function phaseAntigravityParity(rows: ResolverRow[], { fail, ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS, listedInManifest, rel }: PhaseCtx): void {",
+        "before": 0,
+        "count": 12,
+        "hash": "11c33dfc7374",
+        "title": "phaseAntigravityParity: .agents skill and .agent workflow exist and ship",
+        "explain": "For each row it checks that .agents/skills/<slug>/SKILL.md exists and, if so, that it is listed in the sync manifest. It then does the same for .agent/workflows/<slug>.md. phaseCursorParity just above does the same for the Cursor file.",
+        "why": "Skillify says five files per skill and that the validator requires every form. These phases are where a missing wrapper, or one left out of scaffold-files.txt, becomes an error.",
+        "kind": "enforces"
+      },
+      {
+        "node": "generate",
+        "file": "scripts/resolver-phases.ts",
+        "anchor": "export function phaseFrontmatterParity(rows: ResolverRow[], { fail, SKILLS_DIR, CURSOR_RULES, ANTIGRAVITY_SKILLS, ANTIGRAVITY_WORKFLOWS, rel }: PhaseCtx): void {",
+        "before": 0,
+        "count": 22,
+        "hash": "c4cba0a9c7ed",
+        "title": "phaseFrontmatterParity: same description in every wrapper",
+        "explain": "It reads the description from the Claude wrapper and fails if there is none. It fails any wrapper whose unquoted frontmatter value contains ': ', because that is invalid YAML. Then it compares the description in the Cursor, .agents and .agent/workflows files with the Claude one, ignoring whitespace, and fails on any difference.",
+        "why": "The Generate stage says the description must be identical across all four wrappers. Other harnesses use that text to decide when to activate the skill, so drift would make the skill trigger differently per client.",
+        "kind": "enforces"
+      },
+      {
+        "node": "generate",
+        "file": "scripts/resolver-phases.ts",
+        "anchor": "export function phaseScaffold(rows: ResolverRow[], { fail, warn, MANIFEST, listedInManifest, rel }: PhaseCtx): void {",
+        "before": 0,
+        "count": 10,
+        "hash": "54d397f2ebe5",
+        "title": "phaseScaffold: canonical body is in the sync manifest",
+        "explain": "It fails if .github/scaffold-files.txt is missing. For each row it fails when the canonical skills/<slug>.md path is not listed in the manifest. It warns if RESOLVER.md or the validator script itself is not listed.",
+        "why": "The Register step appends new paths to scaffold-files.txt so sync copies them. A skill missing from the manifest would exist in scaffold but never reach consumer repos.",
+        "kind": "enforces"
+      },
+      {
+        "node": "generate",
+        "file": "scripts/resolver-phases.ts",
+        "anchor": "fail('Manifest', `${files.length} tracked files under ${top} are neither shipped nor held back — add \\`${top}\\` to ${rel(INTERNAL)} to hold back the directory, or list each file in ${rel(MANIFEST)}`);",
+        "before": 11,
+        "count": 22,
+        "hash": "73d10f4b2bdc",
+        "title": "phaseManifestCompleteness: every tracked file is shipped or held back",
+        "explain": "It runs only where .github/scaffold-internal.txt exists, which is the scaffold repo. It takes the git-tracked files and fails for any that is neither in the manifest nor matched by the internal list, grouping by top-level directory. It also fails for manifest entries that are not tracked or that are also marked internal.",
+        "why": "This catches the 'added a file but forgot the manifest' case for any of the new skill's files, including a test script. It fires on the scaffold PR, not in the consumer repo.",
+        "kind": "enforces"
+      },
+      {
+        "node": "generate",
+        "file": "scripts/check-resolvable.ts",
+        "anchor": "console.log(`✓ RESOLVER check passed — ${rows.length} skills, ${warnings.length} warning(s).`);",
+        "before": 26,
+        "count": 27,
+        "hash": "fd2b66404def",
+        "title": "check-resolvable main: run the phases and exit",
+        "explain": "If the table parsed to at least one row it runs the ten row-based phases in order. It always runs the manifest completeness phase. It prints warnings unless --quiet, then prints every error and exits 1 if there are any; otherwise it prints a pass line with the skill count.",
+        "why": "This is the 'node scripts/check-resolvable.ts' command the Validate step tells the agent to run and fix until clean. The exit code is what makes it a gate.",
+        "kind": "implements"
+      },
+      {
+        "node": "generate",
+        "file": ".githooks/pre-commit",
+        "anchor": "if [ -f scripts/update-skills-doc.ts ]; then node scripts/update-skills-doc.ts --check; fi",
+        "before": 3,
+        "count": 4,
+        "hash": "e63825f33b2e",
+        "title": "pre-commit: run the validator on every commit",
+        "explain": "At the end of the hook, if scripts/check-resolvable.ts exists it is run without --strict, so duplicated blocks only warn. Then the skills-doc freshness check runs if its script exists. The hook uses 'set -eu', so a failing check aborts the commit.",
+        "why": "Where the hook is enabled, the agent cannot commit the new skill's files with a broken registration even if it skipped the manual validate step.",
+        "kind": "enforces"
+      },
+      {
+        "node": "upstream",
+        "file": ".github/workflows/ci.yml",
+        "anchor": "- uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5",
+        "before": 8,
+        "count": 13,
+        "hash": "b9ec56eefa76",
+        "title": "CI verify job: npm test on the scaffold PR",
+        "explain": "On a pull request to main the verify job checks out the code, installs Node from .node-version, runs npm ci and then npm test. npm test includes test:checks, which runs 'node scripts/check-resolvable.ts --strict' and 'update-skills-doc.ts --check', and test:shell, which runs every scripts/test-*.sh.",
+        "why": "The PR that skillify opens against scaffold is checked here. In --strict mode duplicated blocks across skill bodies are errors, so a skill that passed locally with warnings can still fail on the PR.",
+        "kind": "enforces"
+      },
+      {
+        "node": "upstream",
+        "file": "bin/sync-from-scaffold.sh",
+        "anchor": "if ! git remote get-url scaffold &>/dev/null; then",
+        "before": 1,
+        "count": 7,
+        "hash": "a7ea1d3140df",
+        "title": "sync-from-scaffold: add the scaffold remote",
+        "explain": "If 'git remote get-url scaffold' fails, the script adds a remote named scaffold pointing at SCAFFOLD_URL and says so. It then fetches scaffold main quietly.",
+        "why": "The PR step branches off scaffold/main and pushes to the scaffold remote. Skillify tells the agent to run this script once when the remote is not configured; the branch, push and PR themselves are done by hand with git and gh.",
+        "kind": "implements"
+      }
+    ],
+    "promptOnly": [
+      {
+        "node": "context",
+        "what": "The agent reads the conversation, project manifests, git diff --stat and git log itself and writes a one-paragraph recap for the user to confirm; no script does this."
+      },
+      {
+        "node": "interview",
+        "what": "The agent asks the four questions (intent, inputs, steps, edge cases) one at a time with a recommended answer, and stops early when they are already clear."
+      }
+    ]
+  }
+}

@@ -1,33 +1,48 @@
-[← Flow Atlas](README.md) · [Design doc](../agentic-task-queue/design.md)
+[← Scaffold at a glance](system-map.md)
 
 # Agentic task queue
 
-How a task moves from ingestion into a shared GitHub Issues queue, gets claimed by one worker, and is run in an isolated worktree and merged back into the target repo.
+The design for a task queue shared across projects: how a task moves from ingestion into a GitHub Issues queue, gets claimed by one worker, and is run in an isolated worktree and merged back into the target repo. It is a design; the code walkthrough below shows which parts are built.
 
-![Agentic task queue, detailed flow](../agentic-task-queue/architecture.svg)
+```mermaid
+flowchart LR
+  n_ING["Ingestion sources"] --> n_DISP["Dispatch layer"]
+  n_DISP["Dispatch layer"] --> n_WORK["Workers"]
+  n_WORK["Workers"] --> n_EXEC["Execution layer"]
+  classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
+  classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
+  class n_ING,n_DISP lane0
+  class n_WORK,n_EXEC lane1
+```
 
-Source of truth: [`docs/agentic-task-queue/design.md`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md). Snapshot of commit `3ff4a42`; see [how this was made](README.md#what-kind-of-evidence-this-is).
-
-| Confirmed | Partly | Not found | Contradicted | In the source, not shown | Code excerpts |
-|---:|---:|---:|---:|---:|---:|
-| 23 | 1 | 1 | 0 | 9 | 14 |
-
-Every box in the diagram and all four merge-back outcomes are stated in design.md. The two write-back arrows are weaker: the design never says a completed issue is closed, and it only implies a failed label through status being mirrored as labels. The diagram leaves out the collision check on automated ingestion, the direct run-step failure path, dependency and priority ordering, and the stale-lease return to pending.
-
-**The code.** The design describes a queue shared across projects and stored as GitHub Issues. What is built is a queue for one repository: a local SQLite store (.agent/queue/queue.db) with a Markdown view (queue.md), driven by scripts/queue.ts, queue-model.ts, queue-io.ts, queue-db.ts, queue-claim.ts and queue-worktrees.ts. Built: manual adding, dependency ordering, claiming under a lock, a lease clock, worktree per task, running the validate command, retry then failed. Not built anywhere in this repo: the GitHub Issues store and its labels, assign-and-verify claiming, cross-project targeting, the push trigger, GitHub Action workers, automated and assistant-proposed ingestion with the collision check, the high/default priority tiers, the proposed and reconciling states, and any merge-back or reconciliation code (merging is done by the agent and the root from skills/queue.md). Two built behaviours contradict the design: an expired lease blocks dispatch instead of returning the task to pending, and an agent is refused when it tries to add a task on its own.
-
-## Parts of the diagram
-
-1. [Ingestion sources](#ingestion-sources): Three ways work enters the queue as issues: a person running /queue ingest, automated watchers and cron hooks, and assistant proposals that wait for a human to select them.
-2. [DISPATCH LAYER  (shared, cross-project)](#dispatch-layer-shared-cross-project): Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to exactly one worker through an assign, verify and lease claim.
-3. [Workers](#workers): The agents that claim and execute tasks: Claude routines and manual pulls in phase 1, with GitHub Action crons added in phase 2.
-4. [EXECUTION LAYER  (per target repo)](#execution-layer-per-target-repo): Runs one claimed task in its own worktree in the task's target repo, validates it, and merges it back into the integration branch, sending conflicts to an agent-driven reconciliation task.
+- [Ingestion sources](#ingestion-sources): Three ways work enters the queue as issues: a person running /queue ingest, automated watchers and cron hooks, and assistant proposals that wait for a human to select them.
+- [Dispatch layer](queue-lifecycle.md): Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to exactly one worker through an assign, verify and lease claim.
+- [Workers](#workers): The agents that claim and execute tasks: Claude routines and manual pulls in phase 1, with GitHub Action crons added in phase 2.
+- [Execution layer](#execution-layer): Runs one claimed task in its own worktree in the task's target repo, validates it, and merges it back into the integration branch, sending conflicts to an agent-driven reconciliation task.
 
 ## Ingestion sources
 
 Three ways work enters the queue as issues: a person running /queue ingest, automated watchers and cron hooks, and assistant proposals that wait for a human to select them.
 
-### Code behind this stage
+## Workers
+
+The agents that claim and execute tasks: Claude routines and manual pulls in phase 1, with GitHub Action crons added in phase 2.
+
+## Execution layer
+
+Runs one claimed task in its own worktree in the task's target repo, validates it, and merges it back into the integration branch, sending conflicts to an agent-driven reconciliation task.
+
+## Detailed flow
+
+![Agentic task queue, detailed](../../agentic-task-queue/architecture.svg)
+
+## Code walkthrough
+
+The design describes a queue shared across projects and stored as GitHub Issues. What is built is a queue for one repository: a local SQLite store (.agent/queue/queue.db) with a Markdown view (queue.md), driven by scripts/queue.ts, queue-model.ts, queue-io.ts, queue-db.ts, queue-claim.ts and queue-worktrees.ts. Built: manual adding, dependency ordering, claiming under a lock, a lease clock, worktree per task, running the validate command, retry then failed. Not built anywhere in this repo: the GitHub Issues store and its labels, assign-and-verify claiming, cross-project targeting, the push trigger, GitHub Action workers, automated and assistant-proposed ingestion with the collision check, the high/default priority tiers, the proposed and reconciling states, and any merge-back or reconciliation code (merging is done by the agent and the root from skills/queue.md). Two built behaviours contradict the design: an expired lease blocks dispatch instead of returning the task to pending, and an agent is refused when it tries to add a task on its own.
+
+Each excerpt is read from the repo when this page is built. The explanations were written by an agent; `npm test` fails when the lines they explain change.
+
+### Ingestion sources: code
 
 #### queue add: the one built ingestion path
 
@@ -46,7 +61,7 @@ Three ways work enters the queue as issues: a person running /queue ingest, auto
     }
 ```
 
-[`scripts/queue.ts:322-331`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L322-L331)
+[`scripts/queue.ts:322-331`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L322-L331)
 
 **Why it matters.** This is manual ingestion as built: one task per call, written by whoever runs the command. There is no alignment loop or slicer in code; the caller supplies deps, files and validate as flags.
 
@@ -57,13 +72,15 @@ Three ways work enters the queue as issues: a person running /queue ingest, auto
 
 Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
 
+Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
+
 ```ts
 export function save(q: Queue): void {
   withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
 }
 ```
 
-[`scripts/queue-io.ts:296`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L296-L298)
+[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
 
 </details>
 
@@ -78,7 +95,7 @@ export function log(msg: string): void {
 }
 ```
 
-[`scripts/queue-io.ts:377`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L377-L379)
+[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
 
 </details>
 
@@ -87,6 +104,8 @@ export function log(msg: string): void {
 
 Takes a queue and returns a string to append to command output: a newline, the DRAIN-WANTED marker with the count of eligible tasks, and a hint to run tick, when the queue is running, has no active task and has at least one eligible task. Returns an empty string otherwise.
 
+Comment in the source: Emit the stable DRAIN-WANTED marker (plus a human hint) when a mutation leaves a running queue drainable with no driver attached. This is a machine signal — a Monitor on the queue file, a cron, or an agent keys on `queue: DRAIN-WANTED` to (re)start the drain — not just prose a human has to be watching to notice. Empty string when a driver is already active, nothing is eligible, or the queue is stopped/paused (an operator halt is not a stalled drain).
+
 ```ts
 export function drainKick(q: Queue): string {
   const sig = drainSignal(q);
@@ -94,7 +113,7 @@ export function drainKick(q: Queue): string {
 }
 ```
 
-[`scripts/queue-gates.ts:60`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-gates.ts#L60-L63)
+[`scripts/queue-gates.ts:60-63`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-gates.ts#L60-L63)
 
 </details>
 
@@ -113,7 +132,7 @@ export function addTask(q: Queue, title: string, opts: { top?: boolean } & Parti
 }
 ```
 
-[`scripts/queue-model.ts:451`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L451-L457)
+[`scripts/queue-model.ts:451-457`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L451-L457)
 
 </details>
 
@@ -132,7 +151,7 @@ export function taskOverrides(flags: Parsed): Partial<Task> {
 }
 ```
 
-[`scripts/queue-cli-args.ts:28`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-cli-args.ts#L28-L34)
+[`scripts/queue-cli-args.ts:28-34`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-cli-args.ts#L28-L34)
 
 </details>
 
@@ -140,6 +159,8 @@ export function taskOverrides(flags: Parsed): Partial<Task> {
 <summary><code>taskOrigin</code> · function · scripts/queue-task-origin.ts:25</summary>
 
 Takes the queue, the parsed add arguments and an environment, and decides whether the add is allowed. It returns an error result when --parent names a task not in the queue, or when neither --parent nor --requested is given and the environment marks an agent session. Otherwise it returns ok with the tags and note for the given parent and request, or an empty patch for a human with no flags.
+
+Comment in the source: Resolve where a new task comes from. Humans need no flags. An agent must name an existing parent task or quote the human's request; either is recorded on the task (a `parent:<id>` or `requested-by:human` tag plus a note) so reviewers can trace every task to its human owner.
 
 ```ts
 export function taskOrigin(q: Queue, f: Parsed, env: NodeJS.ProcessEnv = process.env): Origin {
@@ -151,7 +172,7 @@ export function taskOrigin(q: Queue, f: Parsed, env: NodeJS.ProcessEnv = process
 }
 ```
 
-[`scripts/queue-task-origin.ts:25`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-task-origin.ts#L25-L31)
+[`scripts/queue-task-origin.ts:25-31`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-task-origin.ts#L25-L31)
 
 </details>
 
@@ -159,6 +180,8 @@ export function taskOrigin(q: Queue, f: Parsed, env: NodeJS.ProcessEnv = process
 <summary><code>withOrigin</code> · function · scripts/queue-task-origin.ts:49</summary>
 
 Takes the task fields built from the command's own flags and an origin patch, and returns the fields with the origin tags placed first (duplicates removed) and the origin note placed before any --note text. If the origin patch has no tags, the fields are returned unchanged.
+
+Comment in the source: Merge an origin patch with the task's own flags: tags are combined, an explicit --note is kept after the origin note.
 
 ```ts
 export function withOrigin(overrides: Partial<Task>, origin: Partial<Task>): Partial<Task> {
@@ -171,7 +194,7 @@ export function withOrigin(overrides: Partial<Task>, origin: Partial<Task>): Par
 }
 ```
 
-[`scripts/queue-task-origin.ts:49`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-task-origin.ts#L49-L56)
+[`scripts/queue-task-origin.ts:49-56`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-task-origin.ts#L49-L56)
 
 </details>
 
@@ -189,7 +212,7 @@ export function taskOrigin(q: Queue, f: Parsed, env: NodeJS.ProcessEnv = process
 }
 ```
 
-[`scripts/queue-task-origin.ts:25-31`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-task-origin.ts#L25-L31)
+[`scripts/queue-task-origin.ts:25-31`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-task-origin.ts#L25-L31)
 
 **Why it matters.** This is the opposite of the design's automated ingestion: the code blocks agent-created tasks unless a human asked for them. No watcher, cron or telemetry source feeds the queue.
 
@@ -206,7 +229,7 @@ export function isAgentSession(env: NodeJS.ProcessEnv = process.env): boolean {
 }
 ```
 
-[`scripts/queue-task-origin.ts:14`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-task-origin.ts#L14-L16)
+[`scripts/queue-task-origin.ts:14-16`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-task-origin.ts#L14-L16)
 
 </details>
 
@@ -219,7 +242,7 @@ The result of checking where a new task comes from: either { ok: true, patch } w
 export type Origin = { ok: true; patch: Partial<Task> } | { ok: false; error: string };
 ```
 
-[`scripts/queue-task-origin.ts:18`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-task-origin.ts#L18)
+[`scripts/queue-task-origin.ts:18`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-task-origin.ts#L18)
 
 </details>
 
@@ -231,9 +254,10 @@ The error message returned when an agent session tries to add a task without --p
 ```ts
 const AGENT_ADD_REFUSAL = 'queue add: tasks are human-owned. From an agent session, add a task only when a human asked for it: '
   + 'pass --requested "<the human\'s own words>" (add --parent <task-id> to record lineage). '
+  + 'Record findings on the existing task (note, checkpoint, evidence) and ask the human before adding new work.';
 ```
 
-[`scripts/queue-task-origin.ts:33`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-task-origin.ts#L33-L34)
+[`scripts/queue-task-origin.ts:33-35`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-task-origin.ts#L33-L35)
 
 </details>
 
@@ -241,6 +265,8 @@ const AGENT_ADD_REFUSAL = 'queue add: tasks are human-owned. From an agent sessi
 <summary><code>originPatch</code> · function · scripts/queue-task-origin.ts:38</summary>
 
 Takes a parent task id and a requested quote (either may be empty) and returns the tags and note that record them on a new task: a `parent:<id>` tag and 'Child of &lt;id&gt;.' for a parent, a `requested-by:human` tag and the quoted request for a quote. With both empty it returns an empty tag list and an empty note.
+
+Comment in the source: Tags and note recording where a task came from; both origins are kept when both are given.
 
 ```ts
 function originPatch(parent: string, requested: string): Partial<Task> {
@@ -250,7 +276,7 @@ function originPatch(parent: string, requested: string): Partial<Task> {
 }
 ```
 
-[`scripts/queue-task-origin.ts:38`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-task-origin.ts#L38-L42)
+[`scripts/queue-task-origin.ts:38-42`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-task-origin.ts#L38-L42)
 
 </details>
 
@@ -265,7 +291,7 @@ function flagValue(f: Parsed, key: string): string {
 }
 ```
 
-[`scripts/queue-task-origin.ts:44`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-task-origin.ts#L44-L46)
+[`scripts/queue-task-origin.ts:44-46`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-task-origin.ts#L44-L46)
 
 </details>
 
@@ -278,7 +304,7 @@ The result of parsing queue CLI arguments: positionals in order, a map of value 
 export interface Parsed { positionals: string[]; flags: Map<string, string>; bools: Set<string>; }
 ```
 
-[`scripts/queue-cli-args.ts:4`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-cli-args.ts#L4)
+[`scripts/queue-cli-args.ts:4`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-cli-args.ts#L4)
 
 </details>
 
@@ -294,44 +320,13 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
 No code here: Not built: /queue ingest with its alignment loop and slicer, automated watcher/cron/telemetry ingestion with the context-collision check and deferral count, and assistant proposals with a proposed state; an agent breaks work into tasks by hand from skills/queue.md and adds them one at a time.
 
-### Checked against the source
-
-<details>
-<summary>4 confirmed, with the supporting line</summary>
-
-- **Confirmed** (from the diagram): M: Manual /queue ingest (alignment loop then slice)
-  > Manual ingestion (\`/queue ingest\`) runs an interactive alignment loop before
-  >
-  > [`docs/agentic-task-queue/design.md:62`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L62)
-
-- **Confirmed** (from the diagram): A: Automated watchers / cron / telemetry
-  > 1. \*\*Trigger\*\* — file-watcher, telemetry monitor, or cron hook fires.
-  >
-  > [`docs/agentic-task-queue/design.md:369`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L369)
-
-- **Confirmed** (from the diagram): P: Assistant library proposals
-  > An external source (a personal-assistant library) may propose tasks. These enter
-  >
-  > [`docs/agentic-task-queue/design.md:377`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L377)
-
-- **Confirmed** (from the diagram): P -.-&gt; Q: proposed then human selects
-  > as issues with \`status: "proposed"\` and are \*\*not\*\* eligible for claim until a
-  >
-  > [`docs/agentic-task-queue/design.md:378`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L378)
-
-</details>
-
-## DISPATCH LAYER  (shared, cross-project)
-
-Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to exactly one worker through an assign, verify and lease claim.
-
-### Code behind this stage
+### Dispatch layer: code
 
 #### SCHEMA: the queue store is a local SQLite file
 
@@ -373,7 +368,7 @@ CREATE TABLE IF NOT EXISTS views (
 `;
 ```
 
-[`scripts/queue-db.ts:36-68`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-db.ts#L36-L68)
+[`scripts/queue-db.ts:36-68`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-db.ts#L36-L68)
 
 **Why it matters.** This takes the place of the GitHub Issues store in the design. It has no repo, priority, assignee, heartbeat or deferrals column, and no proposed or reconciling status, so those parts of the task schema cannot be stored.
 
@@ -388,7 +383,7 @@ The SQL column definition for the tasks.architecture column: text, not null, def
 const ARCHITECTURE_COLUMN = `TEXT NOT NULL DEFAULT '${DEFAULT_ARCHITECTURE}' CHECK (architecture IN (${ARCHITECTURE_MODES.map(mode => `'${mode}'`).join(', ')}))`;
 ```
 
-[`scripts/queue-db.ts:34`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-db.ts#L34)
+[`scripts/queue-db.ts:34`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-db.ts#L34)
 
 </details>
 
@@ -426,7 +421,7 @@ function acquire(): void {
 }
 ```
 
-[`scripts/queue-io.ts:89-115`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L89-L115)
+[`scripts/queue-io.ts:89-115`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L89-L115)
 
 **Why it matters.** Every CLI command runs inside this lock, so two workers on the same machine cannot both claim one task. This replaces the design's assign, re-read and verify on a GitHub issue; it does not work across machines.
 
@@ -441,7 +436,7 @@ Returns the current time as an ISO 8601 string.
 export function now(): string { return new Date().toISOString(); }
 ```
 
-[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L67)
+[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L67)
 
 </details>
 
@@ -456,7 +451,7 @@ Comment in the source: Queue mutations span read → mutate → write, so an exc
 const LOCK_POLL_MS = 20;
 ```
 
-[`scripts/queue-io.ts:79`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L79)
+[`scripts/queue-io.ts:79`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L79)
 
 </details>
 
@@ -469,7 +464,7 @@ The 60,000 milliseconds a process keeps retrying for the queue lock before throw
 const LOCK_WAIT_MS = 60_000;
 ```
 
-[`scripts/queue-io.ts:80`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L80)
+[`scripts/queue-io.ts:80`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L80)
 
 </details>
 
@@ -482,7 +477,7 @@ Module state holding the file descriptor and path of the queue lock this process
 let held: { fd: number; path: string } | null = null;
 ```
 
-[`scripts/queue-io.ts:81`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L81)
+[`scripts/queue-io.ts:81`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L81)
 
 </details>
 
@@ -495,7 +490,7 @@ Returns the path of the queue lock file: the store path from dbFile() with '.loc
 function lockPath(): string { return `${dbFile()}.lock`; }
 ```
 
-[`scripts/queue-io.ts:83`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L83)
+[`scripts/queue-io.ts:83`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L83)
 
 </details>
 
@@ -510,7 +505,7 @@ function napSync(ms: number): void {
 }
 ```
 
-[`scripts/queue-io.ts:85`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L85-L87)
+[`scripts/queue-io.ts:85-87`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L85-L87)
 
 </details>
 
@@ -518,6 +513,8 @@ function napSync(ms: number): void {
 <summary><code>reclaimDeadHolder</code> · function · scripts/queue-io.ts:156</summary>
 
 Takes the lock file path and returns true when the caller should retry taking the lock immediately: the lock vanished, another contender moved it, or its recorded holder was confirmed dead and the file was removed (with a notice on stderr). Returns false when the record is unreadable, names this process, names a holder that may be alive, or the file changed during the attempt.
+
+Comment in the source: Reclaim a lock whose holder is confirmed dead. The rename is atomic, so two contenders cannot both take it; the renamed file must still be the dead holder's record, otherwise it is put back.
 
 ```ts
 function reclaimDeadHolder(path: string): boolean {
@@ -538,7 +535,7 @@ function reclaimDeadHolder(path: string): boolean {
 }
 ```
 
-[`scripts/queue-io.ts:156`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L156-L171)
+[`scripts/queue-io.ts:156-171`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L156-L171)
 
 </details>
 
@@ -560,7 +557,7 @@ export function deadlocked(q: Queue): Task[] {
 }
 ```
 
-[`scripts/queue-model.ts:763-773`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L763-L773)
+[`scripts/queue-model.ts:763-773`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L763-L773)
 
 **Why it matters.** This is the design's rule that a task never starts before its dependencies complete, and that a failure only strands its dependents. Order among eligible tasks is the line order of the queue; the two priority tiers are not built.
 
@@ -598,7 +595,7 @@ export interface Task {
   startedAt: string | null;
 ```
 
-[`scripts/queue-model.ts:67`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L67-L90) (first 24 lines shown)
+[`scripts/queue-model.ts:67-90`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L67-L90) (first 24 lines shown)
 
 </details>
 
@@ -614,7 +611,7 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
@@ -622,6 +619,8 @@ export interface Queue {
 <summary><code>deliveryAllows</code> · function · scripts/queue-model.ts:757</summary>
 
 Takes a queue and a task id and returns whether that task may be worked on now. It is always true in batch delivery mode; otherwise it is true only when there is no recorded delivery task and no active task, or when the recorded delivery task (or, failing that, the first active task) is this id.
+
+Comment in the source: Admission gate shared by selectors and explicit claim surfaces.
 
 ```ts
 export function deliveryAllows(q: Queue, id: string): boolean {
@@ -631,7 +630,7 @@ export function deliveryAllows(q: Queue, id: string): boolean {
 }
 ```
 
-[`scripts/queue-model.ts:757`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L757-L761)
+[`scripts/queue-model.ts:757-761`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L757-L761)
 
 </details>
 
@@ -655,7 +654,7 @@ export function cmdClaim(q: Queue, id: string, flags: Map<string, string>, taskB
 }
 ```
 
-[`scripts/queue-claim.ts:26-38`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-claim.ts#L26-L38)
+[`scripts/queue-claim.ts:26-38`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-claim.ts#L26-L38)
 
 **Why it matters.** This is the claim step. It is safe because the caller already holds the queue lock, not because of a verify-after-write.
 
@@ -666,6 +665,8 @@ export function cmdClaim(q: Queue, id: string, flags: Map<string, string>, taskB
 
 Takes the queue and a task and returns null when the task can be claimed. Otherwise it returns a message and whether to print it to stderr: the task is not pending, the current delivery cycle has not finished, or the task is held.
 
+Comment in the source: Why `t` can't be claimed now, or null when it can (printed to stdout, as before the split).
+
 ```ts
 function refusal(q: Queue, t: Task): { message: string; stderr: boolean } | null {
   if (t.status !== 'pending') return { message: `claim: ${t.id} is ${t.status}, not claimable`, stderr: false };
@@ -675,7 +676,7 @@ function refusal(q: Queue, t: Task): { message: string; stderr: boolean } | null
 }
 ```
 
-[`scripts/queue-claim.ts:8`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-claim.ts#L8-L13)
+[`scripts/queue-claim.ts:8-13`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-claim.ts#L8-L13)
 
 </details>
 
@@ -683,6 +684,8 @@ function refusal(q: Queue, t: Task): { message: string; stderr: boolean } | null
 <summary><code>branchFlag</code> · function · scripts/queue-claim.ts:16</summary>
 
 Reads the --branch flag from the parsed flags: returns '' when the flag is absent, the trimmed name when it is a non-empty value without whitespace, and null when it was given but is empty or contains whitespace.
+
+Comment in the source: The --branch value: '' when absent, null when given but not one branch name.
 
 ```ts
 function branchFlag(flags: Map<string, string>): string | null {
@@ -692,7 +695,7 @@ function branchFlag(flags: Map<string, string>): string | null {
 }
 ```
 
-[`scripts/queue-claim.ts:16`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-claim.ts#L16-L20)
+[`scripts/queue-claim.ts:16-20`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-claim.ts#L16-L20)
 
 </details>
 
@@ -705,7 +708,7 @@ Returns the current time as an ISO 8601 string.
 export function now(): string { return new Date().toISOString(); }
 ```
 
-[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L67)
+[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L67)
 
 </details>
 
@@ -714,13 +717,15 @@ export function now(): string { return new Date().toISOString(); }
 
 Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
 
+Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
+
 ```ts
 export function save(q: Queue): void {
   withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
 }
 ```
 
-[`scripts/queue-io.ts:296`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L296-L298)
+[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
 
 </details>
 
@@ -735,7 +740,7 @@ export function log(msg: string): void {
 }
 ```
 
-[`scripts/queue-io.ts:377`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L377-L379)
+[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
 
 </details>
 
@@ -771,7 +776,7 @@ export interface Task {
   startedAt: string | null;
 ```
 
-[`scripts/queue-model.ts:67`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L67-L90) (first 24 lines shown)
+[`scripts/queue-model.ts:67-90`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L67-L90) (first 24 lines shown)
 
 </details>
 
@@ -787,7 +792,7 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
@@ -802,7 +807,7 @@ export function setField(q: Queue, id: string, patch: Partial<Task>): Queue {
 }
 ```
 
-[`scripts/queue-model.ts:472`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L472-L474)
+[`scripts/queue-model.ts:472-474`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L472-L474)
 
 </details>
 
@@ -810,6 +815,8 @@ export function setField(q: Queue, id: string, patch: Partial<Task>): Queue {
 <summary><code>beginTask</code> · function · scripts/queue-model.ts:503</summary>
 
 Takes a queue, a task id, a current ISO time and an optional owner, and returns a new queue in which that task is active with that owner and startedAt set to the given time. In per-task delivery mode it also records the task as the current delivery task if none is recorded, and clears the delivery-accepted flag when this task is the delivery task. Nothing is saved, and an unknown id leaves the task list unchanged.
+
+Comment in the source: Mark a task active and claim it for a worker, stamping the lease clock.
 
 ```ts
 export function beginTask(q: Queue, id: string, nowIso: string, owner: string | null = null): Queue {
@@ -819,7 +826,7 @@ export function beginTask(q: Queue, id: string, nowIso: string, owner: string | 
 }
 ```
 
-[`scripts/queue-model.ts:503`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L503-L507)
+[`scripts/queue-model.ts:503-507`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L503-L507)
 
 </details>
 
@@ -827,6 +834,8 @@ export function beginTask(q: Queue, id: string, nowIso: string, owner: string | 
 <summary><code>taskBlock</code> · function · scripts/queue-model.ts:864</summary>
 
 Takes a task and returns the text block handed to a worker: a &lt;queue_task id="..."&gt; element containing the title, the mode, the architecture setting with its guidance text, and the slug, accept, files, contracts and validate lines for whichever of those the task has.
+
+Comment in the source: The prompt block a worker receives for a task (tick/claim).
 
 ```ts
 export function taskBlock(t: Task): string {
@@ -844,7 +853,7 @@ export function taskBlock(t: Task): string {
 }
 ```
 
-[`scripts/queue-model.ts:864`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L864-L876)
+[`scripts/queue-model.ts:864-876`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L864-L876)
 
 </details>
 
@@ -878,7 +887,7 @@ function dispatchGate(q: Queue): { queue: Queue; blocked: number | null } {
 }
 ```
 
-[`scripts/queue.ts:103-125`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L103-L125)
+[`scripts/queue.ts:103-125`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L103-L125)
 
 **Why it matters.** The design says a stale lease returns the task to pending for another worker. The code deliberately does not: it stops and asks for the owner to be resolved, so a slow worker is never doubled up.
 
@@ -895,7 +904,7 @@ Comment in the source: Exit codes for the loop entry points (tick, ready, signal
 const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5, CONFLICT: 6, DELIVERY: 7 } as const;
 ```
 
-[`scripts/queue.ts:78`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L78)
+[`scripts/queue.ts:78`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L78)
 
 </details>
 
@@ -931,7 +940,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       q = addTask(q, title, { top: f.bools.has('top'), ...withOrigin(taskOverrides(f), origin.patch) });
 ```
 
-[`scripts/queue.ts:304`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L304-L327) (first 24 lines shown)
+[`scripts/queue.ts:304-327`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L304-L327) (first 24 lines shown)
 
 </details>
 
@@ -944,7 +953,7 @@ Returns the current time as an ISO 8601 string.
 export function now(): string { return new Date().toISOString(); }
 ```
 
-[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L67)
+[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L67)
 
 </details>
 
@@ -953,13 +962,15 @@ export function now(): string { return new Date().toISOString(); }
 
 Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
 
+Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
+
 ```ts
 export function save(q: Queue): void {
   withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
 }
 ```
 
-[`scripts/queue-io.ts:296`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L296-L298)
+[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
 
 </details>
 
@@ -974,7 +985,7 @@ export function log(msg: string): void {
 }
 ```
 
-[`scripts/queue-io.ts:377`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L377-L379)
+[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
 
 </details>
 
@@ -990,7 +1001,7 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
@@ -998,6 +1009,8 @@ export interface Queue {
 <summary><code>resumeIfDue</code> · function · scripts/queue-model.ts:634</summary>
 
 Takes a queue and a current ISO time and returns { queue, resumed }. If the queue is stopped with a resumeAt time that has been reached, the returned queue is set to running with resumeAt cleared and resumed is true; otherwise the queue is returned unchanged with resumed false, including for a stop that has no resumeAt.
+
+Comment in the source: If the queue is paused-until and that time has arrived, resume it (clearing resumeAt). A plain manual stop (no resumeAt) is left untouched.
 
 ```ts
 export function resumeIfDue(q: Queue, nowIso: string): { queue: Queue; resumed: boolean } {
@@ -1009,7 +1022,7 @@ export function resumeIfDue(q: Queue, nowIso: string): { queue: Queue; resumed: 
 }
 ```
 
-[`scripts/queue-model.ts:634`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L634-L640)
+[`scripts/queue-model.ts:634-640`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L634-L640)
 
 </details>
 
@@ -1017,6 +1030,8 @@ export function resumeIfDue(q: Queue, nowIso: string): { queue: Queue; resumed: 
 <summary><code>staleLeases</code> · function · scripts/queue-model.ts:648</summary>
 
 Takes a queue, a current ISO time and a lease length in minutes, and returns the active tasks whose startedAt is at least that many minutes old. An active task with no startedAt counts as age zero. Nothing is changed or released.
+
+Comment in the source: Expired leases identify ownership conflicts; they never authorize releasing claims.
 
 ```ts
 export function staleLeases(
@@ -1026,7 +1041,7 @@ export function staleLeases(
 }
 ```
 
-[`scripts/queue-model.ts:648`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L648-L652)
+[`scripts/queue-model.ts:648-652`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L648-L652)
 
 </details>
 
@@ -1034,6 +1049,8 @@ export function staleLeases(
 <summary><code>nextActionable</code> · function · scripts/queue-model.ts:817</summary>
 
 Takes a queue and returns the one task to work on now: the first active task the delivery cycle permits, otherwise the first eligible pending task in list order. Returns null when the queue is stopped or no such task exists.
+
+Comment in the source: The single task a serial worker should act on now: resume an active task if one exists, else the topmost eligible pending task. Null if stopped or drained.
 
 ```ts
 export function nextActionable(q: Queue): Task | null {
@@ -1044,7 +1061,7 @@ export function nextActionable(q: Queue): Task | null {
 }
 ```
 
-[`scripts/queue-model.ts:817`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L817-L822)
+[`scripts/queue-model.ts:817-822`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L817-L822)
 
 </details>
 
@@ -1074,7 +1091,7 @@ export function drainSignal(q: Queue): string | null {
 }
 ```
 
-[`scripts/queue-model.ts:837-855`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L837-L855)
+[`scripts/queue-model.ts:837-855`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L837-L855)
 
 **Why it matters.** This is the built form of distribution: something polls the local queue and wakes a worker when the marker appears. The push path (an issue or label event firing a worker) does not exist.
 
@@ -1092,7 +1109,7 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
@@ -1101,6 +1118,8 @@ export interface Queue {
 
 Takes a task and its queue and returns true when the task is pending, not held, permitted by the current delivery cycle, and every dependency id resolves to a task in the queue whose status is done. A dependency that is missing from the queue makes it false.
 
+Comment in the source: A pending task is eligible only when it isn't held and every dependency is done.
+
 ```ts
 export function isEligible(task: Task, q: Queue): boolean {
   return task.status === 'pending' && !task.held && deliveryAllows(q, task.id)
@@ -1108,49 +1127,13 @@ export function isEligible(task: Task, q: Queue): boolean {
 }
 ```
 
-[`scripts/queue-model.ts:764`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L764-L767)
+[`scripts/queue-model.ts:764-767`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L764-L767)
 
 </details>
 
 No code here: Not built: the GitHub Issues store with status/priority/project labels, assign-then-verify claiming, a heartbeat that returns a stale task to pending, the push trigger, cross-project sharing and the high/default priority tiers; the store is one repository's local SQLite file.
 
-### Checked against the source
-
-<details>
-<summary>5 confirmed, with the supporting line</summary>
-
-- **Confirmed** (from the diagram): Subgraph title: DISPATCH LAYER (shared, cross-project), holding the queue store, distribution and claim
-  > The dispatch layer owns the shared store, atomic claiming, cross-project
-  >
-  > [`docs/agentic-task-queue/design.md:183`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L183)
-
-- **Confirmed** (from the diagram): Q: GitHub Issues queue store; 1 task = 1 issue; labels: status / priority / project
-  > target repo), labels carry \`status\`, \`priority\`, and \`project:&lt;repo&gt;\`, and the
-  >
-  > [`docs/agentic-task-queue/design.md:34`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L34)
-
-- **Confirmed** (from the diagram): CRON: Cron / routine; pull: ask for top eligible
-  > - \*\*Cron / routine (pull):\*\* a scheduled runner wakes, asks the store for the
-  >
-  > [`docs/agentic-task-queue/design.md:220`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L220)
-
-- **Confirmed** (from the diagram): PUSH: Push; issue / label event
-  > - \*\*Push (event):\*\* marking a task ready (an issue label/assignment event) fires
-  >
-  > [`docs/agentic-task-queue/design.md:222`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L222)
-
-- **Confirmed** (from the diagram): CLAIM (decision): Claim; assign · verify · lease
-  > \#\#\# D12 — Atomic claim: assign + verify + lease
-  >
-  > [`docs/agentic-task-queue/design.md:201`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L201)
-
-</details>
-
-## Workers
-
-The agents that claim and execute tasks: Claude routines and manual pulls in phase 1, with GitHub Action crons added in phase 2.
-
-### Code behind this stage
+### Workers: code
 
 #### tick: a worker pulls the next task
 
@@ -1182,7 +1165,7 @@ function cmdTick(q: Queue): number {
 }
 ```
 
-[`scripts/queue.ts:127-149`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L127-L149)
+[`scripts/queue.ts:127-149`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L127-L149)
 
 **Why it matters.** This is the pull a Phase 1 worker makes. The agent then does the work itself; the script does not start an agent.
 
@@ -1199,7 +1182,7 @@ Comment in the source: Exit codes for the loop entry points (tick, ready, signal
 const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5, CONFLICT: 6, DELIVERY: 7 } as const;
 ```
 
-[`scripts/queue.ts:78`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L78)
+[`scripts/queue.ts:78`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L78)
 
 </details>
 
@@ -1207,6 +1190,8 @@ const EXIT = { DISPATCHED: 0, IDLE: 3, PAUSED: 4, STOPPED: 5, CONFLICT: 6, DELIV
 <summary><code>dispatchGate</code> · function · scripts/queue.ts:103</summary>
 
 Takes a queue and returns { queue, blocked }, where blocked is null when work may be dispatched or an exit code when it may not. It first resumes a usage pause whose time has passed, saving the queue and writing a log line. It then prints a message and blocks with PAUSED or STOPPED if the queue is stopped, CONFLICT if any active task's lease has expired, or DELIVERY if a per-task delivery is recorded and no task is actionable.
+
+Comment in the source: Auto-resume a due usage pause, then report whether the queue is drainable. Returns a blocking EXIT code for pauses or ambiguous ownership, or null to proceed.
 
 ```ts
 function dispatchGate(q: Queue): { queue: Queue; blocked: number | null } {
@@ -1234,7 +1219,7 @@ function dispatchGate(q: Queue): { queue: Queue; blocked: number | null } {
 }
 ```
 
-[`scripts/queue.ts:103`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L103-L125)
+[`scripts/queue.ts:103-125`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L103-L125)
 
 </details>
 
@@ -1247,7 +1232,7 @@ Returns the current time as an ISO 8601 string.
 export function now(): string { return new Date().toISOString(); }
 ```
 
-[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L67)
+[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L67)
 
 </details>
 
@@ -1256,13 +1241,15 @@ export function now(): string { return new Date().toISOString(); }
 
 Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
 
+Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
+
 ```ts
 export function save(q: Queue): void {
   withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
 }
 ```
 
-[`scripts/queue-io.ts:296`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L296-L298)
+[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
 
 </details>
 
@@ -1277,7 +1264,7 @@ export function log(msg: string): void {
 }
 ```
 
-[`scripts/queue-io.ts:377`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L377-L379)
+[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
 
 </details>
 
@@ -1293,7 +1280,7 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
@@ -1301,6 +1288,8 @@ export interface Queue {
 <summary><code>beginTask</code> · function · scripts/queue-model.ts:503</summary>
 
 Takes a queue, a task id, a current ISO time and an optional owner, and returns a new queue in which that task is active with that owner and startedAt set to the given time. In per-task delivery mode it also records the task as the current delivery task if none is recorded, and clears the delivery-accepted flag when this task is the delivery task. Nothing is saved, and an unknown id leaves the task list unchanged.
+
+Comment in the source: Mark a task active and claim it for a worker, stamping the lease clock.
 
 ```ts
 export function beginTask(q: Queue, id: string, nowIso: string, owner: string | null = null): Queue {
@@ -1310,7 +1299,7 @@ export function beginTask(q: Queue, id: string, nowIso: string, owner: string | 
 }
 ```
 
-[`scripts/queue-model.ts:503`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L503-L507)
+[`scripts/queue-model.ts:503-507`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L503-L507)
 
 </details>
 
@@ -1319,6 +1308,8 @@ export function beginTask(q: Queue, id: string, nowIso: string, owner: string | 
 
 Takes a queue and a task id and returns a queue whose config records that id as the current delivery task, with the delivery-accepted flag set to false. It returns the queue unchanged in batch delivery mode or when a delivery task is already recorded.
 
+Comment in the source: Persist the current cycle independently of task status and archive lifetime.
+
 ```ts
 export function selectDelivery(q: Queue, id: string): Queue {
   return q.config.deliveryMode === 'batch' || q.config.deliveryTask ? q
@@ -1326,7 +1317,7 @@ export function selectDelivery(q: Queue, id: string): Queue {
 }
 ```
 
-[`scripts/queue-model.ts:751`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L751-L754)
+[`scripts/queue-model.ts:751-754`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L751-L754)
 
 </details>
 
@@ -1335,6 +1326,8 @@ export function selectDelivery(q: Queue, id: string): Queue {
 
 Takes a queue and returns the pending tasks that depend on at least one task whose status is failed. Nothing is changed.
 
+Comment in the source: Pending tasks blocked by a dependency that failed (can never become eligible).
+
 ```ts
 export function deadlocked(q: Queue): Task[] {
   return q.tasks.filter(t => t.status === 'pending'
@@ -1342,7 +1335,7 @@ export function deadlocked(q: Queue): Task[] {
 }
 ```
 
-[`scripts/queue-model.ts:770`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L770-L773)
+[`scripts/queue-model.ts:770-773`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L770-L773)
 
 </details>
 
@@ -1350,6 +1343,8 @@ export function deadlocked(q: Queue): Task[] {
 <summary><code>nextActionable</code> · function · scripts/queue-model.ts:817</summary>
 
 Takes a queue and returns the one task to work on now: the first active task the delivery cycle permits, otherwise the first eligible pending task in list order. Returns null when the queue is stopped or no such task exists.
+
+Comment in the source: The single task a serial worker should act on now: resume an active task if one exists, else the topmost eligible pending task. Null if stopped or drained.
 
 ```ts
 export function nextActionable(q: Queue): Task | null {
@@ -1360,7 +1355,7 @@ export function nextActionable(q: Queue): Task | null {
 }
 ```
 
-[`scripts/queue-model.ts:817`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L817-L822)
+[`scripts/queue-model.ts:817-822`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L817-L822)
 
 </details>
 
@@ -1368,6 +1363,8 @@ export function nextActionable(q: Queue): Task | null {
 <summary><code>taskBlock</code> · function · scripts/queue-model.ts:864</summary>
 
 Takes a task and returns the text block handed to a worker: a &lt;queue_task id="..."&gt; element containing the title, the mode, the architecture setting with its guidance text, and the slug, accept, files, contracts and validate lines for whichever of those the task has.
+
+Comment in the source: The prompt block a worker receives for a task (tick/claim).
 
 ```ts
 export function taskBlock(t: Task): string {
@@ -1385,7 +1382,7 @@ export function taskBlock(t: Task): string {
 }
 ```
 
-[`scripts/queue-model.ts:864`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L864-L876)
+[`scripts/queue-model.ts:864-876`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L864-L876)
 
 </details>
 
@@ -1435,7 +1432,7 @@ function cmdLoop(q: Queue): number {
 }
 ```
 
-[`scripts/queue.ts:250-288`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L250-L288)
+[`scripts/queue.ts:250-288`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L250-L288)
 
 **Why it matters.** This is how the worker substrate is built: a text instruction for a live agent session, with exit codes to steer it. Phase 2, a GitHub Action that drains the queue on a schedule, has no workflow in .github/workflows.
 
@@ -1473,7 +1470,7 @@ function dispatch(argv: string[], stdinItems?: string[]): number {
       q = addTask(q, title, { top: f.bools.has('top'), ...withOrigin(taskOverrides(f), origin.patch) });
 ```
 
-[`scripts/queue.ts:304`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L304-L327) (first 24 lines shown)
+[`scripts/queue.ts:304-327`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L304-L327) (first 24 lines shown)
 
 </details>
 
@@ -1488,7 +1485,7 @@ export function log(msg: string): void {
 }
 ```
 
-[`scripts/queue-io.ts:377`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L377-L379)
+[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
 
 </details>
 
@@ -1504,34 +1501,13 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
 No code here: Phase 1 is an agent session following the printed /loop text and skills/queue.md; Phase 2 GitHub Action worker crons are not built (the only queue workflow, agent-loop.yml, runs tests).
 
-### Checked against the source
-
-<details>
-<summary>2 confirmed, with the supporting line</summary>
-
-- **Confirmed** (from the diagram): W1: Phase 1; Claude routines + manual pulls
-  > - \*\*Phase 1 (v1):\*\* workers are \*\*Claude routines and manual pulls\*\* — a Claude
-  >
-  > [`docs/agentic-task-queue/design.md:230`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L230)
-
-- **Confirmed** (from the diagram): W2: Phase 2 (later); GitHub Action crons
-  > - \*\*Phase 2 (later):\*\* add \*\*GitHub Action worker crons\*\* — a scheduled/dispatched
-  >
-  > [`docs/agentic-task-queue/design.md:234`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L234)
-
-</details>
-
-## EXECUTION LAYER  (per target repo)
-
-Runs one claimed task in its own worktree in the task's target repo, validates it, and merges it back into the integration branch, sending conflicts to an agent-driven reconciliation task.
-
-### Code behind this stage
+### Execution layer: code
 
 #### worktree add: an isolated checkout per task
 
@@ -1561,7 +1537,7 @@ function cmdWorktreeAdd(q: Queue, id: string): number {
 }
 ```
 
-[`scripts/queue-worktrees.ts:24-44`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-worktrees.ts#L24-L44)
+[`scripts/queue-worktrees.ts:24-44`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-worktrees.ts#L24-L44)
 
 **Why it matters.** This is the worktree-per-task rule, in the same repository as the queue. Checking out a different target repo from a project label is not built.
 
@@ -1578,7 +1554,7 @@ function git(args: string, cwd = ROOT): string {
 }
 ```
 
-[`scripts/queue-worktrees.ts:10`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-worktrees.ts#L10-L12)
+[`scripts/queue-worktrees.ts:10-12`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-worktrees.ts#L10-L12)
 
 </details>
 
@@ -1593,7 +1569,7 @@ function currentBranch(): string {
 }
 ```
 
-[`scripts/queue-worktrees.ts:13`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-worktrees.ts#L13-L15)
+[`scripts/queue-worktrees.ts:13-15`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-worktrees.ts#L13-L15)
 
 </details>
 
@@ -1606,7 +1582,7 @@ Takes a task id and returns the repo-relative path of that task's worktree, .age
 function wtRel(id: string): string { return join('.agent', 'queue', 'wt', id); }
 ```
 
-[`scripts/queue-worktrees.ts:16`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-worktrees.ts#L16)
+[`scripts/queue-worktrees.ts:16`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-worktrees.ts#L16)
 
 </details>
 
@@ -1619,7 +1595,7 @@ The absolute path of the checkout root, computed as the parent of the directory 
 export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 ```
 
-[`scripts/queue-io.ts:20`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L20)
+[`scripts/queue-io.ts:20`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L20)
 
 </details>
 
@@ -1628,13 +1604,15 @@ export const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
 
+Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
+
 ```ts
 export function save(q: Queue): void {
   withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
 }
 ```
 
-[`scripts/queue-io.ts:296`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L296-L298)
+[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
 
 </details>
 
@@ -1649,7 +1627,7 @@ export function log(msg: string): void {
 }
 ```
 
-[`scripts/queue-io.ts:377`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L377-L379)
+[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
 
 </details>
 
@@ -1665,7 +1643,7 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
@@ -1680,7 +1658,7 @@ export function setField(q: Queue, id: string, patch: Partial<Task>): Queue {
 }
 ```
 
-[`scripts/queue-model.ts:472`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L472-L474)
+[`scripts/queue-model.ts:472-474`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L472-L474)
 
 </details>
 
@@ -1725,7 +1703,7 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
 }
 ```
 
-[`scripts/queue.ts:165-198`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L165-L198)
+[`scripts/queue.ts:165-198`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L165-L198)
 
 **Why it matters.** This is the validation gate before a task counts as completed. It checks the task branch only; it does not merge and does not re-run validation on the merged result.
 
@@ -1735,6 +1713,8 @@ function cmdDone(q: Queue, id: string, skip: boolean): number {
 <summary><code>runValidate</code> · function · scripts/queue.ts:83</summary>
 
 Takes a task and runs its validate command in a shell, in the task's worktree if it has one and otherwise in the current directory. It returns { ok: true, tail: '' } when there is no command or the command exits 0, and { ok: false, tail } with the last three lines of the command's error output joined by ' | ' when it fails. It does not throw.
+
+Comment in the source: Run a task's validation command; the worktree (if any) is the working dir.
 
 ```ts
 function runValidate(task: Task): { ok: boolean; tail: string } {
@@ -1752,7 +1732,7 @@ function runValidate(task: Task): { ok: boolean; tail: string } {
 }
 ```
 
-[`scripts/queue.ts:83`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue.ts#L83-L95)
+[`scripts/queue.ts:83-95`](https://github.com/victusfate/scaffold/blob/main/scripts/queue.ts#L83-L95)
 
 </details>
 
@@ -1765,7 +1745,7 @@ Returns the current time as an ISO 8601 string.
 export function now(): string { return new Date().toISOString(); }
 ```
 
-[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L67)
+[`scripts/queue-io.ts:67`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L67)
 
 </details>
 
@@ -1773,6 +1753,8 @@ export function now(): string { return new Date().toISOString(); }
 <summary><code>unlocked</code> · function · scripts/queue-io.ts:192</summary>
 
 Takes a function and returns its result; if this process holds the queue lock, it releases the lock (closing and deleting the lock file) before running the function and re-acquires it afterwards, even if the function throws. If no lock is held it just runs the function. Re-acquiring can throw if another process keeps the lock for 60 seconds, and the caller has to reload the queue afterwards because other processes may have changed it.
+
+Comment in the source: Release a held queue lock around unbounded work, then retake it. Callers must reload after this returns because another process may have committed changes.
 
 ```ts
 export function unlocked<T>(fn: () => T): T {
@@ -1782,7 +1764,7 @@ export function unlocked<T>(fn: () => T): T {
 }
 ```
 
-[`scripts/queue-io.ts:192`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L192-L196)
+[`scripts/queue-io.ts:192-196`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L192-L196)
 
 </details>
 
@@ -1797,7 +1779,7 @@ export function load(): Queue {
 }
 ```
 
-[`scripts/queue-io.ts:291`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L291-L293)
+[`scripts/queue-io.ts:291-293`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L291-L293)
 
 </details>
 
@@ -1806,13 +1788,15 @@ export function load(): Queue {
 
 Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
 
+Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
+
 ```ts
 export function save(q: Queue): void {
   withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
 }
 ```
 
-[`scripts/queue-io.ts:296`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L296-L298)
+[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
 
 </details>
 
@@ -1827,7 +1811,7 @@ export function log(msg: string): void {
 }
 ```
 
-[`scripts/queue-io.ts:377`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L377-L379)
+[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
 
 </details>
 
@@ -1835,6 +1819,8 @@ export function log(msg: string): void {
 <summary><code>appendArchive</code> · function · scripts/queue-io.ts:382</summary>
 
 Takes a list of tasks and appends a dated '## Archived' section to archive.md beside the queue file, one line per task with a done or failed marker, id, title and elapsed time when it is set. Returns nothing.
+
+Comment in the source: Append a batch of finished tasks to the git-ignored archive.md audit log.
 
 ```ts
 export function appendArchive(tasks: Task[]): void {
@@ -1845,7 +1831,7 @@ export function appendArchive(tasks: Task[]): void {
 }
 ```
 
-[`scripts/queue-io.ts:382`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L382-L387)
+[`scripts/queue-io.ts:382-387`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L382-L387)
 
 </details>
 
@@ -1861,7 +1847,7 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
@@ -1877,7 +1863,7 @@ export function removeTask(q: Queue, id: string): Queue {
 }
 ```
 
-[`scripts/queue-model.ts:493`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L493-L496)
+[`scripts/queue-model.ts:493-496`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L493-L496)
 
 </details>
 
@@ -1897,7 +1883,7 @@ export function markDone(q: Queue, id: string, nowIso: string): Queue {
 }
 ```
 
-[`scripts/queue-model.ts:509`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L509-L516)
+[`scripts/queue-model.ts:509-516`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L509-L516)
 
 </details>
 
@@ -1905,6 +1891,8 @@ export function markDone(q: Queue, id: string, nowIso: string): Queue {
 <summary><code>recordFailure</code> · function · scripts/queue-model.ts:524</summary>
 
 Takes a queue, a task id, an optional reason, a failure limit and a current ISO time, and returns the new queue together with the task's new failure count and whether it reached the limit. The task's count goes up by one, its owner, worktree and startedAt are cleared, its session time is banked and the reason replaces its note; below the limit it becomes pending and moves to the end of the list, at the limit it becomes failed and keeps its position. It also updates the delivery task and clears the delivery-accepted flag as beginTask does, and an unknown id returns the queue unchanged with a count of 0.
+
+Comment in the source: Record a failure. The task retries (moved to the back of the line, still pending) until it reaches maxFailures, then goes terminal `failed`. Either way its worktree/owner are released. Returns the new queue plus whether it went terminal and the running failure count.
 
 ```ts
 export function recordFailure(
@@ -1928,7 +1916,7 @@ export function recordFailure(
 }
 ```
 
-[`scripts/queue-model.ts:524`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L524-L542)
+[`scripts/queue-model.ts:524-542`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L524-L542)
 
 </details>
 
@@ -1937,6 +1925,8 @@ export function recordFailure(
 
 Takes a queue and a task id and returns a queue whose config records that id as the current delivery task, with the delivery-accepted flag set to false. It returns the queue unchanged in batch delivery mode or when a delivery task is already recorded.
 
+Comment in the source: Persist the current cycle independently of task status and archive lifetime.
+
 ```ts
 export function selectDelivery(q: Queue, id: string): Queue {
   return q.config.deliveryMode === 'batch' || q.config.deliveryTask ? q
@@ -1944,7 +1934,7 @@ export function selectDelivery(q: Queue, id: string): Queue {
 }
 ```
 
-[`scripts/queue-model.ts:751`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L751-L754)
+[`scripts/queue-model.ts:751-754`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L751-L754)
 
 </details>
 
@@ -1974,7 +1964,7 @@ export function recordFailure(
 }
 ```
 
-[`scripts/queue-model.ts:524-542`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L524-L542)
+[`scripts/queue-model.ts:524-542`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L524-L542)
 
 **Why it matters.** The design marks a task failed on the first failure and deletes its worktree. The code retries up to maxFailures (default 3) and only clears the worktree link; removing the worktree is a separate command.
 
@@ -2012,7 +2002,7 @@ export interface Task {
   startedAt: string | null;
 ```
 
-[`scripts/queue-model.ts:67`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L67-L90) (first 24 lines shown)
+[`scripts/queue-model.ts:67-90`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L67-L90) (first 24 lines shown)
 
 </details>
 
@@ -2028,7 +2018,7 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
@@ -2036,6 +2026,8 @@ export interface Queue {
 <summary><code>bankSession</code> · function · scripts/queue-model.ts:240</summary>
 
 Takes a task and a current time as an ISO string and returns the task's elapsed seconds plus the whole seconds since its startedAt. If the task has no startedAt, or the difference is negative, it returns the existing elapsed total unchanged. It does not modify the task.
+
+Comment in the source: The banking rule, one home: ending a session adds now−startedAt (floored at zero for missing leases and clock skew) to the running total.
 
 ```ts
 export function bankSession(t: Task, nowIso: string): number {
@@ -2045,7 +2037,7 @@ export function bankSession(t: Task, nowIso: string): number {
 }
 ```
 
-[`scripts/queue-model.ts:240`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L240-L244)
+[`scripts/queue-model.ts:240-244`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L240-L244)
 
 </details>
 
@@ -2060,7 +2052,7 @@ function withTasks(q: Queue, tasks: Task[]): Queue {
 }
 ```
 
-[`scripts/queue-model.ts:443`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L443-L445)
+[`scripts/queue-model.ts:443-445`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L443-L445)
 
 </details>
 
@@ -2075,7 +2067,7 @@ export function setConfig(q: Queue, patch: Partial<QueueConfig>): Queue {
 }
 ```
 
-[`scripts/queue-model.ts:498`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L498-L500)
+[`scripts/queue-model.ts:498-500`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L498-L500)
 
 </details>
 
@@ -2084,6 +2076,8 @@ export function setConfig(q: Queue, patch: Partial<QueueConfig>): Queue {
 
 Takes a queue and a task id and returns a queue whose config records that id as the current delivery task, with the delivery-accepted flag set to false. It returns the queue unchanged in batch delivery mode or when a delivery task is already recorded.
 
+Comment in the source: Persist the current cycle independently of task status and archive lifetime.
+
 ```ts
 export function selectDelivery(q: Queue, id: string): Queue {
   return q.config.deliveryMode === 'batch' || q.config.deliveryTask ? q
@@ -2091,7 +2085,7 @@ export function selectDelivery(q: Queue, id: string): Queue {
 }
 ```
 
-[`scripts/queue-model.ts:751`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L751-L754)
+[`scripts/queue-model.ts:751-754`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L751-L754)
 
 </details>
 
@@ -2116,7 +2110,7 @@ export function cmdAdvance(q: Queue, id: string, pr: string, branch: string): nu
 }
 ```
 
-[`scripts/queue-delivery.ts:14-27`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-delivery.ts#L14-L27)
+[`scripts/queue-delivery.ts:14-27`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-delivery.ts#L14-L27)
 
 **Why it matters.** This is the only code at the merge-back step, and it is an attestation: the script does not merge, check the PR, or detect conflicts. Until it runs, dispatchGate holds the next task back.
 
@@ -2131,7 +2125,7 @@ A regular expression matching an https URL with no whitespace that ends in /pull
 const MERGED_PR_URL = /^https:\/\/[^\s]+\/pull\/\d+$/;
 ```
 
-[`scripts/queue-delivery.ts:7`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-delivery.ts#L7)
+[`scripts/queue-delivery.ts:7`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-delivery.ts#L7)
 
 </details>
 
@@ -2140,13 +2134,15 @@ const MERGED_PR_URL = /^https:\/\/[^\s]+\/pull\/\d+$/;
 
 Takes a queue and, under the queue lock, writes it to the SQLite store and rewrites the queue.md view in one transaction; lane files of tasks that ended or were removed are deleted after the commit. Throws a QueueIntegrityError and saves nothing if queue.md was edited since the store last rendered it, and throws if the lock stays held for 60 seconds.
 
+Comment in the source: Persist `q` to the store, then re-render the view — one transaction.
+
 ```ts
 export function save(q: Queue): void {
   withLock(() => openStore((db, defer) => renderView(db, defer, persistQueue(db, defer, q))));
 }
 ```
 
-[`scripts/queue-io.ts:296`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L296-L298)
+[`scripts/queue-io.ts:296-298`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L296-L298)
 
 </details>
 
@@ -2161,7 +2157,7 @@ export function log(msg: string): void {
 }
 ```
 
-[`scripts/queue-io.ts:377`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-io.ts#L377-L379)
+[`scripts/queue-io.ts:377-379`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-io.ts#L377-L379)
 
 </details>
 
@@ -2177,7 +2173,7 @@ export interface Queue {
 }
 ```
 
-[`scripts/queue-model.ts:121`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L121-L124)
+[`scripts/queue-model.ts:121-124`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L121-L124)
 
 </details>
 
@@ -2192,7 +2188,7 @@ export function setConfig(q: Queue, patch: Partial<QueueConfig>): Queue {
 }
 ```
 
-[`scripts/queue-model.ts:498`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-model.ts#L498-L500)
+[`scripts/queue-model.ts:498-500`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-model.ts#L498-L500)
 
 </details>
 
@@ -2201,6 +2197,8 @@ export function setConfig(q: Queue, patch: Partial<QueueConfig>): Queue {
 
 Takes a queue and returns a string to append to command output: a newline, the DRAIN-WANTED marker with the count of eligible tasks, and a hint to run tick, when the queue is running, has no active task and has at least one eligible task. Returns an empty string otherwise.
 
+Comment in the source: Emit the stable DRAIN-WANTED marker (plus a human hint) when a mutation leaves a running queue drainable with no driver attached. This is a machine signal — a Monitor on the queue file, a cron, or an agent keys on `queue: DRAIN-WANTED` to (re)start the drain — not just prose a human has to be watching to notice. Empty string when a driver is already active, nothing is eligible, or the queue is stopped/paused (an operator halt is not a stalled drain).
+
 ```ts
 export function drainKick(q: Queue): string {
   const sig = drainSignal(q);
@@ -2208,13 +2206,99 @@ export function drainKick(q: Queue): string {
 }
 ```
 
-[`scripts/queue-gates.ts:60`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/scripts/queue-gates.ts#L60-L63)
+[`scripts/queue-gates.ts:60-63`](https://github.com/victusfate/scaffold/blob/main/scripts/queue-gates.ts#L60-L63)
 
 </details>
 
 No code here: Not built: checking out a target repo from a project label, the merge-back into the integration branch, the reconciling state and the automatic high-priority reconciliation task; the agent applies changes, and the root merges and resolves conflicts by hand under skills/queue.md.
 
-### Checked against the source
+## Checked against the source
+
+Every box in the diagram and all four merge-back outcomes are stated in design.md. The two write-back arrows are weaker: the design never says a completed issue is closed, and it only implies a failed label through status being mirrored as labels. The diagram leaves out the collision check on automated ingestion, the direct run-step failure path, dependency and priority ordering, and the stale-lease return to pending.
+
+| Confirmed | Partly | Not found | Contradicted | In the source, not shown in the flow | Code excerpts |
+|---:|---:|---:|---:|---:|---:|
+| 23 | 1 | 1 | 0 | 9 | 14 |
+
+An agent judged each claim against the source; each quote is found in its file when this page is built.
+
+### Ingestion sources: checks
+
+<details>
+<summary>4 confirmed, with the supporting line</summary>
+
+- **Confirmed** (from the diagram): M: Manual /queue ingest (alignment loop then slice)
+  > Manual ingestion (\`/queue ingest\`) runs an interactive alignment loop before
+  >
+  > [`docs/agentic-task-queue/design.md:62`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L62)
+
+- **Confirmed** (from the diagram): A: Automated watchers / cron / telemetry
+  > \1. \*\*Trigger\*\* — file-watcher, telemetry monitor, or cron hook fires.
+  >
+  > [`docs/agentic-task-queue/design.md:369`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L369)
+
+- **Confirmed** (from the diagram): P: Assistant library proposals
+  > An external source (a personal-assistant library) may propose tasks. These enter
+  >
+  > [`docs/agentic-task-queue/design.md:377`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L377)
+
+- **Confirmed** (from the diagram): P -.-&gt; Q: proposed then human selects
+  > as issues with \`status: "proposed"\` and are \*\*not\*\* eligible for claim until a
+  >
+  > [`docs/agentic-task-queue/design.md:378`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L378)
+
+</details>
+
+### Dispatch layer: checks
+
+<details>
+<summary>5 confirmed, with the supporting line</summary>
+
+- **Confirmed** (from the diagram): Subgraph title: DISPATCH LAYER (shared, cross-project), holding the queue store, distribution and claim
+  > The dispatch layer owns the shared store, atomic claiming, cross-project
+  >
+  > [`docs/agentic-task-queue/design.md:183`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L183)
+
+- **Confirmed** (from the diagram): Q: GitHub Issues queue store; 1 task = 1 issue; labels: status / priority / project
+  > target repo), labels carry \`status\`, \`priority\`, and \`project:&lt;repo&gt;\`, and the
+  >
+  > [`docs/agentic-task-queue/design.md:34`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L34)
+
+- **Confirmed** (from the diagram): CRON: Cron / routine; pull: ask for top eligible
+  > \- \*\*Cron / routine (pull):\*\* a scheduled runner wakes, asks the store for the
+  >
+  > [`docs/agentic-task-queue/design.md:220`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L220)
+
+- **Confirmed** (from the diagram): PUSH: Push; issue / label event
+  > \- \*\*Push (event):\*\* marking a task ready (an issue label/assignment event) fires
+  >
+  > [`docs/agentic-task-queue/design.md:222`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L222)
+
+- **Confirmed** (from the diagram): CLAIM (decision): Claim; assign · verify · lease
+  > \#\#\# D12 — Atomic claim: assign + verify + lease
+  >
+  > [`docs/agentic-task-queue/design.md:201`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L201)
+
+</details>
+
+### Workers: checks
+
+<details>
+<summary>2 confirmed, with the supporting line</summary>
+
+- **Confirmed** (from the diagram): W1: Phase 1; Claude routines + manual pulls
+  > \- \*\*Phase 1 (v1):\*\* workers are \*\*Claude routines and manual pulls\*\* — a Claude
+  >
+  > [`docs/agentic-task-queue/design.md:230`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L230)
+
+- **Confirmed** (from the diagram): W2: Phase 2 (later); GitHub Action crons
+  > \- \*\*Phase 2 (later):\*\* add \*\*GitHub Action worker crons\*\* — a scheduled/dispatched
+  >
+  > [`docs/agentic-task-queue/design.md:234`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L234)
+
+</details>
+
+### Execution layer: checks
 
 - **Not found** (from the diagram): DONE -.-&gt; Q: close issue
 
@@ -2223,7 +2307,7 @@ No code here: Not built: checking out a target repo from a project label, the me
 - **Partly** (from the diagram): FAIL -.-&gt; Q: label failed
   > \`status\`, \`priority\`, and \`project\` are mirrored as labels so the store is
   >
-  > [`docs/agentic-task-queue/design.md:281`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L281)
+  > [`docs/agentic-task-queue/design.md:281`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L281)
 
   The design says status is mirrored as a label and that the task is marked "failed", but never names a failed label or a write-back step in those words.
 
@@ -2233,62 +2317,62 @@ No code here: Not built: checking out a target repo from a project label, the me
 - **Confirmed** (from the diagram): Subgraph title: EXECUTION LAYER (per target repo)
   > are all scoped to the target repo. One shared queue, many target repos; the
   >
-  > [`docs/agentic-task-queue/design.md:248`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L248)
+  > [`docs/agentic-task-queue/design.md:248`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L248)
 
 - **Confirmed** (from the diagram): CO: Check out target repo; project label to repo
   > field in the body). A worker, on claiming, checks out that repo and runs the
   >
-  > [`docs/agentic-task-queue/design.md:246`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L246)
+  > [`docs/agentic-task-queue/design.md:246`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L246)
 
 - **Confirmed** (from the diagram): WT: Worktree per task; branch off integration tip
-  > 1. Each task branches off the integration tip into its own worktree.
+  > \1. Each task branches off the integration tip into its own worktree.
   >
-  > [`docs/agentic-task-queue/design.md:99`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L99)
+  > [`docs/agentic-task-queue/design.md:99`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L99)
 
 - **Confirmed** (from the diagram): RUN: Apply changes; run command + validationScript
-  > 6. Run \`command\` then \`validationScript\`.
+  > \6. Run \`command\` then \`validationScript\`.
   >
-  > [`docs/agentic-task-queue/design.md:409`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L409)
+  > [`docs/agentic-task-queue/design.md:409`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L409)
 
 - **Confirmed** (from the diagram): MB (decision): Merge-back into integration
   > \| \*\*merge-back\*\* \| Merging a completed task branch into the integration branch \|
   >
-  > [`docs/agentic-task-queue/design.md:270`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L270)
+  > [`docs/agentic-task-queue/design.md:270`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L270)
 
 - **Confirmed** (from the diagram): DONE: completed
   > proposed → pending → running → completed
   >
-  > [`docs/agentic-task-queue/design.md:322`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L322)
+  > [`docs/agentic-task-queue/design.md:322`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L322)
 
 - **Confirmed** (from the diagram): REC: Reconciliation task; agent-driven, keeps commits
-  > - It \*\*starts from the existing task branch\*\* (the worker's commits are
+  > \- It \*\*starts from the existing task branch\*\* (the worker's commits are
   >
-  > [`docs/agentic-task-queue/design.md:138`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L138)
+  > [`docs/agentic-task-queue/design.md:138`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L138)
 
 - **Confirmed** (from the diagram): FAIL: failed; held for later
   > \`reconciling → failed\` and is \*\*held for later resolution\*\* (human or a
   >
-  > [`docs/agentic-task-queue/design.md:147`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L147)
+  > [`docs/agentic-task-queue/design.md:147`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L147)
 
 - **Confirmed** (from the diagram): MB --&gt; DONE: clean + validation ok
-  > - \*\*Clean merge + validation passes →\*\* record \`result.mergeCommit\`, delete
+  > \- \*\*Clean merge + validation passes →\*\* record \`result.mergeCommit\`, delete
   >
-  > [`docs/agentic-task-queue/design.md:128`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L128)
+  > [`docs/agentic-task-queue/design.md:128`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L128)
 
 - **Confirmed** (from the diagram): MB --&gt; REC: conflict / fails
-  > 2. \*\*Any merge conflict, or a clean merge whose validation then fails →\*\* set the
+  > \2. \*\*Any merge conflict, or a clean merge whose validation then fails →\*\* set the
   >
-  > [`docs/agentic-task-queue/design.md:130`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L130)
+  > [`docs/agentic-task-queue/design.md:130`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L130)
 
 - **Confirmed** (from the diagram): REC --&gt; DONE: clean validated merge
   > integration tip; it resolves to \`completed\` (clean validated merge) or \`failed\`
   >
-  > [`docs/agentic-task-queue/design.md:330`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L330)
+  > [`docs/agentic-task-queue/design.md:330`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L330)
 
 - **Confirmed** (from the diagram): REC --&gt; FAIL: cannot merge safely
-  > - \*\*Cannot produce a clean, validated merge →\*\* the original task transitions
+  > \- \*\*Cannot produce a clean, validated merge →\*\* the original task transitions
   >
-  > [`docs/agentic-task-queue/design.md:146`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L146)
+  > [`docs/agentic-task-queue/design.md:146`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L146)
 
 </details>
 
@@ -2297,44 +2381,57 @@ No code here: Not built: checking out a target repo from a project label, the me
 - Automated ingestion does not write straight into the store: it passes a context-collision check against pending or running manual tasks and is deferred (dropped after 3 deferrals) on overlap.
   > a \`pending\` or \`running\` manual task's \`contextFiles\` is \*\*deferred, re-evaluated
   >
-  > [`docs/agentic-task-queue/design.md:167`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L167)
+  > [`docs/agentic-task-queue/design.md:167`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L167)
 
 - A task can fail directly in the run step (task or validation failure) without going through merge-back or reconciliation: the worktree is deleted and the task is marked failed.
-  > 8. \*\*Failure:\*\* delete the worktree (no reset needed — the integration branch was
+  > \8. \*\*Failure:\*\* delete the worktree (no reset needed — the integration branch was
   >
-  > [`docs/agentic-task-queue/design.md:416`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L416)
+  > [`docs/agentic-task-queue/design.md:416`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L416)
 
 - Eligibility is gated by dependencies: no task starts until every dependsOn task is completed.
   > never starts a task until all declared dependencies are \`"completed"\`. The
   >
-  > [`docs/agentic-task-queue/design.md:48`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L48)
+  > [`docs/agentic-task-queue/design.md:48`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L48)
 
 - Selection among eligible tasks is two-tier priority (all high before any default), first-in first-out within a tier.
   > eligible \`"high"\` task is selected before any \`"default"\` task; within a tier,
   >
-  > [`docs/agentic-task-queue/design.md:54`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L54)
+  > [`docs/agentic-task-queue/design.md:54`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L54)
 
 - A stale lease heartbeat returns a running task to pending for another worker; the diagram names the lease but shows no path back to the queue.
   > died — common in ephemeral environments), a sweep returns the task to \`pending\`
   >
-  > [`docs/agentic-task-queue/design.md:212`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L212)
+  > [`docs/agentic-task-queue/design.md:212`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L212)
 
 - A worker that loses the claim race backs off and picks the next eligible task.
   > assignee\*\* (verify-after-write). If another worker won the race, the loser backs
   >
-  > [`docs/agentic-task-queue/design.md:205`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L205)
+  > [`docs/agentic-task-queue/design.md:205`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L205)
 
 - A failure does not halt the queue; only the failed task's transitive dependents are skipped and reported.
   > still runs. Only the failed task's \*\*transitive dependents\*\* are skipped — their
   >
-  > [`docs/agentic-task-queue/design.md:158`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L158)
+  > [`docs/agentic-task-queue/design.md:158`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L158)
 
 - Reconciliation is itself a new high-priority task put back in the queue, and the original task sits in a reconciling state meanwhile; the diagram draws it as a box inside the execution layer with no return to the store.
   > task \`"reconciling"\` and \*\*enqueue a first-class reconciliation task\*\*
   >
-  > [`docs/agentic-task-queue/design.md:131`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L131)
+  > [`docs/agentic-task-queue/design.md:131`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L131)
 
 - Merges into the integration branch happen one at a time even when tasks run in parallel.
-  > - \*\*Integration merges serialize even when execution parallelizes.\*\* Tasks 1–3
+  > \- \*\*Integration merges serialize even when execution parallelizes.\*\* Tasks 1–3
   >
-  > [`docs/agentic-task-queue/design.md:108`](https://github.com/victusfate/scaffold/blob/3ff4a42f6a7f6122e417b57ec7954458c1947777/docs/agentic-task-queue/design.md#L108)
+  > [`docs/agentic-task-queue/design.md:108`](https://github.com/victusfate/scaffold/blob/main/docs/agentic-task-queue/design.md#L108)
+
+## Ask your LLM
+
+Copy this block into your own assistant to ask about anything on this page.
+
+```text
+The reader wants to understand the agentic task queue designed in
+docs/agentic-task-queue/design.md in the scaffold repo, and how much of that
+design is built.
+Read this page:
+https://github.com/victusfate/scaffold/blob/main/docs/diagrams/pages/agentic-task-queue.md
+Scaffold: https://github.com/victusfate/scaffold
+```

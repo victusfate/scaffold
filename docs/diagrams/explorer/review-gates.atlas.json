@@ -1,0 +1,552 @@
+{
+  "summary": "Stages 1-5 (gather, two reviewers, merge, single fixer, re-verify) match skills/code-refiner.md closely; the only wording gap is that the test re-run is conditional on a detectable runner. The whole sixth stage (receipt, fail closed, shared core, affected-delta) has no support in the listed source: that text is in AGENTS.md / docs/agents-detail.md, which the spec does not list as a source. The flow also omits auto-fix mode detection and the --comment and --effort arguments.",
+  "checks": [
+    {
+      "node": "gather",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Collect the branch's diff and the full text of every changed file.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "Pass each the diff (`git diff main...HEAD`) and the changed-file contents."
+    },
+    {
+      "node": "gather",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The diff is git diff main...HEAD.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "Pass each the diff (`git diff main...HEAD`) and the changed-file contents."
+    },
+    {
+      "node": "gather",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "For the whole repo instead of a diff, /audit ranks the worst files first.",
+      "verdict": "confirmed",
+      "file": "skills/audit.md",
+      "quote": "Score any scope of source files against the four rubric dimensions and report the worst-offending files first, with cited violations."
+    },
+    {
+      "node": "reviewers",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "A correctness reviewer and a structure reviewer read the diff in parallel, without editing.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "Start **two reviewer subagents in the same message** so they run concurrently. Each"
+    },
+    {
+      "node": "reviewers",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Correctness: /validate — Finds correctness bugs.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "1. **Correctness reviewer** — apply Phase 2 of [`skills/validate.md`](validate.md):"
+    },
+    {
+      "node": "reviewers",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A test weakened to pass counts as a defect.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "- A test weakened to reach green is a defect, not a fix (per `validate`)."
+    },
+    {
+      "node": "reviewers",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Structure: /simplify — Scores the rubric and lists cleanups.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "2. **Structural reviewer** — apply the rubric and cleanup dimensions of"
+    },
+    {
+      "node": "reviewers",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Checks diff economy and repeated code across files.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "cleanup dimensions, the diff-economy lens, and the cross-file DRY check."
+    },
+    {
+      "node": "reviewers",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Each reviewer starts fresh, with no session context.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "has isolated context (no session priors) and applies its source skill's criteria"
+    },
+    {
+      "node": "merge",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Combine both reports into one ordered work list, correctness first.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "- **Order** the work: correctness fixes first (keep behavior stable), then"
+    },
+    {
+      "node": "merge",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Findings on the same lines become one item.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "same lines become one work item."
+    },
+    {
+      "node": "merge",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "If both reviews are clean, the fix step is skipped.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "- If both review sets are clean (no correctness findings, all dimensions 10/10),"
+    },
+    {
+      "node": "merge",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Run standalone without --fix, it presents the list and waits for approval.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "merged findings + Quality Scores table; wait for approval before Phase 3."
+    },
+    {
+      "node": "fixer",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "A single agent applies the whole list, then re-runs the tests.",
+      "verdict": "partial",
+      "file": "skills/code-refiner.md",
+      "quote": "1. Re-run the test suite (if a runner is detectable). A test must not be weakened",
+      "note": "Single agent and the re-run are stated, but the source makes the test re-run conditional on a runner being detectable; spec and diagram box F2 state it unconditionally."
+    },
+    {
+      "node": "fixer",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Only one agent edits, so two agents never change the same files at once.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "conflict. The fix is a **single serial pass**, so two agents never edit the same"
+    },
+    {
+      "node": "fixer",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "If a fix needs a test changed, it is surfaced, never weakened to pass.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "to pass — if a fix would require changing a test, surface it instead."
+    },
+    {
+      "node": "reverify",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "A fresh check confirms correctness is clear and every rubric score is 10/10.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "confirm findings resolved and nothing regressed. Gate: structural dimensions"
+    },
+    {
+      "node": "reverify",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "On a regression it fixes once more; if that still fails, it surfaces what remains and stops.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "regression; if it still fails, surface the remaining items and stop."
+    },
+    {
+      "node": "receipt",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "A verified run writes a receipt for the exact code, so the merge step can reuse it.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "**Verify once per commit:** the verified run writes a receipt keyed to the exact",
+      "note": "Stated in AGENTS.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "receipt",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Fail closed: A missing, mismatched or corrupt receipt means the checks re-run in full.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "instead of re-running the same checks. Any mismatch, or a missing or corrupt receipt, fails closed: the",
+      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "receipt",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Full suites run only for shared core; other changes run the checks for the parts they touch, plus the task's own gates.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "**Scope review by risk:** full suites only for shared core (public API, save/codec, networking, workspace build",
+      "note": "Stated in AGENTS.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "gather",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Diff collected — diff + changed files",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "Pass each the diff (`git diff main...HEAD`) and the changed-file contents."
+    },
+    {
+      "node": "reviewers",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Both reports in — findings + scores",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "Return `SCORES_STRUCTURE` (the Quality Scores table) + violations."
+    },
+    {
+      "node": "merge",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Work list ordered — work list",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "Combine the two result sets into one ordered work list:"
+    },
+    {
+      "node": "fixer",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Fixes applied, tests re-run — new diff",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "2. **Re-verify** — start a fresh correctness + structural check on the new diff to"
+    },
+    {
+      "node": "reverify",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Correctness clear, all 10/10 — verified run",
+      "verdict": "partial",
+      "file": "skills/code-refiner.md",
+      "quote": "at 10/10, correctness clear. Loop Phase 3 once if the re-verify surfaces a",
+      "note": "The gate is stated, but code-refiner.md ends at the re-verify report; it never hands a verified run to a receipt step."
+    },
+    {
+      "node": "reviewers",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Rubric: Four scores for code: Quality, Readability, Encapsulation, Clarity.",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "| File | Quality | Readability | Encapsulation | Clarity |"
+    },
+    {
+      "node": "reviewers",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Diff economy: Added lines must earn their place; deletions count as credit.",
+      "verdict": "partial",
+      "file": "skills/simplify.md",
+      "quote": "- **Additions must earn their lines.** Flag added ceremony, thin wrappers, or speculative abstraction — anything a reader would not miss.",
+      "note": "Source credits only deletions that remove complexity while behavior remains, and routes a deletion that dropped needed behavior to /validate; the glossary credits deletions without that condition."
+    },
+    {
+      "node": "receipt",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Shared core: Public API, save or codec formats, networking and workspace build inputs.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "**Scope review by risk:** full suites only for shared core (public API, save/codec, networking, workspace build",
+      "note": "Stated in AGENTS.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "receipt",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Fail closed: When in doubt, block and re-run instead of passing.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "instead of re-running the same checks. Any mismatch, or a missing or corrupt receipt, fails closed: the",
+      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "reviewers",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "isolated reviewer: fresh subagent with no session context, so it reviews objectively",
+      "verdict": "confirmed",
+      "file": "skills/simplify.md",
+      "quote": "The agent invoking this skill has already internalized the session's work and cannot review it objectively. A fresh subagent has no such priors."
+    },
+    {
+      "node": "merge",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Order: correctness first, then structure",
+      "verdict": "confirmed",
+      "file": "skills/code-refiner.md",
+      "quote": "- **Order** the work: correctness fixes first (keep behavior stable), then"
+    },
+    {
+      "node": "receipt",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "6 · Verify once per commit: Receipt keyed to exact tree identity",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "**Verify once per commit:** the verified run writes a receipt keyed to the exact",
+      "note": "Stated in AGENTS.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "receipt",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "tree identity: HEAD, tree, index, diffs, untracked inputs, base, plan, gate-script hashes, tool binaries",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "`HEAD`, the tree, the index, staged and unstaged diffs, hashes of untracked inputs, the base, the plan,",
+      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "receipt",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "receipt: record of a verified run, valid only for that exact code",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "- **Verify once per commit.** The reviewer's verified run writes a receipt keyed to the exact tree identity:",
+      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    },
+    {
+      "node": "receipt",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "affected-delta: checks only for the parts the change touches",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "formats, networking, workspace build inputs. Any other change runs the affected-delta checks plus the",
+      "note": "Stated in docs/agents-detail.md, which this diagram's sources list does not include, so the repo's drift check will not flag the page if this rule changes.",
+      "elsewhere": true
+    }
+  ],
+  "missing": [
+    {
+      "what": "Auto-fix mode is the default when triggered from feature-chain or tdd (Phases 1-3 with no approval wait); the flow shows only the standalone review-mode wait.",
+      "file": "skills/code-refiner.md",
+      "quote": "- **Auto-fix** (from the chain, or with `--fix`): run Phases 1–3, apply, re-verify, report."
+    },
+    {
+      "what": "The --comment flag posts the merged findings as inline PR comments; neither spec nor diagram shows it.",
+      "file": "skills/code-refiner.md",
+      "quote": "- `--comment` — post the merged findings as inline PR comments"
+    },
+    {
+      "what": "The --effort level is passed through to the correctness review (default medium).",
+      "file": "skills/code-refiner.md",
+      "quote": "- `--effort low|medium|high|max` — passed through to the correctness review (default: `medium`)"
+    },
+    {
+      "what": "During merge, where a structural refactor would dissolve a correctness finding the work is done once, not twice.",
+      "file": "skills/code-refiner.md",
+      "quote": "structural fixes. Note where a structural refactor would dissolve a correctness"
+    },
+    {
+      "what": "code-refiner is a thin wrapper that must delegate review criteria to validate and simplify rather than restate them.",
+      "file": "skills/code-refiner.md",
+      "quote": "- Delegate criteria to `validate` and `simplify`; do not restate them here."
+    }
+  ],
+  "code": {
+    "overview": "Most of this flow is prose: the two reviewers, the merge of findings, the single fixer and the re-verify loop are all carried out by agents reading skills/code-refiner.md, skills/validate.md and skills/simplify.md. The code that exists is the deterministic part of the structural review (scripts/check-quality-mechanical.sh, run by .githooks/pre-commit and .github/workflows/quality.yml), a few shell tests that pin the wording of the skills, and the queue's per-task validate command. No code in the repo writes, reads or compares a verification receipt; CI simply runs everything on every pull request.",
+    "refs": [
+      {
+        "node": "gather",
+        "file": "scripts/check-quality-mechanical.sh",
+        "anchor": "collect() { while IFS= read -r f; do FILES+=(\"$f\"); done < <(grep -E \"$SOURCE_RE\" || true); }",
+        "before": 5,
+        "count": 19,
+        "hash": "1b9b61ef46db",
+        "title": "File selection: explicit files, staged files, or the diff against main",
+        "explain": "collect reads file names from stdin and keeps those with a source extension (js, mjs, ts, tsx, sh, py, rb, go). With --staged the names come from the git index; with arguments the given files are used as is; with nothing they come from git diff main...HEAD. Each selected file is then passed to check_file.",
+        "why": "This is the same diff the flow gathers (git diff main...HEAD), but only for the mechanical check. The diff and file contents handed to the two reviewers are gathered by the agent, not by this script.",
+        "kind": "implements"
+      },
+      {
+        "node": "reviewers",
+        "file": "scripts/check-quality-mechanical.sh",
+        "anchor": "emit \"${file}:${MAX_LINES} [Readability/major] file is ${count} lines — exceeds ${MAX_LINES}-line limit; split into cohesive modules (or add a 'quality-ok: file-length — <reason>' pragma if it is one cohesive unit)\"",
+        "before": 9,
+        "count": 11,
+        "hash": "c4c70bc12ed5",
+        "title": "check_file: 500-line file length limit",
+        "explain": "Counts the lines in the file. If the count is over MAX_LINES (500) and the file has no 'quality-ok: file-length' pragma, it prints a Readability/major violation with a file:line citation and adds one to the violation count.",
+        "why": "Carries out the rubric's file-length criterion, which the structure reviewer may not override. Without it the limit would depend on a model noticing a long file.",
+        "kind": "implements"
+      },
+      {
+        "node": "reviewers",
+        "file": "scripts/check-quality-mechanical.sh",
+        "anchor": "emit \"${file}:${lineno} [Readability/minor] magic number — extract to a named constant (or use quality-ok: magic-number pragma if the value is self-documenting)\"",
+        "before": 5,
+        "count": 9,
+        "hash": "5fe845996627",
+        "title": "check_file: flag magic numbers",
+        "explain": "After the earlier skips (comments, named constants, test files, return/exit, pragma) and after quoted strings are stripped, the line is matched against a pattern for a bare integer of two or more digits. A match prints a Readability/minor violation with file:line. The pragma flag is then reset for the next line.",
+        "why": "Carries out the rubric's 'no magic numbers' criterion as a script, so the structure review's mechanical findings are repeatable.",
+        "kind": "implements"
+      },
+      {
+        "node": "reviewers",
+        "file": "scripts/check-quality-mechanical.sh",
+        "anchor": "if [[ \"$line\" =~ ^[[:space:]]*(//|#)[[:space:]]*(function|const|let|var|return|if|for|while|class|import|export|}) ]]; then",
+        "before": 6,
+        "count": 15,
+        "hash": "73cc7b759bd5",
+        "title": "check_file: flag commented-out code",
+        "explain": "Reads the file again line by line. A line counts as commented code when it starts with // or # followed by a code keyword such as function, const, return or if. When two such lines are consecutive it prints a Clarity/minor violation for the second one.",
+        "why": "Carries out the rubric's 'no commented-out code' criterion. This one has no pragma, so the code must be deleted.",
+        "kind": "implements"
+      },
+      {
+        "node": "reviewers",
+        "file": "scripts/test-rubric-format.sh",
+        "anchor": "check \"persona preamble present\"         \"thoughtful senior engineer|joy to read|asks nothing unnecessary\"",
+        "before": 1,
+        "count": 16,
+        "hash": "ddb9a33f1eab",
+        "title": "Rubric format test: the four dimensions and scoring rules must be present",
+        "explain": "Each check greps lib/code-quality-rubric.md for one pattern and counts a pass or fail. This block requires the four dimension headings (Quality, Readability, Encapsulation, Clarity), the citation rule, the score formula, the weights, and the inline-override rules.",
+        "why": "The structure reviewer scores against this rubric file. The test stops the rubric from losing a dimension or its scoring rule; it does not check any score a reviewer gives.",
+        "kind": "tests"
+      },
+      {
+        "node": "reviewers",
+        "file": "scripts/test-simplify.sh",
+        "anchor": "&& ok \"inline pragma awareness described\" || fail \"inline pragma awareness not described\"",
+        "before": 10,
+        "count": 17,
+        "hash": "8dcba891f2c2",
+        "title": "simplify skill test: rubric include, score table, 10/10 gate",
+        "explain": "Greps skills/simplify.md for the include of the shared rubric, the 'Quality Scores' heading, the quality-override syntax, a description of inline pragmas, the 10/10 threshold and the auto-fix mode. Each grep records a pass or a fail.",
+        "why": "Pins the text the structure reviewer follows, including the 10/10 gate that re-verify depends on. It checks that the words exist, not that a review obeyed them.",
+        "kind": "tests"
+      },
+      {
+        "node": "reverify",
+        "file": ".githooks/pre-commit",
+        "anchor": "echo \"pre-commit: ESLint configured but not installed — skipping (install deps, e.g. npm ci)\" >&2",
+        "before": 8,
+        "count": 15,
+        "hash": "3576afe517e5",
+        "title": "pre-commit hook: lint and mechanical check on staged files",
+        "explain": "staged lists the staged files that match a pattern. If an ESLint config exists and ESLint is installed, the staged JS/TS files are linted. Then, if the mechanical check script exists, it runs with --staged. A non-zero exit from either step aborts the commit (set -eu).",
+        "why": "Any commit made after the fixer's pass goes through this hook when hooks are enabled, so the mechanical part of the structural check is re-run by code. The correctness re-check and the rubric scores are still done by an agent.",
+        "kind": "enforces"
+      },
+      {
+        "node": "reverify",
+        "file": ".github/workflows/quality.yml",
+        "anchor": "mapfile -t FILES < <(git ls-files | grep -E '\\.(js|mjs|ts|tsx|sh|py|rb|go)$' || true)",
+        "before": 9,
+        "count": 11,
+        "hash": "a95e89e71852",
+        "title": "Quality Gate workflow: mechanical checks on every pull request",
+        "explain": "On a pull request being opened or updated, the job checks out the code, lists every tracked source file, and runs the mechanical check on all of them. The job fails if the script reports any violation.",
+        "why": "This is the hosted backstop for the mechanical criteria: a violation the local review missed still blocks the PR. It checks all files, not just the diff.",
+        "kind": "enforces"
+      },
+      {
+        "node": "reverify",
+        "file": "scripts/test-create-pr-gate.sh",
+        "anchor": "if [ -n \"$gate_line\" ] && [ -n \"$step6_line\" ] && [ \"$gate_line\" -lt \"$step6_line\" ]; then",
+        "before": 11,
+        "count": 16,
+        "hash": "8b61c6f2ef0c",
+        "title": "create-pr gate test: 10/10 threshold stated, gate placed before the PR body",
+        "explain": "Greps skills/create-pr.md for the 10/10 threshold and for the override mechanism. It then finds the line numbers of the 'Step 5' and 'Step 6' headings and fails unless Step 5 (the quality gate) comes first.",
+        "why": "Keeps the 10/10 rubric gate in the PR path and ahead of drafting the PR. It pins the order in the skill text only.",
+        "kind": "tests"
+      },
+      {
+        "node": "receipt",
+        "file": "scripts/queue.ts",
+        "anchor": "/** Run a task's validation command; the worktree (if any) is the working dir. */",
+        "before": 0,
+        "count": 14,
+        "hash": "6498a50cda63",
+        "title": "runValidate: run a task's own validate command",
+        "explain": "Reads the task's validate command; with none it returns ok. Otherwise it runs the command with execSync in the task's worktree if it has one, else the current directory. On failure it returns the last three lines of the output.",
+        "why": "This is the 'task's own gates' part of the stage, for queued tasks. It always runs the command; it does not look for or write a receipt.",
+        "kind": "implements"
+      },
+      {
+        "node": "receipt",
+        "file": "scripts/queue.ts",
+        "anchor": "console.log(`✗ validation failed for ${id} → ${res.terminal ? 'failed' : 'retry'} (${r.tail})`);",
+        "before": 15,
+        "count": 19,
+        "hash": "8f68aee89128",
+        "title": "queue done: a task completes only if its validate command passes",
+        "explain": "Finds the task. If it has a validate command and --skip-validate was not given, it runs the command without holding the queue lock, reloads the queue, and refuses to continue if the task changed meanwhile. If validation failed it records a failure, saves, and returns 1 without marking the task done.",
+        "why": "Makes 'done' depend on a check that just ran, which is the fail-closed idea of this stage. The check is re-run on every done; nothing is reused from an earlier run.",
+        "kind": "enforces"
+      },
+      {
+        "node": "receipt",
+        "file": ".github/workflows/ci.yml",
+        "anchor": "- uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5",
+        "before": 8,
+        "count": 13,
+        "hash": "b9ec56eefa76",
+        "title": "CI verify job: the full test suite on every pull request to main",
+        "explain": "The job checks out the code, installs the Node version from .node-version, runs npm ci and then npm test. npm test runs the node tests, the tool tests, every scripts/test-*.sh and the repo checks.",
+        "why": "The flow says a missing receipt means checks re-run in full. There is no receipt lookup in this workflow, so that is what always happens here: hosted verification is never skipped or narrowed.",
+        "kind": "enforces"
+      }
+    ],
+    "promptOnly": [
+      {
+        "node": "gather",
+        "what": "The agent runs git diff main...HEAD and reads each changed file in full to hand to the reviewers; only the mechanical check selects its own files by script."
+      },
+      {
+        "node": "reviewers",
+        "what": "The agent starts two fresh read-only subagents in one message, one applying skills/validate.md and one applying skills/simplify.md; the bug hunt, test-integrity check, rubric scores, diff economy and cross-file repeat check are all model judgment."
+      },
+      {
+        "node": "merge",
+        "what": "The invoking agent joins the two reports, makes findings on the same lines one item, orders correctness before structure, and either skips the fix when both are clean or presents the list and waits when run without --fix."
+      },
+      {
+        "node": "fixer",
+        "what": "One agent applies the whole work list in a single pass, re-runs the repo's tests, and reports instead of editing when a fix would need a test changed."
+      },
+      {
+        "node": "reverify",
+        "what": "The agent starts a fresh correctness and structural check on the new diff, loops the fix once on a regression, and stops with the remaining items if it still fails; only the mechanical criteria are re-checked by code."
+      },
+      {
+        "node": "receipt",
+        "what": "No script writes, reads or compares a receipt keyed to tree identity, and none picks full suites versus affected checks; the rule exists only as text in AGENTS.md and docs/agents-detail.md, so the agent re-runs checks itself."
+      }
+    ]
+  }
+}

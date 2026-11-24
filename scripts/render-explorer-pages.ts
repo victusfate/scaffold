@@ -5,17 +5,22 @@
 // defined two ways, so a visitor never clicks into nothing or reads two meanings.
 // A spec that lists `sources` (the skill text and diagram it summarizes) is flagged when any of them
 // changes after its last review, so a skill edit can't leave its page describing old behavior.
+// A spec with an atlas beside it (`<slug>.atlas.json`: each claim checked against its source, and the code
+// behind each stage) gains those sections; a quote or a cited block of code that no longer matches the
+// repo is a problem too (scripts/explorer-atlas.ts).
 // Usage:
 //   node scripts/render-explorer-pages.ts               write every page (run by npm run diagrams)
 //   node scripts/render-explorer-pages.ts --check       report problems, write nothing; exit 1 on any
 //   node scripts/render-explorer-pages.ts --ack <slug>  record that these pages were reviewed against
-//                                                       their current sources (npm run diagrams:ack)
+//                                                       their current sources and cited code (npm run diagrams:ack)
 
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { anchor } from './check-agents-detail.ts';
 import { sourceHash } from './render-diagrams.ts';
+import { ackAtlas, resolveAtlas, type AtlasData, type HelperNotes, type ReadFile, type ResolvedAtlas } from './explorer-atlas.ts';
+import { ATLAS_HEADINGS, renderAtlas, renderScoreboard } from './explorer-atlas-markdown.ts';
 import { renderMarkdown } from './explorer-markdown.ts';
 import { validateSpec, type ExplorerSpec } from './explorer-spec.ts';
 
@@ -23,7 +28,8 @@ import { validateSpec, type ExplorerSpec } from './explorer-spec.ts';
 const MAP = 'system-map';
 // Named in each page's LLM block so a reader's assistant can open the sources (this script is scaffold-only).
 const REPO_URL = 'https://github.com/victusfate/scaffold';
-const PAGES_URL = `${REPO_URL}/blob/main/docs/diagrams/pages`;
+const BLOB_URL = `${REPO_URL}/blob/main`;
+const PAGES_URL = `${BLOB_URL}/docs/diagrams/pages`;
 const DIAGRAMS = join(dirname(fileURLToPath(import.meta.url)), '..', 'docs', 'diagrams');
 
 // Links resolve from the page's own directory; a #fragment is not part of the file.
@@ -48,15 +54,17 @@ function glossaryProblems(specs: { slug: string; spec: ExplorerSpec }[]): string
 // GitHub drops unknown HTML tags, so `docs/<slug>/` outside code would render as `docs//`. Code fences
 // and inline code are exempt.
 const HTML_LIKE = /<\/?[A-Za-z][^>]*>/g;
+// The tags the atlas sections use on purpose: GitHub renders them (a fold, and code inside its summary).
+const RENDERED_TAG = /^<\/?(details|summary|code)>$/;
 function hiddenTextProblems(slug: string, markdown: string): string[] {
-  const prose = markdown.replace(/```[\s\S]*?```/g, '').replace(/`[^`\n]*`/g, '');
-  return [...new Set(prose.match(HTML_LIKE) ?? [])]
+  const prose = markdown.replace(/(`{3,})[\s\S]*?\1/g, '').replace(/`[^`\n]*`/g, '');
+  return [...new Set(prose.match(HTML_LIKE) ?? [])].filter(tag => !RENDERED_TAG.test(tag))
     .map(tag => `${slug}: "${tag}" would be hidden by GitHub as an HTML tag; wrap it in backticks`);
 }
 
 // The page's own headings; a stage with one of these names (or a repeated name) gets GitHub's
 // `-1` anchor suffix, so its link in the stage list would land on the wrong section.
-const PAGE_HEADINGS = ['Detailed flow', 'Glossary', 'Ask your LLM'];
+const PAGE_HEADINGS = ['Detailed flow', ...Object.values(ATLAS_HEADINGS), 'Glossary', 'Ask your LLM'];
 function headingProblems(slug: string, spec: ExplorerSpec): string[] {
   const names = [...Object.values(spec.nodes).map(n => n.name), ...PAGE_HEADINGS].map(anchor);
   return [...new Set(names.filter((name, i) => names.indexOf(name) !== i))]
@@ -75,6 +83,52 @@ function reviewProblems(slug: string, spec: ExplorerSpec, repoRoot: string): str
 }
 
 const specPath = (root: string, slug: string): string => join(root, 'explorer', `${slug}.explorer.json`);
+const atlasPath = (root: string, slug: string): string => join(root, 'explorer', `${slug}.atlas.json`);
+const notesPath = (root: string): string => join(root, 'explorer', 'helpers.atlas.json');
+const readJson = <T>(path: string): T | undefined => existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) as T : undefined;
+const writeJson = (path: string, value: unknown): void => writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
+
+// Reads repo files once per run; a path that is not a file reads as undefined.
+function repoReader(repoRoot: string): ReadFile {
+  const cache = new Map<string, string | undefined>();
+  return path => {
+    if (!cache.has(path)) {
+      const full = join(repoRoot, path);
+      cache.set(path, existsSync(full) && statSync(full).isFile() ? readFileSync(full, 'utf8') : undefined);
+    }
+    return cache.get(path);
+  };
+}
+
+// A page's atlas sections and whatever in them no longer matches the repo. No atlas, no sections.
+type PageAtlas = { sections: string[]; problems: string[]; atlas?: ResolvedAtlas };
+function atlasSections(root: string, entry: { slug: string; spec: ExplorerSpec }, repo: { read: ReadFile; notes: HelperNotes }): PageAtlas {
+  const data = readJson<AtlasData>(atlasPath(root, entry.slug));
+  if (!data) return { sections: [], problems: [] };
+  const nodes = Object.entries(entry.spec.nodes).map(([id, node]) => ({ id, name: node.name }));
+  const { atlas, problems } = resolveAtlas(entry.slug, data, { ...repo, nodeIds: nodes.map(node => node.id) });
+  return { sections: atlas ? renderAtlas(atlas, { blob: BLOB_URL, nodes }) : [], problems, atlas };
+}
+
+// The map page lists every page that has an atlas, in the order the map links them.
+function scoreboard(map: ExplorerSpec, titles: Record<string, string>, atlases: Map<string, PageAtlas>): string[] {
+  const links = [...new Set(Object.values(map.nodes).flatMap(node => node.link ?? []))];
+  return renderScoreboard(links.flatMap(link => {
+    const atlas = atlases.get(link.replace(/\.md$/, ''))?.atlas;
+    return atlas ? [{ title: titles[link] ?? link, link, atlas }] : [];
+  }));
+}
+
+// Records the current hashes of a page's cited code and of the explained helpers that code calls. Throws
+// before writing anything when an excerpt cannot be placed.
+function ackAtlasFile(root: string, slug: string, repoRoot: string): void {
+  const data = readJson<AtlasData>(atlasPath(root, slug));
+  if (!data) return;
+  const acked = ackAtlas(data, readJson<HelperNotes>(notesPath(root)) ?? {}, repoReader(repoRoot));
+  if (acked.lost.length) throw new Error(`${slug}: the anchor finds no block, or several different ones, for ${acked.lost.join(', ')}: give it a new anchor in explorer/${slug}.atlas.json`);
+  writeJson(atlasPath(root, slug), acked.data);
+  if (existsSync(notesPath(root))) writeJson(notesPath(root), acked.notes);
+}
 
 // Records the current source hash in each spec's `reviewed` field (a text edit, so the file keeps its
 // layout). Returns the slugs acknowledged.
@@ -83,6 +137,7 @@ export function ackPages(root: string, slugs: string[], repoRoot: string): strin
     const text = readFileSync(specPath(root, slug), 'utf8');
     const spec = JSON.parse(text) as ExplorerSpec;
     if (!spec.sources || spec.reviewed === undefined) throw new Error(`${slug}: no sources/reviewed fields to acknowledge`);
+    ackAtlasFile(root, slug, repoRoot);
     writeFileSync(specPath(root, slug), text.replace(`"reviewed": ${JSON.stringify(spec.reviewed)}`, `"reviewed": ${JSON.stringify(reviewHash(spec, repoRoot))}`));
     return slug;
   });
@@ -101,9 +156,14 @@ export function buildPages(root: string, options: { check: boolean; repoRoot?: s
   if (invalid.length) return invalid;
   const titles = Object.fromEntries(specs.map(({ slug, spec }) => [`${slug}.md`, spec.title]));
   const map = specs.find(({ slug }) => slug === MAP);
+  const repo = { read: repoReader(repoRoot), notes: readJson<HelperNotes>(notesPath(root)) ?? {} };
+  const atlases = new Map(specs.map(entry => [entry.slug, atlasSections(root, entry, repo)]));
+  const sectionsOf = (slug: string): string[] =>
+    [...(map && slug === MAP ? scoreboard(map.spec, titles, atlases) : []), ...(atlases.get(slug)?.sections ?? [])];
   const pages = specs.map(({ slug, spec }) => ({ slug, spec, markdown: renderMarkdown(spec,
     { titles, up: map && slug !== MAP ? { title: map.spec.title, link: `${MAP}.md` } : undefined,
-      source: { name: 'Scaffold', repo: REPO_URL, page: `${PAGES_URL}/${slug}.md` } }) }));
+      source: { name: 'Scaffold', repo: REPO_URL, page: `${PAGES_URL}/${slug}.md` },
+      sections: sectionsOf(slug) }) }));
   const pagePath = (slug: string): string => join(pagesDir, `${slug}.md`);
   const changed = pages.filter(({ slug, markdown }) => !existsSync(pagePath(slug)) || readFileSync(pagePath(slug), 'utf8') !== markdown);
   if (!options.check) for (const { slug, markdown } of changed) writeFileSync(pagePath(slug), markdown);
@@ -113,6 +173,7 @@ export function buildPages(root: string, options: { check: boolean; repoRoot?: s
     ...pages.flatMap(({ slug, markdown }) => hiddenTextProblems(slug, markdown)),
     ...specs.flatMap(({ slug, spec }) => headingProblems(slug, spec)),
     ...specs.flatMap(({ slug, spec }) => reviewProblems(slug, spec, repoRoot)),
+    ...[...atlases.values()].flatMap(atlas => atlas.problems),
     ...(options.check ? changed.map(({ slug }) => `pages/${slug}.md is stale: run npm run diagrams`) : []),
   ];
 }

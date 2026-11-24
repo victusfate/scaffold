@@ -1,0 +1,542 @@
+{
+  "summary": "The orchestration flow matches AGENTS.md and its long form closely: 29 of 36 claims are stated in the sources and none is contradicted. The partial ones are small rewordings (what happens on red gates, when real checks are read, when a task \"closes\"). The largest gap is what the flow leaves out: the task time box, resolving a stopped subagent's branch in the same tick, and the orchestrator-only push step.",
+  "checks": [
+    {
+      "node": "request",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Only the owner creates tasks; the agent records the request in the queue.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "an agent adds a task only when the owner explicitly asks for that task, quoting their words"
+    },
+    {
+      "node": "request",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The agent runs queue add --requested with the owner's words and an acceptance check.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "the owner explicitly asks for *that* task, quoting their words (`--requested \"<their words>\"`).",
+      "note": "The accept part is not in the AGENTS.md rule; it comes from skills/queue.md (\"Every task carries an `accept:`\")."
+    },
+    {
+      "node": "request",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "queue.db holds typed tasks: status, owner, accept, evidence.",
+      "verdict": "partial",
+      "file": "skills/queue.md",
+      "quote": "**The store is the source of truth.** `queue.db` holds every task and the config",
+      "note": "The store and typed fields are stated, but no source line lists these four fields together; evidence is named only in the AGENTS.md typed-fields rule."
+    },
+    {
+      "node": "request",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "queue.md is the committed view; line order is priority.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "**`queue.md` is the view**, re-rendered after every mutation and committed so the"
+    },
+    {
+      "node": "request",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Every worktree reads the same record.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "The queue store is shared by every worktree, so an edit made by one agent is visible to the others"
+    },
+    {
+      "node": "request",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "An agent never adds its own tasks; its findings go to the owner instead.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "exception, and findings go to the owner, never into new tasks."
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "On each loop tick, the orchestrator gives the top suited task to a free worker slot.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "3. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "It reads the slots from topology.json.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "runs the tick: read the topology, review and ship finished"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "It creates the worktree lane first, off the working branch's HEAD, then claims the task for that slot.",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "that branch's worktree. Create the worktree first so the claim links its branch in the same write; when the"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The orchestrator adds ORCH UPDATE notes to the task.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "priority), append a line to that task's note starting `ORCH UPDATE <time>:` with the instruction. Prefer this"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The subagent follows the newest one at its next checkpoint.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "- **What a lane does with it:** it follows the newest `ORCH UPDATE`. When an update conflicts with work in progress,"
+    },
+    {
+      "node": "work",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The subagent builds its one task in its own worktree and commits locally.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "- **Subagent:** started by the orchestrator for one task, in its own lane. Works only that task, commits"
+    },
+    {
+      "node": "work",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "It starts with an ff-only check that it is on the working branch's HEAD.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "any edit, is `git merge --ff-only <working-branch>`; or the lane brief records the base SHA and the lane",
+      "note": "The source also allows the alternative of checking `git rev-parse HEAD` against a recorded base SHA."
+    },
+    {
+      "node": "work",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A chore is built directly; a feature runs design, PRD, plan, TDD, refine.",
+      "verdict": "partial",
+      "file": "AGENTS.md",
+      "quote": "**PRD** `/to-prd` → **Plan** vertical slices in `plan.md` → **TDD** `/tdd` RED → GREEN → REFACTOR, then",
+      "note": "The chain in AGENTS.md ends with `/code-refiner` and `/qa`; the flow stops at refine and leaves out the /qa step (the direct-chore wording is from skills/queue.md)."
+    },
+    {
+      "node": "work",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "It validates, commits, records evidence and never pushes.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "- Only the authorized orchestrator publishes. Lanes and bounded runs commit locally and report; they do not"
+    },
+    {
+      "node": "work",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "A subagent that skips its checkpoints misses the orchestrator's steering.",
+      "verdict": "partial",
+      "file": "docs/agents-detail.md",
+      "quote": "- **When a lane reads:** at every checkpoint, before any long-running step (a full suite, a bake, a render",
+      "note": "The source states the duty to re-read the task at checkpoints; it does not state this consequence, which is an inference."
+    },
+    {
+      "node": "integrate",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The orchestrator merges the target into the lane, re-runs the gates and merges green work into the one working branch.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "off that branch's HEAD (ff-only first). Before integrating one, **merge** the current target"
+    },
+    {
+      "node": "integrate",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Red gates send the work back to the lane.",
+      "verdict": "partial",
+      "file": "docs/agents-detail.md",
+      "quote": "3. Integrate only when that merged result is green. Hosted CI then confirms main instead of",
+      "note": "The source only says not to integrate until green; the closest route back is the hygiene rule to send another subagent at the same branch, not \"back to the lane\"."
+    },
+    {
+      "node": "integrate",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Then it opens a PR with Critical changes and real check results.",
+      "verdict": "partial",
+      "file": "AGENTS.md",
+      "quote": "**One independent task per PR/merge cycle.** Validate locally, open the PR, verify real required checks on the",
+      "note": "Critical changes in the PR body is stated; real required checks are verified on the final head after the PR is open, they are not something the PR is opened with."
+    },
+    {
+      "node": "integrate",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "There is exactly one working branch per session; two long-lived branches split the work.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "- **Exactly one working branch per session**, holding both lane code and the orchestrator's own work."
+    },
+    {
+      "node": "ship",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "The owner authorizes; the orchestrator squash-merges, and the task closes when the queue records it.",
+      "verdict": "partial",
+      "file": "docs/agents-detail.md",
+      "quote": "with explicit session or standing project authorization**. Creating a PR does not authorize merging;",
+      "note": "Authorization may also be standing project policy; and the queue marks the task done at `done` (before the PR), while `advance` only acknowledges the delivery cycle, so \"the task closes when the queue records it\" blurs two steps."
+    },
+    {
+      "node": "ship",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The PR lands on main as one squash commit.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "**Merge by squash:** one commit per PR on main, titled with the PR title; publication follows"
+    },
+    {
+      "node": "ship",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "queue advance --pr --branch records the merge and the fresh branch.",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "advance <id> --pr <url> --branch <name> # root attests merged PR and fresh branch"
+    },
+    {
+      "node": "request",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Task waits in the queue (payload: queue task)",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "A resumed `active` task is preferred next wake; otherwise the topmost **eligible**"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Task claimed for a slot (payload: worktree + claim)",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "`node scripts/queue.ts claim <id> --worker <slot-id> --branch <branch>` and start that slot's harness/model in"
+    },
+    {
+      "node": "work",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Lane reports done (payload: local commits + evidence)",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "locally in that lane and reports evidence (commit, tests run, doubts). It re-reads its task at each checkpoint"
+    },
+    {
+      "node": "integrate",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Gates green, PR opened (payload: PR)",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "that each pass on their own can break when combined. Before opening the lane's PR or integrating it:"
+    },
+    {
+      "node": "work",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Worktree: An isolated git checkout per worker, so workers never collide.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "- **Lanes work in isolated git worktrees** (`isolation: \"worktree\"`), each branched off the",
+      "note": "Isolation per lane is stated; the \"never collide\" reason is implied, not written."
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Slot: A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "- `slots[].id` is unique kebab-case and doubles as the queue task **owner** while the slot is busy. `harness`"
+    },
+    {
+      "node": "work",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "ff-only: Fast-forward only: the worker proves it starts from the working branch's HEAD, or stops.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "checks `git rev-parse HEAD` against it. A lane that cannot fast-forward stops and reports instead of"
+    },
+    {
+      "node": "dispatch",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "ORCH UPDATE: The orchestrator's steering note on a running worker's task.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "- **Orchestrator → lane:** to steer a running lane (a new finding, a narrowed scope, a bisect result, a changed"
+    },
+    {
+      "node": "request",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "queue.db -render-> queue.md (the view is rendered from the store)",
+      "verdict": "confirmed",
+      "file": "skills/queue.md",
+      "quote": "file you can open at any moment: `.agent/queue/queue.md`.",
+      "note": "Line 8-9 of skills/queue.md: the store \"is rendered after every change to one file\"."
+    },
+    {
+      "node": "dispatch",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Claim top suited task --worker slot --branch b (after the worktree is created)",
+      "verdict": "confirmed",
+      "file": "skills/loop.md",
+      "quote": "3. For each free slot (no `[>]` task owned by its id), claim the highest-priority task it suits with"
+    },
+    {
+      "node": "work",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Re-read task at checkpoints, follow newest ORCH UPDATE (shown once, between build and validate)",
+      "verdict": "partial",
+      "file": "docs/agents-detail.md",
+      "quote": "sweep), and before writing its result file, a lane re-reads its own task with the queue CLI's `show` command.",
+      "note": "The source asks for a re-read at every checkpoint, before any long-running step and before writing the result file, not once after the build."
+    },
+    {
+      "node": "work",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend TDD: failing test first, then code, then clean up",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "**PRD** `/to-prd` → **Plan** vertical slices in `plan.md` → **TDD** `/tdd` RED → GREEN → REFACTOR, then"
+    },
+    {
+      "node": "ship",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Owner authorizes the merge? (decision gate before main, squash merge)",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of"
+    }
+  ],
+  "missing": [
+    {
+      "what": "Every task has a time box (default 4-6 hours of worker time); at the box the orchestrator ships the green part and closes the task or returns it to owner triage, and never auto-continues it.",
+      "file": "AGENTS.md",
+      "quote": "work is unbuilt: \"exhausted\" means built and reachable. **Time-box every task** (default 4–6 h of worker time, or"
+    },
+    {
+      "what": "When a subagent stops, its branch is resolved in the same tick (merge, merge sound progress and note the rest, or send another subagent); a worker branch is never parked.",
+      "file": "AGENTS.md",
+      "quote": "- Never park a worker branch: at most one branch per active subagent plus main. When a subagent stops, resolve its"
+    },
+    {
+      "what": "Each tick the orchestrator first reviews and ships finished slots, and does housekeeping after dispatch; the flow shows only the dispatch part of the tick.",
+      "file": "docs/agents-detail.md",
+      "quote": "slots, dispatch the next priority task to every free slot, then housekeeping. Changing models or the slot mix"
+    },
+    {
+      "what": "Each tick the orchestrator checks that subagents are actually running and progressing; a subagent that \"waits\" may be asleep.",
+      "file": "AGENTS.md",
+      "quote": "- Subagents that \"wait\" may be asleep: check their processes each tick; subagents never end a turn idle."
+    },
+    {
+      "what": "Only the orchestrator publishes: it integrates lanes locally, runs the CI preflight and pushes in controlled batches. The flow says lanes do not push but never shows the push step.",
+      "file": "AGENTS.md",
+      "quote": "run the CI preflight, and publish in controlled batches."
+    },
+    {
+      "what": "At integration the lane worktree and completed artifacts are retired, and zombie worktrees from interrupted sessions are reaped.",
+      "file": "AGENTS.md",
+      "quote": "- **Retire completed artifacts at integration**, and reap zombie worktrees left by interrupted sessions:"
+    },
+    {
+      "what": "Before deleting branches, worktrees or tasks, confirm the PR is MERGED and its commit is in origin/main.",
+      "file": "AGENTS.md",
+      "quote": "- Confirm the PR is `MERGED` and its commit is in `origin/main` before deleting branches, worktrees or tasks."
+    },
+    {
+      "what": "The default is one independent task per PR/merge cycle, with subagents parallelizing subtasks of the current task; the flow reads as one separate queue task per slot.",
+      "file": "docs/agents-detail.md",
+      "quote": "cut a fresh branch from updated main before the next independent task. Subagents may parallelize"
+    },
+    {
+      "what": "The handoff file is removed before the merge to main and check-handoff --pre-merge must pass on the merged head.",
+      "file": "AGENTS.md",
+      "quote": "branches:** before merging to main, the orchestrator commits `git rm .pause/handoff.md`, and"
+    },
+    {
+      "what": "A missing topology file means orchestrator only, with no slots to dispatch to.",
+      "file": "docs/agents-detail.md",
+      "quote": "slot. A missing file means orchestrator only, no slots."
+    }
+  ],
+  "code": {
+    "overview": "About half of this flow is code, and nearly all of it is the queue CLI: scripts/queue.ts with queue-task-origin.ts, queue-claim.ts, queue-worktrees.ts, queue-lanes.ts and queue-delivery.ts, plus scripts/topology.ts for the slots. The code records who owns which task and refuses out-of-order moves. Choosing a slot, starting the subagent, merging the target into the lane, merging the lane, opening the PR and the squash merge are all done by the agent from prose; the code never merges or pushes.",
+    "refs": [
+      {
+        "node": "request",
+        "file": "scripts/queue-task-origin.ts",
+        "anchor": "if (parent && !q.tasks.some(t => t.id === parent)) return { ok: false, error: `queue add: --parent ${parent} is not a task in this queue` };",
+        "before": 8,
+        "count": 16,
+        "hash": "67759c0c307d",
+        "title": "taskOrigin: refuse an agent's add without the owner's words",
+        "explain": "It reads the --parent and --requested flags. An unknown parent id is an error. With neither flag, it checks the environment for agent markers such as CLAUDECODE or CODEX_THREAD_ID: an agent session is refused with the AGENT_ADD_REFUSAL message, a human passes. Otherwise it returns tags and a note that record the parent or the quoted request on the task.",
+        "why": "This is the check behind 'only the owner creates tasks'. Without it an agent could grow the backlog with its own ideas. The comment at the top of the file notes the quote is not authenticated, so this is a guardrail, not proof.",
+        "kind": "enforces"
+      },
+      {
+        "node": "request",
+        "file": "scripts/queue.ts",
+        "anchor": "if (!title) { console.error('usage: queue add \"<title>\" [--parent <id> | --requested \"<human words>\"] [flags]'); return 1; }",
+        "before": 2,
+        "count": 10,
+        "hash": "522bf6076551",
+        "title": "queue add: record one task",
+        "explain": "The title is the joined positional words; an empty title prints usage and exits 1. taskOrigin decides whether the add is allowed, and a refusal exits 2. addTask appends the task (or puts it first with --top) with the flags and origin tags merged in. save writes the store, the log gets an 'add' line, and the new id is printed with a drain hint.",
+        "why": "This is the entry point of the flow: the owner's request becomes a typed task with an id. Skipping it leaves the request only in chat, where no later step can find it.",
+        "kind": "implements"
+      },
+      {
+        "node": "dispatch",
+        "file": "scripts/topology.ts",
+        "anchor": "export function loadTopology(path: string = process.env.TOPOLOGY_FILE ?? TOPOLOGY_PATH): Topology {",
+        "before": 13,
+        "count": 20,
+        "hash": "4b93c8d4a6c4",
+        "title": "parseTopology and loadTopology: read the worker slots",
+        "explain": "parseTopology rejects anything that is not an object or has unknown keys, checks the orchestrator model, defaults tick_minutes to 10 and requires it to be positive, then parses the slots. loadTopology reads .agent/topology.json (or TOPOLOGY_FILE); a missing file means an orchestrator with no slots, and bad JSON throws a TopologyError.",
+        "why": "Dispatch starts by reading the slots from this file. The file has no routing fields on purpose: which task suits which slot is the orchestrator's judgment, not code.",
+        "kind": "implements"
+      },
+      {
+        "node": "dispatch",
+        "file": "scripts/queue-worktrees.ts",
+        "anchor": "+ `First step in the lane: \\`git merge --ff-only ${base}\\` (a reused branch may be stale); stop if it cannot fast-forward. `",
+        "before": 22,
+        "count": 27,
+        "hash": "a7ee07afa3b1",
+        "title": "queue worktree add: create the lane",
+        "explain": "The base is config.integrationBranch, else the current branch. It runs git worktree add at .agent/queue/wt/<id> on a new branch queue/<id>; if that branch already exists it reuses it. It saves the branch and worktree path on the task, logs the base commit, and prints the lane's first step: git merge --ff-only <base>.",
+        "why": "This creates the isolated lane off the working branch before the task is claimed. The ff-only check and the merge back are only printed as instructions; the comment says the CLI never auto-merges.",
+        "kind": "implements"
+      },
+      {
+        "node": "dispatch",
+        "file": "scripts/queue-claim.ts",
+        "anchor": "export function cmdClaim(q: Queue, id: string, flags: Map<string, string>, taskBlock: (t: Task) => string): number {",
+        "before": 4,
+        "count": 17,
+        "hash": "d2b5acc16bae",
+        "title": "queue claim: give a pending task to a worker or slot",
+        "explain": "refusal rejects a task that is not pending, is held, or is blocked by an unfinished delivery cycle. branchFlag rejects a --branch value that is not one name. The worker name comes from --worker, else a name built from the process id. One save marks the task active with that owner and, when given, links the branch in the same write.",
+        "why": "This is how a slot takes a task: the task's owner becomes the slot id. Linking the branch in the same write means a task is never active with an unlinked branch.",
+        "kind": "implements"
+      },
+      {
+        "node": "dispatch",
+        "file": "scripts/queue-console-slots.ts",
+        "anchor": "export function slotViews(q: Queue, topology: Topology, lanes: LaneView[] = []): { slots: SlotView[]; orphans: ConsoleOrphan[] } {",
+        "before": 4,
+        "count": 19,
+        "hash": "37855c52bb41",
+        "title": "slotViews: which slots are busy",
+        "explain": "It takes the active tasks and, for each topology slot, picks those whose owner equals the slot id. A slot with one or more is busy; with more than one it is flagged overbooked. Active tasks owned by no known slot are returned as orphans.",
+        "why": "A free slot is defined as 'no active task owned by this slot id', so the claim's --worker value is what marks a slot busy. This view feeds the console's Slots panel; the dispatch decision itself is still made by the agent.",
+        "kind": "implements"
+      },
+      {
+        "node": "work",
+        "file": "scripts/queue-model.ts",
+        "anchor": "t.mode === 'chain' ? 'mode: chain (design→prd→plan→tdd→refine, autonomous, no questions)' : 'mode: direct',",
+        "before": 3,
+        "count": 14,
+        "hash": "8e5f2ffd2113",
+        "title": "taskBlock: the task text a worker receives",
+        "explain": "It builds a list of lines from the task: the mode (chain or direct), the architecture mode and its guidance, the docs slug, the accept note, files, contracts and the validate command. Empty lines are dropped and the result is wrapped in a <queue_task id=...> block. tick and claim print this block.",
+        "why": "This is how the subagent learns whether to build a chore directly or run the full design-to-refine chain, and what counts as accepted. Following those steps is then up to the agent.",
+        "kind": "implements"
+      },
+      {
+        "node": "work",
+        "file": "scripts/queue-lanes.ts",
+        "anchor": "if (!id || !q.tasks.some(t => t.id === id)) { console.error(`lane ${sub}: unknown task id`); return 1; }",
+        "before": 17,
+        "count": 30,
+        "hash": "b0240fd3d71c",
+        "title": "queue lane finish: the subagent reports done and keeps its claim",
+        "explain": "The first part of cmdLane lists lane heartbeat files, marking stale ones and stop requests. For 'finish' it requires the task to be active and --worker to match the task's owner, then writes the lane file with state awaiting-review and logs that root review is required. The task itself stays active.",
+        "why": "The subagent reports and stops; it does not mark its own task done or merge. The claim stays in place until the orchestrator reviews the lane.",
+        "kind": "implements"
+      },
+      {
+        "node": "work",
+        "file": "scripts/queue.ts",
+        "anchor": "/** Run a task's validation command; the worktree (if any) is the working dir. */",
+        "before": 0,
+        "count": 14,
+        "hash": "6498a50cda63",
+        "title": "runValidate: run the task's validate command in its worktree",
+        "explain": "No validate command means success. Otherwise the command runs with the task's worktree as its working directory when one is recorded. A non-zero exit returns failure with the last three lines of output.",
+        "why": "The task's own gate runs against the lane's files, not the orchestrator's checkout. Without the worktree cwd a lane's work could be judged by code that is not in it.",
+        "kind": "implements"
+      },
+      {
+        "node": "integrate",
+        "file": ".github/workflows/ci.yml",
+        "anchor": "- uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5",
+        "before": 9,
+        "count": 14,
+        "hash": "d2e91a90b31e",
+        "title": "CI verify job: npm test on every PR to main",
+        "explain": "On a pull request to main, the job checks out the code without stored credentials, installs the Node version from .node-version, runs npm ci and then npm test. npm test chains the node tests, the tool tests, the shell tests and the repo checks.",
+        "why": "These are the 'real check results' the orchestrator reads after it opens the PR. The earlier half of this stage (merge the target into the lane, re-run gates locally, merge the lane) has no code; the agent does it from the rules.",
+        "kind": "enforces"
+      },
+      {
+        "node": "ship",
+        "file": "scripts/queue-delivery.ts",
+        "anchor": "console.error('advance: requires selected completed task, no active claims, --pr <merged-pr-url> and --branch <fresh-working-branch>');",
+        "before": 10,
+        "count": 19,
+        "hash": "73626ab8befe",
+        "title": "queue advance: record the merged PR and the fresh branch",
+        "explain": "It refuses unless the id is the selected delivery task, that task was accepted as done, no task is active, --pr looks like a pull request URL and --branch is not empty. On success it clears deliveryTask and deliveryAccepted, saves, and writes the PR and branch to the log.",
+        "why": "This closes the delivery cycle so the queue will hand out the next task. The code checks only the queue's own state and the URL's shape; it does not ask GitHub whether the PR merged, so the orchestrator vouches for that.",
+        "kind": "implements"
+      },
+      {
+        "node": "ship",
+        "file": ".github/workflows/release.yml",
+        "anchor": "uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5",
+        "before": 6,
+        "count": 26,
+        "hash": "d744273f09db",
+        "title": "Release job: tag main after the merge",
+        "explain": "On a push to main it checks out full history and reads the version from package.json. If the tag v<version> already exists it stops. Otherwise it creates the annotated tag and pushes only the tag.",
+        "why": "This is the only code that runs because of the merge. It relies on the version bump already being on the PR branch, and it pushes a tag, never a commit, so main's history stays one squash commit per PR.",
+        "kind": "implements"
+      }
+    ],
+    "promptOnly": []
+  }
+}

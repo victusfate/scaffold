@@ -13,6 +13,7 @@
     "queue": { "lane": "run", "name": "Queue", "role": "A visible, editable task list that agents drain one task at a time or in parallel.", "link": "queue-lifecycle.md" },
     "loop": { "lane": "run", "name": "Loop tick", "role": "The heartbeat that picks the next queue task and keeps work moving.", "link": "loop-tick.md" },
     "continuity": { "lane": "run", "name": "Save, pause, resume", "role": "Checkpoint a long session into git so it survives a close and resumes anywhere.", "link": "session-continuity.md" },
+    "taskqueue": { "lane": "run", "name": "Agentic task queue", "role": "The design for a queue shared across projects, and which parts of it are built.", "link": "agentic-task-queue.md" },
     "feature": { "lane": "build", "name": "Feature chain", "role": "Design, PRD, TDD, refine and QA, ending in a PR for the owner.", "link": "feature-chain.md" },
     "tdd": { "lane": "build", "name": "TDD", "role": "Build in thin vertical slices: failing test, minimal code, refactor.", "link": "tdd.md" },
     "pr": { "lane": "build", "name": "PR workflow", "role": "One task per PR, real CI checks, squash merge only with owner approval.", "link": "pr-workflow.md" },

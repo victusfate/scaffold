@@ -88,6 +88,10 @@ scripts/render-diagrams.ts
 scripts/render-diagrams.test.ts
 scripts/render-explorer-pages.ts
 scripts/render-explorer-pages.test.ts
+scripts/explorer-atlas.ts
+scripts/explorer-atlas.test.ts
+scripts/explorer-atlas-defs.ts
+scripts/explorer-atlas-markdown.ts
 
 # Scaffold's own install of /dependency-watch (dogfood). Consumers get theirs from the skill,
 # rendered for their ecosystems and cadence, so these copies never sync.

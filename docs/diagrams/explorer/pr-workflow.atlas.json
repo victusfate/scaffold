@@ -1,0 +1,540 @@
+{
+  "summary": "The PR workflow flow is well supported: 29 of 34 claims are stated in skills/create-pr.md or AGENTS.md and none is contradicted. The partial ones simplify conditions (quality overrides, extra body sections, the DRAFT and UNVERIFIED branches). The main gaps are source steps the flow never shows: the UNVERIFIED no-local-gate path, the 30-line auto-correct limit, the /deslop pass and the Callable-unit checklist that blocks a merge.",
+  "checks": [
+    {
+      "node": "branch",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Pull the latest main and cut a fresh branch for one independent task.",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "1. Pull latest main: `git checkout main && git pull origin main`"
+    },
+    {
+      "node": "branch",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "One task per PR and merge cycle.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "**One independent task per PR/merge cycle.** Validate locally, open the PR, verify real required checks on the"
+    },
+    {
+      "node": "local",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Run the integration tests and make ci before opening anything.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "Run the repo's **local pre-merge gate**, the CI-equivalent that validates everything BEFORE any GitHub run.",
+      "note": "Both steps are conditional in the source: integration tests are skipped when none exist, and make ci falls back to scripts/ci-local.sh or NO_LOCAL_GATE."
+    },
+    {
+      "node": "local",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Start from a clean tree with commits ahead of main.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "- Uncommitted changes → stop and tell the user to commit or stash first."
+    },
+    {
+      "node": "local",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Auto-correct up to 2 rounds.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "**If any fail, auto-correct (up to 2 rounds).** Each round:"
+    },
+    {
+      "node": "local",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Still red: failing integration tests stop with no PR; a red make ci opens the PR as a DRAFT listing the red gates.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "DRAFT** (`gh pr create --draft`) with the failing gates listed in the *Pre-merge gate status*"
+    },
+    {
+      "node": "local",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Then bump the version and push.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "Bump the release version on the branch, so the bump commit is pushed under your credentials and `verify` runs",
+      "note": "The bump is skipped when there is no package.json, when the branch already bumped, or when the computed bump is none."
+    },
+    {
+      "node": "open",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "/create-pr opens the PR with a structured body and starts watching its checks.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "Create a pull request for the current branch and immediately set up monitoring: subscribe when a subscription"
+    },
+    {
+      "node": "open",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "/simplify must score every changed file 10/10 before the PR opens.",
+      "verdict": "partial",
+      "file": "skills/create-pr.md",
+      "quote": "Once all scores are 10/10 (or approved overrides cover every remaining violation), save the Quality Scores table for the PR body (Step 6).",
+      "note": "The source allows approved `quality-override` annotations to cover remaining model-driven violations, so 10/10 on every file is not strictly required."
+    },
+    {
+      "node": "open",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The body has a Summary, Critical changes, gate status and Quality Scores.",
+      "verdict": "partial",
+      "file": "skills/create-pr.md",
+      "quote": "- **Body** — use this template exactly:",
+      "note": "The template also requires a Test plan section and the session URL, and conditionally the Auto-corrections and Callable-unit checklist sections; the flow lists four of them."
+    },
+    {
+      "node": "open",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Subscribe to the PR, or run gh pr checks --watch.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "- Otherwise run `gh pr checks <pr> --watch` to wait for CI. Capture its exit status directly; poll the running"
+    },
+    {
+      "node": "checks",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "Read the actual check conclusions on the final head, not the merge button.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "- **Read the actual check conclusions, not the merge button** (`gh pr checks <pr>`;"
+    },
+    {
+      "node": "checks",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "First remove the handoff file, push, and run check-handoff --pre-merge, so the final CI run judges the cleared head.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "Do this before the final CI run, so CI judges, and the merge uses, the cleared head.",
+      "note": "Applies only when the branch carries `.pause/handoff.md`."
+    },
+    {
+      "node": "checks",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Capture the watch command's own exit code.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "- **Capture the watch's own exit**, not a wrapper's:"
+    },
+    {
+      "node": "checks",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The Security scan check must pass.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "must pass before merge. Fix a finding, or suppress a reviewed false positive in the tool's own in-repo format"
+    },
+    {
+      "node": "checks",
+      "origin": "spec",
+      "kind": "risk",
+      "claim": "GitHub counts a skipped required check as passing; treat a skip as suspect.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "**A skipped required check counts as passing on GitHub:** read the actual conclusions, capture the watch"
+    },
+    {
+      "node": "merge",
+      "origin": "spec",
+      "kind": "role",
+      "claim": "With the owner's explicit authorization, the orchestrator squash-merges it onto main as one commit.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of",
+      "note": "The long form words it as \"explicit session or standing project authorization\"."
+    },
+    {
+      "node": "merge",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "A PR is not approval.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "PR creation is not merge authorization. In the default queue flow, the orchestrator keeps this task current until local and required hosted"
+    },
+    {
+      "node": "merge",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "The squash merge uses --match-head-commit, so only the commit whose checks were read can land.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "Merge exactly the commit whose checks you read, so a later push cannot slip in:"
+    },
+    {
+      "node": "merge",
+      "origin": "spec",
+      "kind": "detail",
+      "claim": "Confirm the PR is MERGED, pull main, and cut a fresh branch before the next task.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main."
+    },
+    {
+      "node": "branch",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Task built on the branch (payload: commits)",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "3. Do the work, verify with build/tests"
+    },
+    {
+      "node": "local",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "make ci green, pushed (payload: pushed branch)",
+      "verdict": "partial",
+      "file": "skills/create-pr.md",
+      "quote": "- **All phases pass → the branch is MERGE-READY.** Open the PR normally (Step 7).",
+      "note": "Green is only one of three ways forward: a still-red gate continues as a DRAFT PR and a repo with no local gate continues as UNVERIFIED."
+    },
+    {
+      "node": "open",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "PR opened (payload: PR)",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "Open the PR with `gh pr create` against the repo's default base branch (usually `main`); Claude Code may use `mcp__github__create_pull_request`."
+    },
+    {
+      "node": "checks",
+      "origin": "spec",
+      "kind": "step",
+      "claim": "Real checks green (payload: verified head commit)",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "sha=$(git rev-parse HEAD)   # the commit whose checks you verified"
+    },
+    {
+      "node": "local",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "make ci: The local pre-merge gate: unit and heavy integration checks.",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "# full local gate: Tier-1 unit + Tier-2 heavy integration. Prefer `make ci`."
+    },
+    {
+      "node": "open",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Critical changes: Up to five path:line notes of what changed and what depends on it.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "at most five `path:line` notes of what changed where and what depends on it. Measure delivery, not output"
+    },
+    {
+      "node": "merge",
+      "origin": "spec",
+      "kind": "glossary",
+      "claim": "Squash merge: One PR lands as one commit on main.",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "**Merge by squash:** one commit per PR on main, titled with the PR title; publication follows"
+    },
+    {
+      "node": "local",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Run integration tests -> make ci green? (the only failure path drawn is auto-correct then DRAFT PR)",
+      "verdict": "partial",
+      "file": "skills/create-pr.md",
+      "quote": "Do not create the PR.",
+      "note": "The diagram draws no failure exit for integration tests; in the source, integration tests still failing after 2 rounds stop with no PR at all (the spec says this, the diagram does not)."
+    },
+    {
+      "node": "local",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend DRAFT PR: a PR marked not ready, used while a local gate is red",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "section and tell the user exactly which gates are red. **Never open a ready (non-draft) PR while"
+    },
+    {
+      "node": "open",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "/simplify runs after the push and before gh pr create",
+      "verdict": "confirmed",
+      "file": "skills/create-pr.md",
+      "quote": "Run `/simplify` in review mode (standalone invocation) against the changed files to produce the Quality Scores table.",
+      "note": "Order in the source: Step 4 push, Step 5 quality gate, Step 7 create the PR."
+    },
+    {
+      "node": "checks",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend handoff: .pause/handoff.md, notes for in-flight work, kept off main",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "**Handoffs live only on branches.** `.pause/handoff.md` is the checkpoint for work in flight: `/save` and"
+    },
+    {
+      "node": "checks",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend Security scan: CI check: gitleaks, osv-scanner, zizmor on the changes",
+      "verdict": "confirmed",
+      "file": "AGENTS.md",
+      "quote": "The `Security scan` CI check (`.github/workflows/security.yml`: gitleaks, osv-scanner, zizmor on what the PR changes)"
+    },
+    {
+      "node": "checks",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Legend CI: automated checks run on every push",
+      "verdict": "partial",
+      "file": "skills/create-pr.md",
+      "quote": "Under the two-tier CI model, GitHub Actions runs instant unit checks only; heavy integration gates (too slow or",
+      "note": "In this workflow hosted CI is only the instant unit tier; the heavy gates run locally, which the legend line does not say."
+    },
+    {
+      "node": "merge",
+      "origin": "diagram",
+      "kind": "box",
+      "claim": "Stage 6: Confirm MERGED, pull main, then fresh branch from updated main",
+      "verdict": "confirmed",
+      "file": "docs/agents-detail.md",
+      "quote": "the current task; never grow the branch with another feature to defer it. Confirm the actual merge and"
+    }
+  ],
+  "missing": [
+    {
+      "what": "A repo with no local gate (no make ci or scripts/ci-local.sh) is recorded as readiness UNVERIFIED and the PR still opens, saying so.",
+      "file": "skills/create-pr.md",
+      "quote": "- `NO_LOCAL_GATE` → record it in the status section (readiness = UNVERIFIED), proceed, and say so."
+    },
+    {
+      "what": "Auto-correction has a scope limit: a fix over about 30 lines or one that is architecturally significant stops and is reported to the user.",
+      "file": "skills/create-pr.md",
+      "quote": "2. **Scope check** — if the fix needs more than ~30 lines across all files, or touches something architecturally significant, stop and report the diagnosis to the user. Do not guess at large changes."
+    },
+    {
+      "what": "The drafted title and body prose go through /deslop before the PR is created.",
+      "file": "skills/create-pr.md",
+      "quote": "**Prose check:** run `/deslop` in edit mode on the drafted title and the body's"
+    },
+    {
+      "what": "A diff that adds a tool, script, skill or bin command gets a Callable-unit checklist in the body, and an unchecked box blocks the merge.",
+      "file": "skills/create-pr.md",
+      "quote": "**Callable-unit gate:** if the diff adds a tool, script, skill, or bin command, append this section to the body. An unchecked box blocks merge."
+    },
+    {
+      "what": "If the branch already has an open PR, report it and subscribe to it instead of creating a duplicate.",
+      "file": "skills/create-pr.md",
+      "quote": "- Already-open PR for this branch → report the existing PR URL and subscribe to it instead of creating a duplicate."
+    },
+    {
+      "what": "Without merge authority the ready PR is preserved, the blocker is reported, and no other independent task starts.",
+      "file": "skills/create-pr.md",
+      "quote": "If merge authority is absent, preserve the ready PR and report that blocker; do not start another independent"
+    },
+    {
+      "what": "Before merging, check that the PR head still equals the commit whose checks were read; if it moved, pull and re-check.",
+      "file": "skills/create-pr.md",
+      "quote": "[ \"$(gh pr view <pr> --json headRefOid -q .headRefOid)\" = \"$sha\" ] || { echo \"PR head moved; pull and re-check\"; exit 1; }"
+    },
+    {
+      "what": "A local receipt may let hosted CI skip a check only where the local run covered the hosted job's scope.",
+      "file": "AGENTS.md",
+      "quote": "where the local run's scope covers the hosted job's scope;** when the hosted selector picks a wider set, hosted"
+    },
+    {
+      "what": "If you own the CI, required roll-up jobs are made to fail closed (if: always() plus a guard step).",
+      "file": "AGENTS.md",
+      "quote": "command's own exit, and make roll-up jobs fail closed (`if: always()` plus a guard). **Handoffs live only on"
+    },
+    {
+      "what": "The final report states whether a subscription is active or only a CLI check was done; a CLI check is never claimed as a subscription.",
+      "file": "skills/create-pr.md",
+      "quote": "a CLI check was performed. Never claim a CLI check is a persistent subscription."
+    },
+    {
+      "what": "After the merge and the fresh branch, the queue task is acknowledged with queue advance.",
+      "file": "skills/create-pr.md",
+      "quote": "task. Follow `queue advance` in [queue.md](queue.md) only after verifying those facts; apply"
+    }
+  ],
+  "code": {
+    "overview": "Most of this flow is the agent following skills/create-pr.md with git and gh; no script opens, watches or merges the PR. Code covers the edges: a session-start hook that warns when the branch is behind main, compute-bump.ts for the version, the hosted checks in .github/workflows (ci.yml, quality.yml, security.yml), check-handoff.ts before the merge, and release.yml after it. The repo has no Makefile, so the skill's `make ci` step falls through to its 'no local gate' branch here.",
+    "refs": [
+      {
+        "node": "branch",
+        "file": ".claude/session-start/hook.sh",
+        "anchor": "echo \"⚠  '$BRANCH' is $BEHIND commit(s) behind origin/main — merge before new feature work: git merge origin/main\"",
+        "before": 12,
+        "count": 14,
+        "hash": "3bb0bbd83f68",
+        "title": "Session-start hook: warn when the branch is behind origin/main",
+        "explain": "It fetches origin/main quietly and exits if the fetch fails. It reads the current branch and counts commits that origin/main has and HEAD lacks. If the count is not zero it prints a warning: pull when on main, merge origin/main otherwise.",
+        "why": "This covers 'pull the latest main' as a warning only; it always exits 0 and changes nothing. Cutting the fresh branch is done by the agent.",
+        "kind": "enforces"
+      },
+      {
+        "node": "local",
+        "file": "package.json",
+        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check\",",
+        "before": 5,
+        "count": 6,
+        "hash": "6fe07c598258",
+        "title": "npm test: the local test and check commands",
+        "explain": "test runs four parts in order and stops at the first failure: the node tests one file at a time, the tool tests, every scripts/test-*.sh, and the repo checks (resolver, skills doc, agents detail, handoff, guidelines, explorer pages, diagrams). test:integration is separate and needs RUN_INTEGRATION=1.",
+        "why": "These are the commands the local gates run in this repo, and the same ones CI runs. The skill looks for `make ci` or scripts/ci-local.sh first; neither exists here, so the agent runs these directly.",
+        "kind": "implements"
+      },
+      {
+        "node": "local",
+        "file": ".githooks/pre-commit",
+        "anchor": "echo \"pre-commit: tsconfig.json present but tsc not installed — skipping (install deps, e.g. npm ci)\" >&2",
+        "before": 22,
+        "count": 28,
+        "hash": "e8754db37640",
+        "title": "Pre-commit hook: lint, quality check and typecheck on each commit",
+        "explain": "With set -eu any failing step blocks the commit. It runs ESLint on staged JS/TS files, the mechanical quality check on staged files, the whole-project tsc --noEmit, then check-resolvable and the skills-doc freshness check. Each step is skipped when its tool or file is missing.",
+        "why": "It catches lint and type errors before they reach the PR. It only runs when core.hooksPath is set to .githooks, which the session-start hook does for cloud sessions; locally it is opt-in.",
+        "kind": "enforces"
+      },
+      {
+        "node": "local",
+        "file": "scripts/compute-bump.ts",
+        "anchor": "if (/(BREAKING CHANGE|^feat(\\(.*\\))?!:|^fix(\\(.*\\))?!:)/.test(line)) { bump = 'major'; break; }",
+        "before": 3,
+        "count": 16,
+        "hash": "8e5be6413ff2",
+        "title": "computeBump: next version from commit messages",
+        "explain": "It scans commit subject and body lines. A BREAKING CHANGE or a feat!/fix! line means major and stops the scan; a feat: line means minor; a fix: line means patch if nothing higher was seen. With no such line it returns none; otherwise it returns the bumped version string.",
+        "why": "The skill pipes git log origin/main..HEAD into this to pick the version it commits on the branch before pushing. The release job later tags exactly that version.",
+        "kind": "implements"
+      },
+      {
+        "node": "open",
+        "file": "scripts/test-create-pr-gate.sh",
+        "anchor": "if [ -n \"$gate_line\" ] && [ -n \"$step6_line\" ] && [ \"$gate_line\" -lt \"$step6_line\" ]; then",
+        "before": 5,
+        "count": 10,
+        "hash": "8ec014bd8a5d",
+        "title": "Test: the quality gate comes before the PR body in the skill text",
+        "explain": "It finds the line numbers of the 'Step 5' and 'Step 6' headings in skills/create-pr.md, matching headings only. It passes when Step 5 (the quality gate) appears before Step 6 (drafting the PR body), and fails otherwise.",
+        "why": "This pins the order 'score 10/10 first, then open the PR' in the skill document. It checks the text of the instructions, not what an agent did; nothing in code checks the scores or the PR body.",
+        "kind": "tests"
+      },
+      {
+        "node": "checks",
+        "file": ".github/workflows/ci.yml",
+        "anchor": "- uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5",
+        "before": 9,
+        "count": 14,
+        "hash": "d2e91a90b31e",
+        "title": "CI verify job: npm test on every PR to main",
+        "explain": "On a pull request to main, the job checks out the code without stored credentials, installs the Node version from .node-version, runs npm ci and then npm test. npm test chains the node tests, the tool tests, the shell tests and the repo checks.",
+        "why": "This is one of the real checks whose conclusion the agent reads on the final head. The workflow has no roll-up job, so each job's own result must be read.",
+        "kind": "enforces"
+      },
+      {
+        "node": "checks",
+        "file": ".github/workflows/ci.yml",
+        "anchor": "- uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5",
+        "before": 6,
+        "count": 14,
+        "hash": "c6450d32c09f",
+        "title": "CI lint job: lint, typecheck and import boundaries",
+        "explain": "After checkout and npm ci it runs npm run lint (ESLint with zero warnings allowed), npm run typecheck (tsc --noEmit), then the import-boundary check. Any failing step fails the job.",
+        "why": "A second hosted check on the PR head, separate from the tests. A PR that passes tests but breaks types or boundaries stops here.",
+        "kind": "enforces"
+      },
+      {
+        "node": "checks",
+        "file": ".github/workflows/quality.yml",
+        "anchor": "mapfile -t FILES < <(git ls-files | grep -E '\\.(js|mjs|ts|tsx|sh|py|rb|go)$' || true)",
+        "before": 9,
+        "count": 11,
+        "hash": "a95e89e71852",
+        "title": "Quality Gate: mechanical checks on all source files",
+        "explain": "On PR open, update or reopen it lists every tracked js, mjs, ts, tsx, sh, py, rb and go file. If there are any, it runs scripts/check-quality-mechanical.sh on all of them.",
+        "why": "This is the machine half of the quality bar; the 10/10 score from /simplify is model judgment made before the PR opens.",
+        "kind": "enforces"
+      },
+      {
+        "node": "checks",
+        "file": ".github/workflows/security.yml",
+        "anchor": "fetch gitleaks/gitleaks \"v$GITLEAKS_VERSION\" \"gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz\" \"$GITLEAKS_SHA256\"",
+        "before": 14,
+        "count": 23,
+        "hash": "81e690e59ca7",
+        "title": "Security scan: list what the PR changes and scan it for secrets",
+        "explain": "The fetch helper downloads a release asset and rejects it unless its sha256 matches the pinned value. The step lists files added or changed between the base tip and the PR merge commit. If any changed, it downloads gitleaks, copies the changed files to a temp tree and scans them, adding 'gitleaks' to the failed list on a finding.",
+        "why": "This starts the 'Security scan' check that must pass before merge. Scanning only what the PR adds keeps it fast; osv-scanner and zizmor follow in the same step when lockfiles or workflows changed.",
+        "kind": "enforces"
+      },
+      {
+        "node": "checks",
+        "file": ".github/workflows/security.yml",
+        "anchor": "if printf '%s\\n' \"${changed[@]}\" | grep -qE '^(\\.github/(workflows|actions)/|action\\.ya?ml$|\\.github/dependabot\\.ya?ml$)'; then",
+        "before": 0,
+        "count": 13,
+        "hash": "99ff1600a044",
+        "title": "Security scan: zizmor on workflow changes, then fail if any scanner failed",
+        "explain": "If a changed path is a workflow, an action file or dependabot.yml, it downloads the pinned zizmor and runs it, recording a failure. At the end, a non-empty failed list prints an error naming the scanners and exits 1; otherwise it prints 'security scan: clean'.",
+        "why": "All three scanners report through this one exit, so the check's conclusion is a real pass or fail. The job runs on every pull request, so it is not skipped by a path filter.",
+        "kind": "enforces"
+      },
+      {
+        "node": "checks",
+        "file": "scripts/check-handoff.ts",
+        "anchor": "return existsSync(path) ? [`handoffs live only on branches; clear it before merging to main: git rm ${path} && git commit -m \"chore: clear handoff before merge\"`] : [];",
+        "before": 2,
+        "count": 14,
+        "hash": "ec5a53d66468",
+        "title": "check-handoff --pre-merge: fail while a handoff file exists",
+        "explain": "preMerge returns an error when .pause/handoff.md exists, with the git rm command to clear it. The CLI block picks preMerge when --pre-merge is passed, else the content check. Any error is printed and the process exits 1; otherwise it prints OK.",
+        "why": "A handoff must not ride a merge into main, where a later /resume would act on it. The agent runs this on the head it is about to merge; nothing in CI runs the --pre-merge form.",
+        "kind": "enforces"
+      },
+      {
+        "node": "merge",
+        "file": "scripts/queue-delivery.ts",
+        "anchor": "console.error('advance: requires selected completed task, no active claims, --pr <merged-pr-url> and --branch <fresh-working-branch>');",
+        "before": 10,
+        "count": 19,
+        "hash": "73626ab8befe",
+        "title": "queue advance: record the merged PR and the fresh branch",
+        "explain": "It refuses unless the id is the selected delivery task, that task was accepted as done, no task is active, --pr looks like a pull request URL and --branch is not empty. On success it clears deliveryTask and deliveryAccepted, saves, and writes the PR and branch to the log.",
+        "why": "This closes the delivery cycle so the queue will hand out the next task. The code checks only the queue's own state and the URL's shape; it does not ask GitHub whether the PR merged, so the orchestrator vouches for that.",
+        "kind": "implements"
+      },
+      {
+        "node": "merge",
+        "file": ".github/workflows/release.yml",
+        "anchor": "uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5",
+        "before": 6,
+        "count": 26,
+        "hash": "d744273f09db",
+        "title": "Release job: tag main after the merge",
+        "explain": "On a push to main it checks out full history and reads the version from package.json. If the tag v<version> already exists it stops. Otherwise it creates the annotated tag and pushes only the tag.",
+        "why": "This is the only code that runs because of the merge. It relies on the version bump already being on the PR branch, and it pushes a tag, never a commit, so main's history stays one squash commit per PR.",
+        "kind": "implements"
+      }
+    ],
+    "promptOnly": []
+  }
+}

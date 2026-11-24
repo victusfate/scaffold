@@ -1,0 +1,24 @@
+{
+  "title": "Agentic task queue",
+  "lede": "The design for a task queue shared across projects: how a task moves from ingestion into a GitHub Issues queue, gets claimed by one worker, and is run in an isolated worktree and merged back into the target repo. It is a design; the code walkthrough below shows which parts are built.",
+  "detail": "../../agentic-task-queue/architecture.svg",
+  "sources": ["docs/agentic-task-queue/architecture.mmd", "docs/agentic-task-queue/design.md"],
+  "reviewed": "0a0260e0ef7a",
+  "lanes": [
+    { "id": "dispatch", "name": "Dispatch", "sub": "shared across projects" },
+    { "id": "execution", "name": "Execution", "sub": "per target repo" }
+  ],
+  "nodes": {
+    "ING": { "lane": "dispatch", "name": "Ingestion sources", "role": "Three ways work enters the queue as issues: a person running /queue ingest, automated watchers and cron hooks, and assistant proposals that wait for a human to select them." },
+    "DISP": { "lane": "dispatch", "name": "Dispatch layer", "role": "Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to exactly one worker through an assign, verify and lease claim.", "link": "queue-lifecycle.md" },
+    "WORK": { "lane": "execution", "name": "Workers", "role": "The agents that claim and execute tasks: Claude routines and manual pulls in phase 1, with GitHub Action crons added in phase 2." },
+    "EXEC": { "lane": "execution", "name": "Execution layer", "role": "Runs one claimed task in its own worktree in the task's target repo, validates it, and merges it back into the integration branch, sending conflicts to an agent-driven reconciliation task." }
+  },
+  "flows": [
+    { "id": "main", "name": "Ingestion to merge-back", "steps": [
+      ["ING", "DISP", "Work enters the queue", "issue"],
+      ["DISP", "WORK", "Claimed by exactly one worker", "claim + lease"],
+      ["WORK", "EXEC", "Target repo checked out", "task"]] }
+  ],
+  "ask": { "context": "The reader wants to understand the agentic task queue designed in docs/agentic-task-queue/design.md in the scaffold repo, and how much of that design is built." }
+}
