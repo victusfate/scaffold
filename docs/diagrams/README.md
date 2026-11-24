@@ -4,6 +4,9 @@
 which starts with a one-line overview and drills down: each stage, where it breaks, the full detailed
 diagram, a glossary, and a block you can copy into your own LLM to ask follow-up questions.
 
+For all the diagrams in one page, with the code behind each stage and a check of every claim against its
+skill doc, see the [Flow Atlas](../flow-atlas/README.md) (a dated snapshot).
+
 ## How the pages are made
 
 Everything here is generated. Edit the sources, then regenerate:
