@@ -17,7 +17,7 @@
         { "t": "When a gate fails", "more": ["Auto-correct up to 2 rounds.", "Still red: failing integration tests stop with no PR; a red make ci opens the PR as a DRAFT listing the red gates."] },
         "Then bump the version and push."] },
     "open": { "lane": "agent", "name": "Open the PR", "role": "/create-pr opens the PR with a structured body and starts watching its checks.", "link": "review-gates.md",
-      "details": ["/simplify must score every changed file 10/10 before the PR opens.", "The body has a Summary, Critical changes, gate status and Quality Scores.", "Subscribe to the PR, or run gh pr checks --watch."] },
+      "details": ["/simplify must score every changed file 10/10, or approved overrides cover the rest, before the PR opens.", "The body has a Summary, Critical changes, gate status, Quality Scores, a Test plan and the session URL.", "Subscribe to the PR, or run gh pr checks --watch."] },
     "checks": { "lane": "github", "name": "Verify checks", "role": "Read the actual check conclusions on the final head, not the merge button.", "link": "session-continuity.md",
       "details": ["First remove the handoff file, push, and run check-handoff --pre-merge, so the final CI run judges the cleared head.", "Capture the watch command's own exit code.", "The Security scan check must pass."],
       "risks": ["GitHub counts a skipped required check as passing; treat a skip as suspect."],
@@ -28,7 +28,7 @@
   "flows": [
     { "id": "main", "name": "Task to merged PR", "steps": [
       ["branch", "local", "Task built on the branch", "commits"],
-      ["local", "open", "make ci green, pushed", "pushed branch"],
+      ["local", "open", "Local gates run, pushed", "pushed branch"],
       ["open", "checks", "PR opened", "PR"],
       ["checks", "merge", "Real checks green", "verified head commit"]] }
   ],

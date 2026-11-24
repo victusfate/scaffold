@@ -44,8 +44,8 @@ flowchart TB
   subgraph LANE["4 · Subagent works in its lane"]
     direction TB
     S1["ff-only base check"]:::lane
-    S2["Build: direct chore or<br/>design → PRD → plan<br/>→ TDD → refine"]:::lane
-    S3["Re-read task at checkpoints<br/>follow newest ORCH UPDATE"]:::lane
+    S2["Build: direct chore or<br/>design → PRD → plan<br/>→ TDD → refine → QA"]:::lane
+    S3["Re-read task at every checkpoint<br/>and before long steps;<br/>follow newest ORCH UPDATE"]:::lane
     S4["Validate · commit locally<br/>record evidence · no push"]:::lane
     S1 --> S2 --> S3 --> S4
   end
@@ -53,15 +53,15 @@ flowchart TB
   subgraph INTEGRATE["5 · Orchestrator integrates"]
     direction TB
     I["Merge target into lane<br/>re-run gates on result"]:::orch
-    G{"Green?<br/>no → back to lane"}:::gate
+    G{"Green?<br/>no → not integrated,<br/>a subagent finishes the branch"}:::gate
     B["Merge into the one<br/>working branch"]:::git
-    PR["Open PR<br/>Critical changes + real checks"]:::orch
+    PR["Open PR with Critical changes<br/>verify real checks on final head"]:::orch
     I --> G -->|yes| B --> PR
   end
 
-  subgraph SHIP["6 · Owner approves, task closes"]
+  subgraph SHIP["6 · Owner authorizes, delivery recorded"]
     direction TB
-    O2{"Owner authorizes<br/>the merge?"}:::gate
+    O2{"Owner authorized the merge?<br/>session or standing"}:::gate
     M["main · squash merge"]:::git
     A["queue advance --pr --branch<br/>records merge + fresh branch"]:::state
     O2 -->|yes| M --> A
@@ -82,7 +82,8 @@ flowchart TB
     L7["PR<br/>pull request: a proposed<br/>change, reviewed and<br/>checked before merge"]:::git
     L8["HEAD<br/>the latest commit on<br/>a branch"]:::git
     L9["slot<br/>a worker seat (model +<br/>tool) the orchestrator<br/>hands tasks to"]:::git
-    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9
+    L10["QA<br/>quality assurance: run the<br/>app and drive the changed<br/>entry points"]:::git
+    L1 ~~~ L2 ~~~ L3 ~~~ L4 ~~~ L5 ~~~ L6 ~~~ L7 ~~~ L8 ~~~ L9 ~~~ L10
   end
 
   FLOW ~~~ LEGEND
