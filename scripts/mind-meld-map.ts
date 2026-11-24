@@ -16,13 +16,13 @@ import { adapterFor, languageFacts, loadAdapters, type ModuleFacts } from './min
 const MAP_TITLE = 'Repo map';
 const MAP_FILE = 'index.md';
 const IMPORTS = 'Imports (declared in source, not observed calls)';
-const ROOT_AREA = '(root)';
+export const ROOT_AREA = '(root)';
 // Tests, specs, fixtures, type declarations and vendored or built trees are not what the repo ships. Not
 // shared with lib/dependency-watch's list: that copy ships into other repos on its own and imports nothing.
 const NOT_SHIPPED = /\.d\.ts$|(^|\/)\.mind-meld\/|(^|\/)(tests?|spec|specs|fixtures|testdata|vendor|node_modules|target|dist|build)\/|\.(test|spec)\.(ts|tsx|mts)$|(^|\/)test_[^/]*\.py$|_test\.py$|_(spec|test)\.rb$/;
 
-const areaOf = (file: string): string => file.includes('/') ? file.split('/')[0] : ROOT_AREA;
-const inAreaPath = (file: string, area: string): string => area === ROOT_AREA ? file : file.slice(area.length + 1);
+export const areaOf = (file: string): string => file.includes('/') ? file.split('/')[0] : ROOT_AREA;
+export const inAreaPath = (file: string, area: string): string => area === ROOT_AREA ? file : file.slice(area.length + 1);
 const cleanName = (name: string): string => name.replace(/^\.+/, '').replace(/[^\w.-]/g, '_') || 'page';
 
 // Unique page names from [key, wanted base] pairs: `index.md` is the map's, and bases that clean up

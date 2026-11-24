@@ -146,7 +146,7 @@ test('long descriptions wrap in the picture so boxes stay narrow', () => {
   const model = shop();
   model.elements[0].description = 'Buys things from the catalogue and pays for them by card at the end';
   const [{ picture }] = c4Views(model);
-  assert.match(picture, /Buys things from the catalogue<br\/>and pays for them by card at<br\/>the end/);
+  assert.match(picture, /Buys things from the<br\/>catalogue and pays for<br\/>them by card at the end/);
 });
 
 test('renderC4Markdown is a page: the picture per view, the workspace link, native C4 folded away', () => {

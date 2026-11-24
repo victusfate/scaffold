@@ -11,8 +11,8 @@ import { containersOf, plain, SYSTEM_ID, type C4Element, type C4Model, type C4Re
 // One view, drawn both ways.
 export type C4View = { title: string; picture: string; native: string };
 
-// quality-ok: magic-number — characters per line of a description, so a box stays about as wide as its name
-const WRAP = 30;
+// quality-ok: magic-number — characters per line of a description or arrow label: about the width mermaid wraps SVG text at, so the lines break here and not mid-phrase
+const WRAP = 22;
 const BREAK = '<br/>';
 const CLASS_OF = { person: 'person', system: 'external', container: 'container', component: 'container' } as const;
 const CLASS_DEF = {
@@ -67,7 +67,7 @@ function picture(model: C4Model, { elements, arrows, withGroups }: Drawing): str
   return ['flowchart LR', ...nest([
     ...outside.map(box),
     ...boundary(model, elements.filter(element => element.kind === 'container'), withGroups),
-    ...arrows.map(({ from, to, description }) => `${from} -->|"${plain(description)}"| ${to}`),
+    ...arrows.map(({ from, to, description }) => `${from} -->|"${wrap(description)}"| ${to}`),
     ...classes,
   ])].join('\n');
 }
