@@ -44,7 +44,7 @@ flowchart TB
     direction TB
     Q1["Score touched files<br/>on four rubric dimensions"]:::gate
     Q2{"All 10/10?<br/>fix under 30 lines in place<br/>else surface to user"}:::gate
-    Q3["Test self-audit: sentinel<br/>values, every flag form,<br/>a caller-side test"]:::gate
+    Q3["Test self-audit: sentinel<br/>values, every flag form,<br/>flag a missing caller-side test"]:::gate
     Q1 --> Q2 --> Q3
   end
 
@@ -73,10 +73,10 @@ flowchart TB
   subgraph LEGEND["Legend"]
     direction LR
     L1["TDD<br/>Test-Driven Development:<br/>failing test first, then code,<br/>then clean up"]:::git
-    L2["vertical slice<br/>one small feature cut<br/>through every layer,<br/>data to UI to tests"]:::git
+    L2["vertical slice<br/>a piece of a feature cut<br/>through every layer,<br/>data to UI to tests"]:::git
     L3["RED<br/>a new test that fails<br/>because the behavior<br/>doesn't exist yet"]:::git
     L4["GREEN<br/>just enough code to<br/>make that test pass"]:::git
-    L5["REFACTOR<br/>check and tidy the code<br/>without changing<br/>behavior"]:::git
+    L5["REFACTOR<br/>confirm the quality<br/>scores after GREEN,<br/>before committing"]:::git
     L6["tracer bullet<br/>first test that proves<br/>the path works end<br/>to end"]:::git
     L7["rubric<br/>four scores: Quality,<br/>Readability, Encapsulation,<br/>Clarity"]:::git
     L8["sentinel value<br/>a non-default test value,<br/>so a silent reset<br/>can't hide"]:::git
