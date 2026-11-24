@@ -11,6 +11,10 @@ export type DeepSection = { h: string; list?: string[]; table?: { head: string[]
 
 export type Term = { t: string; a: string[]; d: string };
 
+// What a node is in a C4 view. A node with no role is a container: a running part of the system.
+const C4_ROLES = ['person', 'external', 'database', 'queue'] as const;
+export type C4Role = typeof C4_ROLES[number];
+
 export type ExplorerNode = {
   lane: string;
   name: string;
@@ -21,6 +25,8 @@ export type ExplorerNode = {
   qs?: string[];
   // Relative path to a page that goes deeper (markdown pages: the skill's own page).
   link?: string;
+  // Read only when the spec has `c4` (scripts/c4-from-explorer.ts).
+  c4?: { as?: C4Role; technology?: string };
 };
 
 // One step: [from node, to node, what happens, payload/data carried].
@@ -66,6 +72,9 @@ export type ExplorerSpec = {
   // edit flags the page for review (render-explorer-pages); the hash is refreshed by acknowledging it.
   sources?: string[];
   reviewed?: string;
+  // Opts the page into C4 output (scripts/render-c4.ts): the software system its nodes are the parts of.
+  // For pages about running software; a process flow's stages are not parts of a system.
+  c4?: { system: string; description?: string };
 };
 
 const isStr = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
@@ -99,6 +108,19 @@ function checkFlows(s: ExplorerSpec, refs: Refs, errs: string[]): void {
       checkIds(`flows.${f.id}.steps[${i}]`, [st[0], st[1]], refs.nodes, errs);
     });
   }
+}
+
+const optionalText = (v: unknown): boolean => v === undefined || typeof v === 'string';
+
+function checkNodeC4(id: string, c4: NonNullable<ExplorerNode['c4']>, errs: string[]): void {
+  if (c4.as && !C4_ROLES.includes(c4.as)) errs.push(`nodes.${id}: unknown c4.as "${String(c4.as)}" (${C4_ROLES.join(', ')})`);
+  if (!optionalText(c4.technology)) errs.push(`nodes.${id}: c4.technology must be text`);
+}
+
+function checkC4(s: ExplorerSpec, errs: string[]): void {
+  if (s.c4 && !isStr(s.c4.system)) errs.push('c4.system is required');
+  if (!optionalText(s.c4?.description)) errs.push('c4.description must be text');
+  for (const [id, n] of Object.entries(s.nodes)) if (n.c4) checkNodeC4(id, n.c4, errs);
 }
 
 const termComplete = (g: Term): boolean => isStr(g.t) && isStr(g.d) && Array.isArray(g.a) && g.a.length > 0;
@@ -160,5 +182,6 @@ export function validateSpec(s: ExplorerSpec): string[] {
   checkTopics(s, refs, errs);
   checkTimeline(s, refs, errs);
   checkStart(s, refs, errs);
+  checkC4(s, errs);
   return errs;
 }

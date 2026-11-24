@@ -5,6 +5,7 @@
 //        node scripts/mind-meld.ts view bundle.json > tour.html
 //        node scripts/mind-meld.ts pages bundle.json [source-prefix] > tour.md   (GitHub markdown page)
 //        node scripts/mind-meld.ts map <repo-root> <out-dir>   (default view: static repo map pages)
+//        node scripts/mind-meld.ts c4 <repo-root> <out-dir>    (the same map as a Structurizr workspace and C4 page)
 import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -13,6 +14,7 @@ import type ts from 'typescript';
 import { loadTypeScript } from './typescript-runtime.ts';
 import { runSandbox, MELD_IMAGE, MELD_LIMIT_MS } from './mind-meld-sandbox.ts';
 import { validateBundle, sourceHash, sourceManifest, type MeldBundle, type MeldRun, type MeldNode, type MeldEdge } from './mind-meld-schema.ts';
+import { writeC4 } from './mind-meld-c4.ts';
 import { writeMap } from './mind-meld-map.ts';
 import { renderPage } from './mind-meld-pages.ts';
 import { renderViewer } from './mind-meld-viewer.ts';
@@ -132,19 +134,23 @@ function createBundle(command: string, arg: string | undefined): MeldBundle {
   else if (command === 'piece') bundle.runs.push(run_piece('damage', JSON.parse(arg ?? JSON.stringify(DEFAULT_INPUTS)), { save: 'memory' }));
   else if (command === 'demo' && !arg) {
     bundle.runs.push(run_flow('combat', DEFAULT_INPUTS), run_flow('combat', LETHAL_INPUTS), run_piece('damage', DEFAULT_INPUTS, { save: 'memory' }));
-  } else if (command !== 'index' || arg) throw new Error('usage: mind-meld.ts map|index|flow|piece|demo|diff|view|pages|verify');
+  } else if (command !== 'index' || arg) throw new Error('usage: mind-meld.ts map|c4|index|flow|piece|demo|diff|view|pages|verify');
   return bundle;
+}
+// The two views made from a repo's source without running it: the map pages, and the same map as C4.
+const REPO_VIEWS = {
+  map: (root: string, out: string) => writeMap(root, out).then(files => `repo map: ${files.length} pages in ${out}`),
+  c4: (root: string, out: string) => writeC4(root, out).then(files => `repo C4: ${files.join(', ')} in ${out}`),
+};
+function writeRepoView(command: keyof typeof REPO_VIEWS, [root, out, extra]: string[]): void {
+  if (!root || !out || extra !== undefined) throw new Error(`usage: mind-meld.ts ${command} <repo-root> <out-dir>`);
+  // Map pages link to source by relative path, so they only work on GitHub when written inside the repo.
+  if (command === 'map' && relative(resolve(root), resolve(out)).startsWith('..')) console.error(`mind-meld map: ${out} is outside the repo, so the pages' source links will not work on GitHub`);
+  REPO_VIEWS[command](root, out).then(line => console.log(line), (error: Error) => { console.error(error.message); process.exitCode = 1; });
 }
 function main(args: string[]): void {
   const [command, arg, other] = args;
-  if (command === 'map') {
-    if (!arg || !other || args.length > 3) throw new Error('usage: mind-meld.ts map <repo-root> <out-dir>');
-    // Pages link to source by relative path, so they only work on GitHub when written inside the repo.
-    if (relative(resolve(arg), resolve(other)).startsWith('..')) console.error(`mind-meld map: ${other} is outside the repo, so the pages' source links will not work on GitHub`);
-    writeMap(arg, other).then(files => console.log(`repo map: ${files.length} pages in ${other}`),
-      (error: Error) => { console.error(error.message); process.exitCode = 1; });
-    return;
-  }
+  if (command === 'map' || command === 'c4') { writeRepoView(command, args.slice(1)); return; }
   if (!command || args.length > (['diff', 'verify', 'pages'].includes(command) ? 3 : 2)) throw new Error('invalid arguments');
   if (fileCommand(command, arg, other)) return;
   const bundle = createBundle(command, arg);

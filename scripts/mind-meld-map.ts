@@ -22,7 +22,15 @@ const ROOT_AREA = '(root)';
 const NOT_SHIPPED = /\.d\.ts$|(^|\/)\.mind-meld\/|(^|\/)(tests?|spec|specs|fixtures|testdata|vendor|node_modules|target|dist|build)\/|\.(test|spec)\.(ts|tsx|mts)$|(^|\/)test_[^/]*\.py$|_test\.py$|_(spec|test)\.rb$/;
 
 const areaOf = (file: string): string => file.includes('/') ? file.split('/')[0] : ROOT_AREA;
-const inAreaPath = (file: string, area: string): string => area === ROOT_AREA ? file : file.slice(area.length + 1);
+// An area's name where a word is needed (a page name, an identifier).
+export const areaBase = (area: string): string => area === ROOT_AREA ? 'root' : area;
+export const NO_SOURCE = 'no source files in a supported language (add an adapter in .mind-meld/languages)';
+export function byArea(facts: ModuleFacts[]): Map<string, ModuleFacts[]> {
+  const areas = new Map<string, ModuleFacts[]>();
+  for (const m of facts) areas.set(areaOf(m.file), [...(areas.get(areaOf(m.file)) ?? []), m]);
+  return areas;
+}
+export const inAreaPath = (file: string, area: string): string => area === ROOT_AREA ? file : file.slice(area.length + 1);
 const cleanName = (name: string): string => name.replace(/^\.+/, '').replace(/[^\w.-]/g, '_') || 'page';
 
 // Unique page names from [key, wanted base] pairs: `index.md` is the map's, and bases that clean up
@@ -185,11 +193,9 @@ function areaPages(area: string, modules: ModuleFacts[], pages: Map<string, stri
 // Writes the repo map and its area (and group) pages into outDir; returns the file names written.
 export async function writeMap(root: string, outDir: string): Promise<string[]> {
   const facts = await scanRepo(root);
-  if (!facts.length) throw new Error('mind-meld map: no source files in a supported language (add an adapter in .mind-meld/languages)');
-  const areas = new Map<string, ModuleFacts[]>();
-  for (const m of facts) areas.set(areaOf(m.file), [...(areas.get(areaOf(m.file)) ?? []), m]);
+  if (!facts.length) throw new Error(`mind-meld map: ${NO_SOURCE}`);
+  const areas = byArea(facts);
   const options: MapOptions = { sourcePrefix: `${relative(outDir, root) || '.'}/` };
-  const areaBase = (area: string): string => area === ROOT_AREA ? 'root' : area;
   const used = new Set([MAP_FILE]);
   const pageOf = pageNames([...areas.keys()].map(area => [area, areaBase(area)]), used);
   const groupPages = pageNames([...areas].flatMap(([area, modules]) => modules.length <= MAX_PAGE_MODULES ? []

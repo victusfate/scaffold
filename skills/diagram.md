@@ -287,6 +287,25 @@ claim live Q&A in a harness that cannot publish an Artifact; there the copy
 fallback is the feature. To change a page, edit the JSON, re-render, and
 republish to the same URL.
 
+### C4 and Structurizr output (when a client's standard is C4)
+
+For a diagram of **running software** (services, stores, queues, the people and outside systems around
+them), write an explorer spec and opt it in; a process flow's stages are not parts of a system, so leave
+those as flowcharts.
+
+- In the spec: `"c4": { "system": "<name>", "description": "..." }`. A node is a C4 container unless
+  `"c4": { "as": "person" | "external" | "database" | "queue" }` says otherwise; `"technology"` is
+  optional. Lanes become groups, each distinct flow step a relationship, each flow a dynamic view.
+- `npm run diagrams:c4` (`node scripts/render-c4.ts`, or `--specs <dir> --out <dir>`) writes
+  `<slug>.dsl`, a Structurizr workspace with context, container and dynamic views, and `<slug>.md`, the
+  same views drawn as mermaid flowcharts in C4 notation so GitHub renders them. `--check` (in `npm test`)
+  fails when either is stale.
+- The page folds mermaid's native `C4Container` / `C4Dynamic` text under each view. Do not make it the
+  picture: it has no automatic layout, so labels overlap on a real system.
+- Nothing renders or validates the `.dsl` here (that needs Java). Say so when handing one over; the client
+  loads it in Structurizr and extends it with `workspace extends`, never edits it.
+- For a C4 model of a whole repo from its code, use `node scripts/mind-meld.ts c4` (see `/mind-meld`).
+
 ### Step 5 — embed in docs (when asked)
 
 To embed in a Markdown doc, prefer a fenced ` ```mermaid ` block (GitHub renders

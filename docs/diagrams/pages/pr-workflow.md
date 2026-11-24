@@ -115,7 +115,7 @@ fi
 
 #### npm test: the local test and check commands
 
-*Carries out the step.* test runs four parts in order and stops at the first failure: the node tests one file at a time, the tool tests, every scripts/test-*.sh, and the repo checks (resolver, skills doc, agents detail, handoff, guidelines, explorer pages, diagrams). test:integration is separate and needs RUN_INTEGRATION=1.
+*Carries out the step.* test runs four parts in order and stops at the first failure: the node tests one file at a time, the tool tests, every scripts/test-*.sh, and the repo checks (resolver, skills doc, agents detail, handoff, guidelines, explorer pages, diagrams, C4 files). test:integration is separate and needs RUN_INTEGRATION=1.
 
 ```json
   "scripts": {
@@ -123,7 +123,7 @@ fi
     "test:node": "node --test --test-concurrency=1 'scripts/**/*.test.ts' 'tools/**/*.test.ts' 'lib/**/*.test.ts'",
     "test:tools": "tools/hoist-skill/test && tools/sync/test && node tools/linter-setup/test && node tools/dependency-watch/test",
     "test:shell": "for f in scripts/test-*.sh; do [ \"$f\" = scripts/test-read-once.sh ] || bash \"$f\" || exit 1; done",
-    "test:checks": "node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check",
+    "test:checks": "node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check && node scripts/render-c4.ts --check",
 ```
 
 [`package.json:8-13`](https://github.com/victusfate/scaffold/blob/main/package.json#L8-L13)

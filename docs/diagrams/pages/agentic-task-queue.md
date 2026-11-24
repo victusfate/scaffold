@@ -6,19 +6,40 @@ The design for a task queue shared across projects: how a task moves from ingest
 
 ```mermaid
 flowchart LR
+  n_owner["Owner"] --> n_ING["Ingestion sources"]
   n_ING["Ingestion sources"] --> n_DISP["Dispatch layer"]
+  n_DISP["Dispatch layer"] --> n_github["GitHub"]
   n_DISP["Dispatch layer"] --> n_WORK["Workers"]
   n_WORK["Workers"] --> n_EXEC["Execution layer"]
+  n_EXEC["Execution layer"] --> n_target["Target repo"]
+  n_EXEC["Execution layer"] --> n_github["GitHub"]
   classDef lane0 fill:#bfdbfe,stroke:#1d4ed8,color:#1f2937
   classDef lane1 fill:#bbf7d0,stroke:#15803d,color:#1f2937
-  class n_ING,n_DISP lane0
-  class n_WORK,n_EXEC lane1
+  classDef lane2 fill:#ddd6fe,stroke:#6d28d9,color:#1f2937
+  class n_owner,n_github,n_target lane0
+  class n_ING,n_DISP lane1
+  class n_WORK,n_EXEC lane2
 ```
 
+- [Owner](#owner): Adds work with /queue ingest and selects which assistant proposals enter the queue.
+- [GitHub](#github): Holds the queue: one task is one issue, with status, priority and project labels.
+- [Target repo](#target-repo): The repository a task changes; work merges back into its integration branch.
 - [Ingestion sources](#ingestion-sources): Three ways work enters the queue as issues: a person running /queue ingest, automated watchers and cron hooks, and assistant proposals that wait for a human to select them.
 - [Dispatch layer](#dispatch-layer): Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to one worker through an assign, verify and lease claim; a rare double claim is possible.
 - [Workers](#workers): The agents that claim and execute tasks: Claude routines and manual pulls in phase 1, with GitHub Action crons added in phase 2.
 - [Execution layer](#execution-layer): Runs one claimed task in its own worktree in the task's target repo, validates it, and merges it back into the integration branch, sending conflicts to an agent-driven reconciliation task.
+
+## Owner
+
+Adds work with /queue ingest and selects which assistant proposals enter the queue.
+
+## GitHub
+
+Holds the queue: one task is one issue, with status, priority and project labels.
+
+## Target repo
+
+The repository a task changes; work merges back into its integration branch.
 
 ## Ingestion sources
 
@@ -45,6 +66,18 @@ Runs one claimed task in its own worktree in the task's target repo, validates i
 The design describes a queue shared across projects and stored as GitHub Issues. What is built is a queue for one repository: a local SQLite store (.agent/queue/queue.db) with a Markdown view (queue.md), driven by scripts/queue.ts, queue-model.ts, queue-io.ts, queue-db.ts, queue-claim.ts and queue-worktrees.ts. Built: manual adding, dependency ordering, claiming under a lock, a lease clock, worktree per task, running the validate command, retry then failed. Not built anywhere in this repo: the GitHub Issues store and its labels, assign-and-verify claiming, cross-project targeting, the push trigger, GitHub Action workers, automated and assistant-proposed ingestion with the collision check, the high/default priority tiers, the proposed and reconciling states, and any merge-back or reconciliation code (merging is done by the agent and the root from skills/queue.md). Two built behaviours contradict the design: an expired lease blocks dispatch instead of returning the task to pending, and an agent is refused when it tries to add a task on its own.
 
 Each excerpt is read from the repo when this page is built. The explanations were written by an agent; `npm test` fails when the lines they explain change.
+
+### Owner: code
+
+No code here: the owner is a person.
+
+### GitHub: code
+
+No code here: GitHub is an outside service.
+
+### Target repo: code
+
+No code here: the target repo is whichever repository the task names.
 
 ### Ingestion sources: code
 

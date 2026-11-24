@@ -26,6 +26,19 @@ or its source links won't work on GitHub.
 
 A missing tool leaves its files on the map with the reason, never a guess.
 
+### The same map as C4
+
+```sh
+node scripts/mind-meld.ts c4 . docs/c4      # no execution, no Docker, no Java
+```
+
+Writes `workspace.dsl`, a Structurizr workspace, and `c4.md`, a container view GitHub renders. The repo is
+the software system, each top-level folder a container, each source file a component (carrying its path
+as a `source` property), and each declared import a relationship. There are no dynamic views: imports are
+not observed calls. A folder is only a first guess at a C4 container, which means a separately running
+part, so a client extends the file with `workspace extends` and regenerates it, never edits it. Nothing
+here parses the `.dsl`; Structurizr does that when it is loaded.
+
 ## Add a language
 
 Add any language in **your repo**, not scaffold: put an adapter at `.mind-meld/languages/<name>.ts`.

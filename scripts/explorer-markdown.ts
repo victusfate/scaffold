@@ -8,6 +8,7 @@
 
 import { anchor } from './check-agents-detail.ts';
 import { mermaidId, mermaidText } from './explorer-render.ts';
+import { uniqueId } from './identifier.ts';
 import type { Bullet, DeepSection, ExplorerNode, ExplorerSpec } from './explorer-spec.ts';
 
 // Quoted mermaid labels: `#quot;` is mermaid's entity for a double quote inside one.
@@ -15,12 +16,7 @@ const mermaidLabel = (text: string): string => `"${mermaidText(text).replace(/"/
 // Mermaid ids per spec: sanitized, then suffixed so ids that sanitize alike (`a.b`, `a_b`) stay two boxes.
 function diagramIds(spec: ExplorerSpec): Map<string, string> {
   const ids = new Map<string, string>(), used = new Set<string>();
-  for (const key of Object.keys(spec.nodes)) {
-    const base = mermaidId(key);
-    let id = base;
-    for (let n = 2; used.has(id); n++) id = `${base}_${n}`;
-    used.add(id); ids.set(key, id);
-  }
+  for (const key of Object.keys(spec.nodes)) ids.set(key, uniqueId(mermaidId(key), used));
   return ids;
 }
 

@@ -43,6 +43,16 @@ new diagram are in [atlas.md](atlas.md).
 It also fails on a link that goes nowhere, a term defined two ways, and `<...>` text GitHub would hide.
 Each spec's `sources` lists the files its page summarizes.
 
+## C4 and Structurizr
+
+A page about running software can also be written as C4. A spec opts in with
+`"c4": { "system": "<name>" }` and marks the nodes that are not containers (`"c4": { "as": "person" }`,
+`external`, `database`, `queue`). `npm run diagrams:c4` then writes [`c4/<slug>.dsl`](c4/), a Structurizr
+workspace, and `c4/<slug>.md`, the same views drawn with mermaid. `npm test` fails when either is stale.
+Only [the task queue design](c4/agentic-task-queue.md) opts in: the other pages are process flows, whose
+stages are not parts of a system. `node scripts/mind-meld.ts c4 . <out-dir>` writes the same two files
+for a whole repo from its code.
+
 ## Adding a diagram
 
 1. Write `src/<slug>.mmd` (copy an existing one). Keep stage-to-stage arrows between stage boxes so the

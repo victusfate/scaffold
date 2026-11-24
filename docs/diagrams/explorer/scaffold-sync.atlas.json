@@ -535,10 +535,10 @@
       {
         "node": "upstream",
         "file": "package.json",
-        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict && node scripts/update-skills-doc.ts --check && node scripts/check-agents-detail.ts && node scripts/check-handoff.ts && node scripts/check-guidelines.ts && node scripts/render-explorer-pages.ts --check && node scripts/render-diagrams.ts --check\",",
+        "anchor": "\"test:checks\": \"node scripts/check-resolvable.ts --strict",
         "before": 5,
         "count": 10,
-        "hash": "b3525b4ad386",
+        "hash": "f38a85241df0",
         "title": "The gates /upstream runs locally",
         "explain": "`test` chains the node tests, tool tests, shell tests and the check scripts. `test:checks` starts with `check-resolvable.ts --strict` and the skills-doc freshness check. `lint` is eslint with zero warnings allowed and `typecheck` is `tsc --noEmit`.",
         "why": "These are the three commands the upstream step requires before pushing. The resolver and manifest checks above run inside `npm test`.",

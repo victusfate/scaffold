@@ -112,12 +112,12 @@
     "hash": "50172d584063"
   },
   "scripts/explorer-spec.ts#ExplorerSpec": {
-    "explain": "The type of the JSON that describes one explorer page. It requires a title, a list of lanes and a map of nodes, and optionally carries an eyebrow, lede, flows, glossary, timeline, topics, Q&A framing, a start node or flow, a detail image path, and the source files the page summarizes with the hash recorded at last review.",
-    "hash": "37a95a8717c7"
+    "explain": "The type of the JSON that describes one explorer page. It requires a title, a list of lanes and a map of nodes, and optionally carries an eyebrow, lede, flows, glossary, timeline, topics, Q&A framing, a start node or flow, a detail image path, the source files the page summarizes with the hash recorded at last review, and a `c4` field that opts the page into C4 output by naming the software system its nodes are parts of.",
+    "hash": "d1aed05ace93"
   },
   "scripts/explorer-spec.ts#validateSpec": {
-    "explain": "Takes an ExplorerSpec and returns a list of problem strings, empty when the spec is valid. If the title, lanes, nodes or (with sources) the reviewed hash are missing it returns only those errors; otherwise it reports nodes without a name, role or known lane, lanes with no nodes, duplicate or empty flows and malformed steps, incomplete glossary terms and aliases claimed twice, out-of-range timeline tracks, and any reference to an unknown node, topic or flow. It does not throw for these problems and has no side effects.",
-    "hash": "2a7c4fc497bd"
+    "explain": "Takes an ExplorerSpec and returns a list of problem strings, empty when the spec is valid. If the title, lanes, nodes or (with sources) the reviewed hash are missing it returns only those errors; otherwise it reports nodes without a name, role or known lane, lanes with no nodes, duplicate or empty flows and malformed steps, incomplete glossary terms and aliases claimed twice, out-of-range timeline tracks, any reference to an unknown node, topic or flow, a `c4` field with no system name, and a node whose `c4.as` is not one of person, external, database or queue. It does not throw for these problems and has no side effects.",
+    "hash": "dd87d14bbb77"
   },
   "scripts/json-script.ts#jsonForScript": {
     "explain": "Takes any JSON-serializable value and returns its JSON.stringify text with every '<' and the U+2028 and U+2029 characters replaced by their \\u escapes, so the text can be placed inside an HTML script element without ending or breaking it. Parsing the result gives back the same value.",

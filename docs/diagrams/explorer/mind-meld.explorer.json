@@ -3,7 +3,7 @@
   "lede": "How a repo gets explained: by default a static map of every source file (`mind-meld.ts map`, any language, no execution), then recorded runs for the flows where real behavior matters. This page covers the recorded dive.",
   "detail": "../generated/mind-meld.svg",
   "sources": ["docs/diagrams/src/mind-meld.mmd", "skills/mind-meld.md", "scripts/mind-meld-schema.ts"],
-  "reviewed": "66b32d3c853e",
+  "reviewed": "ff8cccb464d2",
   "lanes": [
     { "id": "prepare", "name": "Prepare" },
     { "id": "record", "name": "Record" },

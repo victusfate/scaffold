@@ -4,11 +4,16 @@
   "detail": "../../agentic-task-queue/architecture.svg",
   "sources": ["docs/agentic-task-queue/architecture.mmd", "docs/agentic-task-queue/design.md"],
   "reviewed": "d9bede6a8b9d",
+  "c4": { "system": "Agentic task queue", "description": "Takes work from several sources and has one worker run each task in isolation. A design: not every part is built." },
   "lanes": [
+    { "id": "outside", "name": "Outside the queue", "sub": "who and what it works through" },
     { "id": "dispatch", "name": "Dispatch", "sub": "shared across projects" },
     { "id": "execution", "name": "Execution", "sub": "per target repo" }
   ],
   "nodes": {
+    "owner": { "lane": "outside", "name": "Owner", "role": "Adds work with /queue ingest and selects which assistant proposals enter the queue.", "c4": { "as": "person" } },
+    "github": { "lane": "outside", "name": "GitHub", "role": "Holds the queue: one task is one issue, with status, priority and project labels.", "c4": { "as": "external" } },
+    "target": { "lane": "outside", "name": "Target repo", "role": "The repository a task changes; work merges back into its integration branch.", "c4": { "as": "external" } },
     "ING": { "lane": "dispatch", "name": "Ingestion sources", "role": "Three ways work enters the queue as issues: a person running /queue ingest, automated watchers and cron hooks, and assistant proposals that wait for a human to select them." },
     "DISP": { "lane": "dispatch", "name": "Dispatch layer", "role": "Stores every task as a GitHub issue for all projects, triggers workers by schedule or by event, and hands each task to one worker through an assign, verify and lease claim; a rare double claim is possible." },
     "WORK": { "lane": "execution", "name": "Workers", "role": "The agents that claim and execute tasks: Claude routines and manual pulls in phase 1, with GitHub Action crons added in phase 2." },
@@ -16,9 +21,13 @@
   },
   "flows": [
     { "id": "main", "name": "Ingestion to merge-back", "steps": [
+      ["owner", "ING", "Asks for work", "request"],
       ["ING", "DISP", "Work enters the queue", "issue"],
+      ["DISP", "github", "Stores each task as an issue", "issue"],
       ["DISP", "WORK", "Claimed by one worker", "claim + lease"],
-      ["WORK", "EXEC", "Target repo checked out", "task"]] }
+      ["WORK", "EXEC", "Target repo checked out", "task"],
+      ["EXEC", "target", "Merges back into the integration branch", "commits"],
+      ["EXEC", "github", "Marks the issue completed", "label"]] }
   ],
   "ask": { "context": "The reader wants to understand the agentic task queue designed in docs/agentic-task-queue/design.md in the scaffold repo, and how much of that design is built." }
 }
