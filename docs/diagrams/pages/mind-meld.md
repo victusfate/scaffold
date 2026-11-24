@@ -1792,7 +1792,7 @@ function lede(bundle: MeldBundle): string {
 </details>
 
 <details>
-<summary><code>ExplorerSpec</code> · type · scripts/explorer-spec.ts:55</summary>
+<summary><code>ExplorerSpec</code> · type · scripts/explorer-spec.ts:56</summary>
 
 The type of the JSON that describes one explorer page. It requires a title, a list of lanes and a map of nodes, and optionally carries an eyebrow, lede, flows, glossary, timeline, topics, Q&amp;A framing, a start node or flow, a detail image path, the source files the page summarizes with the hash recorded at last review, and a `c4` field that opts the page into C4 output by naming the software system its nodes are parts of.
 
@@ -1822,12 +1822,12 @@ export type ExplorerSpec = {
 };
 ```
 
-[`scripts/explorer-spec.ts:55-77`](https://github.com/victusfate/scaffold/blob/main/scripts/explorer-spec.ts#L55-L77)
+[`scripts/explorer-spec.ts:56-78`](https://github.com/victusfate/scaffold/blob/main/scripts/explorer-spec.ts#L56-L78)
 
 </details>
 
 <details>
-<summary><code>validateSpec</code> · function · scripts/explorer-spec.ts:164</summary>
+<summary><code>validateSpec</code> · function · scripts/explorer-spec.ts:171</summary>
 
 Takes an ExplorerSpec and returns a list of problem strings, empty when the spec is valid. If the title, lanes, nodes or (with sources) the reviewed hash are missing it returns only those errors; otherwise it reports nodes without a name, role or known lane, lanes with no nodes, duplicate or empty flows and malformed steps, incomplete glossary terms and aliases claimed twice, out-of-range timeline tracks, any reference to an unknown node, topic or flow, a `c4` field with no system name, and a node whose `c4.as` is not one of person, external, database or queue. It does not throw for these problems and has no side effects.
 
@@ -1853,7 +1853,7 @@ export function validateSpec(s: ExplorerSpec): string[] {
 }
 ```
 
-[`scripts/explorer-spec.ts:164-180`](https://github.com/victusfate/scaffold/blob/main/scripts/explorer-spec.ts#L164-L180)
+[`scripts/explorer-spec.ts:171-187`](https://github.com/victusfate/scaffold/blob/main/scripts/explorer-spec.ts#L171-L187)
 
 </details>
 

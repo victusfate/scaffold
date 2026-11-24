@@ -138,17 +138,19 @@ function createBundle(command: string, arg: string | undefined): MeldBundle {
   return bundle;
 }
 // The two views made from a repo's source without running it: the map pages, and the same map as C4.
-function writeRepoView(command: 'map' | 'c4', [, root, out, extra]: string[]): void {
+const REPO_VIEWS = {
+  map: (root: string, out: string) => writeMap(root, out).then(files => `repo map: ${files.length} pages in ${out}`),
+  c4: (root: string, out: string) => writeC4(root, out).then(files => `repo C4: ${files.join(', ')} in ${out}`),
+};
+function writeRepoView(command: keyof typeof REPO_VIEWS, [root, out, extra]: string[]): void {
   if (!root || !out || extra !== undefined) throw new Error(`usage: mind-meld.ts ${command} <repo-root> <out-dir>`);
   // Map pages link to source by relative path, so they only work on GitHub when written inside the repo.
   if (command === 'map' && relative(resolve(root), resolve(out)).startsWith('..')) console.error(`mind-meld map: ${out} is outside the repo, so the pages' source links will not work on GitHub`);
-  const written = command === 'map' ? writeMap(root, out).then(files => `repo map: ${files.length} pages in ${out}`)
-    : writeC4(root, out).then(files => `repo C4: ${files.join(', ')} in ${out}`);
-  written.then(line => console.log(line), (error: Error) => { console.error(error.message); process.exitCode = 1; });
+  REPO_VIEWS[command](root, out).then(line => console.log(line), (error: Error) => { console.error(error.message); process.exitCode = 1; });
 }
 function main(args: string[]): void {
   const [command, arg, other] = args;
-  if (command === 'map' || command === 'c4') { writeRepoView(command, args); return; }
+  if (command === 'map' || command === 'c4') { writeRepoView(command, args.slice(1)); return; }
   if (!command || args.length > (['diff', 'verify', 'pages'].includes(command) ? 3 : 2)) throw new Error('invalid arguments');
   if (fileCommand(command, arg, other)) return;
   const bundle = createBundle(command, arg);

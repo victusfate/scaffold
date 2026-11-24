@@ -4,7 +4,7 @@
 
 import assert from 'node:assert/strict';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import test from 'node:test';
@@ -74,13 +74,23 @@ void test('mind-meld c4 writes a workspace and a page for a repo', () => {
   assert.match(dsl, /m_web_app_ts -> m_web_cart_ts "imports"/);
   assert.match(dsl, /component c_web "components_c_web"/);
   assert.match(readFileSync(join(out, 'c4.md'), 'utf8'), /c_web\["web<br\/>\[Container: TypeScript\]<br\/>2 source files"\]/);
+  rmSync(root, { recursive: true });
+});
+
+void test('an import an adapter reports twice is one relationship, and ids that differ only by case stay apart', () => {
+  const model = mapToC4('shop', [module('A/b.ts', ['a/b.ts', 'a/b.ts']), module('a/b.ts')]);
+  assert.deepEqual(validateC4(model), []);
+  assert.deepEqual(model.relationships, [{ from: 'm_A_b_ts', to: 'm_a_b_ts_2', description: 'imports' }]);
 });
 
 void test('mind-meld c4 fails clearly without both arguments or without source', () => {
-  assert.match(spawnSync('node', [CLI, 'c4', '.'], { encoding: 'utf8' }).stderr, /usage: mind-meld\.ts c4 <repo-root> <out-dir>/);
+  const usage = spawnSync('node', [CLI, 'c4', '.'], { encoding: 'utf8' });
+  assert.equal(usage.status, 1);
+  assert.match(usage.stderr, /usage: mind-meld\.ts c4 <repo-root> <out-dir>/);
   const empty = mkdtempSync(join(tmpdir(), 'meld-c4-empty-'));
   execFileSync('git', ['init', '-q'], { cwd: empty });
   const run = spawnSync('node', [CLI, 'c4', empty, join(empty, 'out')], { encoding: 'utf8' });
   assert.equal(run.status, 1);
   assert.match(run.stderr, /no source files in a supported language/);
+  rmSync(empty, { recursive: true });
 });

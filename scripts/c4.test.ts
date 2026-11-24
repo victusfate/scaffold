@@ -204,7 +204,7 @@ void test('explorerToC4 makes one relationship per pair (first wording), drops a
   assert.deepEqual(model!.relationships.map(r => `${r.from} -> ${r.to}: ${r.description}`), [
     'p_buyer -> c_web: Clicks pay', 'c_web -> c_api: Posts the order', 'c_api -> c_order_db: Writes the order',
     'c_api -> s_bank: Charges', 'c_api -> c_jobs: Queues the refund']);
-  assert.deepEqual(model!.dynamics.map(view => [view.key, view.title, view.steps.length]), [['checkout', 'Checkout', 4], ['refund_flow', 'Refund', 2]]);
+  assert.deepEqual(model!.dynamics.map(view => [view.key, view.title, view.steps.length]), [['v_checkout', 'Checkout', 4], ['v_refund_flow', 'Refund', 2]]);
   assert.equal(model!.dynamics[1].steps[0].description, 'Asks for a refund');
 });
 
@@ -221,13 +221,14 @@ void test('validateSpec checks the c4 fields and leaves a spec without them alon
   const bad = shopSpec();
   bad.c4 = { system: '' };
   (bad.nodes.web.c4 as { as: string }).as = 'service';
-  assert.deepEqual(validateSpec(bad), ['c4.system is required', 'nodes.web: unknown c4.as "service" (person, external, database, queue)']);
+  (bad.nodes.api as { c4: unknown }).c4 = { technology: 5 };
+  assert.deepEqual(validateSpec(bad), ['c4.system is required', 'nodes.web: unknown c4.as "service" (person, external, database, queue)', 'nodes.api: c4.technology must be text']);
 });
 
 void test('a spec converts to a workspace Structurizr can scope: every dynamic step has its relationship', () => {
   const { model } = explorerToC4(shopSpec());
   assert.deepEqual(validateC4(model!), []);
-  assert.match(renderStructurizr(model!), /dynamic sys "refund_flow" "Refund" \{\n {12}c_web -> c_api "Asks for a refund"/);
+  assert.match(renderStructurizr(model!), /dynamic sys "v_refund_flow" "Refund" \{\n {12}c_web -> c_api "Asks for a refund"/);
 });
 
 // ── The CLI (render-c4.ts) ──────────────────────────────────────────────────────────────────────────
@@ -307,4 +308,96 @@ void test('two parts that talk both ways share one double-headed arrow that says
   assert.doesNotMatch(containers.picture, /c_api -->\|[^|]*\| c_web/);
   assert.match(checkout.picture, /c_web <-->\|"2\. Web app: Posts the<br\/>order<br\/>3\. API: Returns the<br\/>receipt<br\/>/);
   assert.match(checkout.native, /Rel\(c_api, c_web, "Returns the receipt"\)/);
+});
+
+// ── Found in review ─────────────────────────────────────────────────────────────────────────────────
+void test('validateC4 rejects what Structurizr would: reserved view keys, components in a story, repeats', () => {
+  const model = shop();
+  model.elements.push({ id: 'C_WEB', kind: 'container', name: 'Other' }, { id: 'c_web2', kind: 'container', name: 'Web app', group: 'Front' },
+    { id: 'c_blank', kind: 'container', name: ' ' });
+  model.relationships.push({ from: 'c_api', to: 'm_cart', description: 'holds' }, { from: 'c_web', to: 'c_api', description: 'Calls' },
+    { from: 'm_cart', to: 'c_db', description: 'reads' });
+  model.dynamics.push({ key: 'containers', title: 'Taken', steps: [{ from: 'm_cart', to: 'c_db', description: 'reads' }] }, { key: 'empty', title: 'Empty', steps: [] });
+  const problems = validateC4(model).join('\n');
+  for (const expected of ['duplicate id "C_WEB"', 'two elements named "Web app" in the same place', '"c_blank" has no name',
+    'c_api -> m_cart: a container and its own component cannot be related', 'relationship given twice: c_web -> c_api "Calls"',
+    'invalid dynamic view key "containers"', '"m_cart" is a component; steps run between people, systems and containers', 'dynamic view "empty" has no steps']) {
+    assert.ok(problems.includes(expected), `${expected}\n in \n${problems}`);
+  }
+});
+
+void test('a flow id never collides with a view the workspace writes itself, or with another flow', () => {
+  const spec = shopSpec();
+  spec.flows = [{ id: 'context', name: 'A', steps: [['web', 'api', 'Calls', 'x']] }, { id: 'a-b', name: 'B', steps: [['web', 'api', 'Calls', 'x']] },
+    { id: 'a_b', name: 'C', steps: [['web', 'api', 'Calls', 'x']] }, { id: '2fa', name: 'D', steps: [['web', 'api', 'Calls', 'x']] },
+    { id: 'idle', name: 'E', steps: [['api', 'api', 'Thinks', 'x']] }];
+  const { model, problems } = explorerToC4(spec);
+  assert.deepEqual(problems, []);
+  assert.deepEqual(model!.dynamics.map(view => view.key), ['v_context', 'v_a_b', 'v_a_b_2', 'v_2fa']);
+});
+
+void test('explorerToC4 reports a spec problem by name instead of converting it', () => {
+  const spec = shopSpec();
+  spec.flows![0].steps.push(['web', 'nowhere', 'Calls', 'x']);
+  assert.deepEqual(explorerToC4(spec), { problems: ['flows.checkout.steps[5]: unknown node "nowhere"'] });
+});
+
+void test('text that would break a workspace string is made safe', () => {
+  const model = shop();
+  model.elements[2].name = 'Dir C:\\';
+  model.elements[2].description = 'Reads ${HOME} and {braces}';
+  const dsl = renderStructurizr(model);
+  assert.match(dsl, /c_web = container "Dir C:\/" "Reads \$ \{HOME\} and \{braces\}" "TypeScript"/);
+});
+
+void test('text that mermaid would read as markup is kept readable in the picture', () => {
+  const model = shop();
+  model.elements[2].description = 'Serves <slug> pages; code #35;';
+  assert.match(c4Views(model)[0].picture, /Serves ‹slug› pages;<br\/>code # 35;/);
+});
+
+void test('each step is drawn once: a third message between two parts keeps its own arrow', () => {
+  const model = shop();
+  const steps = [{ from: 'c_web', to: 'c_api', description: 'ask' }, { from: 'c_api', to: 'c_web', description: 'answer' },
+    { from: 'c_api', to: 'c_web', description: 'answer again' }];
+  model.relationships.push({ from: 'c_api', to: 'c_web', description: 'answer' });
+  model.elements[2].name = 'Costs $$ & $1';
+  model.dynamics = [{ key: 'talk', title: 'Talk', steps }];
+  const { picture } = c4Views(model)[1];
+  assert.equal(picture.match(/1\. /g)?.length, 1);
+  assert.match(picture, /c_web <-->\|"1\. Costs \$\$ & \$1: ask<br\/>2\. API: answer<br\/>/);
+  assert.match(picture, /c_api -->\|"3\. answer again<br\/>\u2800"\| c_web/);
+});
+
+void test('a story with no container taking part has no system boundary', () => {
+  const model = shop();
+  model.relationships.push({ from: 'p_buyer', to: 's_bank', description: 'Pays in person' });
+  model.dynamics = [{ key: 'cash', title: 'Cash', steps: [{ from: 'p_buyer', to: 's_bank', description: 'Pays in person' }] }];
+  const { picture, native } = c4Views(model)[1];
+  assert.doesNotMatch(picture, /subgraph/);
+  assert.doesNotMatch(native, /System_Boundary/);
+});
+
+void test('render-c4 removes files it wrote for a spec that no longer opts in, and --check reports them', () => {
+  const { dir } = renderC4({ shop: shopSpec() });
+  writeFileSync(join(dir, 'c4', 'notes.md'), '# mine\n');
+  const optedOut = shopSpec(); delete optedOut.c4;
+  writeFileSync(join(dir, 'specs', 'shop.explorer.json'), JSON.stringify(optedOut));
+  const check = runC4(dir, '--check');
+  assert.equal(check.code, 1);
+  assert.match(check.err, /shop\.dsl is left over/);
+  assert.match(check.err, /shop\.md is left over/);
+  assert.equal(runC4(dir).code, 0);
+  assert.deepEqual(readdirSync(join(dir, 'c4')), ['notes.md']);
+  rmSync(dir, { recursive: true });
+});
+
+void test('render-c4 names a spec file it cannot read instead of crashing', () => {
+  const { dir } = renderC4({});
+  writeFileSync(join(dir, 'specs', 'broken.explorer.json'), '{ not json');
+  const run = runC4(dir);
+  assert.equal(run.code, 1);
+  assert.match(run.err, /^render-c4: broken: /m);
+  assert.doesNotMatch(run.err, /at JSON\.parse/);
+  rmSync(dir, { recursive: true });
 });

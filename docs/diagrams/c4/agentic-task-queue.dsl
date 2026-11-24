@@ -34,7 +34,7 @@ workspace "Agentic task queue" "Takes work from several sources and has one work
             include *
             autoLayout lr
         }
-        dynamic sys "main" "Ingestion to merge-back" {
+        dynamic sys "v_main" "Ingestion to merge-back" {
             p_owner -> c_ING "Asks for work"
             c_ING -> c_DISP "Work enters the queue"
             c_DISP -> s_github "Stores each task as an issue"
