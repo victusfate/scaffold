@@ -3,7 +3,7 @@
   "lede": "How one orchestrator turns owner requests into merged work by handing tasks to subagents in their own lanes.",
   "detail": "../generated/orchestration.svg",
   "sources": ["docs/diagrams/src/orchestration.mmd", "AGENTS.md", "skills/queue.md", "skills/loop.md", "docs/agents-detail.md", "skills/qa.md"],
-  "reviewed": "324e42c9f981",
+  "reviewed": "98909e14e493",
   "lanes": [
     { "id": "owner", "name": "Owner" },
     { "id": "orch", "name": "Orchestrator" },

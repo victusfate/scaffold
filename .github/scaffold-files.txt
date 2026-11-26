@@ -10,6 +10,8 @@ scripts/check-guidelines.ts
 scripts/check-guidelines.test.ts
 scripts/delivery-metrics.ts
 scripts/delivery-metrics.test.ts
+scripts/dispatch-orientation.ts
+scripts/dispatch-orientation.test.ts
 docs/agents-detail.md
 CLAUDE.md
 CODEOWNERS
