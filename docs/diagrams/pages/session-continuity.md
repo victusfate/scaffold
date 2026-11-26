@@ -556,12 +556,12 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: /save and /pause run a script before committing: the handoff must be short and every fact must say whether it was verified.
   > line cap into a log, or whose \`\[verified: …\]\` tag holds shell syntax or a network fetch. \`/save\` and
   >
-  > [`docs/agents-detail.md:190`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L190)
+  > [`docs/agents-detail.md:210`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L210)
 
 - **Confirmed**: check-handoff.ts requires a verified or unverified tag on each State bullet.
   > \`\#\# State\` bullets lack a verification tag, that keeps correction markers, or that grew past the
   >
-  > [`docs/agents-detail.md:189`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L189)
+  > [`docs/agents-detail.md:209`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L209)
 
 - **Confirmed**: It rejects correction lines left beside old facts, files over 80 lines, and commands inside a verified tag.
   > export const MAX\_LINES = 80;
@@ -571,7 +571,7 @@ An agent judged each claim against the source; each quote is found in its file w
   The sources state the correction, line-cap and shell-syntax rejections (docs/agents-detail.md) but not the number 80; that is only in scripts/check-handoff.ts, which would need adding to sources.
 
 - **Confirmed**: Handoff passes (gated handoff)
-  > unverified, and \`scripts/check-handoff.ts\` passes before it is committed (AGENTS.md, \*Context hygiene\*).
+  > unverified, and \`scripts/check-handoff.ts\` passes before it is committed (\`docs/agents-detail.md\`, \*Context hygiene\*).
   >
   > [`skills/save.md:95`](https://github.com/victusfate/scaffold/blob/main/skills/save.md#L95)
 
@@ -631,7 +631,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Partly** (from the diagram): Stage 4 "Next session starts" (sync check, PR watch, claude -c) runs before stage 5 "/resume continues"
   > On your first response in a new session:
   >
-  > [`docs/agents-detail.md:459`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L459)
+  > [`docs/agents-detail.md:513`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L513)
 
   Session start steps and /resume are both in the sources, but no source orders them; the sequence is the diagram's own.
 
@@ -646,7 +646,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Session start also merges origin/main if behind and watches the branch's PR.
   > \2. \*\*PR watch\*\* — If the current branch has an open PR, subscribe to it with
   >
-  > [`docs/agents-detail.md:469`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L469)
+  > [`docs/agents-detail.md:523`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L523)
 
 - **Confirmed**: On the same machine, claude -c keeps the full chat history and is richer.
   > \- If \`claude -c\` (or \`pi -c\`) is available on \*this\* machine, mention it: full conversation
@@ -666,7 +666,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Work finished (PR)
   > poisoning). So the orchestrator's last commit before merging to main is \`git rm .pause/handoff.md\`
   >
-  > [`docs/agents-detail.md:648`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L648)
+  > [`docs/agents-detail.md:720`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L720)
 
 - **Confirmed**: claude -c: Reopens this exact chat on this machine (pi -c and agy -c in other harnesses).
   > &gt; Also: for full same-machine history use \`claude -c\` in Claude Code, \`pi -c\` under pi, or \`agy -c\` under agy.
@@ -676,7 +676,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): PR watch: subscribe or gh pr view
   > \`gh pr view\` and \`gh pr checks\`; this is a snapshot, not a webhook subscription.
   >
-  > [`docs/agents-detail.md:472`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L472)
+  > [`docs/agents-detail.md:526`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L526)
 
 </details>
 
@@ -693,7 +693,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Remove .pause/handoff.md with git rm, then check-handoff --pre-merge must pass on the merged head.
   > (\`chore: clear handoff before merge\`). \`node scripts/check-handoff.ts --pre-merge\` must exit 0 on the head
   >
-  > [`docs/agents-detail.md:649`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L649)
+  > [`docs/agents-detail.md:721`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L721)
 
 - **Confirmed**: The PR then lands on main by the repo's merge method; scaffold itself squashes.
   > gh pr merge &lt;pr&gt; --match-head-commit "$sha"   \# plus the repo's merge-method flag (--squash / --merge)
@@ -710,7 +710,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): main never carries a handoff (scaffold squash merges); legend: one PR lands as one commit on main
   > \*\*Merge by squash.\*\* Every PR merges to main as a single squash commit: \`gh pr merge &lt;n&gt; --squash\`
   >
-  > [`docs/agents-detail.md:613`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L613)
+  > [`docs/agents-detail.md:685`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L685)
 
 - **Confirmed** (from the diagram): Legend: pre-merge = check run just before a branch lands on main
   > node scripts/check-handoff.ts --pre-merge   \# must exit 0 on the head you merge
@@ -754,7 +754,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - Before clearing the handoff, anything worth keeping moves to the PR body, design.md or the decision registry, and the merge is pinned to the checked head with --match-head-commit.
   > being merged, and the merge uses that head (\`--match-head-commit\`). The decisions and facts it held belong
   >
-  > [`docs/agents-detail.md:650`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L650)
+  > [`docs/agents-detail.md:722`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L722)
 
 - /save pushes only after local preflight and under the process-ownership rule (only the authorized orchestrator publishes).
   > \- Publish the one working branch after local preflight, following

@@ -8,7 +8,7 @@
       "claim": "Only the owner creates tasks; the agent records the request in the queue.",
       "verdict": "confirmed",
       "file": "AGENTS.md",
-      "quote": "owner creates tasks:** an agent adds a task only when the owner explicitly asks for that task, quoting their words"
+      "quote": "**Only the owner creates tasks:** add one only when the owner explicitly asks, quoting their words"
     },
     {
       "node": "request",
@@ -54,7 +54,7 @@
       "claim": "An agent never adds its own tasks; its findings go to the owner instead.",
       "verdict": "confirmed",
       "file": "AGENTS.md",
-      "quote": "exception, and findings go to the owner, never into new tasks."
+      "quote": "is no exception; findings go to the owner, never into new tasks."
     },
     {
       "node": "dispatch",
@@ -113,7 +113,7 @@
       "claim": "The subagent builds its one task in its own worktree and commits locally.",
       "verdict": "confirmed",
       "file": "AGENTS.md",
-      "quote": "- **Subagent:** started by the orchestrator for one task, in its own lane. Works only that task, commits"
+      "quote": "**Subagent:** works one task in its own lane, commits locally there"
     },
     {
       "node": "work",
@@ -122,7 +122,7 @@
       "claim": "It starts with an ff-only check that it is on the working branch's HEAD.",
       "verdict": "confirmed",
       "file": "AGENTS.md",
-      "quote": "- **Lanes work in isolated worktrees** off that branch's HEAD (ff-only first). Before integrating one, **merge** the current target"
+      "quote": "Lanes work in isolated worktrees off its HEAD (ff-only first). Before integrating one, **merge** the target"
     },
     {
       "node": "work",
@@ -151,7 +151,7 @@
       "claim": "A subagent that skips its checkpoints misses the orchestrator's steering.",
       "verdict": "partial",
       "file": "AGENTS.md",
-      "quote": "  locally in that lane and reports evidence (commit, tests run, doubts). It re-reads its task at each checkpoint",
+      "quote": "reports evidence (commit, tests run, doubts) and re-reads its task at each checkpoint",
       "note": "The source states the rule (re-read the task at each checkpoint); the consequence of skipping is the page's own rationale."
     },
     {
@@ -161,7 +161,7 @@
       "claim": "The orchestrator merges the target into the lane, re-runs the gates and merges green work into the one working branch.",
       "verdict": "confirmed",
       "file": "AGENTS.md",
-      "quote": "  into it (one merge commit, not a rebase), re-run lint, the touched packages' full suites and any derived"
+      "quote": "into it (one merge commit, not a rebase), re-run lint, the touched packages' full suites and derived"
     },
     {
       "node": "integrate",
@@ -170,7 +170,7 @@
       "claim": "Red gates block the merge; a subagent finishes the branch.",
       "verdict": "partial",
       "file": "AGENTS.md",
-      "quote": "  branch the same tick: merge it (done), merge sound progress and note what remains, or send another subagent.",
+      "quote": "resolve its branch the same tick: merge it, merge sound progress and note what remains, or send another subagent.",
       "note": "AGENTS.md says integrate only when green, but a stopped lane has three outcomes (merge, merge sound progress and note the rest, or send another subagent); the page shows only the last."
     },
     {
@@ -179,7 +179,7 @@
       "kind": "detail",
       "claim": "Then it opens a PR with Critical changes and verifies the real checks on the final head.",
       "verdict": "confirmed",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "**One independent task per PR/merge cycle.** Validate locally, open the PR, verify real required checks on the"
     },
     {
@@ -189,7 +189,7 @@
       "claim": "There is exactly one working branch per session; two long-lived branches split the work.",
       "verdict": "partial",
       "file": "AGENTS.md",
-      "quote": "- **Exactly one working branch per session**, holding both lane code and the orchestrator's own work.",
+      "quote": "**Exactly one working branch per session**, holding lane code and the orchestrator's own work",
       "note": "The rule is in AGENTS.md; the consequence (\"silently splits the project in two\") is only in docs/agents-detail.md, which is not a listed source."
     },
     {
@@ -207,7 +207,7 @@
       "kind": "detail",
       "claim": "The PR lands on main as one squash commit.",
       "verdict": "confirmed",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "**Merge by squash:** one commit per PR on main, titled with the PR title; publication follows"
     },
     {
@@ -245,7 +245,7 @@
       "claim": "work → integrate: Lane reports done (payload: local commits + evidence)",
       "verdict": "confirmed",
       "file": "AGENTS.md",
-      "quote": "  locally in that lane and reports evidence (commit, tests run, doubts). It re-reads its task at each checkpoint"
+      "quote": "reports evidence (commit, tests run, doubts) and re-reads its task at each checkpoint"
     },
     {
       "node": "integrate",
@@ -351,8 +351,8 @@
     },
     {
       "what": "Completed lane worktrees and branches are retired at integration, and zombie worktrees from interrupted sessions are reaped.",
-      "file": "AGENTS.md",
-      "quote": "- **Retire completed artifacts at integration**, and reap zombie worktrees left by interrupted sessions:"
+      "file": "docs/agents-detail.md",
+      "quote": "- **Retire completed artifacts at integration.**"
     },
     {
       "what": "The orchestrator keeps the queue record true as subagents start, stop and merge (claim, release or done, then render and commit the view).",
@@ -366,7 +366,7 @@
     },
     {
       "what": "Every task is time-boxed (default 4–6 h of worker time): at the box the green part ships and the task closes or returns to the owner.",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "work is unbuilt: \"exhausted\" means built and reachable. **Time-box every task** (default 4–6 h of worker time, or"
     },
     {

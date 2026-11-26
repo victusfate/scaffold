@@ -170,7 +170,7 @@
       "kind": "role",
       "claim": "A verified run writes a receipt for the exact code, so the merge step can reuse it.",
       "verdict": "confirmed",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "tree identity; the merge step reuses a matching receipt, and any mismatch or corrupt receipt fails closed."
     },
     {
@@ -335,7 +335,7 @@
       "kind": "box",
       "claim": "Stage title: Verify once per commit; receipt keyed to exact tree identity",
       "verdict": "confirmed",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "(`scripts/delivery-metrics.ts`). **Verify once per commit:** the verified run writes a receipt keyed to the exact"
     },
     {
@@ -344,7 +344,7 @@
       "kind": "box",
       "claim": "Legend: affected-delta — checks only for the parts the change touches",
       "verdict": "partial",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "inputs); otherwise the affected-delta checks plus the task's own gates.",
       "note": "AGENTS.md and docs/agents-detail.md use the term \"affected-delta checks\" without defining it; the definition is the page's reading of the term (no definition found elsewhere in the repo by grep)."
     },
@@ -366,7 +366,7 @@
     },
     {
       "what": "Every PR body must carry a \"## Critical changes\" section of at most five path:line notes; this Review economics rule is not shown.",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "Machines check what they can; agent review stays line by line. Every PR body carries **`## Critical changes`**:"
     },
     {

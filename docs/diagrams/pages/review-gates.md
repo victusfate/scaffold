@@ -952,7 +952,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Partly**: reverify → receipt: Correctness clear, all 10/10 (payload: verified run)
   > \- \*\*Verify once per commit.\*\* The reviewer's verified run writes a receipt keyed to the exact tree identity:
   >
-  > [`docs/agents-detail.md:219`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L219)
+  > [`docs/agents-detail.md:248`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L248)
 
   The source says the reviewer's verified run writes the receipt but never says /code-refiner's re-verify gate is that run; skills/code-refiner.md does not mention a receipt, so the hand-off between these two stages is the page's own link.
 
@@ -976,7 +976,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Partly** (from the diagram): Legend: affected-delta — checks only for the parts the change touches
   > inputs); otherwise the affected-delta checks plus the task's own gates.
   >
-  > [`AGENTS.md:131`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L131)
+  > [`docs/agents-detail.md:225`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L225)
 
   AGENTS.md and docs/agents-detail.md use the term "affected-delta checks" without defining it; the definition is the page's reading of the term (no definition found elsewhere in the repo by grep).
 
@@ -986,47 +986,47 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: A verified run writes a receipt for the exact code, so the merge step can reuse it.
   > tree identity; the merge step reuses a matching receipt, and any mismatch or corrupt receipt fails closed.
   >
-  > [`AGENTS.md:129`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L129)
+  > [`docs/agents-detail.md:223`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L223)
 
 - **Confirmed**: Fail closed: A missing, mismatched or corrupt receipt means the checks re-run in full.
   > instead of re-running the same checks. Any mismatch, or a missing or corrupt receipt, fails closed: the
   >
-  > [`docs/agents-detail.md:222`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L222)
+  > [`docs/agents-detail.md:251`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L251)
 
 - **Confirmed**: Full suites run only for shared core; other changes run the checks for the parts they touch, plus the task's own gates.
   > formats, networking, workspace build inputs. Any other change runs the affected-delta checks plus the
   >
-  > [`docs/agents-detail.md:225`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L225)
+  > [`docs/agents-detail.md:254`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L254)
 
 - **Confirmed**: What the receipt is keyed to: HEAD, tree, index and diffs; untracked inputs and the base; plan.
   > \`HEAD\`, the tree, the index, staged and unstaged diffs, hashes of untracked inputs, the base, the plan,
   >
-  > [`docs/agents-detail.md:220`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L220)
+  > [`docs/agents-detail.md:249`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L249)
 
 - **Confirmed**: What the receipt is keyed to: gate-script hashes; tool binaries.
   > hashes of the gate scripts, and the resolved tool binaries. The merge step reuses a matching receipt
   >
-  > [`docs/agents-detail.md:221`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L221)
+  > [`docs/agents-detail.md:250`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L250)
 
 - **Confirmed**: Shared core: Public API, save or codec formats, networking and workspace build inputs.
   > \- \*\*Scope review by risk.\*\* Full suites are for changes that touch shared core: public API, save or codec
   >
-  > [`docs/agents-detail.md:224`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L224)
+  > [`docs/agents-detail.md:253`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L253)
 
 - **Confirmed**: Fail closed: When in doubt, block and re-run instead of passing.
   > instead of re-running the same checks. Any mismatch, or a missing or corrupt receipt, fails closed: the
   >
-  > [`docs/agents-detail.md:222`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L222)
+  > [`docs/agents-detail.md:251`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L251)
 
 - **Confirmed** (from the diagram): Stage title: Verify once per commit; receipt keyed to exact tree identity
   > (\`scripts/delivery-metrics.ts\`). \*\*Verify once per commit:\*\* the verified run writes a receipt keyed to the exact
   >
-  > [`AGENTS.md:128`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L128)
+  > [`docs/agents-detail.md:222`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L222)
 
 - **Confirmed** (from the diagram): Legend: receipt — record of a verified run, valid only for that exact code
   > \- \*\*Verify once per commit.\*\* The reviewer's verified run writes a receipt keyed to the exact tree identity:
   >
-  > [`docs/agents-detail.md:219`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L219)
+  > [`docs/agents-detail.md:248`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L248)
 
 </details>
 
@@ -1040,12 +1040,12 @@ An agent judged each claim against the source; each quote is found in its file w
 - Every PR body must carry a "## Critical changes" section of at most five path:line notes; this Review economics rule is not shown.
   > Machines check what they can; agent review stays line by line. Every PR body carries \*\*\`\#\# Critical changes\`\*\*:
   >
-  > [`AGENTS.md:126`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L126)
+  > [`docs/agents-detail.md:220`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L220)
 
 - A local receipt may let hosted CI skip a check only where the local scope covers the hosted scope; otherwise hosted runs in full.
   > \*\*A local receipt is a second fail-open trap.\*\* A receipt from a local verified run may let hosted CI skip a
   >
-  > [`docs/agents-detail.md:639`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L639)
+  > [`docs/agents-detail.md:711`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L711)
 
 - When a structural refactor would dissolve a correctness finding, the merge step plans that work once, not twice.
   > finding — do that once, not twice.
@@ -1060,7 +1060,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - Machines check everything decidable (scanners, lint, types, tests) and a repeated review comment becomes a rule or check.
   > \- \*\*Machines check everything decidable:\*\* scanners, lint, types, tests, \`/validate\`, \`/simplify\`.
   >
-  > [`docs/agents-detail.md:203`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L203)
+  > [`docs/agents-detail.md:232`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L232)
 
 ## Glossary
 

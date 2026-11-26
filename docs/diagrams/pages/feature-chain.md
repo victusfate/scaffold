@@ -788,7 +788,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): Legend slug: short kebab-case name of the feature's docs folder
   > Feature-slug rule: kebab-case, drop articles, keep it under \~30 chars.
   >
-  > [`docs/agents-detail.md:558`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L558)
+  > [`docs/agents-detail.md:616`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L616)
 
   The sources use the slug as the docs folder name but never say kebab-case; that rule is in docs/agents-detail.md, which would need adding to sources.
 

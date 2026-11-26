@@ -27,6 +27,6 @@ for f in .claude/skills/upstream/SKILL.md .agents/skills/upstream/SKILL.md .agen
 done
 has .github/scaffold-files.txt '^skills/upstream\.md$' "skills/upstream.md in sync manifest"
 has .claude/skills/RESOLVER.md '^\| upstream' "RESOLVER row present"
-has AGENTS.md '## Owner status reports' "AGENTS.md owner status report rule present"
+has AGENTS.md 'agents-detail.md#owner-status-reports-remote-owner' "AGENTS.md owner status report rule linked"
 
 finish

@@ -12,5 +12,5 @@ assert.match(check('see [x](docs/agents-detail.md#session-start).', archive)[0],
 assert.match(check(both + ' [z](docs/agents-detail.md#gone)', archive)[0], /links docs\/agents-detail\.md#gone, which has no matching section/);
 assert.match(check(both + 'x'.repeat(200), archive, 100)[0], /over the 100-byte limit/);
 // Scaffold's own AGENTS.md stays under 16 KB so consumers can add sections and stay under 24 KB.
-assert.ok(Buffer.byteLength(readFileSync('AGENTS.md', 'utf8')) <= 16000, 'scaffold AGENTS.md must stay under 16,000 bytes');
+assert.ok(Buffer.byteLength(readFileSync('AGENTS.md', 'utf8')) <= 10000, 'scaffold AGENTS.md must stay under 10,000 bytes');
 console.log('check-agents-detail.test: ok');

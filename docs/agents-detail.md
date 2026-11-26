@@ -8,6 +8,10 @@ missing.
 
 ## Iterative Autonomous Enhancement — a core design principle
 
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Judge owner outcomes, risk and learning alongside delivery flow. Prefer deterministic evaluators; count defect risk and complexity left behind; stage output, never merge to main without approval.
+
 Iterative autonomous enhancement is a **core design principle** of this harness: a **loop** should
 produce great improvements **without a human in the loop**. The agent closes the loop itself instead
 of waiting for a human to judge each result:
@@ -103,6 +107,15 @@ the interface exists.
 
 ## Continuous execution (loops & "build until done")
 
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Run standing directives **continuously**; the committed, tested slice is the checkpoint. Timers only for
+external gating, usage-limit windows or a crash-safety re-arm, never to pace work. Steering preempts. One fully
+gated unit at a time. Supervise background work by **progress, not liveness**. Never idle while described
+work is unbuilt: "exhausted" means built and reachable. **Time-box every task** (default 4–6 h of worker time, or
+the owner's box): at the box, ship the green part and close the task or return it to owner triage with one
+checkpoint note; never auto-continue it or spin its remainder into new tasks. Slots: [`.agent/topology.json`](#agent-topology).
+
 When given a standing directive to work autonomously toward a goal (an explicit `/loop`, "build until
 done / until all slices pass", or a similar until-condition), run **continuously**, not in
 artificially paced bursts:
@@ -158,6 +171,13 @@ artificially paced bursts:
 
 ## Context hygiene — validate, compact, curate, prune
 
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Attention is a finite instrument panel; keep only what matters on it. **Validate** before a conclusion
+enters a handoff, plan or memory (`[verified: <check>]`, else `[unverified]`). **Compact** when turns repeat:
+`/save`, restart from the handoff. **Curate** tools per step and per lane. **Prune**: rewrite a superseded
+fact in place. `scripts/check-handoff.ts` gates the handoff.
+
 A model's attention budget is finite, and quality degrades as the context fills ("context rot").
 An agent also treats its own earlier notes as ground truth. Four failure modes follow, each with
 one countermeasure (after IBM Technology's *Context Engineering for AI Agents: 4 Failure Modes to Avoid*).
@@ -195,6 +215,15 @@ branch is already merged.
 
 ## Review economics — verify by machine, map the critical changes
 
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Machines check what they can; agent review stays line by line. Every PR body carries **`## Critical changes`**:
+at most five `path:line` notes of what changed where and what depends on it. Measure delivery, not output
+(`scripts/delivery-metrics.ts`). **Verify once per commit:** the verified run writes a receipt keyed to the exact
+tree identity; the merge step reuses a matching receipt, and any mismatch or corrupt receipt fails closed.
+**Scope review by risk:** full suites only for shared core (public API, save/codec, networking, workspace build
+inputs); otherwise the affected-delta checks plus the task's own gates.
+
 Coding agents multiply code volume far faster than delivery speeds up (Laurie Voss, *AI Writes the
 Code. So What's Left for Engineers?*). The bottleneck moved from writing code to knowing whether to
 trust it, and a human reads only a few hundred lines an hour. So the harness splits the work by who is
@@ -226,6 +255,12 @@ cheapest at it:
   task's own gates.
 
 ## Owner status reports (remote owner)
+
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+When asked, the orchestrator sends one report a day at the owner's time through a confirmed scheduler and
+mail (fallback: a private page or the PR thread), never a duplicate, after updating public surfaces. Contents:
+merged, in progress, needs your decision (with a recommendation), problems and risks, live links.
 
 When the owner says they'll be away or checking in intermittently and asks for status reports, the
 session's orchestrator owns the report, whichever harness is orchestrating (Claude Code, Codex, pi or
@@ -273,6 +308,10 @@ another client). Subagents never send it.
   Other harnesses (Codex, pi) document their own scheduler and mail tools here.
 
 ## Safe modification — executable knowledge and preservation
+
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Prioritize understanding and modification, then data and compatibility, then useful boundaries. Link rather than duplicate; invalidate stale evidence. Respect the architectural contribution dial; models may own technical design while builders focus on UX/product.
 
 Prioritize these in order:
 
@@ -417,6 +456,10 @@ Related: *Knowledge state* (typed fields over parsed prose) and *Veracity*
 
 ## Default language
 
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Follow `.agent/default-language.md` (absent or `unset`: match the codebase); an off-language file needs a hard blocking need plus approval.
+
 This repo's default language for new code (source, scripts, and tooling) is declared in
 **`.agent/default-language.md`**. Read that file at the start of any task that writes code and honor
 it:
@@ -440,6 +483,10 @@ repo default, omit the file or write `# Default language: unset`.
 
 ## Proactive file-length maintenance
 
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Split at single-responsibility seams; never trim comments or cram to fit; an inline `quality-ok: file-length — <reason>` pragma only for an indivisible unit.
+
 **Never trim comments, densify code, or hold back a useful edit to keep a file under the length limit;
 that is an antipattern.** It trades clarity for a line count. Do not tell the user to "be lean here" to
 preserve file size, and do not do it to your own edits.
@@ -455,6 +502,13 @@ preferable to an arbitrary split that fragments the concept. A real seam always 
 use it only when keeping the file whole aids comprehension more than splitting it, and cite why.
 
 ## Session Start
+
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+1. **Sync check:** warn and merge `origin/main` (pull on `main`) if behind.
+2. **PR watch:** subscribe to this branch's open PR, or snapshot it with `gh pr view` / `gh pr checks`.
+3. **Artifacts:** resume relevant `./docs/` `design.md` / `prd.md` / `plan.md`; none and it's feature work →
+   start `/feature-chain` (collaborative planning resolves vague intent).
 
 On your first response in a new session:
 
@@ -480,6 +534,10 @@ On your first response in a new session:
   unstated, collaborative planning (Phase 1) resolves it through Q&A. Do not ask a pre-question first.
 
 ## Retire means remove
+
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Old saves load and refund what was spent, once. Scripts and experiments are updated or deleted.
 
 When a feature, rule, specialty, setting or subsystem is retired, the change that retires it **removes it**:
 its code paths, its config/data keys, its UI and help text, its tests, and every reference to it, including in
@@ -592,6 +650,20 @@ Skip the chain for:
 
 ## PR Workflow
 
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+**One independent task per PR/merge cycle.** Validate locally, open the PR, verify real required checks on the
+final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of
+the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main.
+**Merge by squash:** one commit per PR on main, titled with the PR title; publication follows
+[process ownership](../AGENTS.md#session-and-process-ownership).
+**A skipped required check counts as passing on GitHub:** read the actual conclusions, capture the watch
+command's own exit, and make roll-up jobs fail closed (`if: always()` plus a guard). **Handoffs live only on
+branches:** before merging to main, the orchestrator commits `git rm .pause/handoff.md`, and
+`check-handoff.ts --pre-merge` must pass on the merged head. **A local receipt may let hosted CI skip a check only
+where the local run's scope covers the hosted job's scope;** when the hosted selector picks a wider set, hosted
+runs in full.
+
 **Default: one independent task per PR/merge cycle.** Finish full acceptance, review and validate
 locally, create/update its PR, verify real required hosted checks on the final head, then merge **only
 with explicit session or standing project authorization**. Creating a PR does not authorize merging;
@@ -678,6 +750,10 @@ defaults; infer routine choices from the repository and existing authorization.
 
 ## Session and process ownership
 
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+**Active agent:** whichever agent is running now. Every rule binds it in its current role.
+
 The binding rules live in [AGENTS.md](../AGENTS.md#session-and-process-ownership).
 Independent sessions can share a repository without sharing lifecycle authority.
 A process name, stale lease or worktree path is evidence to investigate, not an ownership token.
@@ -685,6 +761,22 @@ A normal child exit already completed its lifecycle; a cleanup signal can hit a 
 For an owned timeout, GNU `timeout` may regroup its child, so the payload session identifies the full tree.
 
 ## Orchestration hygiene (lessons from long autonomous runs)
+
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+- Gate with the full suite (`--no-fail-fast`), diff the failure set against main, and read the test diff.
+- Never feed parsed command output into `rm`/`mv` loops.
+- Subagents that "wait" may be asleep: check their processes each tick; subagents never end a turn idle.
+- Tests use isolated save/user dirs; hold a host lock around one command, never a shell.
+- Tests sync on readiness and owned PIDs, never sleeps, and every wait has a failing timeout. Prove a flake fix
+  10/10 under load; verify lifetime-sensitive changes in the shipping build (debug can hide them).
+- Keep the task board true as subagents start, stop and merge.
+- Time budgets measure work, not lock waits. A cached result's
+  key excludes what the checked step itself produces.
+- A warm-up/pre-build step runs the exact invocation (args, flags, env) of the check it warms.
+- After every suspension (`await`, yield, callback), an async continuation revalidates what it captured
+  before use; its owner may be gone.
+- Heavy or parallel jobs run under a resource guard with a stated cap and host headroom; never unguarded.
 
 These failures each cost hours in a real run; each has a cheap guard.
 
@@ -778,6 +870,10 @@ These failures each cost hours in a real run; each has a cheap guard.
   killed an unrelated merge job. Treat any large process outside a guard as a finding.
 ## Knowledge state: typed and evidenced, not prose
 
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Lifecycle state (branch, plan, PR, evidence, decisions) lives in the queue CLI's typed fields, never as prose markers; a task's branch names only a live working branch (empty = main; `queue links` flags stale ones). Promote a standing directive into the binding rules (with a check where possible), not only a plan doc. Generate code hook points, don't hand-write them. Project facts live in the repo, never only in harness-private memory.
+
 Prose that a script parses is an accidental database, and a claim nobody re-checks is a rumor.
 Full rationale and pilot plan: [`docs/knowledge-architecture.md`](docs/knowledge-architecture.md).
 
@@ -829,6 +925,10 @@ slices. A link to a deleted branch is a stale fact that misleads dispatch and br
 `queue links` reports them (exit 1) and `queue links --fix` clears them without changing task status.
 ## Understand the shape of the problem first
 
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Recommend from the mapped space; surfacing the shape lets the user steer early.
+
 Before committing to a solution, map the **shape of the problem** (the dimensions it balances and
 where the real tension lives) instead of jumping to the first approach or flattening a complex problem
 to one axis. Name the axes (cost, speed, risk, reversibility, clarity…), find where the frontier sits,
@@ -837,6 +937,10 @@ debugging and decisions alike, not just formal councils (`/council` applies it i
 the shape also lets the user steer early.
 
 ## Modern web platform code
+
+**Rule** (binding when [AGENTS.md](../AGENTS.md) links here):
+
+Run `/modern-web` before writing or reviewing browser-facing code.
 
 Before writing or reviewing browser-facing code — HTML, CSS, client-side JS, or
 components that render to the DOM — run `/modern-web`. It uses the harness's
