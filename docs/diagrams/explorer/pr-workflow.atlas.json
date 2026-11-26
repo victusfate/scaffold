@@ -17,7 +17,7 @@
       "kind": "detail",
       "claim": "One task per PR and merge cycle.",
       "verdict": "confirmed",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "**One independent task per PR/merge cycle.** Validate locally, open the PR, verify real required checks on the"
     },
     {
@@ -152,7 +152,7 @@
       "kind": "role",
       "claim": "With the owner's explicit authorization, the orchestrator squash-merges it onto main as one commit.",
       "verdict": "confirmed",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of"
     },
     {
@@ -179,7 +179,7 @@
       "kind": "detail",
       "claim": "Confirm the PR is MERGED, pull main, and cut a fresh branch before the next task.",
       "verdict": "partial",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main.",
       "note": "The listed sources say confirm the merge and cut a fresh branch; the \"pull main\" step is only in docs/agents-detail.md (PR Workflow step 7), not a listed source."
     },
@@ -234,7 +234,7 @@
       "kind": "glossary",
       "claim": "Critical changes: Up to five path:line notes of what changed and what depends on it.",
       "verdict": "confirmed",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "at most five `path:line` notes of what changed where and what depends on it. Measure delivery, not output"
     },
     {
@@ -243,7 +243,7 @@
       "kind": "glossary",
       "claim": "Squash merge: One PR lands as one commit on main.",
       "verdict": "confirmed",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "**Merge by squash:** one commit per PR on main, titled with the PR title; publication follows"
     },
     {
@@ -354,12 +354,12 @@
     },
     {
       "what": "Roll-up jobs must be made to fail closed, and a local receipt lets hosted CI skip a check only where the local scope covers the hosted scope.",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "command's own exit, and make roll-up jobs fail closed (`if: always()` plus a guard). **Handoffs live only on"
     },
     {
       "what": "A failed gate stays part of the current task; it is not deferred by starting another feature.",
-      "file": "AGENTS.md",
+      "file": "docs/agents-detail.md",
       "quote": "final head, and merge **only with explicit authorization** (a PR is not approval). A failed gate stays part of"
     }
   ],

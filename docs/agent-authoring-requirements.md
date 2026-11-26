@@ -191,7 +191,7 @@ Models from small local ones to frontier read these files. Every line costs atte
 
 - **One rule per line, imperative, no hedging.** Put rationale and history in the full text, not the binding text.
 - **One home per rule.** State a rule once and link to it. Do not restate it in another file.
-- **Budget the always-loaded file.** `AGENTS.md` stays under 16 KB. A skill loads one at a time, so keep it
+- **Budget the always-loaded file.** `AGENTS.md` stays under 10 KB: inline only what applies every turn and link situational rules by trigger. A skill loads one at a time, so keep it
   self-contained but free of what `AGENTS.md` already says.
 - **Canonical terms.** Use these words and no synonyms:
 

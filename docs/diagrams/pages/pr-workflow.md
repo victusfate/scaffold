@@ -641,14 +641,14 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Pull the latest main and cut a fresh branch for one independent task.
   > \1. Pull latest main: \`git checkout main &amp;&amp; git pull origin main\`
   >
-  > [`docs/agents-detail.md:605`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L605)
+  > [`docs/agents-detail.md:677`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L677)
 
   AGENTS.md says "cut a fresh branch before the next task" but the explicit pull-main step is only in docs/agents-detail.md, which is not a listed source.
 
 - **Confirmed**: One task per PR and merge cycle.
   > \*\*One independent task per PR/merge cycle.\*\* Validate locally, open the PR, verify real required checks on the
   >
-  > [`AGENTS.md:190`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L190)
+  > [`docs/agents-detail.md:655`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L655)
 
 - **Confirmed**: branch → local: Task built on the branch (payload: commits)
   > \- No commits ahead of main → stop; there is nothing to PR.
@@ -747,7 +747,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Critical changes: Up to five path:line notes of what changed and what depends on it.
   > at most five \`path:line\` notes of what changed where and what depends on it. Measure delivery, not output
   >
-  > [`AGENTS.md:127`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L127)
+  > [`docs/agents-detail.md:221`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L221)
 
 - **Confirmed** (from the diagram): gh pr create
   > Open the PR with \`gh pr create\` against the repo's default base branch (usually \`main\`); Claude Code may use \`mcp\_\_github\_\_create\_pull\_request\`.
@@ -779,7 +779,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: The Security scan check must pass.
   > must pass before merge. Fix a finding, or suppress a reviewed false positive in the tool's own in-repo format
   >
-  > [`AGENTS.md:206`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L206)
+  > [`AGENTS.md:89`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L89)
 
 - **Confirmed**: GitHub counts a skipped required check as passing; treat a skip as suspect.
   > path filter / \`if:\` that never runs, \*\*skips\*\* on failure, and GitHub counts the skip as passing.
@@ -799,7 +799,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): Legend Security scan: CI check: gitleaks, osv-scanner, zizmor on the changes
   > The \`Security scan\` CI check (\`.github/workflows/security.yml\`: gitleaks, osv-scanner, zizmor on what the PR changes)
   >
-  > [`AGENTS.md:205`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L205)
+  > [`AGENTS.md:88`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L88)
 
 </details>
 
@@ -808,7 +808,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Partly**: Confirm the PR is MERGED, pull main, and cut a fresh branch before the next task.
   > the task. Confirm the merge and cut a fresh branch before the next task. Never commit feature work to main.
   >
-  > [`AGENTS.md:192`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L192)
+  > [`docs/agents-detail.md:657`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L657)
 
   The listed sources say confirm the merge and cut a fresh branch; the "pull main" step is only in docs/agents-detail.md (PR Workflow step 7), not a listed source.
 
@@ -825,7 +825,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: With the owner's explicit authorization, the orchestrator squash-merges it onto main as one commit.
   > final head, and merge \*\*only with explicit authorization\*\* (a PR is not approval). A failed gate stays part of
   >
-  > [`AGENTS.md:191`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L191)
+  > [`docs/agents-detail.md:656`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L656)
 
 - **Confirmed**: A PR is not approval.
   > PR creation is not merge authorization. In the default queue flow, the orchestrator keeps this task current until local and required hosted
@@ -840,12 +840,12 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Squash merge: One PR lands as one commit on main.
   > \*\*Merge by squash:\*\* one commit per PR on main, titled with the PR title; publication follows
   >
-  > [`AGENTS.md:193`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L193)
+  > [`docs/agents-detail.md:658`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L658)
 
 - **Confirmed** (from the diagram): Fresh branch from updated main
   > the current task; never grow the branch with another feature to defer it. Confirm the actual merge and
   >
-  > [`docs/agents-detail.md:599`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L599)
+  > [`docs/agents-detail.md:671`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L671)
 
   "From updated main" is spelled out only in docs/agents-detail.md (next line: "cut a fresh branch from updated main"), not a listed source; AGENTS.md says only "cut a fresh branch".
 
@@ -886,12 +886,12 @@ An agent judged each claim against the source; each quote is found in its file w
 - Roll-up jobs must be made to fail closed, and a local receipt lets hosted CI skip a check only where the local scope covers the hosted scope.
   > command's own exit, and make roll-up jobs fail closed (\`if: always()\` plus a guard). \*\*Handoffs live only on
   >
-  > [`AGENTS.md:196`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L196)
+  > [`docs/agents-detail.md:661`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L661)
 
 - A failed gate stays part of the current task; it is not deferred by starting another feature.
   > final head, and merge \*\*only with explicit authorization\*\* (a PR is not approval). A failed gate stays part of
   >
-  > [`AGENTS.md:191`](https://github.com/victusfate/scaffold/blob/main/AGENTS.md#L191)
+  > [`docs/agents-detail.md:656`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L656)
 
 ## Glossary
 

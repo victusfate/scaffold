@@ -189,7 +189,7 @@
       "claim": "Handoff passes (gated handoff)",
       "verdict": "confirmed",
       "file": "skills/save.md",
-      "quote": "unverified, and `scripts/check-handoff.ts` passes before it is committed (AGENTS.md, *Context hygiene*)."
+      "quote": "unverified, and `scripts/check-handoff.ts` passes before it is committed (`docs/agents-detail.md`, *Context hygiene*)."
     },
     {
       "node": "push",

@@ -92,7 +92,7 @@ the remainder:
 4. **One handoff, overwritten, on the branch only.** `.pause/handoff.md` is always current; history keeps
    the rest. It never reaches main: the orchestrator clears it before merging (`/create-pr`, *Clear the
    handoff*). It is the same file `/pause` writes and `/resume` reads. Its facts are tagged verified or
-   unverified, and `scripts/check-handoff.ts` passes before it is committed (AGENTS.md, *Context hygiene*).
+   unverified, and `scripts/check-handoff.ts` passes before it is committed (`docs/agents-detail.md`, *Context hygiene*).
 5. **Near the limit: refresh, point, then wake or hand off.** Checkpoint, drop the memory pointer, and
    schedule a wakeup past the reset if the client exposes a scheduler; otherwise give the `/resume`
    instruction. Do not spend the last of the budget racing the wall.

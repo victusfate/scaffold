@@ -3,7 +3,7 @@
   "lede": "How work survives a closed session: checkpoint into a handoff file, push it, and pick it up from any device.",
   "detail": "../generated/session-continuity.svg",
   "sources": ["docs/diagrams/src/session-continuity.mmd", "skills/save.md", "skills/pause.md", "skills/resume.md", "skills/create-pr.md", "docs/agents-detail.md", "scripts/check-handoff.ts"],
-  "reviewed": "d2b9e4d79917",
+  "reviewed": "61ef5adce1c2",
   "lanes": [
     { "id": "save", "name": "Save" },
     { "id": "resume", "name": "Resume" },

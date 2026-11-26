@@ -2076,12 +2076,12 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Timers are only for external gating, a usage-limit window or a crash re-arm.
   > which has nothing to wait for. A timer IS correct in three cases:
   >
-  > [`docs/agents-detail.md:115`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L115)
+  > [`docs/agents-detail.md:128`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L128)
 
 - **Confirmed**: A timer is never used to pace the agent's own work; that work runs continuously.
   > \- \*\*Don't insert a \`ScheduleWakeup\`/timer delay to \*pace\* self-contained work.\*\* A wakeup delay is for
   >
-  > [`docs/agents-detail.md:113`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L113)
+  > [`docs/agents-detail.md:126`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L126)
 
 - **Confirmed**: Tick fires (trigger)
   > task suits which slot. Swapping resources edits that file, never the scheduled prompt. Each tick:
@@ -2091,7 +2091,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): Legend: usage window = rolling usage limit; wake after it resets
   > \- \*\*Usage-limit windows:\*\* when closing in on 100% of the rolling 5-hour usage limit, schedule a
   >
-  > [`docs/agents-detail.md:118`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L118)
+  > [`docs/agents-detail.md:131`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L131)
 
 </details>
 
@@ -2108,7 +2108,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: node scripts/topology.ts validates the file.
   > (\`scripts/topology.ts\`, \`node scripts/topology.ts\` validates), and never creates or overwrites the file.
   >
-  > [`docs/agents-detail.md:920`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L920)
+  > [`docs/agents-detail.md:1024`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L1024)
 
 - **Confirmed**: An invalid file is a blocker to report. No file means the orchestrator works alone.
   > \1. Read and validate the topology; an invalid file is a blocker to report. No file: orchestrator only.
@@ -2128,7 +2128,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): Legend: topology.json = repo file naming the orchestrator and its worker slots
   > \`.agent/topology.json\` declares who does the work. Like \`.agent/default-language.md\` it is \*\*consumer-owned\*\*:
   >
-  > [`docs/agents-detail.md:918`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L918)
+  > [`docs/agents-detail.md:1022`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L1022)
 
 </details>
 
@@ -2204,12 +2204,12 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Zombie worktree: A worktree an interrupted session left behind.
   > \- \*\*Reap zombie worktrees after an interrupted session.\*\* The normal merge step deletes each lane's
   >
-  > [`docs/agents-detail.md:886`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L886)
+  > [`docs/agents-detail.md:990`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L990)
 
 - **Confirmed** (from the diagram): Stage title "4 · Reconcile, housekeeping", placed before dispatch
   > slots, reconcile lanes, then dispatch the next priority task to every free slot. Changing models or the slot mix
   >
-  > [`docs/agents-detail.md:938`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L938)
+  > [`docs/agents-detail.md:1042`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L1042)
 
 - **Confirmed** (from the diagram): Active tasks = live subagents? (decision at the end of reconcile)
   > \- End each run with the active-task count matching the live subagent count.
@@ -2219,7 +2219,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): Legend: orphan owner = active task owned by a name that is no slot
   > is owned by its id, and an active task owned by a non-slot is flagged as orphaned. Orchestrator and subagents
   >
-  > [`docs/agents-detail.md:941`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L941)
+  > [`docs/agents-detail.md:1045`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L1045)
 
 - **Confirmed** (from the diagram): Legend: handle = the session's own reference to a running subagent
   > Compare current-session live subagent handles, queue \`\[&gt;\]\` tasks, and \`git worktree list\` every run.
@@ -2233,7 +2233,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Partly**: Free slots filled (claims + worktrees)
   > \- \*\*Supervise background work by progress, not liveness.\*\* When a tick checks on running jobs, "the
   >
-  > [`docs/agents-detail.md:132`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L132)
+  > [`docs/agents-detail.md:145`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L145)
 
   The source says a tick supervises running jobs but never places that after dispatch; the loop skill's tick has four steps and ends at dispatch, so the order is the page's own.
 
@@ -2263,7 +2263,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Harness: The agent tool a slot runs, such as claude, codex, agy or pi.
   > is \`claude\`, \`codex\`, \`agy\`, \`pi\` or another name the repo's dispatcher understands.
   >
-  > [`docs/agents-detail.md:934`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L934)
+  > [`docs/agents-detail.md:1038`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L1038)
 
 - **Confirmed** (from the diagram): Highest-priority suited task: claim id --worker slot --branch b
   > \`node scripts/queue.ts claim &lt;id&gt; --worker &lt;slot-id&gt; --branch &lt;branch&gt;\` and start that slot's harness/model in
@@ -2273,7 +2273,7 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed** (from the diagram): Legend: worktree = isolated git checkout per worker
   > \- \*\*Never park a worker branch.\*\* Keep at most one branch (and worktree) per active subagent, plus
   >
-  > [`docs/agents-detail.md:715`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L715)
+  > [`docs/agents-detail.md:807`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L807)
 
 </details>
 
@@ -2285,27 +2285,27 @@ An agent judged each claim against the source; each quote is found in its file w
 - **Confirmed**: Check that each job advanced since the last tick, not just that it is running.
   > \- \*\*Did it advance since the last tick?\*\* Compare a progress counter (items finished, commits, CPU
   >
-  > [`docs/agents-detail.md:135`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L135)
+  > [`docs/agents-detail.md:148`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L148)
 
 - **Confirmed**: Check the leaf step, orphans, and who holds a shared budget.
   > \- \*\*What is each job doing right now?\*\* Look at the leaf process or current step. A \`sleep\` inside a
   >
-  > [`docs/agents-detail.md:138`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L138)
+  > [`docs/agents-detail.md:151`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L151)
 
 - **Confirmed**: A probe exits non-zero on an anomaly, which starts an investigation.
   > Encode these as a small probe script run every tick that exits non-zero on anomalies, and
   >
-  > [`docs/agents-detail.md:146`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L146)
+  > [`docs/agents-detail.md:159`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L159)
 
 - **Confirmed**: A running process is not proof that work is moving.
   > A job can be alive and stuck: in a retry/wait loop, or blocked on a
   >
-  > [`docs/agents-detail.md:133`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L133)
+  > [`docs/agents-detail.md:146`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L146)
 
 - **Confirmed**: Slot: A worker seat (a model plus a tool) that the orchestrator hands tasks to; its id names the task owner.
   > \- \`slots\[\].id\` is unique kebab-case and doubles as the queue task \*\*owner\*\* while the slot is busy. \`harness\`
   >
-  > [`docs/agents-detail.md:933`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L933)
+  > [`docs/agents-detail.md:1037`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L1037)
 
 </details>
 
@@ -2329,17 +2329,17 @@ An agent judged each claim against the source; each quote is found in its file w
 - Worktree cleanup needs an ownership check first: staleness grants no authority, and the subagent must be verified as ended before cleaning.
   > session; verify ownership and actual subagent end before cleanup:
   >
-  > [`docs/agents-detail.md:894`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L894)
+  > [`docs/agents-detail.md:998`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L998)
 
 - Each tick lists the worktree roots this session owns and flags each directory with its size and age.
   > 146 GB. On session start or resume, and on each loop tick, list the worktree roots owned by this
   >
-  > [`docs/agents-detail.md:892`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L892)
+  > [`docs/agents-detail.md:996`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L996)
 
 - Every anomaly the probe reports is investigated before the tick ends.
   > investigate each anomaly before ending the tick. A human asking "how's X holding up?" is this probe;
   >
-  > [`docs/agents-detail.md:147`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L147)
+  > [`docs/agents-detail.md:160`](https://github.com/victusfate/scaffold/blob/main/docs/agents-detail.md#L160)
 
 - A subagent that replied and went idle does not count as a running lane during reconcile.
   > A subagent that replied and went idle is not a running lane; resolve each mismatch before spawning more work:
