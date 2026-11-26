@@ -105,6 +105,8 @@ When the trigger fires, read the linked section first:
   [topology](docs/agents-detail.md#agent-topology).
 - **Running lanes; writing tests, waits, async code or heavy jobs** →
   [orchestration hygiene](docs/agents-detail.md#orchestration-hygiene-lessons-from-long-autonomous-runs).
+- **Briefing a subagent you dispatch** → [dispatch briefs](docs/agents-detail.md#dispatch-briefs--start-here):
+  a `## Start here` block of known files, decisions, ruled-out paths and proof; facts only, never guesses.
 - **Queue state, handoffs, long sessions** → [knowledge state](docs/agents-detail.md#knowledge-state-typed-and-evidenced-not-prose) ·
   [context hygiene](docs/agents-detail.md#context-hygiene--validate-compact-curate-prune).
 - **Owner asks for status reports** → [owner status reports](docs/agents-detail.md#owner-status-reports-remote-owner).
